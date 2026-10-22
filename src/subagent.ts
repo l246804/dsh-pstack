@@ -14,9 +14,9 @@ import type { ContentBlock } from "@deepseek-ai/dsh-llm";
 import { ReasoningEffortId } from "@deepseek-ai/dsh-llm";
 import type {} from "@deepseek-ai/dsh-subagent";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { loadRoleTable } from "./models.ts";
+import { loadRoleTable, modelConfigPath } from "./models.ts";
 import { AGENTS_ROOT, SKILLS_ROOT } from "./paths.ts";
-import { resolveRole, type Route } from "./roles.ts";
+import { findNearMisses, lookupRole, resolveRole, type Route } from "./roles.ts";
 
 export const name = "pstack-subagent";
 export const inject = ["tools", "subagents"];
@@ -77,6 +77,54 @@ export function composePrompt(input: {
   return sections.join("\n\n");
 }
 
+export interface RoleResolution {
+  readonly route: Route | undefined;
+  /** Human-readable notes to append to the tool reply: issues, near misses. */
+  readonly notes: readonly string[];
+}
+
+/**
+ * Resolve the `role` argument against the shipped role table, explaining a miss
+ * instead of swallowing it.
+ *
+ * A missing file is normal. A configured-but-unmatched role is not: it means a
+ * skill and `~/.dsh/pstack-models.md` disagree, and the child would silently run
+ * on the parent route. The tool reply says so, so the parent can fix the file or
+ * report the miss rather than believing the route applied.
+ */
+export async function resolveRoleArg(role: string | undefined): Promise<RoleResolution> {
+  if (!role) return { route: undefined, notes: [] };
+
+  const { table, issues, unreadable } = await loadRoleTable();
+  const match = lookupRole(table, role);
+  if (match) {
+    const notes: string[] = [];
+    for (const issue of issues) {
+      if (issue.line === 0) notes.push(issue.message);
+    }
+    return { route: resolveRole(table, role), notes };
+  }
+
+  const near = findNearMisses(table, role);
+  const lines: string[] = [];
+  if (unreadable) {
+    lines.push(
+      `pstack: ${modelConfigPath()} could not be read; the child inherits the parent route.`,
+    );
+  } else if (table.size === 0) {
+    lines.push(
+      `pstack: no role table at ${modelConfigPath()}; the child inherits the parent route. Run /setup-pstack to configure roles.`,
+    );
+  } else {
+    lines.push(
+      `pstack: role "${role}" is not in ${modelConfigPath()}; the child inherits the parent route.`,
+    );
+    if (near.length > 0)
+      lines.push(`pstack: did you mean ${near.map((n) => `"${n}"`).join(" or ")}?`);
+  }
+  return { route: undefined, notes: lines };
+}
+
 export interface PstackToolDeps {
   readonly start: (input: {
     readonly parent: Agent;
@@ -87,10 +135,33 @@ export interface PstackToolDeps {
     readonly cwd: string | undefined;
   }) => Promise<{ readonly childId: string }>;
   readonly loadAgent: (kind: AgentKind) => Promise<string>;
-  readonly loadRole: (role: string | undefined) => Promise<Route | undefined>;
+  /**
+   * Resolve the `role` argument. The notes explain a miss so the reply can name
+   * it; an empty list means the route applied as written, or there was no role.
+   */
+  readonly loadRole: (role: string | undefined) => Promise<RoleResolution>;
   readonly potetoModePath?: string;
   readonly defaultAgent?: AgentKind;
   readonly toolName?: string;
+}
+
+/**
+ * Turn a resolved role into the `agentOptions` a child activation carries.
+ *
+ * This is the only place a `Route` becomes a provider request. Keeping it a
+ * pure function lets a test assert the exact options without starting a child,
+ * which is where a role-to-route bug would otherwise stay invisible until a
+ * live delegation picked the wrong model.
+ */
+export function routeToAgentOptions(
+  route: Route | undefined,
+): { provider: string; model: string; reasoningEffort?: ReasoningEffortId } | undefined {
+  if (!route) return undefined;
+  return {
+    provider: route.provider,
+    model: route.model,
+    ...(route.reasoningEffort ? { reasoningEffort: ReasoningEffortId(route.reasoningEffort) } : {}),
+  };
 }
 
 /** Tool definition over injected dependencies; `apply` supplies the runtime. */
@@ -144,7 +215,7 @@ export function createPstackTool(deps: PstackToolDeps) {
         agentInstructions,
         ...(deps.potetoModePath ? { potetoModePath: deps.potetoModePath } : {}),
       });
-      const route = await deps.loadRole(args.role);
+      const { route, notes } = await deps.loadRole(args.role);
 
       const activation = await deps.start({
         parent,
@@ -155,9 +226,38 @@ export function createPstackTool(deps: PstackToolDeps) {
         cwd: args.cwd,
       });
 
-      return `started subagent ${activation.childId}`;
+      const started = `started subagent ${activation.childId}`;
+      return notes.length > 0 ? [started, ...notes].join("\n") : started;
     },
   });
+}
+
+/**
+ * Build the provider-facing activation request for one child.
+ *
+ * A role is resolved once, at delegation time, into concrete provider options.
+ * The child inherits the parent route when the role is absent or resolves to
+ * `inherit-parent`, which is why the field is omitted rather than set to a
+ * placeholder.
+ */
+export function buildActivationRequest(input: {
+  readonly parent: Agent;
+  readonly prompt: ContentBlock[];
+  readonly route: Route | undefined;
+  readonly cwd: string | undefined;
+}): {
+  parent: Agent;
+  prompt: ContentBlock[];
+  cwd?: string;
+  agentOptions?: { provider: string; model: string; reasoningEffort?: ReasoningEffortId };
+} {
+  const options = routeToAgentOptions(input.route);
+  return {
+    parent: input.parent,
+    prompt: input.prompt,
+    ...(input.cwd ? { cwd: input.cwd } : {}),
+    ...(options ? { agentOptions: options } : {}),
+  };
 }
 
 /**
@@ -174,27 +274,12 @@ export function apply(ctx: Context, config: Config = {}): void {
         label,
         signal,
         delivery: "parent",
-        request: {
-          parent,
-          prompt,
-          ...(cwd ? { cwd } : {}),
-          ...(route
-            ? {
-                agentOptions: {
-                  provider: route.provider,
-                  model: route.model,
-                  ...(route.reasoningEffort
-                    ? { reasoningEffort: ReasoningEffortId(route.reasoningEffort) }
-                    : {}),
-                },
-              }
-            : {}),
-        },
+        request: buildActivationRequest({ parent, prompt, route, cwd }),
       });
       return { childId: String(activation.childId) };
     },
     loadAgent: readAgentInstructions,
-    loadRole: async (role) => (role ? resolveRole(await loadRoleTable(), role) : undefined),
+    loadRole: resolveRoleArg,
     potetoModePath: POTETO_MODE_PATH,
     ...(config.defaultAgent ? { defaultAgent: config.defaultAgent } : {}),
     ...(config.toolName ? { toolName: config.toolName } : {}),
