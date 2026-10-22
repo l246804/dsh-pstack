@@ -1,24 +1,27 @@
 /**
  * Regenerate the DSH-facing copies of the upstream pstack skills.
  *
- * `assets/skills/` is generated, never hand-edited. Run `vp run sync` after
- * moving the `upstream/cursor-plugins` submodule, review the diff, and commit
- * both the submodule pointer and the regenerated tree together.
+ * `assets/` is generated and committed: the committed tree is what makes a
+ * sync reviewable as a `git diff`, and `--check` compares a fresh conversion
+ * against it. It is never hand-edited. Run `sync` after moving the
+ * `upstream/cursor-plugins` submodule, and commit the pointer and the tree
+ * together.
  *
- * `--check` exits non-zero when the checked-in tree differs from a fresh
+ * `--check` exits non-zero when the on-disk tree differs from a fresh
  * conversion. CI uses it to prove the port never drifts from its source.
  */
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  auditScript,
   DSH_ADAPTER_NOTE,
-  DSH_AGENTS,
   DSH_HARNESS_DOC,
   DSH_SETUP_SKILL,
   EXCLUDED_SKILLS,
   parseFrontmatter,
   rewriteCommon,
+  rewriteScript,
   rewriteSkill,
   serializeSkill,
 } from "./adapt.ts";
@@ -32,8 +35,20 @@ const check = process.argv.includes("--check");
 
 interface GeneratedFile {
   path: string;
+  /** UTF-8 text, or base64 when `binary` is set. */
   content: string;
   mode?: number;
+  binary?: boolean;
+}
+
+/**
+ * A file is treated as text when it decodes to itself. Binary assets keep the
+ * base64 path so a byte-for-byte copy stays possible.
+ */
+function decodeText(bytes: Buffer): string | undefined {
+  if (bytes.includes(0)) return undefined;
+  const text = bytes.toString("utf8");
+  return Buffer.from(text, "utf8").equals(bytes) ? text : undefined;
 }
 
 async function listFiles(directory: string): Promise<string[]> {
@@ -102,20 +117,60 @@ async function buildSkills(): Promise<GeneratedFile[]> {
         });
         continue;
       }
-      const bytes = await readFile(file);
       const info = await stat(file);
-      files.push({ path: target, content: bytes.toString("base64"), mode: info.mode & 0o777 });
+      const mode = info.mode & 0o777;
+      const bytes = await readFile(file);
+      const text = decodeText(bytes);
+      if (text !== undefined) {
+        const rewritten = rewriteScript(`skills/${directory}/${relativePath}`, text);
+        const problems = auditScript(`skills/${directory}/${relativePath}`, rewritten);
+        if (problems.length > 0) throw new Error(problems.join("\n"));
+        if (rewritten !== text) {
+          files.push({ path: target, content: rewritten, mode });
+          continue;
+        }
+      }
+      files.push({ path: target, content: bytes.toString("base64"), mode, binary: true });
     }
   }
 
   return files;
 }
 
-function buildAgents(): GeneratedFile[] {
-  return Object.entries(DSH_AGENTS).map(([name, content]) => ({
-    path: `assets/agents/${name}.md`,
-    content,
-  }));
+/**
+ * Agents are upstream content plus the same rewrite pipeline the skills use,
+ * so an upstream edit to `poteto-agent.md` reaches DSH without a hand edit
+ * here. Only the frontmatter is replaced, because DSH reads its own keys.
+ */
+async function buildAgents(): Promise<GeneratedFile[]> {
+  const files: GeneratedFile[] = [];
+  const agentsRoot = join(UPSTREAM, "agents");
+  for (const file of await listFiles(agentsRoot)) {
+    const name = relative(agentsRoot, file).replace(/\.md$/, "");
+    const raw = await readFile(file, "utf8");
+    const { data, body } = parseFrontmatter(raw);
+    const rewritten = rewriteCommon(body);
+    const problems = auditScript(`agents/${name}.md`, rewritten);
+    if (problems.length > 0) throw new Error(problems.join("\n"));
+    files.push({
+      path: `assets/agents/${name}.md`,
+      content: serializeAgent(name, rewriteCommon(data.description ?? ""), rewritten),
+    });
+  }
+  return files;
+}
+
+/** Serialize one agent for DSH. DSH reads `name` and `description` only. */
+function serializeAgent(name: string, description: string, body: string): string {
+  return [
+    "---",
+    `name: ${name}`,
+    `description: ${JSON.stringify(description)}`,
+    "---",
+    "",
+    body.replace(/\s+$/, ""),
+    "",
+  ].join("\n");
 }
 
 async function buildDocs(): Promise<GeneratedFile[]> {
@@ -133,13 +188,6 @@ async function buildDocs(): Promise<GeneratedFile[]> {
       path: `assets/docs/guide/${relativePath}`,
       content: rewriteSkill(`docs/guide/${relativePath}`, text),
     });
-  }
-
-  for (const file of await listFiles(join(UPSTREAM, "automations"))) {
-    const relativePath = relative(UPSTREAM, file);
-    if (!relativePath.endsWith(".md")) continue;
-    const text = await readFile(file, "utf8");
-    files.push({ path: `assets/cursor-only/${relativePath}`, content: rewriteCommon(text) });
   }
 
   return files;
@@ -193,11 +241,12 @@ async function writeGenerated(files: GeneratedFile[]): Promise<void> {
   for (const file of files.sort((a, b) => a.path.localeCompare(b.path))) {
     const target = join(ROOT, file.path);
     await mkdir(dirname(target), { recursive: true });
+    const data = file.binary ? Buffer.from(file.content, "base64") : file.content;
     if (file.mode === undefined) {
-      await writeFile(target, file.content, "utf8");
+      await writeFile(target, data, "utf8");
       continue;
     }
-    await writeFile(target, Buffer.from(file.content, "base64"), { mode: file.mode });
+    await writeFile(target, data, { mode: file.mode });
   }
 }
 
@@ -205,6 +254,12 @@ function normalize(text: string): string {
   return text.replace(/\r\n/g, "\n");
 }
 
+/**
+ * Compare a fresh conversion against the committed tree.
+ *
+ * A committed tree is the review baseline, so an absent file is drift like any
+ * other: it means the tree was deleted or a previous sync died halfway.
+ */
 async function checkGenerated(files: GeneratedFile[]): Promise<string[]> {
   const mismatches: string[] = [];
   const expected = new Map(files.map((file) => [file.path, file]));
@@ -217,7 +272,7 @@ async function checkGenerated(files: GeneratedFile[]): Promise<string[]> {
   for (const [path, file] of expected) {
     try {
       const current = await readFile(join(ROOT, path));
-      if (file.mode !== undefined) {
+      if (file.binary) {
         if (!current.equals(Buffer.from(file.content, "base64")))
           mismatches.push(`changed: ${path}`);
         continue;
@@ -234,7 +289,7 @@ async function checkGenerated(files: GeneratedFile[]): Promise<string[]> {
 }
 
 async function main(): Promise<void> {
-  const files = [...(await buildSkills()), ...buildAgents(), ...(await buildDocs())];
+  const files = [...(await buildSkills()), ...(await buildAgents()), ...(await buildDocs())];
 
   if (check) {
     const mismatches = await checkGenerated(files);

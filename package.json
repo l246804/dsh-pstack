@@ -35,14 +35,15 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "sync": "node scripts/sync-upstream.ts",
+    "sync:check": "node scripts/check-rewrites.ts --check && node scripts/sync-upstream.ts --check && node scripts/report-coverage.ts --check",
+    "sync:report": "node scripts/report-coverage.ts",
     "build": "vp pack",
     "dev": "vp pack --watch",
     "test": "vp test",
     "check": "vp check",
-    "sync": "node scripts/sync-upstream.ts",
-    "sync:check": "node scripts/sync-upstream.ts --check",
     "prepare": "vp pack",
-    "prepublishOnly": "vp pack"
+    "prepublishOnly": "node scripts/check-rewrites.ts --check && node scripts/sync-upstream.ts --check && node scripts/report-coverage.ts --check && vp pack"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "~4.0.5",
