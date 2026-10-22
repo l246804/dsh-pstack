@@ -54,12 +54,12 @@ type NonEmpty<T> = [T, ...T[]];
 // Don't: T[] plus a length check every caller must repeat
 function pickWinner(entries: string[]): string {
   if (entries.length === 0) throw new Error("no entries");
-  return entries[Math.floor(Math.random * entries.length)];
+  return entries[Math.floor(Math.random() * entries.length)];
 }
 
 // Do: an empty value of the type can't exist
 function pickWinner(entries: NonEmpty<string>): string {
-  return entries[Math.floor(Math.random * entries.length)];
+  return entries[Math.floor(Math.random() * entries.length)];
 }
 ```
 
@@ -85,7 +85,7 @@ type TimeRange = { start: Date; end: Date }; // start <= end
 type TimeRange = { start: Date; durationMs: number };
 ```
 
-Keep `durationMs` a plain number. Brand it (per Branded types) only if a raw number could be passed where a duration is expected, not by reflex. Pick the representation that makes the bad state unconstructable, then expose the reading you need on top (`pairs.flat`, a `rangeEnd` helper).
+Keep `durationMs` a plain number. Brand it (per Branded types) only if a raw number could be passed where a duration is expected, not by reflex. Pick the representation that makes the bad state unconstructable, then expose the reading you need on top (`pairs.flat()`, a `rangeEnd()` helper).
 
 ## Simplest total type
 
@@ -139,7 +139,7 @@ Before writing a property-by-property type guard for external data, look for the
 import { z } from "zod";
 
 const UserSchema = z.object({
-  id: z.string.uuid,
+  id: z.string().uuid(),
   role: z.enum(["admin", "member"]),
 });
 
@@ -168,7 +168,7 @@ function isUser(data: unknown): data is User {
 }
 
 // Do
-const userSchema = z.object({ id: z.string, name: z.string });
+const userSchema = z.object({ id: z.string(), name: z.string() });
 type User = z.infer<typeof userSchema>;
 
 function parseUser(data: unknown): User {
@@ -181,7 +181,7 @@ When the type comes first, annotate the validator with the type it proves. The c
 ```ts
 type User = { id: string; name: string };
 
-const userSchema: z.ZodType<User> = z.object({ id: z.string, name: z.string });
+const userSchema: z.ZodType<User> = z.object({ id: z.string(), name: z.string() });
 ```
 
 When refactoring an `as` out of existing code, identify why TypeScript can't infer:

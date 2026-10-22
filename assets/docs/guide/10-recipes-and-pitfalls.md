@@ -161,7 +161,7 @@ That's the whole prompt. [`/bro`](../../skills/bro/SKILL.md) restates the last m
 ## The pitfalls
 
 - **Enumerating skills in the prompt.** "use /how then /architect then /arena" reorders steps the playbook already sequences. State the goal and constraints. Name a skill only to override a default.
-- **A vague finish condition.** "make it better" gives `schedule_create` nothing to check. Give a command or artifact that can pass or fail.
+- **A vague finish condition.** "make it better" gives the loop nothing to check. Give a command or artifact that can pass or fail.
 - **Leading with your theory of the cause.** The agent searches wherever you pointed. Ask it to restate the problem first, then share your hunch.
 - **Taking the first design.** One attempt locks in the first shape the model thought of. Ask for prototypes or `/architect` and pick from evidence.
 - **Polishing an abstract plan.** Adversarial review of a plan with no code behind it invents risks that will never happen. Settle the open questions with prototypes, then review what got built.

@@ -1,6 +1,6 @@
 ---
 name: reflect
-description: "Spawn three parallel review subagents over the active transcript, surface learnings, and route each to a concrete edit on an existing skill. Use when the user says reflect."
+description: Spawn three parallel review subagents over the active transcript, surface learnings, and route each to a concrete edit on an existing skill. Use when the user says reflect.
 disable-model-invocation: true
 ---
 
@@ -26,7 +26,7 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
 
 One message, three `pstack_subagent` calls with `agent: "general"`. Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references.
 
-Each reviewer and the synthesizer pass a `role` to `pstack_subagent`: `reflect judgment, divergent, synthesizer` for the judgment and divergent reviewers and the synthesizer, `reflect tooling` for the tooling reviewer. The tool resolves routes from `~/.dsh/pstack-models.md`; a missing line inherits the parent model.
+Each reviewer and the synthesizer pass a `role` to `pstack_subagent`: `reflect judgment, divergent, synthesizer` for the judgment and divergent reviewers and the synthesizer, `reflect tooling` for the tooling reviewer. The tool resolves routes from `~/.dsh/pstack-models.md`; a missing line inherits the parent model. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
 
 | Lens | Role | Prompt template |
 |---|---|---|
@@ -35,7 +35,7 @@ Each reviewer and the synthesizer pass a `role` to `pstack_subagent`: `reflect j
 | Divergent | `reflect judgment, divergent, synthesizer` | `references/divergent-reviewer.md` |
 
 
-Pass each template verbatim, substituting the transcript path or digest where marked. Reviewers return findings in the completion notice.
+Pass each template verbatim, substituting the transcript path or digest where marked. Reviewers return findings in the `pstack_subagent` response body.
 
 ## 3. Synthesize
 

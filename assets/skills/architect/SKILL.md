@@ -1,6 +1,6 @@
 ---
 name: architect
-description: "Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in. Use for /architect, 'architect this', 'design this', or non-trivial work where jumping to code would lock in the wrong shape."
+description: Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in. Use for /architect, 'architect this', 'design this', or non-trivial work where jumping to code would lock in the wrong shape.
 disable-model-invocation: true
 ---
 
@@ -12,7 +12,7 @@ Sketch types, function signatures, class shapes, and module boundaries with `not
 
 ## Start
 
-Call `todo_write` with the full list with one entry per phase before starting.
+Call `todo_write` with one entry per phase before starting.
 
 1. Ground
 2. Sketch
@@ -30,7 +30,7 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt.
 
-Take the runners from the `architect runners` line in the `pstack-models.md` rule, in place of the `arena runners` line. If the rule or that line is missing, use `the configured route` and `the configured route`. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
+Take the runners from the `architect runners` line in the `pstack-models.md` rule, in place of the `arena runners` line. If the rule or that line is missing, both runners inherit the parent model. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
 

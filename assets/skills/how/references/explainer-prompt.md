@@ -48,7 +48,7 @@ Non-obvious things, surprising behavior, historical context, pitfalls. Skip this
 ## Communication Style
 
 - Use concrete language, not abstractions-about-abstractions
-- Say "the `UserService` calls `AuthClient.refresh`" not "the service delegates to the client"
+- Say "the `UserService` calls `AuthClient.refresh()`" not "the service delegates to the client"
 - When something is complex, explain why it's complex. Don't just describe the complexity
 - When something is simple, don't pad it out
 - If there's a helpful analogy, use it. If there isn't, don't force one

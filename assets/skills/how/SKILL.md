@@ -1,6 +1,6 @@
 ---
 name: how
-description: "Use for \"how does X work\", code walkthroughs before changing something, and placement / ownership / layering questions (\"where should this live\", \"which package owns this\", \"is this the right layer\"). Explains subsystem architecture, runtime flow, onboarding mental models. Use why for motivation."
+description: Use for "how does X work", code walkthroughs before changing something, and placement / ownership / layering questions ("where should this live", "which package owns this", "is this the right layer"). Explains subsystem architecture, runtime flow, onboarding mental models. Use why for motivation.
 disable-model-invocation: true
 ---
 
@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Explore the codebase to answer "how does X work?" questions. Produce architectural explanations at the level of a senior engineer onboarding onto a subsystem, enough to build a working mental model, not so much that it reads like annotated source code.
 
-Every spawn is a `pstack_subagent` call with `agent: "general"`; tell it not to edit files. Pass `role: "how explorer"` for explorers and `role: "how explainer"` for explainers. The tool resolves the route from `~/.dsh/pstack-models.md`; when the file or line is missing, the child inherits the parent model.
+Every spawn is a `pstack_subagent` call with `agent: "general"`; tell it not to edit files. Explorers pass `role: "how explorer"` and every explainer passes `role: "how explainer"`; the tool resolves each from `~/.dsh/pstack-models.md`. When the file or line is missing, the child inherits the parent model.
 
 ## 1. Assess complexity
 
