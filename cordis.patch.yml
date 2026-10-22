@@ -1,0 +1,20 @@
+# dsh-pstack bundle patch.
+#
+# Two rows, both installed by this package:
+#   - `pstack` mounts the bundled skill provider. Every pstack skill becomes a
+#     normal DSH skill: model-invocable skills reach the catalog, user-invocable
+#     skills reach the `/` menu.
+#   - `pstack-subagent` mounts the `pstack_subagent` tool, the DSH replacement
+#     for Cursor's `Task` tool. It resolves pstack role lines from
+#     `~/.dsh/pstack-models.md` and delegates through `ctx.subagents`.
+#
+# The `pstack` row requires `ctx.skills`, which `@deepseek-ai/dsh-base` provides.
+# The `pstack-subagent` row requires `ctx.tools` and `ctx.subagents`, also in
+# base-backed profiles. Installing this bundle into a profile that lacks them
+# leaves the rows pending, exactly like any other dependency-driven plugin.
+- insert:
+    - id: pstack
+      name: "dsh-pstack"
+
+    - id: pstack-subagent
+      name: "dsh-pstack/subagent"
