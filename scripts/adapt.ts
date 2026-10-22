@@ -554,7 +554,7 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
 Install the bundle into your DSH profile:
 
 \`\`\`bash
-dsh plugin --profile web add github:leihaohao/dsh-pstack
+dsh plugin --profile web add github:your-org/dsh-pstack
 \`\`\`
 
 Restart \`dsh web\` after install. The bundle mounts the pstack skill provider and the \`pstack_subagent\` tool.

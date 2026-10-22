@@ -16,7 +16,7 @@ repeatable sync instead of a hand fork.
 ## Install
 
 ```bash
-dsh plugin --profile web add github:leihaohao/dsh-pstack
+dsh plugin --profile web add github:your-org/dsh-pstack
 ```
 
 Or from a checkout:

@@ -7,7 +7,7 @@ In this page you install the plugin, pick which models pstack uses, and run your
 Install the bundle into your DSH profile:
 
 ```bash
-dsh plugin --profile web add github:leihaohao/dsh-pstack
+dsh plugin --profile web add github:your-org/dsh-pstack
 ```
 
 Restart `dsh web` after install. The bundle mounts the pstack skill provider and the `pstack_subagent` tool.
