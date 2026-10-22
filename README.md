@@ -11,7 +11,8 @@ delegation tool.
 
 Upstream is pinned as a git submodule at `upstream/cursor-plugins`. The DSH
 tree under `assets/` is generated from it, so upstream fixes flow through a
-repeatable sync instead of a hand fork.
+repeatable sync instead of a hand fork. The generated tree is committed: it is
+what makes a sync reviewable as a `git diff`.
 
 ## Install
 
@@ -110,7 +111,8 @@ child and `list_agents` to enumerate them.
 | Automations, Bugbot, cloud agents, Custom Modes, `/loop`, `cursor-team-kit` | Marked skipped, or remapped to `schedule_create`, `create_goal`, worktree subagents, and `/no-comments` |
 
 `skills/make-bot-ui` is not ported: it depends entirely on Cursor Automations.
-The original is kept under `assets/cursor-only/` for reference.
+It is not shipped, in any form. If you need it, read it from the upstream
+submodule at `upstream/cursor-plugins/pstack/skills/make-bot-ui/`.
 
 ## Develop
 
@@ -136,7 +138,7 @@ src/frontmatter.ts       SKILL.md frontmatter parser
 scripts/adapt.ts         upstream-to-DSH rewrite rules
 scripts/sync-upstream.ts generator: upstream -> assets/
 tests/                   unit tests for provider, roles, and prompt assembly
-assets/                  generated: skills, agents, docs (checked in)
+assets/                  generated: skills, agents, docs (committed)
 cordis.patch.yml         the bundle layer this package installs
 upstream/cursor-plugins  git submodule, upstream reference only
 ```
@@ -144,8 +146,13 @@ upstream/cursor-plugins  git submodule, upstream reference only
 `assets/` is generated. Never hand-edit it. Change `scripts/adapt.ts` or a
 skill's upstream source, then run `vp run sync`.
 
-`vp run sync:check` fails when the checked-in tree differs from a fresh
-conversion. Run it before publishing.
+[`docs/porting/`](docs/porting/README.md) is the policy the converter enforces:
+translate names, not sentences; awkward grammar is acceptable, changed meaning
+is not. It also records why the generated tree is committed rather than ignored.
+
+`vp run sync:check` fails when the committed tree differs from a fresh
+conversion and when a rewrite no longer matches its upstream anchor. Run it
+before publishing.
 
 ## License
 
