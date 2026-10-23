@@ -2,18 +2,6 @@
   "name": "dsh-pstack",
   "version": "0.1.0",
   "description": "pstack for DeepSeek Harness: rigorous agent workflows ported from cursor/plugins.",
-  "author": {
-    "name": "leiwang",
-    "email": "leiwang2000@foxmail.com"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/l246804/dsh-pstack"
-  },
-  "homepage": "https://github.com/l246804/dsh-pstack",
-  "bugs": {
-    "url": "https://github.com/l246804/dsh-pstack/issues"
-  },
   "keywords": [
     "agent-skills",
     "deepseek-harness",
@@ -23,7 +11,19 @@
     "pstack",
     "workflow"
   ],
+  "homepage": "https://github.com/l246804/dsh-pstack",
+  "bugs": {
+    "url": "https://github.com/l246804/dsh-pstack/issues"
+  },
   "license": "MIT",
+  "author": {
+    "name": "leiwang",
+    "email": "leiwang2000@foxmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/l246804/dsh-pstack"
+  },
   "files": [
     "dist",
     "assets",
