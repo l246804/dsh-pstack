@@ -4,7 +4,7 @@ description: Use for "interrogate", "adversarial review", "multi-model review", 
 disable-model-invocation: true
 ---
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's `Task` tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
+> DSH port of pstack. Workflow delegation uses `pstack_subagent`; host-specific tool and preset behavior is documented in `../../docs/harness/dsh.md`.
 
 # Interrogate
 
@@ -26,9 +26,9 @@ Before spawning reviewers, state the intent in one clear paragraph from the user
 
 ## Step 3, Spawn Reviewers
 
-Launch all reviewers in a single message with `pstack_subagent`, one per entry on the `interrogate reviewers` line in `~/.dsh/pstack-models.md`, labeled Reviewer A, B, and so on to match the entry count. Pass `agent: "general"` and `role: "interrogate reviewers"`. If the file or line is missing, use the parent model and say so.
+Launch reviewers with one `pstack_subagent` call using `agent: "general"` and `role: "interrogate reviewers"`. The tool starts one reviewer per entry on that line and labels each panel entry. If the file or line is missing, it starts one reviewer on the parent model.
 
-Each reviewer gets `agent: "general"` and `role: "interrogate reviewers"`, and is told not to edit files. DSH routes each panel entry independently; an `inherit-parent` entry runs on the parent model. If a configured route is unavailable, run that reviewer on the parent model and say so. Do not block the review on the route issue.
+Each reviewer gets `agent: "general"` and `role: "interrogate reviewers"`, and is told not to edit files. The tool routes each panel entry independently; an `inherit-parent` entry runs on the parent model. If a configured reviewer route is unavailable, that entry falls back to the parent route with a diagnostic, and the remaining reviewers still start.
 
 Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
 

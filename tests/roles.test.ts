@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parseFrontmatter } from "../src/frontmatter.ts";
-import { parseModelConfig, resolvePanel, resolveRole } from "../src/roles.ts";
+import {
+  parseModelConfig,
+  parseModelConfigWithIssues,
+  resolvePanel,
+  resolveRole,
+} from "../src/roles.ts";
 
 describe("parseFrontmatter", () => {
   it("reads quoted, plain, boolean, and folded scalars", () => {
@@ -74,5 +79,25 @@ describe("model role resolution", () => {
       reasoningEffort: "high",
     });
     expect(resolveRole(table, "divergent")).toBeUndefined();
+  });
+
+  it("accepts the minimal reasoning effort and reports its source line", () => {
+    const parsed = parseModelConfigWithIssues("feature: provider/model minimal");
+    expect(resolveRole(parsed.table, "feature")).toEqual({
+      provider: "provider",
+      model: "model",
+      reasoningEffort: "minimal",
+    });
+    expect(parsed.issues).toEqual([]);
+  });
+
+  it("reports invalid efforts without dropping the usable route", () => {
+    const parsed = parseModelConfigWithIssues("feature: provider/model hihg");
+    expect(resolveRole(parsed.table, "feature")).toEqual({
+      provider: "provider",
+      model: "model",
+    });
+    expect(parsed.issues[0]?.line).toBe(1);
+    expect(parsed.issues[0]?.message).toContain('unknown effort "hihg"');
   });
 });

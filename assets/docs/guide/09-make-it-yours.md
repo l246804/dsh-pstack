@@ -93,7 +93,7 @@ Read every output yourself before accepting the verdict. If you disagree with th
 
 ## One skill is deliberately not ported
 
-`/make-bot-ui` is not ported. It depends on Cursor Automations, which DSH does not provide. Copy it from the upstream submodule if you need it.
+`/make-bot-ui` is not included because its webhook-triggered automation flow is not provided by this package.
 
 **Pitfall:** don't edit a skill mid-task because it's misbehaving. Fix it in its own PR and keep the task moving. A skill edit that ships tangled into feature work is invisible to review and impossible to evaluate.
 

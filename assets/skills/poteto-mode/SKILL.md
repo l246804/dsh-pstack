@@ -4,7 +4,7 @@ description: poteto's agent style for concise, detailed responses, deliberate su
 disable-model-invocation: true
 ---
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's `Task` tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
+> DSH port of pstack. Workflow delegation uses `pstack_subagent`; host-specific tool and preset behavior is documented in `../../docs/harness/dsh.md`.
 
 # Poteto mode
 
@@ -90,7 +90,7 @@ Read the leaf skill in full for any principle you apply. Each entry names when i
 
 ## Subagents
 
-Every delegation goes through the `pstack_subagent` tool. It starts a background child, returns its id, and the runtime sends you a completion notice. It takes `description`, `prompt`, `role`, and optional `cwd` and `agent`.
+Every delegation goes through the `pstack_subagent` tool. It starts a background child, returns its id, and the runtime sends you a completion notice. It takes `description`, `prompt`, `role`, optional `cwd`, `agent`, `agentPreset`, and `maxDepth`. Omitted depth uses the DSH subagent setting. `roleIndex` selects one zero-based route from a list-valued role.
 
 - **`agent: "poteto-agent"`** for any subagent you spawn inside a playbook step: code-writing delegates, ad-hoc helpers. The tool prepends the poteto-agent instructions, so the child reads this skill in full before working. The chat that receives `/poteto-mode` runs the playbook. Never spawn a poteto-agent to run the playbook itself.
 - **`agent: "general"`** for the routed workflow skills (`how`, `why`, `interrogate`, `reflect`, `swarm`). They pass their own reviewer prompts and do not need the poteto preamble.
@@ -98,11 +98,17 @@ Every delegation goes through the `pstack_subagent` tool. It starts a background
 
 **Roles.** `role` names a line in `~/.dsh/pstack-models.md` (`feature, refactoring`, `bug-fix`, `perf-issue`, `hillclimb`, `judgment and prose`, `hardest tasks`, `how explorer`, `how explainer`, `why investigators`, `why synthesizer`, `reflect tooling`, `reflect judgment, divergent, synthesizer`, `arena runners`, `arena cross-judge pool`, `swarm workers`, `architect runners`, `interrogate reviewers`). The tool resolves the route from that file. A missing file or role line means the child inherits the parent's model. Never pass a model slug yourself; DSH providers and model ids are deployment-specific.
 
-A list-valued role fans out one child per entry. Panels stay diverse only when the list names different routes. Create the children in one message, then wait for their completion notices.
+The `arena runners`, `architect runners`, and `interrogate reviewers` roles fan out one child per entry from a single tool call because those skills define panel semantics. Other list-valued roles select their first entry by default; pass `roleIndex` to choose another route without unexpectedly creating more children. Panels stay diverse only when the list names different routes. An unavailable panel route falls back to the parent route with a diagnostic; the other reviewers still run.
+
+`agent` selects a pstack prompt preamble. `agentPreset` selects the DSH preset that supplies the child's tools, skills, and plugins; omit it to inherit the parent's preset. Use `agentPreset: "cordis"` only for DSH plugin development when that preset is available. DSH Agent Team controls (`spawn_teammate`, `list_agents`, `send_message`, and related team tools) manage Team members, not children created by `pstack_subagent`. Team members share one checkout; Agent Team is not a worktree-per-child feature.
 
 You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. A second opinion is the same prompt against a different model. Agreement is high-signal.
 
-**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. Continue a child with `send_message` only when the new work strictly needs state that lives in that agent and is costly to move: its local checkout, its uncommitted changes, or a process it still runs. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
+**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. This bundle does not add a child-steering tool; continue an existing child only if the DSH profile provides one and the new work strictly needs state that is costly to move. Otherwise start fresh. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
+
+## Worktrees
+
+When DSH's `create_worktree` tool is available in the current child session, use it before the child writes shared-repository changes. It creates a local Git worktree, checks out a branch, and changes that session's working directory; it does not provide a VM, merge changes, or clean up the worktree. If a child needs a prepared checkout instead, pass its path through `cwd`. If the tool is unavailable in the active preset/profile, use a separately prepared Git worktree. Worktree file-policy restrictions still apply.
 
 ## Writing the reply
 

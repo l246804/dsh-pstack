@@ -182,7 +182,16 @@ async function buildDocs(): Promise<GeneratedFile[]> {
   const guideRoot = join(UPSTREAM, "docs/guide");
   for (const file of await listFiles(guideRoot)) {
     const relativePath = relative(guideRoot, file);
-    if (relativePath.endsWith(".jpg") || relativePath.endsWith(".png")) continue;
+    if (/\.(?:jpg|png)$/i.test(relativePath)) {
+      const info = await stat(file);
+      files.push({
+        path: `assets/docs/guide/${relativePath}`,
+        content: (await readFile(file)).toString("base64"),
+        mode: info.mode & 0o777,
+        binary: true,
+      });
+      continue;
+    }
     const text = await readFile(file, "utf8");
     files.push({
       path: `assets/docs/guide/${relativePath}`,

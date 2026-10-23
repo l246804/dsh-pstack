@@ -329,31 +329,20 @@ const RULES: readonly TermRule[] = [
     kind: "approximate",
     detect: /cloud agent|cloud subagent|cloud VM|environment: "cloud"|in-cloud/,
     apply: [
-      // The Cursor phrase carries its own article; handle it before the bare
-      // term so the swap cannot leave "each a a worktree subagent".
-      [/each a Cursor cloud agent/g, "each a worktree subagent"],
-      [/Cursor cloud agents\b/g, "worktree subagents"],
-      [/Cursor cloud agent\b/g, "a worktree subagent"],
-      [/cloud subagents\b/g, "worktree subagents"],
-      [/cloud subagent\b/g, "worktree subagent"],
-      [/cloud agents\b/g, "worktree subagents"],
-      [/cloud agent\b/g, "a worktree subagent"],
-      [/cloud VM/g, "git worktree"],
-      [/Each one gets its own VM and branch/g, "Each one gets its own worktree and branch"],
-      [
-        /Type `\/in-cloud` before the task, or ask the parent chat to hand work to worktree subagents\./g,
-        "Ask the parent chat to hand the work to a worktree subagent.",
-      ],
+      [/Cursor cloud agents\b/g, "DSH child sessions"],
+      [/Cursor cloud agent\b/g, "a DSH child session"],
+      [/cloud subagents\b/g, "pstack subagents"],
+      [/cloud subagent\b/g, "pstack subagent"],
+      [/cloud agents\b/g, "background child sessions"],
+      [/cloud agent\b/g, "background child session"],
     ],
-    // `environment` is a Cursor subagent field. The surrounding sentences keep
-    // working once the value reads "worktree subagents", so no forbid token.
     coverage: "partial",
     reason:
-      "Only the subagent-isolation sentences are rewritten. A bare `cloud` elsewhere can describe the Cursor product, not the DSH call shape.",
+      "DSH child sessions are not isolated machines. Worktree-specific claims are rewritten at the paragraph that makes them; generic cloud-agent references become DSH child sessions.",
     doc: {
       table: "host",
       cursor: '`environment: "cloud"`',
-      dsh: "A `pstack_subagent` with its own git worktree. DSH has no per-agent VM.",
+      dsh: "A background `pstack_subagent` child session. When available, have a writing child call DSH's `create_worktree` before editing; alternatively prepare a Git worktree and pass its path as `cwd`. Child sessions are not separate VMs.",
     },
   },
   {
@@ -737,7 +726,7 @@ const RULES: readonly TermRule[] = [
     doc: {
       table: "tools",
       cursor: "`resume`",
-      dsh: "`send_message` to the child id. Prefer a fresh child with consolidated scope, per `poteto-mode`.",
+      dsh: "This bundle has no child-steering tool. Use a fresh child with consolidated scope unless the DSH profile provides a control tool.",
     },
   },
   {
@@ -1075,7 +1064,7 @@ const FILE_REWRITES: Record<string, ReadonlyArray<RewriteStep>> = {
       /## Subagents\n[\s\S]*?\n## Writing the reply/,
       `## Subagents
 
-Every delegation goes through the \`pstack_subagent\` tool. It starts a background child, returns its id, and the runtime sends you a completion notice. It takes \`description\`, \`prompt\`, \`role\`, and optional \`cwd\` and \`agent\`.
+Every delegation goes through the \`pstack_subagent\` tool. It starts a background child, returns its id, and the runtime sends you a completion notice. It takes \`description\`, \`prompt\`, \`role\`, optional \`cwd\`, \`agent\`, \`agentPreset\`, and \`maxDepth\`. Omitted depth uses the DSH subagent setting. \`roleIndex\` selects one zero-based route from a list-valued role.
 
 - **\`agent: "poteto-agent"\`** for any subagent you spawn inside a playbook step: code-writing delegates, ad-hoc helpers. The tool prepends the poteto-agent instructions, so the child reads this skill in full before working. The chat that receives \`/poteto-mode\` runs the playbook. Never spawn a poteto-agent to run the playbook itself.
 - **\`agent: "general"\`** for the routed workflow skills (\`how\`, \`why\`, \`interrogate\`, \`reflect\`, \`swarm\`). They pass their own reviewer prompts and do not need the poteto preamble.
@@ -1083,11 +1072,17 @@ Every delegation goes through the \`pstack_subagent\` tool. It starts a backgrou
 
 **Roles.** \`role\` names a line in \`~/.dsh/pstack-models.md\` (\`feature, refactoring\`, \`bug-fix\`, \`perf-issue\`, \`hillclimb\`, \`judgment and prose\`, \`hardest tasks\`, \`how explorer\`, \`how explainer\`, \`why investigators\`, \`why synthesizer\`, \`reflect tooling\`, \`reflect judgment, divergent, synthesizer\`, \`arena runners\`, \`arena cross-judge pool\`, \`swarm workers\`, \`architect runners\`, \`interrogate reviewers\`). The tool resolves the route from that file. A missing file or role line means the child inherits the parent's model. Never pass a model slug yourself; DSH providers and model ids are deployment-specific.
 
-A list-valued role fans out one child per entry. Panels stay diverse only when the list names different routes. Create the children in one message, then wait for their completion notices.
+The \`arena runners\`, \`architect runners\`, and \`interrogate reviewers\` roles fan out one child per entry from a single tool call because those skills define panel semantics. Other list-valued roles select their first entry by default; pass \`roleIndex\` to choose another route without unexpectedly creating more children. Panels stay diverse only when the list names different routes. An unavailable panel route falls back to the parent route with a diagnostic; the other reviewers still run.
+
+\`agent\` selects a pstack prompt preamble. \`agentPreset\` selects the DSH preset that supplies the child's tools, skills, and plugins; omit it to inherit the parent's preset. Use \`agentPreset: "cordis"\` only for DSH plugin development when that preset is available. DSH Agent Team controls (\`spawn_teammate\`, \`list_agents\`, \`send_message\`, and related team tools) manage Team members, not children created by \`pstack_subagent\`. Team members share one checkout; Agent Team is not a worktree-per-child feature.
 
 You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. A second opinion is the same prompt against a different model. Agreement is high-signal.
 
-**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. Continue a child with \`send_message\` only when the new work strictly needs state that lives in that agent and is costly to move: its local checkout, its uncommitted changes, or a process it still runs. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
+**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. This bundle does not add a child-steering tool; continue an existing child only if the DSH profile provides one and the new work strictly needs state that is costly to move. Otherwise start fresh. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
+
+## Worktrees
+
+When DSH's \`create_worktree\` tool is available in the current child session, use it before the child writes shared-repository changes. It creates a local Git worktree, checks out a branch, and changes that session's working directory; it does not provide a VM, merge changes, or clean up the worktree. If a child needs a prepared checkout instead, pass its path through \`cwd\`. If the tool is unavailable in the active preset/profile, use a separately prepared Git worktree. Worktree file-policy restrictions still apply.
 
 ## Writing the reply`,
       "The section documents Cursor's Task fields (`subagent_type`, `model`, `readonly`, `resume`). No token swap can reshape a section whose whole vocabulary is the other API.",
@@ -1169,7 +1164,7 @@ You own every subagent's work. Review the diff and write your own summary, don't
   "skills/arena/SKILL.md": [
     [
       /3\. Pick the runners\. Use the `arena runners` line in `~\/\.cursor\/rules\/pstack-models\.mdc`\. If the rule or that line is missing, default to one each on `claude-opus-5-5-xhigh` and `grok-4\.7-xhigh-fast`\. An `auto` or `inherit-parent` entry in this line or the cross-judge line means the parent model, so omit `model` for it\. If the Task tool rejects a configured entry, run that seat on its family's default and say so\. Families go by prefix: `claude-\*`, and `grok-\*` with `cursor-grok-\*` and `composer-\*`. A refused `composer-\*` entry runs on `grok-4\.7-xhigh-fast`\. With no family match, use `claude-opus-5-5-xhigh`\. If it rejects a default, use the closest valid slug of the same family from its error message\./,
-      '3. Pick the runners with `role: "arena runners"`. The role is a list in `~/.dsh/pstack-models.md`; one child runs per entry, and an `inherit-parent` entry runs on the parent model. When the file or line is missing, run one child on the parent model.',
+      '3. Pick the runners with one `pstack_subagent` call using `role: "arena runners"`. The tool starts one child per entry in `~/.dsh/pstack-models.md`; an `inherit-parent` entry runs on the parent model. When the file or line is missing, it starts one child on the parent model.',
       "The runner-selection paragraph is entirely about Cursor model slugs, family fallbacks, and `Task` rejections; DSH delegates all of that to the role file.",
     ],
     [
@@ -1179,7 +1174,7 @@ You own every subagent's work. Review the diff and write your own summary, don't
     [/with `run_in_background: true`, /, ""],
     [
       /After all Phase B candidates complete, choose one model from the `arena cross-judge pool` line in `~\/\.cursor\/rules\/pstack-models\.mdc`\. If the rule or that line is missing, choose from `claude-opus-5-5-xhigh` and `grok-4\.7-xhigh-fast`\. Prefer a different model family from the parent's\. Spawn one readonly judge subagent on that model\./,
-      'After all Phase B candidates complete, spawn one `pstack_subagent` with `role: "arena cross-judge pool"` and `agent: "general"`, and tell it not to edit files. Prefer a route whose family differs from the parent\'s; when the role is missing, use the parent model.',
+      'After all Phase B candidates complete, choose one zero-based entry from `arena cross-judge pool` and spawn one `pstack_subagent` with `role: "arena cross-judge pool"`, that `roleIndex`, and `agent: "general"`. Tell it not to edit files. Prefer a route whose family differs from the parent\'s; when the role is missing, use the parent model.',
       "The judge-selection sentence names a model list, a family rule, and `readonly`; the replacement states the DSH call that carries the same intent.",
     ],
   ],
@@ -1195,20 +1190,27 @@ You own every subagent's work. Review the diff and write your own summary, don't
     ],
     [
       /Spawn all N workers in one message with `subagent_type: generalPurpose`, `environment: "cloud"`, `run_in_background: true`, and the step 4 model, left unset for `auto` or `inherit-parent`\. Use `environment: "local"` only when the worker needs access to something on the user's computer\.\n\nWhen a worker must start from a non-default pushed branch, pass `cloud_base_branch`\./,
-      'Spawn all N workers in one message with `agent: "general"`, the slice or race arm, and `role: "swarm workers"`. Every worker gets its own writable output when it writes.',
+      'Spawn all N workers in one message with `agent: "general"`, the slice or race arm, and `role: "swarm workers"`. After fetching the selected base, have each writer call DSH `create_worktree` with `from` set to that base when available; otherwise prepare and pass a separate Git worktree through `cwd`.',
       "Two Cursor fields and their fallback rule span a paragraph and a following sentence; the DSH call shape replaces both.",
     ],
   ],
   "skills/interrogate/SKILL.md": [
     [
       /Launch all reviewers in a single message with the Task tool, one per entry on the `interrogate reviewers` line in `~\/\.cursor\/rules\/pstack-models\.mdc`, labeled Reviewer A, B, and so on to match the entry count\. If the rule or that line is missing, use the table defaults\./,
-      'Launch all reviewers in a single message with `pstack_subagent`, one per entry on the `interrogate reviewers` line in `~/.dsh/pstack-models.md`, labeled Reviewer A, B, and so on to match the entry count. Pass `agent: "general"` and `role: "interrogate reviewers"`. If the file or line is missing, use the parent model and say so.',
+      'Launch reviewers with one `pstack_subagent` call using `agent: "general"` and `role: "interrogate reviewers"`. The tool starts one reviewer per entry on that line and labels each panel entry. If the file or line is missing, it starts one reviewer on the parent model.',
       "The paragraph names the Cursor tool and its model table; the replacement names the DSH tool and role.",
     ],
     [
       /\| Subagent \| Default model \|\n\|[-| ]+\|\n(?:\|[^\n]*\|\n)+\nEach reviewer gets[^\n]*\n\nIf the Task tool rejects[^\n]*/,
-      'Each reviewer gets `agent: "general"` and `role: "interrogate reviewers"`, and is told not to edit files. DSH routes each panel entry independently; an `inherit-parent` entry runs on the parent model. If a configured route is unavailable, run that reviewer on the parent model and say so. Do not block the review on the route issue.',
+      'Each reviewer gets `agent: "general"` and `role: "interrogate reviewers"`, and is told not to edit files. The tool routes each panel entry independently; an `inherit-parent` entry runs on the parent model. If a configured reviewer route is unavailable, that entry falls back to the parent route with a diagnostic, and the remaining reviewers still start.',
       "The table exists only to carry Cursor model defaults; DSH reads the role file instead, so the table and its fallback paragraph go together.",
+    ],
+  ],
+  "skills/poteto-mode/playbooks/shipping.md": [
+    [
+      /One verifier per PR, each a Cursor cloud agent, runs the change the way a user would with the matching control skill \(such as `control-ui` or `control-cli` from `cursor-team-kit`\), parent against head, and posts `PASS`, `PASS\+NOTES`, or `FAIL` on that PR\./,
+      "One verifier per PR runs as a `pstack_subagent` on the `swarm workers` route. After fetching the PR head, have it call DSH `create_worktree` with `from` set to that head when available; otherwise prepare a Git worktree at the exact head and pass it through `cwd`. It uses the project verification skill, checks parent against head, and posts `PASS`, `PASS+NOTES`, or `FAIL` on that PR.",
+      "The sentence assigns isolated cloud machines and Cursor-only control skills; DSH supplies child sessions, local worktrees, and project verification skills.",
     ],
   ],
   "skills/reflect/SKILL.md": [
@@ -1287,6 +1289,21 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
   ],
   "skills/poteto-help/SKILL.md": [
     [
+      /\[README\]\(\.\.\/\.\.\/README\.md\)/,
+      "[README](../../../README.md)",
+      "The generated skill is nested three directories below the package README.",
+    ],
+    [
+      /Install with `\/add-plugin pstack` in chat, or from Customize in the sidebar\./,
+      "Install the published package with `dsh plugin --profile web add dsh-pstack`, or use the DSH plugin manager.",
+      "The source points to Cursor's plugin installation flow, which DSH does not use.",
+    ],
+    [
+      /Parallel agents overwrote each other \| Give each agent its own worktree, or run them as cloud agents, which each get their own machine\./,
+      "Parallel agents overwrote each other | Have each writer call DSH's `create_worktree` before editing when that tool is available; it creates a local Git worktree, not a separate machine. Otherwise prepare a separate Git worktree and pass its path as `cwd`.",
+      "The original sentence claims each child runs on a separate machine; DSH children share the parent environment.",
+    ],
+    [
       /\| Build a page whose buttons wake a Grok Bot over a webhook \| \[`\/make-bot-ui`\]\(\.\.\/make-bot-ui\/SKILL\.md\) \|\n/,
       "",
       "The row routes to a skill that is deliberately not ported.",
@@ -1294,6 +1311,11 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     [
       /Link \[Cursor's skills docs\]\([^)]*\) when this comes up\./,
       "DSH skills are documented at `https://deepseek-harness.github.io/deepseek-harness/`.",
+    ],
+    [
+      /This file maps questions to the skills and guide pages that hold the answers\. Those files own the details\. Read the file you route to before you quote it, and trust it when it disagrees with this map\. The links here point into the installed plugin, which the user may not be able to open, so give the user the file's public copy: `https:\/\/github\.com\/cursor\/plugins\/blob\/main\/pstack\/` followed by its path\./,
+      "This file maps questions to the skills and guide pages that hold the answers. Those files own the details. Read the file you route to before you quote it, and trust it when it disagrees with this map. The links here point into the installed plugin, which the user may not be able to open, so give the user the file's public copy: `https://github.com/l246804/dsh-pstack/tree/main/assets/skills/` followed by its path.",
+      "The upstream link points to Cursor's package; DSH users need the published pstack repository path.",
     ],
     [
       /- `\/deslop`, `control-cli`, and `control-ui` ship in the `cursor-team-kit` plugin\./,
@@ -1310,7 +1332,7 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     ],
     [
       /Other tools can read the skills, because they use the Agent Skills format\.[^\n]*/,
-      "DSH reads the same Agent Skills format. Workflow skills delegate through `pstack_subagent`, so per-role routes come from `~/.dsh/pstack-models.md` instead of Cursor model slugs.",
+      "DSH reads the same Agent Skills format. Workflow skills delegate through `pstack_subagent`, so per-role routes come from `~/.dsh/pstack-models.md` instead of raw provider/model ids.",
       "The paragraph explains why pstack works in other tools and which parts break there; DSH is the only target now.",
     ],
     [
@@ -1352,37 +1374,38 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     ],
     [
       /On the operator's go, arm the audit tick as `\/loop 1h` with the tick prompt below\./,
-      "On the operator's go, arm the audit tick with `schedule_create` at a one-hour interval and the tick prompt below.",
+      "On the operator's go, arm the audit tick with `schedule_create 1h` and the tick prompt below.",
     ],
+    [/pstack\/skills\//g, "assets/skills/"],
     [
       /Each live lane runs on its own cloud VM at the PR head\. Drive through `control-ui` or `control-cli` from `cursor-team-kit`\./,
-      "Each live lane runs on its own git worktree at the PR head. Drive through the project verification skill.",
+      "Each live lane uses its own DSH worktree at the PR head. After fetching the head, have the child call `create_worktree` with `from` set to that head when available; otherwise prepare a Git worktree at the exact SHA and pass it through `cwd`. Drive through the project verification skill.",
       "The sentence combines the cloud-VM claim with two external skills; both are Cursor-only.",
     ],
   ],
   "skills/poteto-mode/playbooks/orchestrate.md": [
     [
       /- \*\*Worker \/ verifier\.\*\* Always `environment: "cloud"`[^\n]*/,
-      "- **Worker / verifier.** A `pstack_subagent` with its own git worktree. Verification runs the project verification skill. Reading session logs, simulators, and local IDE state need this machine. Prefer fewer, broader workers. One writer per worktree or branch (principle-separate-before-serializing-shared-state). Run a unit's verifier on a different route from its worker.",
+      "- **Worker / verifier.** A `pstack_subagent` that fetches the assigned base and calls DSH `create_worktree` with `from` set to that base before writing when available; otherwise prepare a separate Git worktree and pass it as `cwd`. The tool does not fetch refs for you and isolates the checkout, not the machine. Verification runs the project verification skill. Prefer fewer, broader workers. One writer per worktree or branch (principle-separate-before-serializing-shared-state). Run a unit's verifier on a different route from its worker.",
       'The bullet is built around the Cursor `environment: "cloud"` field and its local fallback; DSH has one worktree shape.',
     ],
     [
-      /and a nested spawn has the full Task schema including `environment`/,
-      "and a nested spawn has the full `pstack_subagent` schema including `agent`, `role`, `cwd`, and `prompt`",
+      /\(nesting works to depth 3, and a nested spawn has the full Task schema including `environment`\)/,
+      "(the root session is depth 0; a track child at depth 1 passes `maxDepth: 2` to start workers at depth 2)",
     ],
     [
       / Probe read-only: the ledger, `units\.tsv`, `gh`, pushed branches, the cloud agent's status in the Cursor dashboard\. Transcript mtime is not liveness\./,
-      " Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches. Session-log mtime is not liveness.",
+      " Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, and DSH child completion notices. Use `list_agents` only for members of a DSH Agent Team, not for children started by `pstack_subagent`. Session-log mtime is not liveness.",
     ],
     [
       /- After a Cursor restart: local agents are dead, cloud work is not\. Re-read the standing orders and `units\.tsv`, recompute the frontier, reattach cloud work by PR and branch rather than agent id,/,
-      "- After a harness restart: local agents are dead. Re-read the standing orders and `units.tsv`, recompute the frontier, reattach work by PR and branch rather than agent id,",
+      "- After a harness restart: re-read the standing orders and `units.tsv`, recompute the frontier, and verify each child's actual session or PR state before reattaching work by PR and branch rather than assuming it stopped or continued,",
     ],
   ],
   "skills/poteto-mode/playbooks/autopilot-full.md": [
     [
       /Each owner is a Cursor cloud agent that builds,/,
-      "Each owner is a `pstack_subagent` with its own git worktree that builds,",
+      "Each owner is a `pstack_subagent` that fetches its base and creates a separate local worktree with DSH's `create_worktree` tool before editing when available; otherwise the coordinator prepares a Git worktree and passes its path as `cwd`. The owner builds,",
     ],
     [
       /The code is ready only after the slop-strip \(the `deslop` skill from the `cursor-team-kit` plugin \(`\/deslop`\)\)/,
@@ -1391,6 +1414,13 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     [
       /through its control skill \(such as `control-ui` or `control-cli` from `cursor-team-kit`\) or a named driver/,
       "through its verification skill or a named driver",
+    ],
+    [/Assume the VM dies\./, "Assume the child session can end."],
+  ],
+  "skills/poteto-mode/playbooks/feature.md": [
+    [
+      /A subagent forbidden to spawn satisfies this by owning the diff directly with the same review separation\./,
+      "A subagent forbidden to spawn satisfies this by owning the diff directly with the same review separation. When a delegate at depth 1 must fan out once, pass `maxDepth: 2`; DSH counts the root session as depth 0, so the nested worker is depth 2. Otherwise omit it and use the DSH subagent setting.",
     ],
   ],
   "skills/poteto-mode/playbooks/opening-a-pr.md": [
@@ -1405,7 +1435,10 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     [/Multiple `Task` calls/, "Multiple `pstack_subagent` calls"],
   ],
   "skills/poteto-mode/playbooks/worktree-cleanup.md": [
-    [/\.cursor\/worktrees\//, ".worktrees/"],
+    [
+      /a hand-typed `myrepo-worktrees\/x` misses one that lives at `\.cursor\/worktrees\/myrepo\/x`/,
+      "a guessed path can miss a worktree outside the current repository directory",
+    ],
     [
       /, `~\/Library\/Application Support\/Cursor` \(`state\.vscdb\.backup`, and `snapshots\/roots\/<root>` where a `<root>` named for a folder you opened as a workspace balloons\)/,
       "",
@@ -1439,6 +1472,11 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     ],
   ],
   "docs/guide/07-overnight.md": [
+    [/an isolated worktree or cloud agent/, "an isolated DSH worktree"],
+    [
+      /A scheduled or event-driven automation removes that step\./,
+      "A scheduled follow-up can wake on a timer; event-driven issue intake still needs a separately configured event source.",
+    ],
     [
       /A \[Cursor Project\]\(https:\/\/cursor\.com\/blog\/projects\) gives one coordinator agent a persistent thread\. The coordinator doesn't write code\. It directs subagents, which run in the cloud by default, so the work continues when your laptop is closed\./,
       "A long-running coordinator needs one agent with a persistent thread. The coordinator doesn't write code. It directs subagents, which run in the background, so the work continues while you are elsewhere.",
@@ -1453,18 +1491,56 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
       /Give `\/loop` a predicate that can pass or fail\./,
       "Give the wake prompt a predicate that can pass or fail.",
     ],
+    [
+      /pstack ships this as a dormant \[automation pack\]\(\.\.\/\.\.\/automations\/benny\/README\.md\) for Slack issue reports\. One automation triages each report\. The other reproduces confirmed bugs and may prepare a small draft fix\. Point an agent at its \[`FOR_AGENTS\.md`\]\(\.\.\/\.\.\/automations\/benny\/FOR_AGENTS\.md\) and name the target repository to set it up\./,
+      "DSH's `schedule_create` tool can create a time-based follow-up when that tool is available. It does not subscribe to Slack issue events or run a triage/reproduction pipeline; configure an event source separately if you need event-triggered intake.",
+      "The source links to an automation pack that is absent from the generated package; describe only the DSH scheduling capability and its boundary.",
+    ],
   ],
   "docs/guide/09-make-it-yours.md": [
     [/## Build a bot UI with `\/make-bot-ui`/, "## One skill is deliberately not ported"],
     [
       /One situational skill is for Grok Bot users\. \[`\/make-bot-ui`\]\(\.\.\/\.\.\/skills\/make-bot-ui\/SKILL\.md\) builds a small page whose buttons wake a bot over a webhook routine\. For example, you could swipe through a review queue and have each swipe ask the bot to act on that item\. A server on your machine holds the webhook's sender key, so the key never reaches the browser or the chat\. The skill also covers exposing the page on Tailscale\./,
-      "`/make-bot-ui` is not ported. It depends on Cursor Automations, which DSH does not provide. Copy it from the upstream submodule if you need it.",
+      "`/make-bot-ui` is not included because its webhook-triggered automation flow is not provided by this package.",
       "The paragraph is a product walkthrough of a skill that is deliberately not ported.",
     ],
     [/through Cursor's built-in `create-skill` flow/, "through the authoring-a-skill playbook"],
     [
       /routes through Cursor's built-in `create-skill`/,
       "routes through the authoring-a-skill playbook",
+    ],
+  ],
+  "docs/guide/02-poteto-mode.md": [
+    [
+      /## Give parallel work its own machine[\s\S]*?\n## Leave it running/,
+      `## Give parallel work its own worktree
+
+DSH child sessions share the parent's machine and use the parent working directory unless you select another \`cwd\`. A local worktree isolates files and branches, not the machine or runtime.
+
+When \`create_worktree\` is available in the child session's tool list, ask each writer to fetch its selected base and call it with \`from\` set to that base before editing. It creates a local Git worktree and switches that session to the new checkout; it does not fetch refs for you. For a child that cannot use this tool, prepare a separate worktree and pass its path as \`cwd\` to \`pstack_subagent\`. If the DSH tool is unavailable, use \`git worktree\` directly.
+
+\`\`\`text
+/poteto-mode new task. call create_worktree with from=<base> before editing; if unavailable, use a separate Git worktree for each writer.
+\`\`\`
+
+Each task in its own branch and worktree means no agent stomps another's files. Worktrees cost disk and machine resources, so a laptop runs only a handful at once. The DSH Agent Team tools do not create one worktree per teammate; Team members share their checkout. The [Opening a PR playbook](../../skills/poteto-mode/playbooks/opening-a-pr.md) works from a worktree.
+
+Worktrees accumulate. When disk gets tight, ask:
+
+\`\`\`text
+/poteto-mode what's eating my disk? prune the worktrees that are safe to prune.
+\`\`\`
+
+The [Worktree cleanup playbook](../../skills/poteto-mode/playbooks/worktree-cleanup.md) classifies every worktree by merge state, uncommitted work, and which chats still touch it. It deletes only what that evidence clears and pauses for your call on anything holding uncommitted work.
+
+## Leave it running`,
+      "The source describes isolated cloud machines; DSH worktrees isolate the checkout only, and DSH child sessions share the parent machine.",
+    ],
+  ],
+  "docs/guide/10-recipes-and-pitfalls.md": [
+    [
+      /Run them as cloud agents, or say "own worktree per attempt"/,
+      'Have each writer call DSH\'s `create_worktree` before editing when available, or say "own worktree per attempt"',
     ],
   ],
   "docs/guide/01-setup.md": [
@@ -1475,13 +1551,13 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
 Install the bundle into your DSH profile:
 
 \`\`\`bash
-dsh plugin --profile web add github:your-org/dsh-pstack
+dsh plugin --profile web add dsh-pstack
 \`\`\`
 
 Restart \`dsh web\` after install. The bundle mounts the pstack skill provider and the \`pstack_subagent\` tool.
 
 ## Pick your models`,
-      "The install section is Cursor marketplace instructions plus a Claude Code aside; neither command exists in DSH.",
+      "Install the published package by name; users do not need to clone or carry its repository.",
     ],
     [
       /To keep `\/poteto-mode` on for the whole chat,[^\n]*\n\n/,
@@ -1550,7 +1626,7 @@ export function findForbiddenTerms(text: string): ForbiddenMatch[] {
 }
 
 export const DSH_ADAPTER_NOTE =
-  "> DSH port of pstack. `pstack_subagent` replaces Cursor's `Task` tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.";
+  "> DSH port of pstack. Workflow delegation uses `pstack_subagent`; host-specific tool and preset behavior is documented in `../../docs/harness/dsh.md`.";
 
 /**
  * Render one markdown table from the rules that declare a `doc` row for it.
@@ -1580,6 +1656,10 @@ ${renderDocTable("paths", "Paths")}
 
 ${renderDocTable("models", "Models")}
 
+## Skill visibility
+
+The provider preserves the upstream \`disable-model-invocation\` and \`user-invocable\` flags. A skill with model invocation disabled remains available as a user slash command but is not callable through DSH's model-facing \`skill\` tool. This package does not silently change that policy. The provider exposes each skill's file path and resource base, but opening a referenced file still depends on the active file tools and path policy; do not assume a hidden skill can be invoked by name.
+
 ## Role configuration
 
 \`/setup-pstack\` writes \`~/.dsh/pstack-models.md\`. One role per line:
@@ -1591,13 +1671,21 @@ feature, refactoring: deepseek-official/deepseek-reasoner high
 judgment and prose: inherit-parent
 \`\`\`
 
-A missing file or line means every role inherits the parent's route. To discover valid routes, call \`list_subagent_models\`; never invent a provider or model id. The shipped defaults are in \`docs/pstack-models.example.md\`.
+A missing file or line means every role inherits the parent's route. The tool validates configured provider, model, and effort before starting a child. However, it starts children through \`ctx.subagents.startActivation\`, and the public DSH SDK does not expose the session's \`allowedModels\` policy to this adapter. Until DSH provides a policy-aware public API, explicit role routes are not checked against that allowlist; use \`inherit-parent\` where the profile's model restrictions must be enforced. The three panel roles expand to one child per entry because their skills define panel behavior; use \`roleIndex\` to select one route from another list-valued role. The shipped defaults are in \`docs/pstack-models.example.md\`.
 
 ${renderDocTable("host", "Cursor-only features")}
 
+## DSH presets and tools
+
+\`agentPreset\` is a DSH activation option that chooses the child's preset (its tools, skills, and plugins); omitting it inherits the parent preset. It is separate from pstack's \`agent\` argument, which selects only a prompt preamble. In profiles that provide the \`cordis\` preset, use \`agentPreset: "cordis"\` for DSH plugin authoring only. That preset includes plugin-development skills and inspection/management tools such as \`cordis_inspect_list\`, \`cordis_inspect_query\`, and \`plugin_manager\`; use the inspector to confirm what is actually available in the child session.
+
+The DSH Agent Team profile is a separate collaboration mode. Its \`spawn_teammate\`, \`list_agents\`, \`send_message\`, \`interrupt_agent\`, and task-board tools manage Agent Team members, not \`pstack_subagent\` children. Team members share one checkout; the profile does not create a worktree per member. This package does not enable Agent Team automatically because doing so changes the profile's global delegation tools and is not required for pstack role routing.
+
+When the active child session exposes DSH's \`create_worktree\`, fetch the intended base and set \`from\` to it before writing shared-repository changes; the tool does not fetch refs. It creates a local Git worktree, switches that session's working directory, and reports the checkout path and branch metadata; it is not a VM, does not merge changes, and does not clean up. For \`pstack_subagent\`, each writer can create its own worktree in its child session. If the child lacks the tool, prepare a Git worktree separately and pass it through \`cwd\`. File-access policy still controls which paths can be written.
+
 ## Subagent completion
 
-\`pstack_subagent\` returns \`started subagent <id>\` immediately. The child's final answer arrives later as a completion notice. Do not poll. If you need to steer it, call \`send_message\` with that id. To list children, call \`list_agents\`.
+\`pstack_subagent\` returns child ids immediately; final answers arrive later as completion notices. Pass \`cwd\` to select an existing working directory and \`agentPreset\` to select a DSH preset. The DSH SDK counts the root session at depth 0; its default \`maxDepth: 1\` allows only a direct child. For a depth-1 coordinator that delegates once more to a depth-2 worker, pass \`maxDepth: 2\` on that nested call. Use a larger limit only when the actual tree has that many descendant levels.
 `;
 
 export const DSH_SETUP_SKILL = `---
@@ -1630,7 +1718,7 @@ If \`~/.dsh/pstack-models.md\` exists, read its \`# budget\` line and role value
 - \`medium — high reasoning\`
 - \`small — medium reasoning\`
 
-**(b) Apply it.** Build the working table from the defaults. On a re-run, keep any role you changed by family, list, or the \`inherit-parent\` alias. \`unlimited\`, \`large\`, \`medium\`, and \`small\` set the effort token of every real route, panel entries included, to \`max\`, \`xhigh\`, \`high\`, or \`medium\`. The effort token is the last token on the ladder \`max\` > \`xhigh\` > \`high\` > \`medium\` > \`low\`. If the result is not a detected route, use the same provider and model with the highest supported effort at or below the target, otherwise mark the role as needing a choice. \`inherit-parent\` does not change.
+**(b) Apply it.** Build the working table from the defaults. On a re-run, keep any role you changed by family, list, or the \`inherit-parent\` alias. \`unlimited\`, \`large\`, \`medium\`, and \`small\` set the effort token of every real route, panel entries included, to \`max\`, \`xhigh\`, \`high\`, or \`medium\`. The target effort ladder is \`max\` > \`xhigh\` > \`high\` > \`medium\` > \`low\`. If a detected model does not support its target effort, choose the highest supported effort at or below the target. For example, when \`xhigh\` is unavailable but \`high\` is supported, use \`high\`. If no supported effort meets the target, mark the role as needing a choice. \`inherit-parent\` does not change.
 
 **(c) Show the roles and confirm.** Show every role with its route, marking any real route not in the detected set as needing a choice. Also list each line step 2 dropped. Use \`ask_user_question\` to ask whether to accept as-is or change specific roles, offering the detected routes plus \`inherit-parent\`. For panel roles (arena runners, architect runners, interrogate reviewers) the value is a comma-separated list, and one child runs per entry. \`arena cross-judge pool\` is also a list. \`swarm workers\` is the default route for every worker.
 

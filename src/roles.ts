@@ -38,7 +38,7 @@ const INHERIT = new Set(["inherit-parent", "auto", "parent"]);
  * reported rather than dropped: a route that silently loses `xhigh` looks
  * configured and is not.
  */
-export const REASONING_EFFORTS = ["max", "xhigh", "high", "medium", "low", "off"] as const;
+export const REASONING_EFFORTS = ["max", "xhigh", "high", "medium", "low", "minimal", "off"] as const;
 const EFFORTS = new Set<string>(REASONING_EFFORTS);
 
 /**

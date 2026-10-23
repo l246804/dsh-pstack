@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 import { parseModelConfig } from "../src/roles.ts";
-import { buildActivationRequest, routeToAgentOptions } from "../src/subagent.ts";
+import { buildActivationRequest, createPstackTool, routeToAgentOptions } from "../src/subagent.ts";
 
 /**
  * End-to-end route assembly: role table → resolved route → provider options on
@@ -38,12 +38,27 @@ describe("role to agent options", () => {
   const parent = { id: "parent" } as never;
   const prompt = [{ type: "text" as const, text: "do the work" }];
 
+  it("allows independent delegated activations to run concurrently", () => {
+    const tool = createPstackTool({
+      start: async () => ({ childId: "child" }),
+      loadAgent: async () => "",
+      loadRole: async () => ({ route: undefined, notes: [] }),
+    });
+    expect(
+      tool.isConcurrencySafe?.({
+        description: "independent task",
+        prompt: "Do the work.",
+      } as never),
+    ).toBe(true);
+  });
+
   it("carries the resolved role onto the activation request", () => {
     const request = buildActivationRequest({
       parent,
       prompt,
       route: { provider: "anthropic", model: "claude-sonnet", reasoningEffort: "xhigh" },
       cwd: "/tmp/work",
+      agentPreset: "cordis",
     });
     expect(request.agentOptions).toEqual({
       provider: "anthropic",
@@ -51,12 +66,164 @@ describe("role to agent options", () => {
       reasoningEffort: "xhigh",
     });
     expect(request.cwd).toBe("/tmp/work");
+    expect(request.agentPreset).toBe("cordis");
   });
 
   it("omits both cwd and agentOptions when neither is set", () => {
     const request = buildActivationRequest({ parent, prompt, route: undefined, cwd: undefined });
     expect("agentOptions" in request).toBe(false);
     expect("cwd" in request).toBe(false);
+  });
+
+  it("carries maxDepth into the activation request", () => {
+    expect(
+      buildActivationRequest({
+        parent,
+        prompt,
+        route: undefined,
+        cwd: undefined,
+        maxDepth: 3,
+      }).maxDepth,
+    ).toBe(3);
+  });
+
+  it("starts one child per configured panel route at tool execution", async () => {
+    const starts: Array<{
+      route: unknown;
+      label: string;
+      maxDepth: number | undefined;
+    }> = [];
+    const tool = createPstackTool({
+      start: async (input) => {
+        starts.push({
+          route: input.route,
+          label: input.label,
+          maxDepth: input.maxDepth,
+        });
+        return { childId: `child-${starts.length}` };
+      },
+      loadAgent: async () => "",
+      maxDepth: 3,
+      loadRole: async () => ({
+        route: undefined,
+        panelRoutes: [
+          undefined,
+          { provider: "anthropic", model: "claude-sonnet", reasoningEffort: "xhigh" },
+        ],
+        notes: [],
+      }),
+    });
+    const result = await tool.execute(
+      {
+        description: "review candidates",
+        prompt: "Review this design.",
+        agent: "general",
+        role: "arena runners",
+      },
+      {
+        agent: parent,
+        signal: new AbortController().signal,
+      } as never,
+    );
+    expect(starts).toEqual([
+      { route: undefined, label: "review candidates (1/2)", maxDepth: 3 },
+      {
+        route: { provider: "anthropic", model: "claude-sonnet", reasoningEffort: "xhigh" },
+        label: "review candidates (2/2)",
+        maxDepth: 3,
+      },
+    ]);
+    expect(result).toContain("child-1, child-2");
+  });
+
+  it("validates a configured model route before creating a child", async () => {
+    let started = false;
+    const tool = createPstackTool({
+      start: async () => {
+        started = true;
+        return { childId: "child" };
+      },
+      loadAgent: async () => "",
+      loadRole: async () => ({
+        route: { provider: "missing-provider", model: "missing-model" },
+        notes: [],
+      }),
+      validateRoute: async () => {
+        throw new Error("unknown configured model");
+      },
+    });
+    await expect(
+      tool.execute(
+        {
+          description: "run helper",
+          prompt: "Do the task.",
+          agent: "general",
+        },
+        { agent: parent, signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow("unknown configured model");
+    expect(started).toBe(false);
+  });
+
+  it("falls back to the parent route for an unavailable panel entry", async () => {
+    const startedRoutes: Array<unknown> = [];
+    const tool = createPstackTool({
+      start: async ({ route }) => {
+        startedRoutes.push(route);
+        return { childId: `child-${startedRoutes.length}` };
+      },
+      loadAgent: async () => "",
+      loadRole: async () => ({
+        route: undefined,
+        panelRoutes: [
+          { provider: "valid", model: "first" },
+          { provider: "missing", model: "second" },
+        ],
+        notes: [],
+      }),
+      validateRoute: async (route) => {
+        if (route.provider === "missing") throw new Error("route not available");
+      },
+    });
+    const result = await tool.execute(
+      {
+        description: "review candidates",
+        prompt: "Review this design.",
+        agent: "general",
+        role: "arena runners",
+      },
+      { agent: parent, signal: new AbortController().signal } as never,
+    );
+    expect(startedRoutes).toEqual([{ provider: "valid", model: "first" }, undefined]);
+    expect(result).toContain("panel entry 2 route missing/second is unavailable");
+    expect(result).toContain("using the parent route");
+  });
+
+  it("passes an explicit DSH agent preset to each panel child", async () => {
+    const startedPresets: Array<string | undefined> = [];
+    const tool = createPstackTool({
+      start: async ({ agentPreset }) => {
+        startedPresets.push(agentPreset);
+        return { childId: `child-${startedPresets.length}` };
+      },
+      loadAgent: async () => "",
+      loadRole: async () => ({
+        route: undefined,
+        panelRoutes: [undefined, undefined],
+        notes: [],
+      }),
+    });
+    await tool.execute(
+      {
+        description: "review candidates",
+        prompt: "Review this design.",
+        agent: "general",
+        role: "arena runners",
+        agentPreset: "cordis",
+      },
+      { agent: parent, signal: new AbortController().signal } as never,
+    );
+    expect(startedPresets).toEqual(["cordis", "cordis"]);
   });
 
   it("resolves a panel entry to concrete options", async () => {

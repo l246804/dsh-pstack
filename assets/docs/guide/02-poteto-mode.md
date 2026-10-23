@@ -102,17 +102,17 @@ A long chat accumulates context from the last task. When you change subjects, sa
 
 "new task" tells `/poteto-mode` to re-match rather than continue the prior playbook. "don't change any code yet" pins this one to Investigation. Without those two phrases, a mode mid-Feature tends to treat your question as the next feature step.
 
-## Give parallel work its own machine
+## Give parallel work its own worktree
 
-If you run several agents against one repository on one computer, they will fight over the working tree, the ports, and the build output. The cleanest isolation is a [worktree subagent](https://cursor.com/docs/subagents#cloud-subagents). Each one gets its own worktree and branch, so it can install dependencies, run your app, and record video of the result without touching your machine. Ask the parent chat to hand the work to a worktree subagent.
+DSH child sessions share the parent's machine and use the parent working directory unless you select another `cwd`. A local worktree isolates files and branches, not the machine or runtime.
 
-When the work has to stay local, ask for a worktree up front:
+When `create_worktree` is available in the child session's tool list, ask each writer to fetch its selected base and call it with `from` set to that base before editing. It creates a local Git worktree and switches that session to the new checkout; it does not fetch refs for you. For a child that cannot use this tool, prepare a separate worktree and pass its path as `cwd` to `pstack_subagent`. If the DSH tool is unavailable, use `git worktree` directly.
 
 ```text
-/poteto-mode new task. branch off <base> in a fresh worktree, then port the parser change there.
+/poteto-mode new task. call create_worktree with from=<base> before editing; if unavailable, use a separate Git worktree for each writer.
 ```
 
-Each task in its own branch and worktree means no agent stomps another's files. Worktrees cost disk and machine resources, so a laptop runs only a handful at once. The [Opening a PR playbook](../../skills/poteto-mode/playbooks/opening-a-pr.md) already works from a worktree for code changes, so mostly you only say this when a specific base or location matters.
+Each task in its own branch and worktree means no agent stomps another's files. Worktrees cost disk and machine resources, so a laptop runs only a handful at once. The DSH Agent Team tools do not create one worktree per teammate; Team members share their checkout. The [Opening a PR playbook](../../skills/poteto-mode/playbooks/opening-a-pr.md) works from a worktree.
 
 Worktrees accumulate. When disk gets tight, ask:
 

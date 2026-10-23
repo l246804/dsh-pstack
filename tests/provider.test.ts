@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   createProvider,
   listBundledSkillDirectories,
@@ -54,6 +57,37 @@ describe("pstack skill provider", () => {
   it("returns undefined for an unknown name", async () => {
     const provider = createProvider({ directories: ["setup-pstack"], read });
     expect(await provider.get({} as never, {})).toBeUndefined();
+  });
+
+  it("keeps valid skills available when another directory is invalid", async () => {
+    const errors: string[] = [];
+    const provider = createProvider({
+      directories: ["setup-pstack", "/missing/pstack-skill"],
+      read,
+      onError: (directory) => errors.push(directory),
+    });
+    const listed = (await provider.list({})) as ReadonlyArray<{ name: string }>;
+    expect(listed.map((candidate) => candidate.name)).toEqual(["setup-pstack"]);
+    expect(errors).toEqual(["/missing/pstack-skill"]);
+  });
+
+  it("loads extra skills from absolute directories without prefixing the bundled root", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "pstack-skill-"));
+    try {
+      await writeFile(
+        join(directory, "SKILL.md"),
+        "---\nname: extra-skill\ndescription: Extra\n---\n\n# Extra\n",
+      );
+      const provider = createProvider({ directories: [directory] });
+      const [candidate] = (await provider.list({})) as ReadonlyArray<{
+        name: string;
+        path: string;
+      }>;
+      expect(candidate?.name).toBe("extra-skill");
+      expect(candidate?.path).toBe(join(directory, "SKILL.md"));
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it("ships every upstream skill except make-bot-ui", () => {

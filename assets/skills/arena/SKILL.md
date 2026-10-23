@@ -4,7 +4,7 @@ description: Spawn N parallel candidates at the same task, pick a base, graft th
 disable-model-invocation: true
 ---
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's `Task` tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
+> DSH port of pstack. Workflow delegation uses `pstack_subagent`; host-specific tool and preset behavior is documented in `../../docs/harness/dsh.md`.
 
 # Arena
 
@@ -16,7 +16,7 @@ Every candidate gets the same prompt, so the prompt is the contract.
 
 1. State the artifact each candidate is producing.
 2. Derive the rubric, 3-6 concrete gradeable criteria for what success looks like on *this* task. It is the picker's tool in Phase D. Candidates only see the task.
-3. Pick the runners with `role: "arena runners"`. The role is a list in `~/.dsh/pstack-models.md`; one child runs per entry, and an `inherit-parent` entry runs on the parent model. When the file or line is missing, run one child on the parent model. Spawn more runners when the arena covers multiple design directions. Use the same route N times when the work is generation-bound rather than judgment-sensitive. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
+3. Pick the runners with one `pstack_subagent` call using `role: "arena runners"`. The tool starts one child per entry in `~/.dsh/pstack-models.md`; an `inherit-parent` entry runs on the parent model. When the file or line is missing, it starts one child on the parent model. Spawn more runners when the arena covers multiple design directions. Use the same route N times when the work is generation-bound rather than judgment-sensitive. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
 4. Give each candidate its own output location (a git worktree where possible, otherwise `/tmp/arena-<slug>/candidate-<n>/`), per the **separate-before-serializing-shared-state** principle skill.
 
 ## Phase B: Fan out
@@ -27,7 +27,7 @@ If a candidate produces no output, proceed with N-1 and note the dropout.
 
 ## Phase C: Cross-judge
 
-After all Phase B candidates complete, spawn one `pstack_subagent` with `role: "arena cross-judge pool"` and `agent: "general"`, and tell it not to edit files. Prefer a route whose family differs from the parent's; when the role is missing, use the parent model. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with your reading in Phase D. Don't spawn it while candidates are still writing.
+After all Phase B candidates complete, choose one zero-based entry from `arena cross-judge pool` and spawn one `pstack_subagent` with `role: "arena cross-judge pool"`, that `roleIndex`, and `agent: "general"`. Tell it not to edit files. Prefer a route whose family differs from the parent's; when the role is missing, use the parent model. It sees the rubric and the candidates by path label, scores each criterion, and recommends a base with rationale. It runs in parallel with your reading in Phase D. Don't spawn it while candidates are still writing.
 
 ## Phase D: Pick a base
 

@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
-import { composePrompt, stripFrontmatter } from "../src/subagent.ts";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  composePrompt,
+  resolveRoleArg,
+  stripFrontmatter,
+} from "../src/subagent.ts";
 
 describe("subagent prompt assembly", () => {
   it("returns the prompt alone for a general reviewer", () => {
@@ -40,5 +47,44 @@ describe("subagent prompt assembly", () => {
   it("strips YAML frontmatter from packaged agent instructions", () => {
     expect(stripFrontmatter("---\nname: x\n---\n\n# Body")).toBe("# Body");
     expect(stripFrontmatter("# Body")).toBe("# Body");
+  });
+
+  it("returns line-numbered route configuration diagnostics for a matched role", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "pstack-models-"));
+    const previousHome = process.env.DSH_HOME;
+    process.env.DSH_HOME = directory;
+    try {
+      await writeFile(
+        join(directory, "pstack-models.md"),
+        [
+          "# roles",
+          "feature: provider/model hihg",
+          "arena runners: inherit-parent, provider/model high",
+          "arena cross-judge pool: provider/first high, provider/second medium",
+        ].join("\n"),
+      );
+      const result = await resolveRoleArg("feature");
+      expect(result.route).toEqual({ provider: "provider", model: "model" });
+      expect(result.notes).toEqual([
+        expect.stringContaining("pstack-models.md:2: unknown effort"),
+      ]);
+
+      const panel = await resolveRoleArg("arena runners");
+      expect(panel.panelRoutes).toEqual([
+        undefined,
+        { provider: "provider", model: "model", reasoningEffort: "high" },
+      ]);
+      const pool = await resolveRoleArg("arena cross-judge pool", 1);
+      expect(pool.route).toEqual({
+        provider: "provider",
+        model: "second",
+        reasoningEffort: "medium",
+      });
+      expect(pool.panelRoutes).toBeUndefined();
+    } finally {
+      if (previousHome === undefined) delete process.env.DSH_HOME;
+      else process.env.DSH_HOME = previousHome;
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 });

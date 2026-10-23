@@ -4,7 +4,7 @@ description: Guides users through pstack setup, /poteto-mode, and picking the sk
 disable-model-invocation: true
 ---
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's `Task` tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
+> DSH port of pstack. Workflow delegation uses `pstack_subagent`; host-specific tool and preset behavior is documented in `../../docs/harness/dsh.md`.
 
 # Poteto help
 
@@ -12,7 +12,7 @@ Answer the user's question about pstack, hand them a prompt they can send, and l
 
 A message that asks for work, such as "use pstack to fix this bug", is not a help question. Read [`poteto-mode`](../poteto-mode/SKILL.md), do the work under it, and mention once that there is no persistent mode in DSH.
 
-This file maps questions to the skills and guide pages that hold the answers. Those files own the details. Read the file you route to before you quote it, and trust it when it disagrees with this map. The links here point into the installed plugin, which the user may not be able to open, so give the user the file's public copy: `https://github.com/cursor/plugins/blob/main/pstack/` followed by its path.
+This file maps questions to the skills and guide pages that hold the answers. Those files own the details. Read the file you route to before you quote it, and trust it when it disagrees with this map. The links here point into the installed plugin, which the user may not be able to open, so give the user the file's public copy: `https://github.com/l246804/dsh-pstack/tree/main/assets/skills/` followed by its path.
 
 ## Find out what they need
 
@@ -37,17 +37,17 @@ When the model rule is missing and it matters, ask whether the user wants to pic
 
 ## Get set up
 
-1. Install with `/add-plugin pstack` in chat, or from Customize in the sidebar.
+1. Install the published package with `dsh plugin --profile web add dsh-pstack`, or use the DSH plugin manager.
 2. Run [`/setup-pstack`](../setup-pstack/SKILL.md). It asks for a reasoning budget, maps a model to each role, and writes a rule. The rule applies to new chats. Then it offers once each to generate a verification skill and a formal verification skill for the project, unless the project already has one.
 3. Start a real task with `/poteto-mode`, a goal, and a check that can pass or fail.
 
-Installing changes nothing until the user invokes a skill. Only `/setup-pstack` loads from the user's words. The [README](../../README.md) and [guide page 1](../../docs/guide/01-setup.md) have the details. Offer to word their first prompt with them, per [`references/prompting.md`](references/prompting.md).
+Installing changes nothing until the user invokes a skill. Only `/setup-pstack` loads from the user's words. The [README](../../../README.md) and [guide page 1](../../docs/guide/01-setup.md) have the details. Offer to word their first prompt with them, per [`references/prompting.md`](references/prompting.md).
 
 If cost is the worry, say where the tokens go and how to spend fewer. pstack spends extra tokens on subagents and review panels. Rerun `/setup-pstack` and pick a smaller budget or cheaper models. A role set to `auto` or `inherit-parent` runs on the chat's model, which saves tokens when the chat runs on Auto or a cheaper model. A shorter panel list runs fewer subagents, one for each entry. Save `/poteto-mode` for work that needs rigor.
 
 pstack runs inside DeepSeek Harness as the `dsh-pstack` bundle. Every skill is user-invocable with `/name`, and `/poteto-mode` delegates through `pstack_subagent`.
 
-DSH reads the same Agent Skills format. Workflow skills delegate through `pstack_subagent`, so per-role routes come from `~/.dsh/pstack-models.md` instead of Cursor model slugs.
+DSH reads the same Agent Skills format. Workflow skills delegate through `pstack_subagent`, so per-role routes come from `~/.dsh/pstack-models.md` instead of raw provider/model ids.
 
 ## Start a task with `/poteto-mode`
 
@@ -77,7 +77,7 @@ The default answer is `/poteto-mode`, which runs most of the others when its ste
 | Know what a small diff could break outside itself | [`/blast-radius`](../blast-radius/SKILL.md) |
 | Settle types and module shape before code that crosses a function boundary | [`/architect`](../architect/SKILL.md) |
 | Get several attempts at one brief, merged into the best one | [`/arena`](../arena/SKILL.md) |
-| Run parallel checks over slices, or race workers, as worktree subagents | [`/swarm`](../swarm/SKILL.md) |
+| Run parallel checks over slices, or race workers, as background child sessions | [`/swarm`](../swarm/SKILL.md) |
 | Have different models review a diff and try to break it | [`/interrogate`](../interrogate/SKILL.md) |
 | Fix a bug test-first when a cheap local test exists | [`/tdd`](../tdd/SKILL.md) |
 | Apply TypeScript rules to `.ts` or `.tsx` work | [`/typescript-best-practices`](../typescript-best-practices/SKILL.md) |
@@ -141,7 +141,7 @@ Principles are one-rule skills that `/poteto-mode` reads and cites in its replie
 | A new model choice had no effect | The rule from `/setup-pstack` applies to new chats. Start one. |
 | Runs cost more than expected | See the cost paragraph under Get set up. |
 | A skill didn't load on its own | Only `/setup-pstack` loads from the user's words. The others load when the user types them or when `/poteto-mode` runs them, and it doesn't run every skill. |
-| Parallel agents overwrote each other | Give each agent its own worktree, or run them as worktree subagents, which each get their own machine. |
+| Parallel agents overwrote each other | Have each writer call DSH's `create_worktree` before editing when that tool is available; it creates a local Git worktree, not a separate machine. Otherwise prepare a separate Git worktree and pass its path as `cwd`. |
 | An overnight run moved but finished nothing | a wake mechanism needs a check that can pass or fail, not a duration. See [guide page 7](../../docs/guide/07-overnight.md). |
 | The reply claims success from a green build | Ask for the real command, flow, stored value, or profile. That's the prove-it-works principle. |
 

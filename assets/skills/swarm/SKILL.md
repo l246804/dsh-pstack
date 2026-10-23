@@ -4,7 +4,7 @@ description: Fan out N parallel workers, drain them, and return one report. Use 
 disable-model-invocation: true
 ---
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's `Task` tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
+> DSH port of pstack. Workflow delegation uses `pstack_subagent`; host-specific tool and preset behavior is documented in `../../docs/harness/dsh.md`.
 
 # Swarm
 
@@ -26,7 +26,7 @@ Call `todo_write` with one entry per phase before launching anything.
 
 ## Phase B: Fan out
 
-Spawn all N workers in one message with `agent: "general"`, the slice or race arm, and `role: "swarm workers"`. Every worker gets its own writable output when it writes.
+Spawn all N workers in one message with `agent: "general"`, the slice or race arm, and `role: "swarm workers"`. After fetching the selected base, have each writer call DSH `create_worktree` with `from` set to that base when available; otherwise prepare and pass a separate Git worktree through `cwd`.
 
 Every brief stands alone. Include the goal, scope, exact slice or race arm, how to verify, and what to report. Reports use `PASS`, `ISSUES`, or `BLOCKED` with evidence. A worker that can prove a defect reports `ISSUES` and lists every issue it can prove, not only the first.
 

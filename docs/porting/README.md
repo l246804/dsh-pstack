@@ -49,6 +49,54 @@ Examples of the second kind, all real and all fixed here:
   bullet above still told the user to create a Custom Mode. Same section, two
   contradictory instructions.
 
+## Verify DSH behavior before adapting
+
+Do not infer a DSH capability from a similarly named tool, a profile package,
+or the upstream workflow. Confirm the behavior in the target DSH version and
+active profile before changing instructions. Prefer evidence in this order:
+
+1. The public DSH API or implementation establishes the contract.
+2. The active profile configuration establishes which extension is installed
+   and enabled for that session.
+3. A runtime invocation establishes the observed behavior and any policy or
+   permission boundary.
+
+Record profile- or version-specific observations as such. A tool present in a
+profile is not necessarily present in every child session: its preset may
+provide a different toolset, and file-access policy can still restrict paths.
+Keep confirmed capability descriptions and limitations in
+[`assets/docs/harness/dsh.md`](../../assets/docs/harness/dsh.md), then make
+skills refer to those facts without promising more.
+
+When adapting a workflow, preserve its outcome and safety constraints, not
+merely its tool names. In particular:
+
+- A DSH child session is not a cloud VM. A Git worktree isolates a checkout and
+  branch, not the machine, ports, or runtime. Agent Team members and
+  `pstack_subagent` children are distinct collaboration mechanisms; Team
+  membership does not imply one worktree per member.
+- Use DSH `create_worktree` only when it is available to the writing child.
+  Select/fetch the intended base explicitly; otherwise prepare a Git worktree
+  and pass its path as `cwd`. Do not present worktree creation, fetching,
+  merging, or cleanup as automatic when it is not.
+- Treat `agentPreset` as an explicit DSH preset choice, separate from pstack's
+  prompt-style `agent`; omitting the preset inherits the parent. Do not switch
+  every child to a specialized preset just to gain one capability.
+- DSH counts the root session as depth 0. Set `maxDepth` to the absolute depth
+  the actual child tree requires; do not copy a fixed limit into every
+  delegation.
+- Preserve upstream skill invocation flags. `disable-model-invocation` blocks
+  model-facing `skill` calls, not a user's explicit slash invocation.
+  Referenced-file reading is a separate operation and depends on the active
+  tools and path policy; never assume it is an invocation workaround.
+- Describe only automation triggers DSH actually provides. A timer-based
+  schedule is not an event subscription or a replacement for an upstream
+  event-driven pipeline.
+
+Normal installation uses the published `dsh-pstack` package. A source checkout
+and the upstream submodule are development inputs for regenerating and
+reviewing `assets/`, not installation prerequisites.
+
 ## Writing a rule
 
 Every rule answers three questions in its declaration:

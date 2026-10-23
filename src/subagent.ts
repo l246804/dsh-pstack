@@ -19,9 +19,10 @@ import { AGENTS_ROOT, SKILLS_ROOT } from "./paths.ts";
 import { findNearMisses, lookupRole, resolveRole, type Route } from "./roles.ts";
 
 export const name = "pstack-subagent";
-export const inject = ["tools", "subagents"];
+export const inject = ["tools", "subagents", "llm"];
 
 const AGENT_KINDS = ["poteto-agent", "comment-sicko", "general"] as const;
+const PANEL_ROLES = new Set(["arena runners", "architect runners", "interrogate reviewers"]);
 export type AgentKind = (typeof AGENT_KINDS)[number];
 
 export interface Config {
@@ -31,6 +32,8 @@ export interface Config {
   readonly provider?: string;
   /** Default agent kind when the model omits `agent`. */
   readonly defaultAgent?: AgentKind;
+  /** Absolute delegation depth limit for pstack-created children. */
+  readonly maxDepth?: number;
 }
 
 const POTETO_AGENT_PATH = `${AGENTS_ROOT}poteto-agent.md`;
@@ -79,6 +82,8 @@ export function composePrompt(input: {
 
 export interface RoleResolution {
   readonly route: Route | undefined;
+  /** Present for multi-entry roles, with one route (or inheritance) per entry. */
+  readonly panelRoutes?: readonly (Route | undefined)[];
   /** Human-readable notes to append to the tool reply: issues, near misses. */
   readonly notes: readonly string[];
 }
@@ -92,17 +97,32 @@ export interface RoleResolution {
  * on the parent route. The tool reply says so, so the parent can fix the file or
  * report the miss rather than believing the route applied.
  */
-export async function resolveRoleArg(role: string | undefined): Promise<RoleResolution> {
+export async function resolveRoleArg(
+  role: string | undefined,
+  roleIndex?: number,
+): Promise<RoleResolution> {
   if (!role) return { route: undefined, notes: [] };
+  if (roleIndex !== undefined && (!Number.isSafeInteger(roleIndex) || roleIndex < 0)) {
+    throw new Error("pstack: roleIndex must be a non-negative safe integer");
+  }
 
   const { table, issues, unreadable } = await loadRoleTable();
   const match = lookupRole(table, role);
   if (match) {
-    const notes: string[] = [];
-    for (const issue of issues) {
-      if (issue.line === 0) notes.push(issue.message);
-    }
-    return { route: resolveRole(table, role), notes };
+    const notes = issues.map((issue) =>
+      issue.line > 0
+        ? `pstack: ${modelConfigPath()}:${issue.line}: ${issue.message}`
+        : issue.message,
+    );
+    const panelRoutes =
+      roleIndex === undefined && PANEL_ROLES.has(match.key) && match.values.length > 1
+        ? match.values.map((_, index) => resolveRole(table, role, index))
+        : undefined;
+    return {
+      route: resolveRole(table, role, roleIndex),
+      ...(panelRoutes ? { panelRoutes } : {}),
+      notes,
+    };
   }
 
   const near = findNearMisses(table, role);
@@ -133,16 +153,20 @@ export interface PstackToolDeps {
     readonly signal: AbortSignal;
     readonly route: Route | undefined;
     readonly cwd: string | undefined;
+    readonly agentPreset: string | undefined;
+    readonly maxDepth: number | undefined;
   }) => Promise<{ readonly childId: string }>;
   readonly loadAgent: (kind: AgentKind) => Promise<string>;
   /**
    * Resolve the `role` argument. The notes explain a miss so the reply can name
    * it; an empty list means the route applied as written, or there was no role.
    */
-  readonly loadRole: (role: string | undefined) => Promise<RoleResolution>;
+  readonly loadRole: (role: string | undefined, roleIndex?: number) => Promise<RoleResolution>;
   readonly potetoModePath?: string;
   readonly defaultAgent?: AgentKind;
   readonly toolName?: string;
+  readonly maxDepth?: number;
+  readonly validateRoute?: (route: Route, signal: AbortSignal) => Promise<void>;
 }
 
 /**
@@ -197,11 +221,27 @@ export function createPstackTool(deps: PstackToolDeps) {
         type: "string",
         description: "Initial child working directory. Omit to inherit the parent directory.",
       },
+      agentPreset: {
+        type: "string",
+        description:
+          "Optional DSH agent preset for this child. It selects the child's tools, prompts, and skills; omit it to inherit the parent's preset.",
+      },
+      maxDepth: {
+        type: "integer",
+        description:
+          "Absolute maximum delegation depth. Omit to use the DSH subagent setting; nested playbooks should pass the depth their child tree requires.",
+      },
+      roleIndex: {
+        type: "integer",
+        description:
+          "Select one zero-based entry from a multi-route role. Omit for automatic panel expansion on panel roles.",
+      },
     },
     output: {
       schema: { type: "string" },
       render: (_args, value) => [{ type: "text", text: value }],
     },
+    isConcurrencySafe: () => true,
     async execute(args, exec) {
       const parent = exec.agent;
       if (!parent) throw new Error("pstack_subagent requires an agent context");
@@ -215,19 +255,75 @@ export function createPstackTool(deps: PstackToolDeps) {
         agentInstructions,
         ...(deps.potetoModePath ? { potetoModePath: deps.potetoModePath } : {}),
       });
-      const { route, notes } = await deps.loadRole(args.role);
+      if (args.roleIndex !== undefined && !args.role) {
+        throw new Error("pstack: roleIndex requires a role");
+      }
+      if (args.agentPreset !== undefined && args.agentPreset.trim().length === 0) {
+        throw new Error("pstack: agentPreset must not be empty");
+      }
+      const { route, panelRoutes, notes } = await deps.loadRole(args.role, args.roleIndex);
+      const routes = panelRoutes ?? [route];
+      const maxDepth = args.maxDepth ?? deps.maxDepth;
+      if (maxDepth !== undefined && (!Number.isSafeInteger(maxDepth) || maxDepth < 0)) {
+        throw new Error("pstack: maxDepth must be a non-negative safe integer");
+      }
+      const routeNotes = [...notes];
+      const validatedRoutes: Array<Route | undefined> = [];
+      for (const [index, childRoute] of routes.entries()) {
+        if (childRoute && deps.validateRoute) {
+          try {
+            await deps.validateRoute(childRoute, exec.signal);
+          } catch (error) {
+            if (!panelRoutes || exec.signal.aborted) throw error;
+            const detail = error instanceof Error ? error.message : String(error);
+            routeNotes.push(
+              `pstack: panel entry ${index + 1} route ${childRoute.provider}/${childRoute.model} is unavailable; using the parent route. ${detail}`,
+            );
+            validatedRoutes.push(undefined);
+            continue;
+          }
+        }
+        validatedRoutes.push(childRoute);
+      }
+      const childIds: string[] = [];
+      for (const [index, childRoute] of validatedRoutes.entries()) {
+        try {
+          const activation = await deps.start({
+            parent,
+            label:
+              routes.length > 1
+                ? `${args.description} (${index + 1}/${routes.length})`
+                : args.description,
+            prompt: [
+              {
+                type: "text",
+                text:
+                  routes.length > 1
+                    ? `${prompt}\n\nPanel entry: ${index + 1} of ${routes.length}.`
+                    : prompt,
+              },
+            ],
+            signal: exec.signal,
+            route: childRoute,
+            cwd: args.cwd,
+            agentPreset: args.agentPreset,
+            maxDepth,
+          });
+          childIds.push(activation.childId);
+        } catch (error) {
+          const started = childIds.length > 0 ? ` Already started: ${childIds.join(", ")}.` : "";
+          throw new Error(
+            `pstack: failed to start panel entry ${index + 1} of ${routes.length}.${started}`,
+            { cause: error },
+          );
+        }
+      }
 
-      const activation = await deps.start({
-        parent,
-        label: args.description,
-        prompt: [{ type: "text", text: prompt }],
-        signal: exec.signal,
-        route,
-        cwd: args.cwd,
-      });
-
-      const started = `started subagent ${activation.childId}`;
-      return notes.length > 0 ? [started, ...notes].join("\n") : started;
+      const started =
+        childIds.length === 1
+          ? `started subagent ${childIds[0]}`
+          : `started ${childIds.length} panel subagents ${childIds.join(", ")}`;
+      return routeNotes.length > 0 ? [started, ...routeNotes].join("\n") : started;
     },
   });
 }
@@ -245,18 +341,24 @@ export function buildActivationRequest(input: {
   readonly prompt: ContentBlock[];
   readonly route: Route | undefined;
   readonly cwd: string | undefined;
+  readonly agentPreset?: string;
+  readonly maxDepth?: number;
 }): {
   parent: Agent;
   prompt: ContentBlock[];
   cwd?: string;
+  agentPreset?: string;
   agentOptions?: { provider: string; model: string; reasoningEffort?: ReasoningEffortId };
+  maxDepth?: number;
 } {
   const options = routeToAgentOptions(input.route);
   return {
     parent: input.parent,
     prompt: input.prompt,
     ...(input.cwd ? { cwd: input.cwd } : {}),
+    ...(input.agentPreset ? { agentPreset: input.agentPreset } : {}),
     ...(options ? { agentOptions: options } : {}),
+    ...(input.maxDepth !== undefined ? { maxDepth: input.maxDepth } : {}),
   };
 }
 
@@ -268,18 +370,46 @@ export function apply(ctx: Context, config: Config = {}): void {
   const providerName = config.provider ?? "spawn";
 
   const tool = createPstackTool({
-    async start({ parent, label, prompt, signal, route, cwd }) {
+    async start({ parent, label, prompt, signal, route, cwd, agentPreset, maxDepth }) {
       const activation = await ctx.subagents.startActivation({
         provider: providerName,
         label,
         signal,
         delivery: "parent",
-        request: buildActivationRequest({ parent, prompt, route, cwd }),
+        request: buildActivationRequest({
+          parent,
+          prompt,
+          route,
+          cwd,
+          agentPreset,
+          maxDepth,
+        }),
       });
       return { childId: String(activation.childId) };
     },
     loadAgent: readAgentInstructions,
     loadRole: resolveRoleArg,
+    maxDepth: ctx.subagents.resolveMaxDepth(config.maxDepth),
+    validateRoute: async (route, signal) => {
+      let model;
+      try {
+        model = await ctx.llm.resolveModelInfo(route.provider, route.model, signal);
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        throw new Error(
+          `pstack: configured route ${route.provider}/${route.model} could not be resolved: ${detail}`,
+          { cause: error },
+        );
+      }
+      if (
+        route.reasoningEffort &&
+        !model.reasoning?.efforts.some((effort) => effort.id === route.reasoningEffort)
+      ) {
+        throw new Error(
+          `pstack: ${route.provider}/${route.model} does not support reasoning effort "${route.reasoningEffort}"`,
+        );
+      }
+    },
     potetoModePath: POTETO_MODE_PATH,
     ...(config.defaultAgent ? { defaultAgent: config.defaultAgent } : {}),
     ...(config.toolName ? { toolName: config.toolName } : {}),

@@ -7,6 +7,7 @@
  * completes with the same list.
  */
 import { readdirSync, readFileSync } from "node:fs";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { Context } from "@deepseek-ai/cordis";
 import {
   BUNDLED_SKILL_RANK,
@@ -23,6 +24,7 @@ export interface PstackSkillEntry {
   readonly modelInvocable: boolean;
   readonly userInvocable: boolean;
   readonly directory: string;
+  readonly skillPath: string;
 }
 
 export const PROVIDER_NAME = "pstack";
@@ -36,6 +38,10 @@ function text(value: string | undefined): string {
  * Generated files always carry `name` and `description`; a hand-edit that
  * removes them fails loudly instead of silently dropping the skill.
  */
+function skillDirectory(directory: string): string {
+  return isAbsolute(directory) ? resolve(directory) : resolve(SKILLS_ROOT, directory);
+}
+
 export function toEntry(directory: string, source: string): PstackSkillEntry {
   const { data } = parseFrontmatter(source);
   if (!text(data.name) || !text(data.description)) {
@@ -47,11 +53,12 @@ export function toEntry(directory: string, source: string): PstackSkillEntry {
     modelInvocable: data["disable-model-invocation"] !== "true",
     userInvocable: data["user-invocable"] !== "false",
     directory,
+    skillPath: join(skillDirectory(directory), "SKILL.md"),
   };
 }
 
-function resourceBase(directory: string) {
-  return { kind: "directory" as const, path: `${SKILLS_ROOT}${directory}/` };
+function resourceBase(skillPath: string) {
+  return { kind: "directory" as const, path: `${dirname(skillPath)}/` };
 }
 
 export function toCandidate(entry: PstackSkillEntry): SkillCandidate {
@@ -62,9 +69,9 @@ export function toCandidate(entry: PstackSkillEntry): SkillCandidate {
     provider: PROVIDER_NAME,
     source: "bundled",
     rank: BUNDLED_SKILL_RANK,
-    resourceBase: resourceBase(entry.directory),
-    locator: entry.directory,
-    path: `${SKILLS_ROOT}${entry.directory}/SKILL.md`,
+    resourceBase: resourceBase(entry.skillPath),
+    locator: entry.skillPath,
+    path: entry.skillPath,
   };
 }
 
@@ -73,13 +80,22 @@ export interface PstackProviderOptions {
   readonly directories: readonly string[];
   /** Reads one skill body. Tests override it to avoid touching the package. */
   readonly read?: (directory: string) => string;
+  /** Reports malformed or unavailable skill entries without disabling the provider. */
+  readonly onError?: (directory: string, error: unknown) => void;
 }
 
 export function createProvider(options: PstackProviderOptions): SkillProvider {
   const read =
     options.read ??
-    ((directory: string) => readFileSync(`${SKILLS_ROOT}${directory}/SKILL.md`, "utf8"));
-  const entries = options.directories.map((directory) => toEntry(directory, read(directory)));
+    ((directory: string) => readFileSync(join(skillDirectory(directory), "SKILL.md"), "utf8"));
+  const entries: PstackSkillEntry[] = [];
+  for (const directory of options.directories) {
+    try {
+      entries.push(toEntry(directory, read(directory)));
+    } catch (error) {
+      options.onError?.(directory, error);
+    }
+  }
   const byName = new Map(entries.map((entry) => [entry.name, entry]));
 
   const load = (entry: PstackSkillEntry): SkillDefinition => {
@@ -90,8 +106,8 @@ export function createProvider(options: PstackProviderOptions): SkillProvider {
       invocation: { modelInvocable: entry.modelInvocable, userInvocable: entry.userInvocable },
       provider: PROVIDER_NAME,
       source: "bundled",
-      resourceBase: resourceBase(entry.directory),
-      path: `${SKILLS_ROOT}${entry.directory}/SKILL.md`,
+      resourceBase: resourceBase(entry.skillPath),
+      path: entry.skillPath,
       content: body,
     };
   };
@@ -109,7 +125,7 @@ export function createProvider(options: PstackProviderOptions): SkillProvider {
 export const name = "pstack";
 
 export interface Config {
-  /** Extra skill directories to serve in addition to the bundled set. */
+  /** Extra absolute skill directories to serve alongside bundled skills. */
   readonly extraSkillDirectories?: string[];
 }
 
@@ -124,9 +140,19 @@ export function listBundledSkillDirectories(): string[] {
 
 export function apply(ctx: Context, config: Config = {}): void {
   const directories = [
-    ...new Set([...listBundledSkillDirectories(), ...(config.extraSkillDirectories ?? [])]),
+    ...new Set([
+      ...listBundledSkillDirectories(),
+      ...(config.extraSkillDirectories ?? []).map((directory) => resolve(directory)),
+    ]),
   ];
-  ctx.skills.registerProvider(() => createProvider({ directories }));
+  const logger = ctx.logger("pstack");
+  ctx.skills.registerProvider(() =>
+    createProvider({
+      directories,
+      onError: (directory, error) =>
+        logger.warn("skipping skill directory %s: %s", directory, error),
+    }),
+  );
 }
 
 /** Absolute root of the generated skill tree, exported for doctor checks. */
