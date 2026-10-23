@@ -35,7 +35,9 @@ is outside the supported profile install.
 
 pstack does not depend on `@deepseek-ai/dsh-experimental-agent-team-profile` or
 its tools. `pstack_subagent` children are created through `ctx.subagents`; they
-are not Agent Team members.
+are not Agent Team members. pstack keeps `pstack_subagent` as its delegation
+surface. The native `subagent` tool does not carry pstack role routes, agent
+preambles, or panel expansion.
 
 In a profile that mounts `@deepseek-ai/dsh-tool-subagent-control`, its
 `send_message`, `interrupt_agent`, and `list_agents` tools can steer, interrupt,
