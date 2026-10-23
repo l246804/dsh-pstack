@@ -1,18 +1,24 @@
 # dsh-pstack
 
-pstack for DeepSeek Harness. Rigorous agent workflows ported from
-[`cursor/plugins/pstack`](https://github.com/cursor/plugins/tree/main/pstack).
+[English](README.md) | [简体中文](README.zh.md)
 
-pstack helps you write less, but higher quality code. `/poteto-mode` reads a
-task, picks a playbook, and routes the work through the same skills Lauren Tan
-uses at Cursor: investigation, design, implementation, verification, review,
-shipping. This package ports those skills to DSH and gives them a native
-delegation tool.
+pstack for DeepSeek Harness. It ports the
+[`cursor/plugins/pstack`](https://github.com/cursor/plugins/tree/main/pstack)
+skills and adds a native delegation tool.
 
-Upstream is pinned as a git submodule at `upstream/cursor-plugins`. The DSH
-tree under `assets/` is generated from it, so upstream fixes flow through a
-repeatable sync instead of a hand fork. The generated tree is committed: it is
-what makes a sync reviewable as a `git diff`.
+## What it does
+
+- Registers 55 pstack skills, including `/poteto-mode` and the 24
+  `principle-*` rules.
+- Routes `/poteto-mode` work through the upstream playbooks: investigation,
+  design, implementation, verification, review, and shipping.
+- Provides `pstack_subagent`, which resolves role routes from
+  `~/.dsh/pstack-models.md`, adds the pstack agent preamble, and starts
+  background children through `ctx.subagents`.
+- Expands `arena runners`, `architect runners`, and `interrogate reviewers` to
+  one child per role entry.
+- Depends on the DSH worktree plugin and mounts it when the official bundle is
+  absent.
 
 ## Install
 
@@ -20,7 +26,7 @@ what makes a sync reviewable as a `git diff`.
 dsh plugin --profile web add dsh-pstack
 ```
 
-Or from a checkout:
+From a checkout:
 
 ```bash
 pnpm install
@@ -28,31 +34,22 @@ pnpm run build
 dsh plugin --profile web add .
 ```
 
-Restart `dsh web` after install. The bundle patch mounts four rows:
+Restart `dsh web` after install.
 
-- `pstack` registers the bundled skill provider. Every converted skill appears
-  in the session catalog with its upstream invocation flags preserved:
-  `/poteto-mode` and the other skills stay user-invocable. Skills disabled for
-  model invocation are not callable through DSH's model-facing `skill` tool.
-  This package preserves those flags rather than silently changing upstream
-  policy; direct reads of referenced skill files depend on the active file
-  tools and path policy.
-- `pstack-worktree` and `pstack-tool-worktree` mount the DSH worktree plugin.
-  pstack's parallel-writer playbooks require `create_worktree`. When the
-  official `@deepseek-ai/dsh-experimental-tool-worktree` bundle is already
-  enabled, these rows stay disabled and reuse it.
-- `pstack-subagent` registers the `pstack_subagent` tool, the DSH replacement
-  for Cursor's `Task` tool. Its `maxDepth: 2` cap allows one nested delegation
-  for the orchestrate and feature playbooks.
+### Bundle rows
 
-pstack assumes the DSH worktree plugin is enabled. If the active profile cannot
-enable it, the parallel-writer playbooks are unsupported; pstack does not fall
-back to `git worktree`.
+The bundle patch declares four rows:
 
-The tool accepts `agentPreset` only when the `pstack-subagent` row sets
-`allowedAgentPresets`; otherwise the parameter is absent. A configured
-`agentPreset` value sets the default. The pstack `agent` argument still selects
-only a prompt preamble.
+| Row                    | What it does                                                        |
+| ---------------------- | ------------------------------------------------------------------- |
+| `pstack`               | Registers the skill provider and its 55 skills.                     |
+| `pstack-worktree`      | Mounts the DSH worktree service when the official bundle is absent. |
+| `pstack-tool-worktree` | Mounts `create_worktree` when the official bundle is absent.        |
+| `pstack-subagent`      | Registers `pstack_subagent` with a `maxDepth: 2` cap.               |
+
+When `@deepseek-ai/dsh-experimental-tool-worktree` is already active, the two
+pstack worktree rows stay disabled and reuse the official rows. The worktree
+plugin is a peer dependency of this package.
 
 Verify the layer without booting:
 
@@ -60,40 +57,34 @@ Verify the layer without booting:
 dsh --profile web --dump-config | grep -A2 'pstack'
 ```
 
-## Use
+## Quick start
 
-Start with a real task:
+Describe the goal and the check:
 
 ```text
 /poteto-mode add a --json flag to this command. text output stays byte-identical. verify both.
 ```
 
-`/poteto-mode` opens a todo list whose first items are the matched playbook's
-steps. Each step names the skill it routes to. The other skills work directly:
-`/how`, `/why`, `/architect`, `/arena`, `/swarm`, `/interrogate`, `/tdd`,
-`/no-comments`, `/unslop`, `/technical-writing`, `/sharpen`, `/teach`, and the
-twenty-four `principle-*` rules.
+`/poteto-mode` picks a playbook and opens a todo list whose first items are that
+playbook's steps. Skills also work directly: `/how`, `/why`, `/architect`,
+`/arena`, `/swarm`, `/interrogate`, `/tdd`, `/no-comments`, `/unslop`,
+`/technical-writing`, `/sharpen`, `/teach`, and the 24 `principle-*` rules.
 
-See the converted [pstack guide](assets/docs/guide/README.md), the
-[DSH adapter reference](assets/docs/harness/dsh.md), and the
-[working decisions](docs/porting/decisions.md).
+## Worktree dependency
 
-### Configure roles
+pstack requires the DSH worktree plugin. The bundle mounts
+`pstack-worktree` and `pstack-tool-worktree` when the official
+`@deepseek-ai/dsh-experimental-tool-worktree` bundle is not already in the
+profile. When it is, pstack reuses it.
 
-`/setup-pstack` uses `list_subagent_models` when the profile exposes it; otherwise it asks for the provider/model pairs you can use. It writes `~/.dsh/pstack-models.md`. One role per line:
+`create_worktree` creates a local Git worktree, switches the calling session's
+working directory, and reports the checkout path and branch. It does not fetch
+refs, merge, or clean up. A worktree isolates the checkout, not the machine or
+the runtime. pstack assumes the plugin is enabled; if it cannot be enabled, the
+parallel-writer playbooks are unsupported. There is no hand-made `git worktree`
+fallback.
 
-```text
-# pstack model configuration. One line per role.
-# Value: inherit-parent | <provider>/<model> [effort]
-# budget: large (xhigh)
-feature, refactoring: deepseek-official/deepseek-reasoner high
-judgment and prose: inherit-parent
-```
-
-A missing line means the role inherits the parent chat's route. The tool reads
-this file on every delegation, so edits apply without restarting.
-
-### Delegate
+## Delegate
 
 `pstack_subagent` is the one delegation surface:
 
@@ -106,56 +97,65 @@ pstack_subagent(
 )
 ```
 
-- `agent`: `poteto-agent` (default), `general`, or `comment-sicko`. The tool
-  prepends the packaged agent instructions for the first and third. This is a
-  pstack prompt choice, not a DSH `agentPreset`.
-- `agentPreset`: optional DSH preset for the child. The parameter is present
-  only when the `pstack-subagent` row sets `allowedAgentPresets`; a configured
-  `agentPreset` value sets the default. Add `cordis` to that list only for
-  plugin-development tasks.
-- `role`: a line from `~/.dsh/pstack-models.md`. Omit it to inherit the parent
-  route. The panel roles `arena runners`, `architect runners`, and
-  `interrogate reviewers` expand to one child per entry. Use `roleIndex` to
-  select one entry from another multi-route role. Roles are the supported way
-  to choose a provider, model, and reasoning effort; the tool does not accept
-  raw provider/model overrides.
-- `cwd`: optional child working directory.
-- `maxDepth`: optional requested delegation depth, clamped to the
-  `pstack-subagent` row's `maxDepth: 2`. The model cannot raise the cap.
-- `roleIndex`: optional zero-based index for selecting one route instead of
-  expanding a panel role.
+| Argument                | Meaning                                                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------------------------- |
+| `description`, `prompt` | Short label and self-contained task. The child does not share this conversation.                      |
+| `agent`                 | `poteto-agent` (default), `general`, or `comment-sicko`. This is a prompt preamble, not a DSH preset. |
+| `role`, `roleIndex`     | A line from `~/.dsh/pstack-models.md`, or one zero-based entry from a list-valued role.               |
+| `cwd`                   | Initial child working directory.                                                                      |
+| `agentPreset`           | Present only when the `pstack-subagent` row sets `allowedAgentPresets`.                               |
+| `maxDepth`              | Requested depth, clamped to the `pstack-subagent` cap.                                                |
 
 The `pstack-subagent` row also accepts `allowedModels` and
-`allowedAgentPresets`. `allowedModels` lists exact `provider/model` routes;
-role routes outside it are rejected. `allowedAgentPresets` controls whether the
-model can select a preset. Neither is a tool argument.
+`allowedAgentPresets`. `allowedModels` lists exact `provider/model` routes and
+rejects role routes outside it. `allowedAgentPresets` controls whether the model
+can select a preset. Neither is a tool argument.
 
-The call returns child ids immediately. The runtime reports final answers in
-completion notices. The adapter adds no child-steering or listing tools. Use the
-profile's generic subagent-control tools (`send_message`, `list_agents`) when
-they are mounted. The tool returns plain-text child ids and does not expose
-`outputSchema`.
+The call returns child ids immediately. Final answers arrive as completion
+notices. The adapter adds no child-steering or listing tools; use the profile's
+generic `send_message` and `list_agents` when they are mounted.
 
-## What changed from Cursor
+## Roles
 
-| Cursor                                                                   | DSH                                                                                                                                        |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Task` tool                                                              | `pstack_subagent`                                                                                                                          |
-| `subagent_type`                                                          | `agent`                                                                                                                                    |
-| model slug                                                               | `role` resolved from `~/.dsh/pstack-models.md`                                                                                             |
-| `readonly` / `run_in_background` / `environment`                         | Background by default; say "do not edit" in the prompt                                                                                     |
-| `~/.cursor/rules/pstack-models.mdc`                                      | `~/.dsh/pstack-models.md`                                                                                                                  |
-| `.cursor/skills/`                                                        | `.dsh/skills/`                                                                                                                             |
-| Automations, Bugbot, cloud VMs, Custom Modes, `/loop`, `cursor-team-kit` | Marked skipped, or remapped where DSH has an equivalent. Have a writing child call DSH `create_worktree`; the worktree plugin is required. |
+`/setup-pstack` writes `~/.dsh/pstack-models.md`. One role per line:
 
-`skills/make-bot-ui` is not ported: it depends entirely on Cursor Automations.
-It is not shipped, in any form. If you need it, read it from the upstream
-submodule at `upstream/cursor-plugins/pstack/skills/make-bot-ui/`.
+```text
+# pstack model configuration. One line per role.
+# Value: inherit-parent | <provider>/<model> [effort]
+feature, refactoring: deepseek-official/deepseek-reasoner high
+judgment and prose: inherit-parent
+```
+
+A missing line inherits the parent route. The file is read on every delegation,
+so edits apply without restarting. Panel roles expand to one child per entry;
+`roleIndex` selects one entry from another list-valued role.
+
+## Cursor compatibility
+
+| Cursor                                           | DSH                                                     |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| `Task` tool                                      | `pstack_subagent`                                       |
+| `subagent_type`                                  | `agent`                                                 |
+| Model slug                                       | `role` from `~/.dsh/pstack-models.md`                   |
+| `readonly` / `run_in_background` / `environment` | Background by default; say "do not edit" in the prompt. |
+| `~/.cursor/rules` / `.cursor/skills/`            | `~/.dsh/pstack-models.md` / `.dsh/skills/`              |
+
+Automations, Bugbot, cloud VMs, Custom Modes, `/loop`, and `cursor-team-kit`
+are skipped or remapped where DSH has an equivalent. `skills/make-bot-ui` is not
+ported because it depends on Cursor Automations.
+
+## Docs
+
+- [pstack guide](assets/docs/guide/README.md)
+- [DSH adapter reference](assets/docs/harness/dsh.md)
+- [Working decisions](docs/porting/decisions.md)
+- [Porting policy](docs/porting/README.md)
 
 ## Develop
 
-Requirements: Node 22.19+, pnpm, and Bun for the bundled watcher and orchestration
-scripts. Vite+ provides the build, test, lint, and format toolchain.
+Requirements: Node 22.19+, pnpm, and Bun for the bundled watcher and
+orchestration scripts. Vite+ provides the build, test, lint, and format
+toolchain.
 
 ```bash
 vp install          # install dependencies
@@ -168,30 +168,14 @@ vp pack             # build dist/
 
 ### Repository layout
 
-```text
-src/provider.ts          bundled skill provider (ctx.skills)
-src/subagent.ts          pstack_subagent tool (ctx.subagents + ctx.tools)
-src/roles.ts             ~/.dsh/pstack-models.md parsing and role resolution
-src/frontmatter.ts       SKILL.md frontmatter parser
-scripts/adapt.ts         upstream-to-DSH rewrite rules
-scripts/sync-upstream.ts generator: upstream -> assets/
-tests/                   unit tests for provider, roles, and prompt assembly
-assets/                  generated: skills, agents, docs (committed)
-cordis.patch.yml         the bundle layer this package installs
-upstream/cursor-plugins  git submodule, upstream reference only
-```
+Source lives in `src/`, rewrite rules in `scripts/adapt.ts`, the generator in
+`scripts/sync-upstream.ts`, and generated assets in `assets/`. Tests live in
+`tests/`.
 
-`assets/` is generated. Never hand-edit it. Change `scripts/adapt.ts` or a
-skill's upstream source, then run `vp run sync`.
-
-[`docs/porting/`](docs/porting/README.md) is the policy the converter enforces:
-translate names, not sentences; awkward grammar is acceptable, changed meaning
-is not. It also records why the generated tree is committed rather than ignored.
-
-`vp run sync:check` fails when the committed tree differs from a fresh
-conversion and when a rewrite no longer matches its upstream anchor. Run it
-before publishing.
+`assets/` is generated. Never hand-edit it. Change `scripts/adapt.ts` or the
+upstream source, then run `vp run sync`. `docs/porting/` records the policy and
+the working decisions.
 
 ## License
 
-MIT. The ported skills are MIT, copyright Lauren Tan; see [LICENSE](LICENSE).
+MIT. The ported skills are MIT, copyright Lauren Tan. See [LICENSE](LICENSE).

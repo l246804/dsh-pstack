@@ -12,7 +12,7 @@ export default defineConfig({
     format: ["esm"],
     sourcemap: true,
     clean: true,
-    copy: ["cordis.patch.yml", "README.md", "LICENSE"],
+    copy: ["cordis.patch.yml", "README.md", "README.zh.md", "LICENSE"],
   },
   test: {
     include: ["tests/**/*.test.ts"],
