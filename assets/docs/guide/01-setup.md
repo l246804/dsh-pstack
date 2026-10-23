@@ -10,7 +10,7 @@ Install the bundle into your DSH profile:
 dsh plugin --profile web add dsh-pstack
 ```
 
-Restart `dsh web` after install. The bundle mounts the pstack skill provider and the `pstack_subagent` tool.
+Restart `dsh web` after install. The bundle mounts the pstack skill provider and the `pstack_subagent` tool. It also mounts the DSH worktree plugin when the official bundle is not already enabled.
 
 ## Pick your models
 
@@ -20,7 +20,7 @@ Run:
 /setup-pstack
 ```
 
-[`/setup-pstack`](../../skills/setup-pstack/SKILL.md) detects the models you have access to, asks for a reasoning budget, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes `~/.dsh/pstack-models.md`, a small rule every pstack skill reads.
+[`/setup-pstack`](../../skills/setup-pstack/SKILL.md) uses `list_subagent_models` when the profile exposes it; otherwise it asks for the provider/model pairs you can use. It asks for a reasoning budget, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes `~/.dsh/pstack-models.md`, a small rule every pstack skill reads.
 
 The defaults inherit the parent chat route, so they cost nothing extra beyond the children themselves. A real route written as `<provider>/<model> [effort]` pins that role; `unlimited`, `large`, `medium`, and `small` set the effort token on those routes.
 
@@ -38,7 +38,7 @@ If you're new to pstack, say yes. An agent that can check its own work keeps goi
 
 Then setup offers once to generate a formal verification skill with [`/create-formal-verification-skill`](../../skills/create-formal-verification-skill/SKILL.md), unless the project already has one. Tests check the cases someone thought to write. A formal verification skill checks one key property of your code, such as "a job never runs twice at once", in every case within a stated scope. Say yes when your code has concurrency, retries, a state machine, or a parser, where a bug is costly and tests rarely reach the case that breaks. Otherwise say no, and run it later if that changes. [Verify and ship](./06-verify-and-ship.md#prove-a-property-with-a-formal-verification-skill) covers it.
 
-After setup, start a new chat. The model rule applies to new sessions.
+After setup, the model rule applies to the next delegation, including in this session.
 
 ## Keep the cost in check
 

@@ -2,7 +2,7 @@
 #
 # One line per role. Delete a line to inherit the parent chat's route.
 # Value: inherit-parent | <provider>/<model> [effort]
-# Discover routes with the list_subagent_models tool.
+# Discover routes with list_subagent_models when the profile exposes it; otherwise ask the user.
 # budget: large (xhigh)
 feature, refactoring: inherit-parent
 bug-fix: inherit-parent

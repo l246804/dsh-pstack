@@ -2,11 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  composePrompt,
-  resolveRoleArg,
-  stripFrontmatter,
-} from "../src/subagent.ts";
+import { composePrompt, resolveRoleArg, stripFrontmatter } from "../src/subagent.ts";
 
 describe("subagent prompt assembly", () => {
   it("returns the prompt alone for a general reviewer", () => {
@@ -65,9 +61,7 @@ describe("subagent prompt assembly", () => {
       );
       const result = await resolveRoleArg("feature");
       expect(result.route).toEqual({ provider: "provider", model: "model" });
-      expect(result.notes).toEqual([
-        expect.stringContaining("pstack-models.md:2: unknown effort"),
-      ]);
+      expect(result.notes).toEqual([expect.stringContaining("pstack-models.md:2: unknown effort")]);
 
       const panel = await resolveRoleArg("arena runners");
       expect(panel.panelRoutes).toEqual([

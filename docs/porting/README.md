@@ -72,19 +72,23 @@ When adapting a workflow, preserve its outcome and safety constraints, not
 merely its tool names. In particular:
 
 - A DSH child session is not a cloud VM. A Git worktree isolates a checkout and
-  branch, not the machine, ports, or runtime. Agent Team members and
-  `pstack_subagent` children are distinct collaboration mechanisms; Team
-  membership does not imply one worktree per member.
-- Use DSH `create_worktree` only when it is available to the writing child.
-  Select/fetch the intended base explicitly; otherwise prepare a Git worktree
-  and pass its path as `cwd`. Do not present worktree creation, fetching,
-  merging, or cleanup as automatic when it is not.
+  branch, not the machine, ports, or runtime.
+- pstack requires the DSH worktree plugin. The bundle declares
+  `@deepseek-ai/dsh-experimental-worktree` and
+  `@deepseek-ai/dsh-experimental-tool-worktree` as peer dependencies and mounts
+  their rows when the official bundle is absent. Select/fetch the intended base
+  explicitly; do not present worktree creation, fetching, merging, or cleanup
+  as automatic when it is not.
 - Treat `agentPreset` as an explicit DSH preset choice, separate from pstack's
-  prompt-style `agent`; omitting the preset inherits the parent. Do not switch
-  every child to a specialized preset just to gain one capability.
-- DSH counts the root session as depth 0. Set `maxDepth` to the absolute depth
-  the actual child tree requires; do not copy a fixed limit into every
-  delegation.
+  prompt-style `agent`; expose it to the model only through the
+  `pstack-subagent` row's `allowedAgentPresets` list. Omit the preset to inherit
+  the parent, and do not switch every child to a specialized preset just to gain
+  one capability.
+- DSH counts the root session as depth 0. The `pstack-subagent` row sets the
+  absolute depth cap; the model may request a lower value, never a higher one.
+  Do not copy a fixed limit into every delegation.
+- pstack enforces its own `allowedModels` list on the `pstack-subagent` row. It
+  does not read the native DSH session `allowedModels` policy.
 - Preserve upstream skill invocation flags. `disable-model-invocation` blocks
   model-facing `skill` calls, not a user's explicit slash invocation.
   Referenced-file reading is a separate operation and depends on the active

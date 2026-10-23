@@ -28,7 +28,7 @@ pnpm run build
 dsh plugin --profile web add .
 ```
 
-Restart `dsh web` after install. The bundle patch mounts two rows:
+Restart `dsh web` after install. The bundle patch mounts four rows:
 
 - `pstack` registers the bundled skill provider. Every converted skill appears
   in the session catalog with its Cursor invocation policy preserved:
@@ -37,14 +37,22 @@ Restart `dsh web` after install. The bundle patch mounts two rows:
   This package preserves those flags rather than silently changing upstream
   policy; direct reads of referenced skill files depend on the active file
   tools and path policy.
+- `pstack-worktree` and `pstack-tool-worktree` mount the DSH worktree plugin.
+  pstack's parallel-writer playbooks require `create_worktree`. When the
+  official `@deepseek-ai/dsh-experimental-tool-worktree` bundle is already
+  enabled, these rows stay disabled and reuse it.
 - `pstack-subagent` registers the `pstack_subagent` tool, the DSH replacement
-  for Cursor's `Task` tool.
+  for Cursor's `Task` tool. Its `maxDepth: 2` cap allows one nested delegation
+  for the orchestrate and feature playbooks.
 
-The tool accepts an optional `agentPreset` to select a DSH preset for one
-child; omit it to inherit the parent preset. The pstack `agent` argument still
-selects only a prompt preamble. DSH's `create_worktree` is used when present in
-the active child toolset; otherwise prepare a Git worktree and pass its path
-through `cwd`.
+pstack assumes the DSH worktree plugin is enabled. If the active profile cannot
+enable it, the parallel-writer playbooks are unsupported; pstack does not fall
+back to `git worktree`.
+
+The tool accepts `agentPreset` only when the `pstack-subagent` row sets
+`allowedAgentPresets`; otherwise the parameter is absent. A configured
+`agentPreset` value sets the default. The pstack `agent` argument still selects
+only a prompt preamble.
 
 Verify the layer without booting:
 
@@ -71,8 +79,7 @@ See the converted [pstack guide](assets/docs/guide/README.md) and the
 
 ### Configure roles
 
-`/setup-pstack` detects the routes your session can use and writes
-`~/.dsh/pstack-models.md`. One role per line:
+`/setup-pstack` uses `list_subagent_models` when the profile exposes it; otherwise it asks for the provider/model pairs you can use. It writes `~/.dsh/pstack-models.md`. One role per line:
 
 ```text
 # pstack model configuration. One line per role.
@@ -101,9 +108,10 @@ pstack_subagent(
 - `agent`: `poteto-agent` (default), `general`, or `comment-sicko`. The tool
   prepends the packaged agent instructions for the first and third. This is a
   pstack prompt choice, not a DSH `agentPreset`.
-- `agentPreset`: optional DSH preset for the child. It selects the child's
-  tools, skills, and plugins; omit it to inherit the parent preset. Use
-  `cordis` only for plugin-development tasks when that preset is available.
+- `agentPreset`: optional DSH preset for the child. The parameter is present
+  only when the `pstack-subagent` row sets `allowedAgentPresets`; a configured
+  `agentPreset` value sets the default. Add `cordis` to that list only for
+  plugin-development tasks.
 - `role`: a line from `~/.dsh/pstack-models.md`. Omit it to inherit the parent
   route. The panel roles `arena runners`, `architect runners`, and
   `interrogate reviewers` expand to one child per entry. Use `roleIndex` to
@@ -111,16 +119,20 @@ pstack_subagent(
   to choose a provider, model, and reasoning effort; the tool does not accept
   raw provider/model overrides.
 - `cwd`: optional child working directory.
-- `maxDepth`: optional absolute delegation-depth limit; omitted values use the
-  DSH subagent setting. DSH counts the root as depth 0, so a depth-1 child
-  that spawns a depth-2 worker needs `maxDepth: 2`.
+- `maxDepth`: optional requested delegation depth, clamped to the
+  `pstack-subagent` row's `maxDepth: 2`. The model cannot raise the cap.
 - `roleIndex`: optional zero-based index for selecting one route instead of
   expanding a panel role.
 
+The `pstack-subagent` row also accepts `allowedModels` and
+`allowedAgentPresets`. `allowedModels` lists exact `provider/model` routes;
+role routes outside it are rejected. `allowedAgentPresets` controls whether the
+model can select a preset. Neither is a tool argument.
+
 The call returns child ids immediately. The runtime reports final answers in
-completion notices. The adapter returns plain-text child ids and does not
-expose `outputSchema` or child-steering/listing tools. Use the native DSH
-`subagent` tool when a workflow needs those host-specific capabilities.
+completion notices. The adapter adds no child-steering or listing tools; use
+`send_message` and `list_agents` when the active profile provides them. The
+tool returns plain-text child ids and does not expose `outputSchema`.
 
 ## What changed from Cursor
 
@@ -132,7 +144,7 @@ expose `outputSchema` or child-steering/listing tools. Use the native DSH
 | `readonly` / `run_in_background` / `environment`                         | Background by default; say "do not edit" in the prompt                                                                                                                                     |
 | `~/.cursor/rules/pstack-models.mdc`                                      | `~/.dsh/pstack-models.md`                                                                                                                                                                  |
 | `.cursor/skills/`                                                        | `.dsh/skills/`                                                                                                                                                                             |
-| Automations, Bugbot, cloud VMs, Custom Modes, `/loop`, `cursor-team-kit` | Marked skipped, or remapped where DSH has an equivalent. Have a writing child call DSH `create_worktree` when available; otherwise prepare a Git worktree and pass its path through `cwd`. |
+| Automations, Bugbot, cloud VMs, Custom Modes, `/loop`, `cursor-team-kit` | Marked skipped, or remapped where DSH has an equivalent. Have a writing child call DSH `create_worktree`; the worktree plugin is required.                                                 |
 
 `skills/make-bot-ui` is not ported: it depends entirely on Cursor Automations.
 It is not shipped, in any form. If you need it, read it from the upstream

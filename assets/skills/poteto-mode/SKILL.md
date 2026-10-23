@@ -90,7 +90,7 @@ Read the leaf skill in full for any principle you apply. Each entry names when i
 
 ## Subagents
 
-Every delegation goes through the `pstack_subagent` tool. It starts a background child, returns its id, and the runtime sends you a completion notice. It takes `description`, `prompt`, `role`, optional `cwd`, `agent`, `agentPreset`, and `maxDepth`. Omitted depth uses the DSH subagent setting. `roleIndex` selects one zero-based route from a list-valued role.
+Every delegation goes through the `pstack_subagent` tool. It starts a background child, returns its id, and the runtime sends you a completion notice. It takes `description`, `prompt`, `role`, optional `cwd`, `agent`, `agentPreset`, and `maxDepth`. The `pstack-subagent` row sets the depth cap; the model may request a lower value, but the tool clamps it to that cap. `roleIndex` selects one zero-based route from a list-valued role.
 
 - **`agent: "poteto-agent"`** for any subagent you spawn inside a playbook step: code-writing delegates, ad-hoc helpers. The tool prepends the poteto-agent instructions, so the child reads this skill in full before working. The chat that receives `/poteto-mode` runs the playbook. Never spawn a poteto-agent to run the playbook itself.
 - **`agent: "general"`** for the routed workflow skills (`how`, `why`, `interrogate`, `reflect`, `swarm`). They pass their own reviewer prompts and do not need the poteto preamble.
@@ -100,7 +100,7 @@ Every delegation goes through the `pstack_subagent` tool. It starts a background
 
 The `arena runners`, `architect runners`, and `interrogate reviewers` roles fan out one child per entry from a single tool call because those skills define panel semantics. Other list-valued roles select their first entry by default; pass `roleIndex` to choose another route without unexpectedly creating more children. Panels stay diverse only when the list names different routes. An unavailable panel route falls back to the parent route with a diagnostic; the other reviewers still run.
 
-`agent` selects a pstack prompt preamble. `agentPreset` selects the DSH preset that supplies the child's tools, skills, and plugins; omit it to inherit the parent's preset. Use `agentPreset: "cordis"` only for DSH plugin development when that preset is available. DSH Agent Team controls (`spawn_teammate`, `list_agents`, `send_message`, and related team tools) manage Team members, not children created by `pstack_subagent`. Team members share one checkout; Agent Team is not a worktree-per-child feature.
+`agent` selects a pstack prompt preamble. `agentPreset` selects the DSH preset that supplies the child's tools, skills, and plugins; the model can select one only when the `pstack-subagent` row sets `allowedAgentPresets`. A configured `agentPreset` value sets the default.
 
 You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. A second opinion is the same prompt against a different model. Agreement is high-signal.
 
@@ -108,7 +108,7 @@ You own every subagent's work. Review the diff and write your own summary, don't
 
 ## Worktrees
 
-When DSH's `create_worktree` tool is available in the current child session, use it before the child writes shared-repository changes. It creates a local Git worktree, checks out a branch, and changes that session's working directory; it does not provide a VM, merge changes, or clean up the worktree. If a child needs a prepared checkout instead, pass its path through `cwd`. If the tool is unavailable in the active preset/profile, use a separately prepared Git worktree. Worktree file-policy restrictions still apply.
+The DSH worktree plugin is part of the supported pstack install. Use DSH's `create_worktree` before the child writes shared-repository changes. It creates a local Git worktree, checks out a branch, and changes that session's working directory; it does not provide a VM, merge changes, or clean up the worktree. If a child needs a prepared checkout instead, pass its path through `cwd`. Worktree file-policy restrictions still apply.
 
 ## Writing the reply
 
@@ -152,7 +152,7 @@ A large or cross-cutting effort (a migration across many call sites, an ambitiou
 - **Orchestrate.** A standing project handed to one coordinator chat: multi-day, many stacked PRs, dozens to hundreds of subagents, minimal human turns ("run this whole project", "own this migration until it lands"). Distinct from Autonomous run, which drives one task to a predicate. Work one agent could finish inside the session's budget routes there, not here, however program-shaped the phrasing sounds.
 - **Autopilot-full.** A queue of independent PRs run to merged with full autonomy. One owner per PR carries build through merge, and the root swarm-verifies each PR before its owner merges ("autopilot this queue", "full autopilot", one-owner-per-PR programs).
 - **Autopilot-stack.** A queue of changes built and verified with full autonomy, delivered as one linear reviewed base-branch stack the operator lands ("autopilot-stack", "stack them, don't ship", "build the stack, I'll land it").
-- **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, cloud-agent URL, or pushed branch.
+- **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, a session log, a PR URL, or a pushed branch.
 - **Pause safely.** Suspending in-flight work cleanly so it can be resumed, on an explicit pause, going offline, a harness restart, or imminent context compaction. The complement to Session pickup.
 - **Multi-phase or multi-PR plan.** Work that spans phases or stacked PRs. File: `playbooks/multi-phase-plan.md`.
 - **Worktree and simulator cleanup.** Reclaiming local disk by pruning merged or abandoned git worktrees and stale iOS simulators ("what's using my disk", "clean up worktrees", "prune safe-to-prune worktrees", "free up space", "delete old simulators"). File: `playbooks/worktree-cleanup.md`.

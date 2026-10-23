@@ -32,8 +32,22 @@ export interface Config {
   readonly provider?: string;
   /** Default agent kind when the model omits `agent`. */
   readonly defaultAgent?: AgentKind;
-  /** Absolute delegation depth limit for pstack-created children. */
+  /**
+   * Delegation depth cap for pstack-created children. The model may request a
+   * lower value, but never exceed this cap. Omitted values use the DSH
+   * subagent setting.
+   */
   readonly maxDepth?: number;
+  /** Presets the model may select. Omit to keep preset selection deployment-only. */
+  readonly allowedAgentPresets?: readonly string[];
+  /** Preset applied to every child when the model cannot select one. */
+  readonly agentPreset?: string;
+  /**
+   * Exact `provider/model` routes allowed for role-resolved children. Omit to
+   * leave pstack route selection unrestricted. An empty list rejects every
+   * explicit route.
+   */
+  readonly allowedModels?: readonly string[];
 }
 
 const POTETO_AGENT_PATH = `${AGENTS_ROOT}poteto-agent.md`;
@@ -165,7 +179,11 @@ export interface PstackToolDeps {
   readonly potetoModePath?: string;
   readonly defaultAgent?: AgentKind;
   readonly toolName?: string;
-  readonly maxDepth?: number;
+  /** Returns the current depth cap. Read per call so host setting changes apply. */
+  readonly maxDepth?: () => number | undefined;
+  readonly allowedAgentPresets?: readonly string[];
+  readonly defaultAgentPreset?: string;
+  readonly allowedModels?: readonly string[];
   readonly validateRoute?: (route: Route, signal: AbortSignal) => Promise<void>;
 }
 
@@ -190,6 +208,17 @@ export function routeToAgentOptions(
 
 /** Tool definition over injected dependencies; `apply` supplies the runtime. */
 export function createPstackTool(deps: PstackToolDeps) {
+  const allowedPresets = deps.allowedAgentPresets ?? [];
+  const agentPresetParameter =
+    allowedPresets.length > 0
+      ? {
+          type: "string" as const,
+          enum: [...allowedPresets],
+          description:
+            "Optional DSH agent preset for this child, limited to the pstack-subagent allowlist. Omit to inherit the parent's preset.",
+        }
+      : undefined;
+
   return defineTool({
     name: deps.toolName ?? "pstack_subagent",
     description:
@@ -221,15 +250,11 @@ export function createPstackTool(deps: PstackToolDeps) {
         type: "string",
         description: "Initial child working directory. Omit to inherit the parent directory.",
       },
-      agentPreset: {
-        type: "string",
-        description:
-          "Optional DSH agent preset for this child. It selects the child's tools, prompts, and skills; omit it to inherit the parent's preset.",
-      },
+      ...(agentPresetParameter ? { agentPreset: agentPresetParameter } : {}),
       maxDepth: {
         type: "integer",
         description:
-          "Absolute maximum delegation depth. Omit to use the DSH subagent setting; nested playbooks should pass the depth their child tree requires.",
+          "Requested maximum delegation depth. pstack clamps it to the pstack-subagent cap; omit to use the cap.",
       },
       roleIndex: {
         type: "integer",
@@ -258,21 +283,53 @@ export function createPstackTool(deps: PstackToolDeps) {
       if (args.roleIndex !== undefined && !args.role) {
         throw new Error("pstack: roleIndex requires a role");
       }
-      if (args.agentPreset !== undefined && args.agentPreset.trim().length === 0) {
-        throw new Error("pstack: agentPreset must not be empty");
+      const allowedPresets = deps.allowedAgentPresets ?? [];
+      if (args.agentPreset !== undefined && !allowedPresets.includes(args.agentPreset)) {
+        throw new Error(
+          `pstack: agentPreset "${args.agentPreset}" is not in the pstack-subagent allowlist`,
+        );
       }
+      const agentPreset = args.agentPreset ?? deps.defaultAgentPreset;
       const { route, panelRoutes, notes } = await deps.loadRole(args.role, args.roleIndex);
       const routes = panelRoutes ?? [route];
-      const maxDepth = args.maxDepth ?? deps.maxDepth;
-      if (maxDepth !== undefined && (!Number.isSafeInteger(maxDepth) || maxDepth < 0)) {
+      const routeNotes = [...notes];
+      const configuredMaxDepth = deps.maxDepth?.();
+      const requestedMaxDepth = args.maxDepth;
+      if (
+        requestedMaxDepth !== undefined &&
+        (!Number.isSafeInteger(requestedMaxDepth) || requestedMaxDepth < 0)
+      ) {
         throw new Error("pstack: maxDepth must be a non-negative safe integer");
       }
-      const routeNotes = [...notes];
+      let maxDepth = configuredMaxDepth;
+      if (requestedMaxDepth !== undefined) {
+        if (configuredMaxDepth === undefined) {
+          routeNotes.push("pstack: maxDepth is provider-managed; the requested value is ignored.");
+        } else {
+          maxDepth = Math.min(requestedMaxDepth, configuredMaxDepth);
+          if (requestedMaxDepth > configuredMaxDepth) {
+            routeNotes.push(
+              `pstack: maxDepth ${requestedMaxDepth} exceeds the pstack-subagent cap ${configuredMaxDepth}; using ${maxDepth}.`,
+            );
+          }
+        }
+      }
+      const assertAllowedRoute = (childRoute: Route): void => {
+        if (
+          deps.allowedModels !== undefined &&
+          !deps.allowedModels.includes(`${childRoute.provider}/${childRoute.model}`)
+        ) {
+          throw new Error(
+            `pstack: route ${childRoute.provider}/${childRoute.model} is not in the pstack-subagent allowedModels list`,
+          );
+        }
+      };
       const validatedRoutes: Array<Route | undefined> = [];
       for (const [index, childRoute] of routes.entries()) {
-        if (childRoute && deps.validateRoute) {
+        if (childRoute) {
           try {
-            await deps.validateRoute(childRoute, exec.signal);
+            assertAllowedRoute(childRoute);
+            if (deps.validateRoute) await deps.validateRoute(childRoute, exec.signal);
           } catch (error) {
             if (!panelRoutes || exec.signal.aborted) throw error;
             const detail = error instanceof Error ? error.message : String(error);
@@ -306,7 +363,7 @@ export function createPstackTool(deps: PstackToolDeps) {
             signal: exec.signal,
             route: childRoute,
             cwd: args.cwd,
-            agentPreset: args.agentPreset,
+            agentPreset,
             maxDepth,
           });
           childIds.push(activation.childId);
@@ -389,7 +446,12 @@ export function apply(ctx: Context, config: Config = {}): void {
     },
     loadAgent: readAgentInstructions,
     loadRole: resolveRoleArg,
-    maxDepth: ctx.subagents.resolveMaxDepth(config.maxDepth),
+    maxDepth: () => ctx.subagents.resolveMaxDepth(config.maxDepth),
+    ...(config.allowedAgentPresets !== undefined
+      ? { allowedAgentPresets: config.allowedAgentPresets }
+      : {}),
+    ...(config.agentPreset !== undefined ? { defaultAgentPreset: config.agentPreset } : {}),
+    ...(config.allowedModels !== undefined ? { allowedModels: config.allowedModels } : {}),
     validateRoute: async (route, signal) => {
       let model;
       try {

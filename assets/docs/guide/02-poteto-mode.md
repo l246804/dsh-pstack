@@ -106,13 +106,13 @@ A long chat accumulates context from the last task. When you change subjects, sa
 
 DSH child sessions share the parent's machine and use the parent working directory unless you select another `cwd`. A local worktree isolates files and branches, not the machine or runtime.
 
-When `create_worktree` is available in the child session's tool list, ask each writer to fetch its selected base and call it with `from` set to that base before editing. It creates a local Git worktree and switches that session to the new checkout; it does not fetch refs for you. For a child that cannot use this tool, prepare a separate worktree and pass its path as `cwd` to `pstack_subagent`. If the DSH tool is unavailable, use `git worktree` directly.
+The DSH worktree plugin is part of the supported pstack install. Ask each writer to fetch its selected base and call `create_worktree` with `from` set to that base before editing. It creates a local Git worktree and switches that session to the new checkout; it does not fetch refs for you. If a child needs a prepared checkout instead, pass its path as `cwd` to `pstack_subagent`.
 
 ```text
-/poteto-mode new task. call create_worktree with from=<base> before editing; if unavailable, use a separate Git worktree for each writer.
+/poteto-mode new task. call create_worktree with from=<base> before editing.
 ```
 
-Each task in its own branch and worktree means no agent stomps another's files. Worktrees cost disk and machine resources, so a laptop runs only a handful at once. The DSH Agent Team tools do not create one worktree per teammate; Team members share their checkout. The [Opening a PR playbook](../../skills/poteto-mode/playbooks/opening-a-pr.md) works from a worktree.
+Each task in its own branch and worktree means no agent stomps another's files. Worktrees cost disk and machine resources, so a laptop runs only a handful at once. The [Opening a PR playbook](../../skills/poteto-mode/playbooks/opening-a-pr.md) works from a worktree.
 
 Worktrees accumulate. When disk gets tight, ask:
 

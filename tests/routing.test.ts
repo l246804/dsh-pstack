@@ -103,7 +103,7 @@ describe("role to agent options", () => {
         return { childId: `child-${starts.length}` };
       },
       loadAgent: async () => "",
-      maxDepth: 3,
+      maxDepth: () => 3,
       loadRole: async () => ({
         route: undefined,
         panelRoutes: [
@@ -207,6 +207,7 @@ describe("role to agent options", () => {
         return { childId: `child-${startedPresets.length}` };
       },
       loadAgent: async () => "",
+      allowedAgentPresets: ["cordis"],
       loadRole: async () => ({
         route: undefined,
         panelRoutes: [undefined, undefined],
@@ -224,6 +225,81 @@ describe("role to agent options", () => {
       { agent: parent, signal: new AbortController().signal } as never,
     );
     expect(startedPresets).toEqual(["cordis", "cordis"]);
+  });
+
+  it("clamps a requested maxDepth to the configured cap", async () => {
+    let startedDepth: number | undefined;
+    const tool = createPstackTool({
+      start: async ({ maxDepth }) => {
+        startedDepth = maxDepth;
+        return { childId: "child" };
+      },
+      loadAgent: async () => "",
+      maxDepth: () => 2,
+      loadRole: async () => ({ route: undefined, notes: [] }),
+    });
+    const result = await tool.execute(
+      {
+        description: "nested task",
+        prompt: "Do the task.",
+        agent: "general",
+        maxDepth: 9,
+      },
+      { agent: parent, signal: new AbortController().signal } as never,
+    );
+    expect(startedDepth).toBe(2);
+    expect(result).toContain("exceeds the pstack-subagent cap 2");
+  });
+
+  it("rejects an agent preset outside the configured allowlist", async () => {
+    const tool = createPstackTool({
+      start: async () => ({ childId: "child" }),
+      loadAgent: async () => "",
+      allowedAgentPresets: ["cordis"],
+      loadRole: async () => ({ route: undefined, notes: [] }),
+    });
+    await expect(
+      tool.execute(
+        {
+          description: "run helper",
+          prompt: "Do the task.",
+          agent: "general",
+          agentPreset: "minimal",
+        },
+        { agent: parent, signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow('must be one of ["cordis"]');
+  });
+
+  it("rejects a role route outside the configured allowedModels list", async () => {
+    const tool = createPstackTool({
+      start: async () => ({ childId: "child" }),
+      loadAgent: async () => "",
+      allowedModels: ["allowed/model"],
+      loadRole: async () => ({
+        route: { provider: "other", model: "model" },
+        notes: [],
+      }),
+    });
+    await expect(
+      tool.execute(
+        {
+          description: "run helper",
+          prompt: "Do the task.",
+          agent: "general",
+        },
+        { agent: parent, signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow("is not in the pstack-subagent allowedModels list");
+  });
+
+  it("omits agentPreset from the schema when no allowlist is configured", () => {
+    const tool = createPstackTool({
+      start: async () => ({ childId: "child" }),
+      loadAgent: async () => "",
+      loadRole: async () => ({ route: undefined, notes: [] }),
+    });
+    expect("agentPreset" in tool.parameters).toBe(false);
   });
 
   it("resolves a panel entry to concrete options", async () => {

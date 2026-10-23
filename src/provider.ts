@@ -34,14 +34,17 @@ function text(value: string | undefined): string {
 }
 
 /**
- * Parse one generated SKILL.md into the catalog entry the provider serves.
- * Generated files always carry `name` and `description`; a hand-edit that
- * removes them fails loudly instead of silently dropping the skill.
+ * Resolve one skill directory against the bundled root or an absolute path.
  */
 function skillDirectory(directory: string): string {
   return isAbsolute(directory) ? resolve(directory) : resolve(SKILLS_ROOT, directory);
 }
 
+/**
+ * Parse one generated SKILL.md into the catalog entry the provider serves.
+ * Generated files always carry `name` and `description`; a hand-edit that
+ * removes them fails loudly instead of silently dropping the skill.
+ */
 export function toEntry(directory: string, source: string): PstackSkillEntry {
   const { data } = parseFrontmatter(source);
   if (!text(data.name) || !text(data.description)) {
@@ -80,8 +83,10 @@ export interface PstackProviderOptions {
   readonly directories: readonly string[];
   /** Reads one skill body. Tests override it to avoid touching the package. */
   readonly read?: (directory: string) => string;
-  /** Reports malformed or unavailable skill entries without disabling the provider. */
+  /** Reports malformed or unavailable extra skill entries without disabling the provider. */
   readonly onError?: (directory: string, error: unknown) => void;
+  /** Bundled directories whose malformed entries must fail the provider. */
+  readonly strictDirectories?: readonly string[];
 }
 
 export function createProvider(options: PstackProviderOptions): SkillProvider {
@@ -89,10 +94,12 @@ export function createProvider(options: PstackProviderOptions): SkillProvider {
     options.read ??
     ((directory: string) => readFileSync(join(skillDirectory(directory), "SKILL.md"), "utf8"));
   const entries: PstackSkillEntry[] = [];
+  const strict = new Set(options.strictDirectories ?? []);
   for (const directory of options.directories) {
     try {
       entries.push(toEntry(directory, read(directory)));
     } catch (error) {
+      if (strict.has(directory)) throw error;
       options.onError?.(directory, error);
     }
   }
@@ -139,9 +146,10 @@ export function listBundledSkillDirectories(): string[] {
 }
 
 export function apply(ctx: Context, config: Config = {}): void {
+  const bundled = listBundledSkillDirectories();
   const directories = [
     ...new Set([
-      ...listBundledSkillDirectories(),
+      ...bundled,
       ...(config.extraSkillDirectories ?? []).map((directory) => resolve(directory)),
     ]),
   ];
@@ -149,8 +157,9 @@ export function apply(ctx: Context, config: Config = {}): void {
   ctx.skills.registerProvider(() =>
     createProvider({
       directories,
+      strictDirectories: bundled,
       onError: (directory, error) =>
-        logger.warn("skipping skill directory %s: %s", directory, error),
+        logger.warn("skipping extra skill directory %s: %s", directory, error),
     }),
   );
 }

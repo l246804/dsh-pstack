@@ -28,9 +28,9 @@ Skip Phase A only when the work is genuinely greenfield with no surrounding syst
 
 ## Phase B: Sketch
 
-Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as each runner's prompt.
+Run the **arena** skill with the design-sketch task and the Phase A grounding artifacts. Pass `references/runner-prompt.md` as the runner prompt. The tool starts one runner per `architect runners` entry and appends `Panel entry: <i> of <N>`; tell each runner to use that index for its output path.
 
-Take the runners from the `architect runners` line in the `pstack-models.md` rule, in place of the `arena runners` line. If the rule or that line is missing, both runners inherit the parent model. Alias and rejected entries follow the runner rules in the **arena** skill's Phase A.
+Take the runners from the `architect runners` line in the `pstack-models.md` rule, in place of the `arena runners` line. If the rule or that line is missing, one runner inherits the parent model. The arena skill's Phase A covers route selection.
 
 Design it twice. Require at least two structurally distinct candidates before synthesis, even when the first looks sufficient. This is the **exhaust-the-design-space** principle skill made concrete. Whole-shape alternatives, not point fixes inside one shape.
 

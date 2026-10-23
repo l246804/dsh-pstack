@@ -68,7 +68,7 @@ Tests alone are not sufficient verification. A PR is verified only when its unit
 
 ### Boot recipe, for every live lane
 
-Each live lane uses its own DSH worktree at the PR head. After fetching the head, have the child call `create_worktree` with `from` set to that head when available; otherwise prepare a Git worktree at the exact SHA and pass it through `cwd`. Drive through the project verification skill.
+Each live lane uses its own worktree at the PR head. After fetching the head, have the child call `create_worktree` with `from` set to that head. Drive through the project verification skill.
 
 - [ ] `git fetch origin <head-branch> && git checkout <head SHA>`.
 - [ ] <Start the backend and the surface. Wait for ready.>

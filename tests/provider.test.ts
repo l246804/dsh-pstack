@@ -71,6 +71,16 @@ describe("pstack skill provider", () => {
     expect(errors).toEqual(["/missing/pstack-skill"]);
   });
 
+  it("fails loudly for a malformed bundled directory", () => {
+    expect(() =>
+      createProvider({
+        directories: ["/missing/pstack-skill"],
+        read,
+        strictDirectories: ["/missing/pstack-skill"],
+      }),
+    ).toThrow("missing fixture");
+  });
+
   it("loads extra skills from absolute directories without prefixing the bundled root", async () => {
     const directory = await mkdtemp(join(tmpdir(), "pstack-skill-"));
     try {
