@@ -136,15 +136,15 @@ tool returns plain-text child ids and does not expose `outputSchema`.
 
 ## What changed from Cursor
 
-| Cursor                                                                   | DSH                                                                                                                                                                                        |
-| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `Task` tool                                                              | `pstack_subagent`                                                                                                                                                                          |
-| `subagent_type`                                                          | `agent`                                                                                                                                                                                    |
-| model slug                                                               | `role` resolved from `~/.dsh/pstack-models.md`                                                                                                                                             |
-| `readonly` / `run_in_background` / `environment`                         | Background by default; say "do not edit" in the prompt                                                                                                                                     |
-| `~/.cursor/rules/pstack-models.mdc`                                      | `~/.dsh/pstack-models.md`                                                                                                                                                                  |
-| `.cursor/skills/`                                                        | `.dsh/skills/`                                                                                                                                                                             |
-| Automations, Bugbot, cloud VMs, Custom Modes, `/loop`, `cursor-team-kit` | Marked skipped, or remapped where DSH has an equivalent. Have a writing child call DSH `create_worktree`; the worktree plugin is required.                                                 |
+| Cursor                                                                   | DSH                                                                                                                                        |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Task` tool                                                              | `pstack_subagent`                                                                                                                          |
+| `subagent_type`                                                          | `agent`                                                                                                                                    |
+| model slug                                                               | `role` resolved from `~/.dsh/pstack-models.md`                                                                                             |
+| `readonly` / `run_in_background` / `environment`                         | Background by default; say "do not edit" in the prompt                                                                                     |
+| `~/.cursor/rules/pstack-models.mdc`                                      | `~/.dsh/pstack-models.md`                                                                                                                  |
+| `.cursor/skills/`                                                        | `.dsh/skills/`                                                                                                                             |
+| Automations, Bugbot, cloud VMs, Custom Modes, `/loop`, `cursor-team-kit` | Marked skipped, or remapped where DSH has an equivalent. Have a writing child call DSH `create_worktree`; the worktree plugin is required. |
 
 `skills/make-bot-ui` is not ported: it depends entirely on Cursor Automations.
 It is not shipped, in any form. If you need it, read it from the upstream
