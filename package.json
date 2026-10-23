@@ -1,6 +1,6 @@
 {
   "name": "dsh-pstack",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "pstack for DeepSeek Harness: rigorous agent workflows ported from cursor/plugins.",
   "author": {
     "name": "leiwang",
@@ -53,6 +53,7 @@
     "dev": "vp pack --watch",
     "test": "vp test",
     "check": "vp check",
+    "release": "bumpp",
     "prepare": "vp pack",
     "prepublishOnly": "node scripts/check-rewrites.ts --check && node scripts/sync-upstream.ts --check && node scripts/report-coverage.ts --check && vp pack"
   },
@@ -64,6 +65,7 @@
     "@deepseek-ai/dsh-subagent": "0.2.1-rc.2",
     "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
     "@types/node": "^26.6.5",
+    "bumpp": "^12.3.0",
     "typescript": "^7.0.2",
     "vite-plus": "catalog:"
   },
