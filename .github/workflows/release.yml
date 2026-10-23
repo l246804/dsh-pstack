@@ -10,6 +10,8 @@ jobs:
     uses: sxzz/workflows/.github/workflows/release.yml@main
     with:
       publish: true
+      build: |
+        git submodule update --init --recursive
     permissions:
       contents: write
       id-token: write
