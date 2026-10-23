@@ -726,7 +726,7 @@ const RULES: readonly TermRule[] = [
     doc: {
       table: "tools",
       cursor: "`resume`",
-      dsh: "This bundle has no child-steering tool. Use a fresh child with consolidated scope unless the DSH profile provides a control tool.",
+      dsh: "This bundle has no child-steering tool. Use a fresh child with consolidated scope unless the profile mounts `@deepseek-ai/dsh-tool-subagent-control`.",
     },
   },
   {
@@ -1078,7 +1078,7 @@ The \`arena runners\`, \`architect runners\`, and \`interrogate reviewers\` role
 
 You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. A second opinion is the same prompt against a different model. Agreement is high-signal.
 
-**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. This bundle does not add a child-steering tool; continue an existing child only if the DSH profile provides one and the new work strictly needs state that is costly to move. Otherwise start fresh. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
+**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. This bundle does not add a child-steering tool; continue an existing child only when the profile mounts \`@deepseek-ai/dsh-tool-subagent-control\` and the new work strictly needs state that is costly to move. Otherwise start fresh. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
 
 ## Worktrees
 
@@ -1425,7 +1425,7 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     ],
     [
       / Probe read-only: the ledger, `units\.tsv`, `gh`, pushed branches, the cloud agent's status in the Cursor dashboard\. Transcript mtime is not liveness\./,
-      " Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, and DSH child completion notices. Use `list_agents` to list your direct child sessions when the profile provides it. Session-log mtime is not liveness.",
+      " Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, and DSH child completion notices. When the profile mounts `@deepseek-ai/dsh-tool-subagent-control`, `list_agents` lists your direct child sessions; otherwise rely on the child id and completion notices. Session-log mtime is not liveness.",
     ],
     [
       /- After a Cursor restart: local agents are dead, cloud work is not\. Re-read the standing orders and `units\.tsv`, recompute the frontier, reattach cloud work by PR and branch rather than agent id,/,

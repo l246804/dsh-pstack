@@ -112,8 +112,10 @@ rejects role routes outside it. `allowedAgentPresets` controls whether the model
 can select a preset. Neither is a tool argument.
 
 The call returns child ids immediately. Final answers arrive as completion
-notices. The adapter adds no child-steering or listing tools; use the profile's
-generic `send_message` and `list_agents` when they are mounted.
+notices. The adapter adds no child-steering or listing tools. When the profile
+mounts `@deepseek-ai/dsh-tool-subagent-control`, use its `send_message` and
+`list_agents` for pstack children. Other tools with those names may manage a
+different collaboration surface.
 
 ## Roles
 

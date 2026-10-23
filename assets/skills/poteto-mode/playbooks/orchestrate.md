@@ -93,7 +93,7 @@ A unit is not done until its output is externalized the moment it lands, never b
 
 #### Liveness and failure
 
-- Never restart an agent to check on it. A fresh child starts without the old child's memory. Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, and DSH child completion notices. Use `list_agents` to list your direct child sessions when the profile provides it. Session-log mtime is not liveness.
+- Never restart an agent to check on it. A fresh child starts without the old child's memory. Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, and DSH child completion notices. When the profile mounts `@deepseek-ai/dsh-tool-subagent-control`, `list_agents` lists your direct child sessions; otherwise rely on the child id and completion notices. Session-log mtime is not liveness.
 - A silent death gets a synthetic postmortem row in the inbox (unit, failure mode, last evidence, options). Replan on evidence as it arrives. Never wait for full quiescence.
 - Retry by mode: cap-hit or oom, respawn with smaller scope. Network-drop, retry as-is. Tool-error, retry on a different model. Unknown, retry once. Two retries, then abandon the unit and replan around it.
 - A zombie that returns hours late reconciles against the current frontier and ledger before anything is accepted. Salvage unique findings through a fresh unit, never a blind merge.

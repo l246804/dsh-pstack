@@ -12,7 +12,7 @@ This is the DSH adapter for pstack. It is the single source of truth for how a C
 | `subagent_type: "comment-sicko"` | `agent: "comment-sicko"`. |
 | `run_in_background: true` | Always on. Every child is a managed background activation. |
 | `readonly: true` / `readonly: false` | No separate mode. Say "do not edit files" in the prompt, and check `git status` afterward. |
-| `resume` | This bundle has no child-steering tool. Use a fresh child with consolidated scope unless the DSH profile provides a control tool. |
+| `resume` | This bundle has no child-steering tool. Use a fresh child with consolidated scope unless the profile mounts `@deepseek-ai/dsh-tool-subagent-control`. |
 | `AskQuestion` | `ask_user_question`. In non-interactive runs it is absent, so ask in plain text. |
 | `TodoWrite` | `todo_write` with the whole list. |
 | `Grep` / `Glob` | `grep` / `glob`. |

@@ -41,9 +41,11 @@ preambles, or panel expansion.
 
 In a profile that mounts `@deepseek-ai/dsh-tool-subagent-control`, its
 `send_message`, `interrupt_agent`, and `list_agents` tools can steer, interrupt,
-and list pstack children. Do not assume those names are Agent Team-only. The
-profile's Team bundle is the user's separate choice; pstack never enables it and
-its docs do not depend on it.
+and list pstack children. Do not assume those names are Agent Team-only. If the
+profile does not mount subagent-control, pstack children are not steerable or
+listable; use the child id and completion notices. The profile's Team bundle is
+the user's separate choice; pstack never enables it and its docs do not depend
+on it.
 
 ## Delegation policy
 

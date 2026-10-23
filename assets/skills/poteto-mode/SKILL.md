@@ -104,7 +104,7 @@ The `arena runners`, `architect runners`, and `interrogate reviewers` roles fan 
 
 You own every subagent's work. Review the diff and write your own summary, don't pass through what it said. A second opinion is the same prompt against a different model. Agreement is high-signal.
 
-**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. This bundle does not add a child-steering tool; continue an existing child only if the DSH profile provides one and the new work strictly needs state that is costly to move. Otherwise start fresh. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
+**Fresh subagents by default.** Give new work to a fresh subagent with consolidated scope, meaning the original brief, every later directive, and the prior agent's report and branch. This holds for a fix round, a follow-up, a retry, and the next queue item. This bundle does not add a child-steering tool; continue an existing child only when the profile mounts `@deepseek-ai/dsh-tool-subagent-control` and the new work strictly needs state that is costly to move. Otherwise start fresh. A stop or hold order to a running agent is not reuse. A role such as a PR owner outlives its agent. Once that agent returns, a fresh child takes the role's next round.
 
 ## Worktrees
 

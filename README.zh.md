@@ -89,7 +89,7 @@ pstack_subagent(
 
 `pstack-subagent` 行还接受 `allowedModels` 和 `allowedAgentPresets`。`allowedModels` 是精确的 `provider/model` 路由列表，角色路由不在列表里会被拒绝。`allowedAgentPresets` 控制模型能否选择 preset。两者都不是工具参数。
 
-调用会立即返回子会话 id，最终答案稍后以完成通知送达。adapter 不提供 child-steering 或 listing 工具；profile 挂载了通用 `send_message`、`list_agents` 时可以使用。
+调用会立即返回子会话 id，最终答案稍后以完成通知送达。adapter 不提供 child-steering 或 listing 工具。profile 挂载 `@deepseek-ai/dsh-tool-subagent-control` 时，可以使用它的 `send_message` 和 `list_agents` 操作 pstack 子会话；同名的其他工具可能管理的是另一种协作面。
 
 ## 角色
 
