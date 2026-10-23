@@ -17,8 +17,7 @@
     "assets",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE",
-    "NOTICE"
+    "LICENSE"
   ],
   "type": "module",
   "main": "./dist/index.mjs",

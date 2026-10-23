@@ -156,4 +156,4 @@ before publishing.
 
 ## License
 
-MIT. The ported skills are MIT, copyright Lauren Tan. See [NOTICE](NOTICE).
+MIT. The ported skills are MIT, copyright Lauren Tan; see [LICENSE](LICENSE).
