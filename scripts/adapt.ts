@@ -459,14 +459,14 @@ const RULES: readonly TermRule[] = [
     kind: "path",
     detect: /\.cursor\/plugins\/|\.cursor-plugin/,
     apply: [
-      [/~\/\.cursor\/plugins\//g, "~/.dsh/plugins/"],
+      [/~\/\.cursor\/plugins\//g, "$DSH_HOME/profiles/$DSH_PROFILE/node_modules/"],
       [/\.cursor-plugin\/plugin\.json/g, "package.json"],
     ],
     forbid: /\.cursor-plugin/,
     doc: {
       table: "paths",
       cursor: "`~/.cursor/plugins/`, `.cursor-plugin/plugin.json`",
-      dsh: "`~/.dsh/plugins/`, `package.json`",
+      dsh: "`$DSH_HOME/profiles/$DSH_PROFILE/node_modules/`, `package.json`",
     },
   },
   {
@@ -1575,7 +1575,7 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
     ],
     [
       /A \[Cursor Project\]\(https:\/\/cursor\.com\/blog\/projects\) gives one coordinator agent a persistent thread\. The coordinator doesn't write code\. It directs subagents, which run in the cloud by default, so the work continues when your laptop is closed\./,
-      "A long-running coordinator needs one agent with a persistent thread. The coordinator doesn't write code. It directs subagents, which run in the background, so the work continues while you are elsewhere.",
+      "A long-running coordinator needs one long-lived session. The coordinator doesn't write code. It directs subagents, which run in the background, so the work continues while you are elsewhere.",
       "The paragraph describes a Cursor product feature (Projects and cloud execution); DSH has neither, so the same advice is stated without the product claim.",
     ],
     [/offline or restart Cursor\./g, "offline or restart the harness."],
@@ -1591,6 +1591,24 @@ For each candidate, read the first JSONL line. Take the file whose opening user 
       /pstack ships this as a dormant \[automation pack\]\(\.\.\/\.\.\/automations\/benny\/README\.md\) for Slack issue reports\. One automation triages each report\. The other reproduces confirmed bugs and may prepare a small draft fix\. Point an agent at its \[`FOR_AGENTS\.md`\]\(\.\.\/\.\.\/automations\/benny\/FOR_AGENTS\.md\) and name the target repository to set it up\./,
       "DSH's `schedule_create` tool can create a time-based follow-up when that tool is available. It does not subscribe to Slack issue events or run a triage/reproduction pipeline; configure an event source separately if you need event-triggered intake.",
       "The source links to an automation pack that is absent from the generated package; describe only the DSH scheduling capability and its boundary.",
+    ],
+    [
+      /- Give each body of work its own Project, such as a feature, a migration, a perf push, or a tech-debt cleanup\. Several can run side by side\./,
+      "- Give each body of work its own worktree and standing-orders entry, such as a feature, a migration, a perf push, or a tech-debt cleanup. Several can run side by side.",
+    ],
+    [
+      /- Drag related chats into the Project, finished ones included\. They become context for every agent in it\./,
+      "- Keep related session logs and decision records in the standing orders. They become context for every agent in the program.",
+    ],
+    [
+      /One prompt can carry a whole Project, from research through execution:/,
+      "One prompt can carry a whole program, from research through execution:",
+    ],
+  ],
+  "docs/guide/README.md": [
+    [
+      /and Projects and automations that scale past one agent\./,
+      "and scheduled follow-ups that scale past one agent.",
     ],
   ],
   "docs/guide/09-make-it-yours.md": [
@@ -1662,6 +1680,10 @@ Restart \`dsh web\` after install. The bundle mounts the pstack skill provider a
     [
       /\[`\/setup-pstack`\]\(\.\.\/\.\.\/skills\/setup-pstack\/SKILL\.md\) detects the models you have access to, asks for a reasoning budget,/,
       "[`/setup-pstack`](../../skills/setup-pstack/SKILL.md) uses `list_subagent_models` when the profile exposes it; otherwise it asks for the provider/model pairs you can use. It asks for a reasoning budget,",
+    ],
+    [
+      /A role with no line in the rule keeps the skill's default\./,
+      "A role with no line in the rule inherits the parent chat route.",
     ],
     [
       /To keep `\/poteto-mode` on for the whole chat,[^\n]*\n\n/,

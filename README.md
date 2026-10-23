@@ -31,7 +31,7 @@ dsh plugin --profile web add .
 Restart `dsh web` after install. The bundle patch mounts four rows:
 
 - `pstack` registers the bundled skill provider. Every converted skill appears
-  in the session catalog with its Cursor invocation policy preserved:
+  in the session catalog with its upstream invocation flags preserved:
   `/poteto-mode` and the other skills stay user-invocable. Skills disabled for
   model invocation are not callable through DSH's model-facing `skill` tool.
   This package preserves those flags rather than silently changing upstream
@@ -74,8 +74,9 @@ steps. Each step names the skill it routes to. The other skills work directly:
 `/no-comments`, `/unslop`, `/technical-writing`, `/sharpen`, `/teach`, and the
 twenty-four `principle-*` rules.
 
-See the converted [pstack guide](assets/docs/guide/README.md) and the
-[DSH adapter reference](assets/docs/harness/dsh.md).
+See the converted [pstack guide](assets/docs/guide/README.md), the
+[DSH adapter reference](assets/docs/harness/dsh.md), and the
+[working decisions](docs/porting/decisions.md).
 
 ### Configure roles
 
@@ -130,9 +131,10 @@ role routes outside it are rejected. `allowedAgentPresets` controls whether the
 model can select a preset. Neither is a tool argument.
 
 The call returns child ids immediately. The runtime reports final answers in
-completion notices. The adapter adds no child-steering or listing tools; use
-`send_message` and `list_agents` when the active profile provides them. The
-tool returns plain-text child ids and does not expose `outputSchema`.
+completion notices. The adapter adds no child-steering or listing tools. Use the
+profile's generic subagent-control tools (`send_message`, `list_agents`) when
+they are mounted. The tool returns plain-text child ids and does not expose
+`outputSchema`.
 
 ## What changed from Cursor
 

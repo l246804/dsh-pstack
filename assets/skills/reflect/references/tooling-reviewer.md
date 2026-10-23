@@ -28,7 +28,7 @@ Scan for:
 
 ## Scope to skills and tools the session actually used
 
-Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `read` of its `SKILL.md` (under `.dsh/skills/`, `~/.dsh/skills/`, or `~/.dsh/plugins/`), a `pstack_subagent` prompt naming its path, or a tool call (`bash`, `grep`, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
+Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `read` of its `SKILL.md` (under `.dsh/skills/`, `~/.dsh/skills/`, or `$DSH_HOME/profiles/$DSH_PROFILE/node_modules/`), a `pstack_subagent` prompt naming its path, or a tool call (`bash`, `grep`, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.
 
 Two finding shapes are valid:
 - The parent invoked the skill and you found a real gap in its body. Route to the skill's relevant section.

@@ -24,7 +24,7 @@ Run:
 
 The defaults inherit the parent chat route, so they cost nothing extra beyond the children themselves. A real route written as `<provider>/<model> [effort]` pins that role; `unlimited`, `large`, `medium`, and `small` set the effort token on those routes.
 
-You only override what you care about. A role with no line in the rule keeps the skill's default. To restore a default, delete that role's line. A rerun of `/setup-pstack` keeps any role whose model differs from the default. When a default changes, a rule written before the change still pins the old default, so delete those role lines, or delete the file, then run `/setup-pstack` again.
+You only override what you care about. A role with no line in the rule inherits the parent chat route. To restore a default, delete that role's line. A rerun of `/setup-pstack` keeps any role whose model differs from the default. When a default changes, a rule written before the change still pins the old default, so delete those role lines, or delete the file, then run `/setup-pstack` again.
 
 `inherit-parent` means the child runs on the parent chat model. Both `inherit-parent` and `auto` are accepted aliases, and neither is a model slug. For a panel role the value is a comma-separated list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures `swarm workers`, the default route for every `/swarm` worker unless a race names a route for each arm.
 

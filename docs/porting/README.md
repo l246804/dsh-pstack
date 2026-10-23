@@ -1,7 +1,8 @@
 # Porting pstack to DSH
 
 This is the policy behind `scripts/adapt.ts`. Read it before adding a rule or
-touching a generated skill.
+touching a generated skill. The current dependency and delegation choices are
+recorded in [decisions.md](./decisions.md).
 
 ## The one rule
 

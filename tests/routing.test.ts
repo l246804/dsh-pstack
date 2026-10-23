@@ -293,6 +293,35 @@ describe("role to agent options", () => {
     ).rejects.toThrow("is not in the pstack-subagent allowedModels list");
   });
 
+  it("fails closed when a panel route is outside allowedModels", async () => {
+    const startedRoutes: Array<unknown> = [];
+    const tool = createPstackTool({
+      start: async ({ route }) => {
+        startedRoutes.push(route);
+        return { childId: `child-${startedRoutes.length}` };
+      },
+      loadAgent: async () => "",
+      allowedModels: ["allowed/model"],
+      loadRole: async () => ({
+        route: undefined,
+        panelRoutes: [{ provider: "other", model: "model" }, undefined],
+        notes: [],
+      }),
+    });
+    await expect(
+      tool.execute(
+        {
+          description: "review candidates",
+          prompt: "Review this design.",
+          agent: "general",
+          role: "arena runners",
+        },
+        { agent: parent, signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow("is not in the pstack-subagent allowedModels list");
+    expect(startedRoutes).toEqual([]);
+  });
+
   it("omits agentPreset from the schema when no allowlist is configured", () => {
     const tool = createPstackTool({
       start: async () => ({ childId: "child" }),

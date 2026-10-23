@@ -25,7 +25,7 @@ This is the DSH adapter for pstack. It is the single source of truth for how a C
 | --- | --- |
 | `~/.cursor/rules/pstack-models.mdc` | `~/.dsh/pstack-models.md` |
 | `.cursor/skills/`, `~/.cursor/skills/` | `.dsh/skills/`, `~/.dsh/skills/` |
-| `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | `~/.dsh/plugins/`, `package.json` |
+| `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | `$DSH_HOME/profiles/$DSH_PROFILE/node_modules/`, `package.json` |
 | `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-slug>/<session-id>/` |
 
 ## Models

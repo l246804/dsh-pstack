@@ -18,14 +18,15 @@ committed tree, a clean clone has nothing to compare and the check has to treat
 
 ## What "generated" still means
 
-`assets/` is never hand-edited. Every change comes from one of two inputs:
+`assets/` is never hand-edited. Every change comes from one of three inputs:
 
 - the `upstream/cursor-plugins` submodule pointer
 - `scripts/adapt.ts`, which holds the rewrite rules
+- `scripts/sync-upstream.ts`, which decides which files are copied and how
 
-When either changes, run `vp run sync` and commit the pointer, the rule change,
-and the regenerated tree together. Committing one without the others is a lie
-about which source produced the tree.
+When any of them changes, run `vp run sync` and commit the pointer, the rule or
+generator change, and the regenerated tree together. Committing one without the
+others is a lie about which source produced the tree.
 
 ## What enforces it
 

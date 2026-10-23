@@ -327,8 +327,8 @@ export function createPstackTool(deps: PstackToolDeps) {
       const validatedRoutes: Array<Route | undefined> = [];
       for (const [index, childRoute] of routes.entries()) {
         if (childRoute) {
+          assertAllowedRoute(childRoute);
           try {
-            assertAllowedRoute(childRoute);
             if (deps.validateRoute) await deps.validateRoute(childRoute, exec.signal);
           } catch (error) {
             if (!panelRoutes || exec.signal.aborted) throw error;
