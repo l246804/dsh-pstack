@@ -4,33 +4,48 @@ This is the policy behind `scripts/adapt.ts`. Read it before adding a rule or
 touching a generated skill. The current dependency and delegation choices are
 recorded in [decisions.md](./decisions.md).
 
-## The one rule
+## The default rule
 
 **Translate names, not sentences.**
 
-A skill is upstream prose. Upstream owns the wording: its examples, its
-emphases, its jokes, its section order. The port owns only the concepts DSH does
-not have. Anything that is not a Cursor concept stays byte-identical, so every
-upstream improvement flows through the next sync.
+Minimal change is the default. A small diff is what lets upstream improvements
+flow through the next sync. It is not an absolute rule. A skill is upstream
+prose, and upstream owns the wording: its examples, its emphases, its jokes, its
+section order. The port owns only the concepts DSH does not have.
+
+When a name swap would make the sentence false, ambiguous, or ungrammatical,
+rewrite the smallest span that restores the original instruction. Replace the
+whole sentence when the sentence itself is about the other API. Record the reason
+for a block rewrite, as described in "Writing a rule". Correctness wins over
+minimal change, and minimal change wins over style.
+
+Outside those cases, anything that is not a Cursor concept stays byte-identical.
+The generated-file contract below is the only other exception.
 
 ## Decide the change class first
 
-| Upstream says                                            | Change class | Allowed shape                           |
-| -------------------------------------------------------- | ------------ | --------------------------------------- |
-| A tool, path, field, or model slug with a DSH equivalent | token swap   | a name for a name, inside one line      |
-| A Cursor feature DSH lacks                               | replacement  | a sentence that states the DSH behavior |
-| A concept that no longer exists at all                   | drop         | delete the clause, or say it is skipped |
+| Upstream says                                                                                       | Change class | Allowed shape                                                       |
+| --------------------------------------------------------------------------------------------------- | ------------ | ------------------------------------------------------------------- |
+| A tool, path, field, or model slug with a DSH equivalent                                            | token swap   | a name for a name, inside one line, when the sentence stays true    |
+| A Cursor feature DSH lacks, or a name whose replacement would leave the sentence false or ambiguous | replacement  | the smallest clause or sentence that states the DSH behavior        |
+| A concept that no longer exists at all                                                              | drop         | delete the clause, or say it is skipped; keep the sentence complete |
 
-The first class must never become a paragraph edit. The third must say what
-happens instead; it must never leave a dangling sentence.
+A token swap must stay on one line. If the smallest true rewrite crosses a line,
+the change is a replacement, not a token swap. A drop must say what happens
+instead; it must never leave a dangling sentence. Choose replacement when DSH has
+a behavior to put in place. Choose drop when there is nothing to put in place;
+say the step is skipped, or delete the clause, but keep the sentence complete.
 
 ## Minimal vs. correct
 
-This is the line a reviewer should hold:
+This is the line a reviewer should hold. Ask one question: after the rewrite,
+does the sentence still give the same instruction and the same safety
+constraint? If yes, prefer the smaller diff. If no, fix the smallest span that
+restores it. Awkwardness is acceptable only when the reading is unchanged.
 
-- **Grammar that is merely awkward is acceptable.** A missing article, a plural
-  that reads oddly, a sentence that is a little clunky: leave it. It does not
-  change what an agent will do, and rewriting it is how a port starts drifting.
+- **Grammar that is merely awkward is acceptable when it does not change the
+  reading.** A missing article, a plural that reads oddly, a sentence that is a
+  little clunky: leave it. Rewriting it is how a port starts drifting.
 - **A changed meaning is a bug and must be fixed.** If the rewrite makes the
   sentence claim something false, drop a constraint, or lose a step, the port is
   wrong even when the prose reads better.
@@ -104,7 +119,9 @@ reviewing `assets/`, not installation prerequisites.
 
 ## Writing a rule
 
-Every rule answers three questions in its declaration:
+Every concept rule answers three questions in its declaration. A doc-only rule or
+a guard may leave `apply` empty; it still declares `kind`, `detect`, and either
+`forbid` or `coverage` plus `reason`.
 
 1. `kind`: why does this need a rule at all? `rename`, `path`, `indirect` are
    token swaps. `approximate`, `drop`, `host` may rewrite a sentence.
@@ -113,17 +130,17 @@ Every rule answers three questions in its declaration:
 3. `forbid` / `coverage` / `reason`: how do we prove it ran, and if it is not
    full coverage, why not?
 
-Two mechanical checks enforce this:
+Two mechanical checks enforce the scope:
 
 - `validateRules()` rejects a token rule whose pattern spans a line break.
   A `rename` that needs a paragraph is a lie about its own scope.
 - `assertRewriteScope()` rejects a file rewrite that crosses a line break
   without a written reason as its third element.
 
-A block rewrite is not forbidden. It is allowed when the section is entirely
-about the other API, such as `poteto-mode`'s Subagents section or `reflect`'s
-transcript discovery. It must say so in one sentence, and `check-rewrites.ts`
-prints every block rewrite with its reason so a reviewer can audit them all.
+A block rewrite is not forbidden. It is allowed when the matched span is about
+the other API, or when a name swap would leave the sentence false or ambiguous.
+It must state why in one sentence, and `check-rewrites.ts` prints every block
+rewrite with its reason so a reviewer can audit them all.
 
 ## Never do these
 
@@ -131,13 +148,16 @@ prints every block rewrite with its reason so a reviewer can audit them all.
   or normalizing punctuation across the whole document is not translation. It
   broke real code samples: `z.string()` became `z.string`, `toSQL()` became
   `toSQL`.
-- Do not rewrite a sentence just because a token inside it changed. Find the
-  smallest span that carries the concept and replace only that span.
+- Do not rewrite a sentence just because a token inside it changed. Raise the
+  rewrite when the token's replacement makes the sentence false, ambiguous, or
+  ungrammatical; then use the smallest span that restores it.
 - Do not use a blanket possessive sweep. `Cursor's X` can be a product name, a
   feature, or a sentence subject; a global rule produced "DSH built-in" and "DSH
   docs", both false.
 - Do not leave a rule that no longer matches upstream. `check-rewrites.ts` fails
-  the sync; update the pattern, do not delete the check.
+  the sync for surgical file and script anchors; update the pattern, do not
+  delete the check. A term rule whose `detect` matches no file is reported by
+  `report-coverage.ts`; decide whether it is a guard or dead weight.
 
 ## Quoting and frontmatter
 
@@ -145,6 +165,15 @@ Descriptions are written as plain YAML scalars unless a plain scalar would
 change meaning (leading indicator characters, `: `, ` #`, or a newline). Quoting
 every description added diff noise to every generated file without changing a
 byte of meaning.
+
+## Generated-file contract
+
+Every generated `SKILL.md` gets a few intentional changes that are not concept
+edits: its frontmatter is reserialized to the DSH keys, a one-line adapter note
+is inserted before the body, and trailing whitespace and excessive blank lines
+are normalized. `make-bot-ui` is excluded and `setup-pstack` is replaced by
+`DSH_SETUP_SKILL`; both are deliberate choices in `scripts/adapt.ts`. Judge a
+sync diff against these exceptions first, then against the concepts.
 
 ## Working loop
 
@@ -156,5 +185,6 @@ vp check           # lint and types
 ```
 
 `assets/` is committed. Review the `git diff` of `assets/` as part of the
-change. If the diff shows changes outside the concepts you touched, the rules
-are too broad; narrow them before committing.
+change. If the diff shows changes outside the concepts you touched and outside
+the generated-file contract, the rules are too broad; narrow them before
+committing.
