@@ -747,7 +747,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - `engines.dsh`、peer dependencies 和 Node 版本按当前实现确定。开发与验证基线为 DSH `0.2.1-rc.3`，不要复制旧 `rc.2` 约束而不重新评估。
 - `setup-pstack` 只写角色文件，不写 `package.json`、`cordis.patch.yml`、native default model 或凭据。
 - 当前版本禁止与 Agent Team 在同一个 profile 中同时启用。Agent Team 会遮蔽 `send_message`、`interrupt_agent`、`list_agents`，并共享子代理激活容量。该规则不加运行时检测，最终 README 必须保留警告原文，见 [决策记录](decisions/2026-10-24-no-agent-team-coexistence.md)。
-- README 的必填章节和内容边界见 [决策记录](decisions/2026-10-24-readme-content.md)。README 只写用户可见行为，不写实现和源码说明。
+- README 的必填章节和内容边界见 [内容决策](decisions/2026-10-24-readme-content.md)，篇幅与版本写法见 [篇幅决策](decisions/2026-10-24-readme-concision.md)。README 只写用户可见行为，不写实现和源码说明。
 
 ## 12. 测试和实机验收
 
@@ -906,7 +906,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - 生成资产提交，禁止手改，使用文件级精确 patch。
 - 核心使用 `pstack_subagent`，不引入 Agent Teams，不以 workflow/Ralph 取代普通委派。
 - 当前版本禁止与 Agent Team 同 profile 启用。该规则不加运行时检测，最终 README 必须保留警告，见 [决策记录](decisions/2026-10-24-no-agent-team-coexistence.md)。
-- README 必须包含简介、DSH 版本、实现原理、worktree 依赖、Agent Team 兼容性、安装、logo 和快速开始。额外技能有则写，无则省略。worktree 作为必要依赖自动启用，已启用时不重复启用。详见 [决策记录](decisions/2026-10-24-readme-content.md)。
+- README 必须包含简介、DSH 版本、实现原理、worktree 依赖、Agent Team 兼容性、安装、logo 和快速开始。额外技能有则写，无则省略。worktree 作为必要依赖自动启用，已启用时不重复启用。详见 [内容决策](decisions/2026-10-24-readme-content.md) 和 [篇幅决策](decisions/2026-10-24-readme-concision.md)。
 - worktree、control、search 优先复用官方能力，pstack 不重复实现通用生命周期。
 - `paths` 自动触发降级，不新增复杂的文件事件框架。
 - 历史读取以 `sessionQuery` 为后端，新增最小只读授权工具。
