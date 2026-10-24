@@ -55,7 +55,7 @@ Audience: 在新会话中实施 `refactor/plugin-v2` 的开发者
 |---|---|---|
 | 上游 | `upstream/cursor-plugins`，`d1453c11d1dde9714d4c313c97d3a68432265c7f` | `pstack/plugin.json` 为 `0.15.29`。56 个技能目录含 134 个文件。 |
 | Claude Code 参照 | `upstream/cursor-plugins/harness/pstack/claude-code` 和 `scripts/generate-pstack-harness-trees.mjs` | 23 个 `SKILL.md` 只增加适配导读，其他 111 个文件与原始技能树逐字节相同。 |
-| 当前分支 | `refactor/plugin-v2` | 包含 `AGENTS.md`、`.gitmodules`、`upstream`、本设计文档和上游核对脚本；插件实现尚未开始。 |
+| 当前分支 | `refactor/plugin-v2` | 包含 `AGENTS.md`、`.gitmodules`、`upstream`、README、本设计文档、决策记录和上游核对脚本；插件实现尚未开始。 |
 | 旧实现 | `main`，`3416f562232cd3c54ca4a47a20adf1adc56ff364` | 生成器和 Host 可作参考，不可作为现行 API 证明。 |
 | DSH | `/home/leihaohao/.vite-plus/packages/@deepseek-ai/dsh/a1604d92-17eb-42b5-b7b7-f42c39952459/lib/node_modules/@deepseek-ai/dsh/`，`0.2.1-rc.3` | `skills`、`subagents`、`sessionQuery`、`worktrees` 等契约通过 Inspect 和安装包源码核对。版本见 `package.json:4`，该目录是已安装运行包，不是仓库工作目录。 |
 | 旧参考目录 | `/home/leihaohao/workspace/pstack` | 未提交的旧实验，上游更旧。不得作为本次生成基线。 |
@@ -182,12 +182,12 @@ docs/
 - `pstack-history` 注入 `tools`、`subagents`、`sessionQuery`，只读历史。持久化来源由 `sessionQuery` 的组合提供，不能假设 `ctx.sessions` 自身会持久化。当前会话审计使用 `observeSession` 的活跃快照，不需要注入 `sessions` 或调用 flush。若实现另需 flush 或 cwd 校验，再显式加入对应依赖并验证，不能靠隐式依赖。
 - `maxDepth: 2` 允许根会话 0、track child 1、worker 2。它是绝对 delegation depth，不是剩余调用次数。实际 Host 设置仍由 `ctx.subagents.resolveMaxDepth()` 决定。
 - 允许降低单次调用的 depth，不允许模型超过行配置。`agentPreset` 只在 `allowedAgentPresets` 存在时进入 schema，未配置时由部署决定默认值。
-- 首版不把 worktree、Agent Teams、workflow、Ralph 设为硬依赖。并行写 playbook 需要用户启用官方 worktree bundle，缺能力时只在该步骤报告。
+- worktree 是首版随包保证的依赖。未启用时由 bundle 条件挂载官方 worktree 行，已启用时不重复挂载。并行写 playbook 不再要求用户手动启用。Agent Teams、workflow、Ralph 仍不是硬依赖。
 - 单元 5 前的内部增量可以暂不注册第三行。该增量不满足 §1 的首版验收，不得发布为首版。`reflect`、完整 `recall`、`show-me-your-work`、`eval` 等相关验收不得标通过。最终 55 技能完整目标需要它。
 
 这些行不是完整的宿主组合。目标 profile 还必须提供 `skills` 注册表和技能目录/加载消费者、`tools` 注册表、`subagents` 注册表及 `spawn` provider、`llm` adapter。`skill` 工具由官方 `tool-skill` 提供，不能从 provider 的存在推断它已挂载。真实验收要覆盖 preset 内的可见工具，而不只是 Host service。
 
-不恢复旧版用 `profileContext.startedBundles` 推断 worktree 是否重复挂载的方案。官方 worktree bundle 自己拥有 `worktree` 和 `tool-worktree` 两行。首版优先避免插件间的重复注册和启动快照问题。
+worktree 的检测和去重机制在实现阶段选定，并用真实 profile 验证。需要覆盖未启用、已启用、禁用后重新启用和升级四种情况。不能只在 README 声明自动启用。检测不能依赖启动时的快照猜测，启动快照会把热切换和升级路径留成盲区。
 
 ## 4. 术语与功能替代表
 
@@ -747,6 +747,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - `engines.dsh`、peer dependencies 和 Node 版本按当前实现确定。开发与验证基线为 DSH `0.2.1-rc.3`，不要复制旧 `rc.2` 约束而不重新评估。
 - `setup-pstack` 只写角色文件，不写 `package.json`、`cordis.patch.yml`、native default model 或凭据。
 - 当前版本禁止与 Agent Team 在同一个 profile 中同时启用。Agent Team 会遮蔽 `send_message`、`interrupt_agent`、`list_agents`，并共享子代理激活容量。该规则不加运行时检测，最终 README 必须保留警告原文，见 [决策记录](decisions/2026-10-24-no-agent-team-coexistence.md)。
+- README 的必填章节和内容边界见 [决策记录](decisions/2026-10-24-readme-content.md)。README 只写用户可见行为，不写实现和源码说明。
 
 ## 12. 测试和实机验收
 
@@ -905,6 +906,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - 生成资产提交，禁止手改，使用文件级精确 patch。
 - 核心使用 `pstack_subagent`，不引入 Agent Teams，不以 workflow/Ralph 取代普通委派。
 - 当前版本禁止与 Agent Team 同 profile 启用。该规则不加运行时检测，最终 README 必须保留警告，见 [决策记录](decisions/2026-10-24-no-agent-team-coexistence.md)。
+- README 必须包含简介、DSH 版本、实现原理、worktree 依赖、Agent Team 兼容性、安装、logo 和快速开始。额外技能有则写，无则省略。worktree 作为必要依赖自动启用，已启用时不重复启用。详见 [决策记录](decisions/2026-10-24-readme-content.md)。
 - worktree、control、search 优先复用官方能力，pstack 不重复实现通用生命周期。
 - `paths` 自动触发降级，不新增复杂的文件事件框架。
 - 历史读取以 `sessionQuery` 为后端，新增最小只读授权工具。
