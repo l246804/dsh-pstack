@@ -288,7 +288,7 @@ type Patch = {
 1. 枚举 `skills/<name>/SKILL.md`，验证目录名、frontmatter name、kebab-case 和长度。
 2. 读取技能及资源的 bytes 和 executable bit。文本与二进制分开处理，禁止把二进制按 UTF-8 读入。
 3. 先应用 `exclude`，再应用文件级 patch。每项锚点必须精确命中声明次数。
-4. 对需要共享导读的文件，在 H1 后插入 DSH 指引。导读只说明实际适配文件的位置，不用它代替精确替换。
+4. 对需要共享导读的文件，在 H1 后插入 DSH 指引。`bro`、`in-your-own-words`、`sharpen` 没有 H1，导读放在正文开头；不要为了让格式统一而给上游正文补标题。导读只说明实际适配文件的位置，不用它代替精确替换。
 5. 处理 frontmatter。保留 `name`、`description`、`disable-model-invocation`、`user-invocable` 和实际支持的 `whenToUse`。去掉 `icon`、`color`、`is_background`、`paths` 等当前 DSH 不消费字段，并在规则中说明。`typescript-best-practices` 的 `paths` 单独记录自动触发缺口。
 6. 只规范化目标格式需要的 CRLF、frontmatter 和最终换行。非特殊生成文件不得顺带清理全文空白。
 7. 解析 Markdown 链接，验证本地目标存在。遗漏资源先修复复制范围，不能默认改为网络链接。

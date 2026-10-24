@@ -3,3 +3,5 @@ dist
 .audit
 *.log
 .DS_Store
+.assets-staging
+.assets-backup
