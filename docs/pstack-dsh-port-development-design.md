@@ -746,6 +746,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - `skills/change` 影响后续 catalog，不改已经发生的模型请求。静态 provider 以包更新为边界。
 - `engines.dsh`、peer dependencies 和 Node 版本按当前实现确定。开发与验证基线为 DSH `0.2.1-rc.3`，不要复制旧 `rc.2` 约束而不重新评估。
 - `setup-pstack` 只写角色文件，不写 `package.json`、`cordis.patch.yml`、native default model 或凭据。
+- 当前版本禁止与 Agent Team 在同一个 profile 中同时启用。Agent Team 会遮蔽 `send_message`、`interrupt_agent`、`list_agents`，并共享子代理激活容量。该规则不加运行时检测，最终 README 必须保留警告原文，见 [决策记录](decisions/2026-10-24-no-agent-team-coexistence.md)。
 
 ## 12. 测试和实机验收
 
@@ -892,6 +893,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 | 脚本和文本脱节 | 计划检查器接受错误协议或审计脚本读错目录 | 同步 patch 和测试，独立 `check-scripts` |
 | 生成资产手改 | 下次同步覆盖，实际内容无法复现 | 只改规则和生成器，`--check` 拒绝漂移 |
 | 升级只跑同步 | 插件能生成但安装或运行失败 | PR 增加 build/test/check 和真实 profile smoke |
+| 与 Agent Team 同启 | Team 遮蔽控制工具、共享激活容量、提示词竞争 | 禁止同 profile 启用，最终 README 保留警告 |
 | 隐藏缺失能力 | 质量门槛被静默降低 | 局部 unsupported、保留未验证状态，help 不写幻想功能 |
 
 ## 15. 已决定事项与保留问题
@@ -902,6 +904,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - 首版 55/56，`make-bot-ui` 排除。
 - 生成资产提交，禁止手改，使用文件级精确 patch。
 - 核心使用 `pstack_subagent`，不引入 Agent Teams，不以 workflow/Ralph 取代普通委派。
+- 当前版本禁止与 Agent Team 同 profile 启用。该规则不加运行时检测，最终 README 必须保留警告，见 [决策记录](decisions/2026-10-24-no-agent-team-coexistence.md)。
 - worktree、control、search 优先复用官方能力，pstack 不重复实现通用生命周期。
 - `paths` 自动触发降级，不新增复杂的文件事件框架。
 - 历史读取以 `sessionQuery` 为后端，新增最小只读授权工具。
