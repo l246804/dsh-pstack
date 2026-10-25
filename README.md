@@ -58,7 +58,7 @@ dsh plugin --profile <profile> add dsh-pstack
 
 ## 角色配置
 
-`/setup-pstack` 写入 `~/.dsh/pstack-models.md`，一行一个角色。值可以是 `inherit-parent`，也可以是 `provider/model` 加推理档位。
+`/setup-pstack` 写入 `$DSH_HOME/pstack-models.md`，一行一个角色。`$DSH_HOME` 是 DSH 的用户目录。值可以是 `inherit-parent`，也可以是 `provider/model` 加推理档位。
 
 - `inherit-parent` 使用父会话的模型和推理档位。
 - panel 角色的值是列表，每一项启动一个子代理。
@@ -72,7 +72,8 @@ dsh plugin --profile <profile> add dsh-pstack
 包含 55 个技能、23 个 playbook、24 个原则和两个子代理人格。
 
 - `make-bot-ui` 不在支持范围。它依赖 Cursor 的 webhook routine 和 secret request，DSH 没有等价闭环。
-- Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes、`/loop` 和 Bugbot 配置。相关技能会说明不支持，不伪造替代。
+- Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。相关技能会在需要它们的步骤说明不支持，不伪造替代。
+- `/loop` 没有同名命令，也没有事件订阅，属于降级映射。能覆盖的是目标与定时输入：`create_goal` 记录目标和相位，`schedule_create` 只能作定时心跳，它把一条消息投回创建它的会话，不能盯着 PR 或 CI，子代理也无法自己布置。不能覆盖的是事件唤醒和云端存活：goal 不会自己感知外部事件，自动续跑还取决于 profile 是否挂载 goal round driver，未挂载时长时间任务只是同一个会话里被监督的运行。
 - `typescript-best-practices` 的 `paths` 自动触发不支持，需要时显式调用 `/typescript-best-practices`。
 - worktree 只隔离工作目录，不是 VM。schedule 是定时提醒，不是事件订阅。
 - 多模型评审需要配置真实不同的 route。只有同一 route 时，评审会标为同模型复核。
@@ -92,7 +93,7 @@ dsh plugin --profile <profile> add dsh-pstack@latest
 dsh plugin --profile <profile> remove dsh-pstack
 ```
 
-角色文件在用户目录，卸载不会删除它。不再使用时自行删除 `~/.dsh/pstack-models.md`。升级或卸载后按 DSH 提示重启会话。
+角色文件在 DSH 用户目录，卸载不会删除它。不再使用时自行删除 `$DSH_HOME/pstack-models.md`。升级或卸载后按 DSH 提示重启会话。
 
 ## 安全与数据
 

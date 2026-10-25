@@ -770,6 +770,8 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 
 ### 12.3 真实 DSH 验收
 
+本节的十步与 §12.4 的用例都是可执行清单，不是已经完成的证据。单元 7 把它们逐条整理进 `docs/release-verification-checklist.md` 并标注未验证，没有启动任何真实 profile，见 [发布验收分期](decisions/2026-10-25-release-verification-staging.md)。
+
 按以下顺序在隔离测试 profile 执行，不改用户当前 web profile。
 
 1. 构建、打包并检查文件清单。安装 bundle，读取 `application`。
@@ -785,7 +787,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 
 ### 12.4 行为级验收样例
 
-每个 B 用例必须记录真实输入、可观察结果和未覆盖项。涉及外部写操作的用例使用隔离仓库、fake reader 或测试 profile，不擅自操作真实 PR。
+本节全部用例在单元 7 结束时仍未执行，逐条状态见 `docs/release-verification-checklist.md`。每个 B 用例必须记录真实输入、可观察结果和未覆盖项。涉及外部写操作的用例使用隔离仓库、fake reader 或测试 profile，不擅自操作真实 PR。
 
 #### Playbook 验收
 
@@ -877,26 +879,26 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 
 ### 单元 7：发布审查
 
-同步 README、guide、poteto-help、决策记录和排除说明。运行完整静态检查、脚本测试、打包、安装、真实 profile 验收和文档中的命令。
+同步 README、guide、poteto-help、决策记录和排除说明。运行完整静态检查、单元测试、`sync:check`、`check:assets`、打包清单和受控副本上的脚本测试；不启动真实 profile，不安装到任何 profile，不操作真实 PR。
 
-验收：所有公开承诺与实际结果一致，未验证项明确保留，不把静态同步当作运行通过。
+验收：所有公开承诺与实际结果一致，未验证项明确保留在 `docs/release-verification-checklist.md`，不把静态同步或单元测试当作运行通过。§12.3 的实机步骤与 §12.4 的行为级用例改为发布批准后另行执行，见 [发布验收分期](decisions/2026-10-25-release-verification-staging.md)。
 
 ## 14. 风险与应对
 
 | 风险 | 具体后果 | 处理 |
 |---|---|---|
-| 只做词替换 | 句子保留 Cursor 行为，工具根本不存在 | 文件级语义 patch、真实调用验收 |
-| 局部替换后二次替换 | 新 DSH 文本再次被改写 | 互斥区间、最终输出 golden |
-| 角色和 panel 不一致 | 看似多模型，实际同一父模型多次 | 单一 manifest、真实 request header 验证、如实降级 |
+| 只做词替换 | 句子保留 Cursor 行为，工具根本不存在 | 文件级语义 patch；`check:assets` 断言生成树 `assets/` 里不出现 claude、没有别的宿主的安装命令、角色文件路径只有一种写法，README 与 guide 的禁词只能出现在排除语境；真实调用验收未执行 |
+| 局部替换后二次替换 | 新 DSH 文本再次被改写 | 互斥区间、最终输出 golden、`sync:check` |
+| 角色和 panel 不一致 | 看似多模型，实际同一父模型多次 | 单一 manifest、如实降级、`roleIndex` 越界与 autoPanel 拒绝有单元测试；真实 request header 验证未执行 |
 | `disable-model-invocation` 被误解 | 编排器调 `skill` 失败 | 保留 flag，内部按路径读取 |
-| 把日志当明文 | 压缩或新版本日志读不出，且可能越权 | `sessionQuery` 逻辑读取、身份和 cwd 授权 |
-| 把 worktree 当 VM | 端口、依赖、外部状态冲突被忽略 | 文档写明隔离边界，逐环境验证 |
-| 把 reminder 当 webhook | PR/外部事件没有触发却宣称自动化 | watcher 独立验证，schedule 只做 heartbeat |
-| 脚本和文本脱节 | 计划检查器接受错误协议或审计脚本读错目录 | 同步 patch 和测试，独立 `check-scripts` |
+| 把日志当明文 | 压缩或新版本日志读不出，且可能越权 | `sessionQuery` 逻辑读取、身份和 cwd 授权、分页与 lease 有单元测试 |
+| 把 worktree 当 VM | 端口、依赖、外部状态冲突被忽略 | README、guide 02、写入隔离边界的长任务 playbook 与 harness 映射都写明只隔离工作目录与分支；四条 profile 路径未验证 |
+| 把 reminder 当 webhook | PR/外部事件没有触发却宣称自动化 | 正文只把 `schedule_create` 写成定时输入，并且不给 child 布置；watcher 未实机验证 |
+| 脚本和文本脱节 | 计划检查器接受错误协议或审计脚本读错目录 | 同步 patch 和测试，独立 `check-scripts`；受控副本上通过，生产树不能跑 |
 | 生成资产手改 | 下次同步覆盖，实际内容无法复现 | 只改规则和生成器，`--check` 拒绝漂移 |
-| 升级只跑同步 | 插件能生成但安装或运行失败 | PR 增加 build/test/check 和真实 profile smoke |
-| 与 Agent Team 同启 | Team 遮蔽控制工具、共享激活容量、提示词竞争 | 禁止同 profile 启用，最终 README 保留警告 |
-| 隐藏缺失能力 | 质量门槛被静默降低 | 局部 unsupported、保留未验证状态，help 不写幻想功能 |
+| 升级只跑同步 | 插件能生成但安装或运行失败 | 提交前跑 `pnpm check` 与打包清单；真实 profile smoke 未执行 |
+| 与 Agent Team 同启 | Team 遮蔽控制工具、共享激活容量、提示词竞争 | 禁止同 profile 启用，README 保留警告原文；无运行时检测 |
+| 隐藏缺失能力 | 质量门槛被静默降低 | 局部 unsupported、保留未验证状态，help 不写幻想功能；未验证项集中在 `docs/release-verification-checklist.md` |
 
 ## 15. 已决定事项与保留问题
 
@@ -912,14 +914,15 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - `paths` 自动触发降级，不新增复杂的文件事件框架。
 - 历史读取以 `sessionQuery` 为后端，新增最小只读授权工具。
 - 旧 `main` 只作代码和测试意图参考，目标 API 以 rc.3 reinspection 为准。
+- 发布验收分期：静态门（同步检查、资产检查、类型检查、单元测试、打包清单、只读命令核查）与真实 profile 验收分成两步，后者由发布方批准后执行。详见 [发布验收分期](decisions/2026-10-25-release-verification-staging.md)。
 
 仍需实现阶段用证据关闭的问题，不得由猜测填入。
 
-- 各发布 preset 的实际工具集合和最低支持组合。
-- 模型配置是否要与 native allowedModels 统一。首版保持独立并明示，不读取私有 policy。
-- `pstack_history` 的最终分页大小、lease 生命周期和持久化不可用时的降级表现，需要原型验证。活跃读取不依赖 flush；若实现需要冷读取，必须证明 `provenance` 与 `persistedThroughSeq` 可区分。
-- Bun/Node、shell、profiler、图像比较等环境依赖的跨平台支持矩阵。
-- 复杂 playbook 的分阶段验收结果，尤其 watcher、Orchestrate、自动合并和进程重启后的真实状态。
+- **仍开放。** 各发布 preset 的实际工具集合和最低支持组合。单元 7 只做了只读核对，没有在真实 profile 里读工具面。
+- **已决定。** 模型配置是否要与 native allowedModels 统一：首版保持独立并明示，不读取私有 policy。若要统一，另写记录。
+- **已关闭。** `pstack_history` 的分页大小、lease 生命周期和持久化不可用的降级表现。现行为是默认 50、上限 200（超限拒绝而不截断）、lease 在 `finally` 里释放、持久化不可用返回分层 `unavailable`；证据是 `tests/history.test.ts` 与 [受限历史决策](decisions/2026-10-25-restricted-history.md)。冷读的逐事件来源按 rc.3 契约不可判定，如实报告为审计未完成，不再作为待解问题。
+- **仍开放。** Bun/Node、shell、profiler、图像比较等环境依赖的跨平台支持矩阵。目前只记录过 Bun 1.4.0 与 Node 24.22.1 上的脚本测试，Windows、profiler 与图像比较都没有矩阵。
+- **仍开放。** 复杂 playbook 的分阶段验收结果，尤其 watcher、Orchestrate、自动合并和进程重启后的真实状态。B04、B10、B13 至 B18、B20、B21 全部未执行。
 
 ## 16. 主要证据索引
 

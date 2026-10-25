@@ -119,7 +119,7 @@ describe("patch output", () => {
 describe("declared patch data", () => {
   it("declares every patch against an existing upstream file and builds cleanly", () => {
     expect(FILE_PATCHES.length).toBeGreaterThanOrEqual(60);
-    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(54);
+    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(60);
     expect(() => validatePatchTargets(FILE_PATCHES, EXCLUDED_SKILLS, UPSTREAM_ROOT)).not.toThrow();
     expect(() => buildAssets()).not.toThrow();
   });
@@ -167,7 +167,7 @@ describe("declared patch data", () => {
   });
 
   it("returns the patches for one file", () => {
-    expect(patchesForFile("skills/poteto-help/SKILL.md")).toHaveLength(20);
+    expect(patchesForFile("skills/poteto-help/SKILL.md")).toHaveLength(21);
     expect(patchesForFile("skills/how/SKILL.md")).toHaveLength(4);
     expect(patchesForFile("skills/tdd/SKILL.md")).toEqual([]);
   });

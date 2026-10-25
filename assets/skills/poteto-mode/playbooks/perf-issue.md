@@ -20,6 +20,6 @@
 5. Cite the measurement in the PR.
 6. Read `playbooks/opening-a-pr.md` next to this file and run it.
 
-For sustained improvement against a metric rather than a one-off fix, the Hillclimb playbook is not ported to this harness yet (`playbooks/hillclimb.md` still carries Cursor wording). Keep this playbook's measurement discipline and record the metric per iteration until that playbook lands.
+For sustained improvement against a metric rather than a one-off fix, use the Hillclimb playbook (`playbooks/hillclimb.md`), which keeps one hypothesis per iteration and needs a frozen measurement harness before the first change.
 
 **Reply:** baseline number, post-fix number, delta, artifact path.

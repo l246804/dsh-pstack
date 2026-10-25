@@ -45,7 +45,7 @@ Enabling the bundle adds the skill catalog and the `pstack_subagent` tool; nothi
 
 If cost is the worry, say where the tokens go and how to spend fewer. pstack spends extra tokens on subagents and review panels. Rerun `/setup-pstack` and pick a smaller budget or cheaper models. A role set to `inherit-parent` or `auto` runs on the parent route, so it spends nothing extra on a second model. A shorter panel list runs fewer subagents, one for each entry. Save `/poteto-mode` for work that needs rigor.
 
-This tree is the DSH build of pstack. The Cursor and Claude Code variants are upstream documents and are not shipped here. The [DSH harness mapping](../../docs/harness/dsh.md) maps the Cursor names onto this host, and a step that needs a capability this port does not have is reported at the step that needs it, not silently skipped.
+This tree is the DSH build of pstack. The [DSH harness mapping](../../docs/harness/dsh.md) maps the Cursor names onto this host, and a step that needs a capability this port does not have is reported at the step that needs it, not silently skipped.
 
 Every workflow skill here runs through this package's bundled skill provider, and the skills that delegate start `pstack_subagent` children whose routes come from `$DSH_HOME/pstack-models.md`. There is no Custom Mode and no loop command to type: start each task with `/poteto-mode`, register a long run as a goal with `create_goal`, and treat a multi-hour run as something you supervise in the same Session unless the goal round driver is mounted.
 
@@ -127,7 +127,7 @@ Playbooks are step lists inside `/poteto-mode`, not skills, so they have no slas
 - "full autopilot on this queue" runs Autopilot-full. "stack them, don't ship" runs Autopilot-stack.
 - "run the eval playbook" runs Eval.
 
-Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness, and each one states the gate it cannot pass on its own: Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun plus the `orch` CLI, and Hillclimb and Visual parity cannot claim a win without a measurement or an image diff they actually ran. Those flows are shipped as text and are not verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.
+Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness: all 23 files ship as text, and each one that depends on a capability this host lacks states that gate at the step that needs it. Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun plus the `orch` CLI, and Hillclimb and Visual parity cannot claim a win without a measurement or an image diff they actually ran. None of those flows has been verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.
 
 pstack has no planning skill. Cursor's Plan Mode works alongside it. For work that spans phases or stacked PRs, asking `/poteto-mode` for a plan runs the [Multi-phase plan playbook](../poteto-mode/playbooks/multi-phase-plan.md), which writes the plan and doesn't implement it. For a design question, the Prototype playbook or `/architect` settles it in code first.
 
@@ -137,7 +137,7 @@ Principles are one-rule skills that `/poteto-mode` reads and cites in its replie
 
 | Symptom | Fix |
 |---|---|
-| The mode stopped applying after a few turns | It was started with Enter. Start it as a Custom Mode, or start each task with `/poteto-mode`. |
+| The mode stopped applying after a few turns | Nothing keeps it on here: a skill attaches to the task that invoked it. Start each task with `/poteto-mode`. |
 | A question got treated as the next step of the last task | Say "new task", or say the turn doesn't need the mode. |
 | A new model choice had no effect | The file from `/setup-pstack` applies to the next delegation. A child that already started keeps the route it started with. |
 | Runs cost more than expected | See the cost paragraph under Get set up. |

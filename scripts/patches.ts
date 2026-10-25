@@ -158,6 +158,57 @@ export const UNIT6_FORBIDDEN_FIELDS: readonly string[] = [
 ];
 
 /**
+ * Files unit 7 rewrote to DSH semantics.
+ *
+ * These are the reader-facing pages and the two review templates that still
+ * carried another host's mechanism: a Custom Mode that keeps a skill in context,
+ * a cloud machine per parallel writer, a Cursor built-in that drafts a skill, and
+ * a skills directory a reviewer was told to look for. The playbooks
+ * `perf-issue` and `opening-a-pr` are here because they claimed two ported
+ * playbooks had not been ported.
+ */
+export const UNIT7_PATCHED_FILES: readonly string[] = [
+  "skills/poteto-mode/playbooks/perf-issue.md",
+  "skills/poteto-mode/playbooks/opening-a-pr.md",
+  "skills/reflect/references/judgment-reviewer.md",
+  "skills/reflect/references/tooling-reviewer.md",
+  "docs/guide/01-setup.md",
+  "docs/guide/02-poteto-mode.md",
+  "docs/guide/05-build-and-clean.md",
+  "docs/guide/06-verify-and-ship.md",
+  "docs/guide/09-make-it-yours.md",
+  "docs/guide/README.md",
+];
+
+/**
+ * Tokens those files may not keep.
+ *
+ * Each one is either a command a reader would type and the host would reject, a
+ * path that resolves nowhere in this package, or a mechanism the shipped text
+ * elsewhere states does not exist. `cursor-team-kit` is deliberately absent: the
+ * surviving mention says the plugin has no counterpart here, which is the whole
+ * point of the sentence.
+ */
+export const UNIT7_FORBIDDEN_FIELDS: readonly string[] = [
+  ".cursor/skills",
+  ".cursor/rules",
+  "pstack-models.mdc",
+  "/in-cloud",
+  "Option+Enter",
+  "Agents Window",
+  "Cursor's built-in",
+  "Cursor Project",
+  "cloud subagent",
+  "cloud agents",
+  "scheduled automation",
+  "mines your recent transcripts",
+  "/add-plugin",
+  "plugin marketplace",
+  "Create a Custom Mode",
+  "Start it as a Custom Mode",
+];
+
+/**
  * Cursor fields and paths that have no DSH equivalent.
  *
  * A unit-4 file may still name Cursor as a product where the sentence is about
@@ -249,9 +300,10 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "pstack is built for Cursor, and it also installs in Claude Code with `/plugin marketplace add cursor/plugins`, then `/plugin install pstack@cursor-plugins`. There, each command takes a `pstack:` prefix, such as `/pstack:poteto-mode`. The [Claude Code adapter](../../docs/harness/claude-code.md) maps the Cursor names, and a step that needs a Cursor-only feature, such as Bugbot or Automations, is skipped with a one-line note.\n\nOther tools can read the skills, because they use the Agent Skills format. But most workflow skills, including `/poteto-mode`, `/how`, `/why`, and `/teach`, spawn Cursor subagents with per-role models, and Custom Modes and `/loop` are Cursor features, so those parts may not work there.",
     expectedMatches: 1,
     replacement:
-      "This tree is the DSH build of pstack. The Cursor and Claude Code variants are upstream documents and are not shipped here. The [DSH harness mapping](../../docs/harness/dsh.md) maps the Cursor names onto this host, and a step that needs a capability this port does not have is reported at the step that needs it, not silently skipped.\n\nEvery workflow skill here runs through this package's bundled skill provider, and the skills that delegate start `pstack_subagent` children whose routes come from `$DSH_HOME/pstack-models.md`. There is no Custom Mode and no loop command to type: start each task with `/poteto-mode`, register a long run as a goal with `create_goal`, and treat a multi-hour run as something you supervise in the same Session unless the goal round driver is mounted.",
+      "This tree is the DSH build of pstack. The [DSH harness mapping](../../docs/harness/dsh.md) maps the Cursor names onto this host, and a step that needs a capability this port does not have is reported at the step that needs it, not silently skipped.\n\nEvery workflow skill here runs through this package's bundled skill provider, and the skills that delegate start `pstack_subagent` children whose routes come from `$DSH_HOME/pstack-models.md`. There is no Custom Mode and no loop command to type: start each task with `/poteto-mode`, register a long run as a goal with `create_goal`, and treat a multi-hour run as something you supervise in the same Session unless the goal round driver is mounted.",
     outputIncludes: [
       "[DSH harness mapping](../../docs/harness/dsh.md)",
+      "This tree is the DSH build of pstack. The [DSH harness mapping]",
       "no loop command to type",
       "register a long run as a goal with `create_goal`",
     ],
@@ -307,14 +359,206 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     expectedMatches: 1,
     outputIncludes: ["**Pitfall:** a duration is not a finish condition."],
   },
+  // -------------------------------------------------------------------------
+  // Unit 7: the reader-facing copy. The guide described installing from another
+  // host's marketplace, a Custom Mode that keeps a skill in context, and a cloud
+  // machine for parallel work. None of the three exists here, so each page states
+  // what this host actually does at the step that used to promise it.
+  // -------------------------------------------------------------------------
   {
     kind: "replace",
     file: "docs/guide/01-setup.md",
-    reason: "The linked document is the DSH mapping, so the label must name that document.",
-    anchor: "The [Claude Code adapter](../harness/claude-code.md)",
+    reason:
+      "The plugin is installed from npm into a DSH profile, not from a Cursor command or another host's marketplace.",
+    anchor:
+      "In a Cursor chat, run:\n\n```text\n/add-plugin pstack\n```\n\nCursor confirms the plugin is installed.",
     expectedMatches: 1,
-    replacement: "The [DSH harness mapping](../harness/dsh.md)",
-    outputIncludes: ["[DSH harness mapping](../harness/dsh.md)"],
+    replacement:
+      "Install the bundle into the profile you work in. `<profile>` is that profile's name, such as `web`:\n\n```bash\ndsh plugin --profile <profile> add dsh-pstack\n```\n\nDSH reports whether the bundle still has to be enabled and whether the change needs a new Session. Follow that prompt, and expect the skill catalog and `pstack_subagent` to load only after it.",
+    outputIncludes: ["dsh plugin --profile <profile> add dsh-pstack", "needs a new Session"],
+  },
+  {
+    kind: "drop",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "The paragraph installs the plugin in another host, names that host's rule path, and links a document this package does not ship; none of it applies to a DSH reader.",
+    anchor:
+      "In Claude Code, run `/plugin marketplace add cursor/plugins`, then `/plugin install pstack@cursor-plugins`. Claude Code prefixes plugin commands, so each command in this guide takes a `pstack:` prefix there, such as `/pstack:setup-pstack`, which writes its model rule to `~/.claude/rules/pstack-models.md`. The [Claude Code adapter](../harness/claude-code.md) covers the other differences.\n\n",
+    expectedMatches: 1,
+    outputIncludes: ["## Pick your models"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "The role file is `$DSH_HOME/pstack-models.md`, the one path every skill and the harness mapping use.",
+    anchor: "It writes `~/.cursor/rules/pstack-models.mdc`, a small rule every pstack skill reads.",
+    expectedMatches: 1,
+    replacement: "It writes `$DSH_HOME/pstack-models.md`, the small file every pstack skill reads.",
+    outputIncludes: ["$DSH_HOME/pstack-models.md"],
+  },
+  {
+    kind: "path",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "A generated verification skill is a project skill here, so it lands in `.dsh/skills/`, which is the path the generator's own body writes.",
+    anchor: "Say yes and it writes `.cursor/skills/verify-<app>/`, a project-local skill",
+    expectedMatches: 1,
+    replacement: "Say yes and it writes `.dsh/skills/verify-<app>/`, a project-local skill",
+    outputIncludes: [".dsh/skills/verify-<app>/"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "There is no Custom Mode and no mode shortcut on this host, so the page cannot teach one; it states the real way a skill stays applied.",
+    anchor:
+      "From here you can type normal follow-ups. To keep `/poteto-mode` on for the whole chat, pick it from the `/` menu with Option+Enter (Mac) or Alt+Enter (Windows) instead of Enter. That makes it a [Custom Mode](https://cursor.com/docs/skills#using-a-skill-as-a-custom-mode), which stays in context on every turn until you exit it. Custom Modes are available in the Agents Window and the CLI. Plain Enter attaches the skill to one message, and it fades as the chat moves on.",
+    expectedMatches: 1,
+    replacement:
+      "From here you can type normal follow-ups. `/poteto-mode` attaches to the task that invoked it and does not carry over to the next one, so start each new task by typing it again. There is no persistent mode and no keyboard shortcut that keeps it on: this host has neither, and a skill that should apply again has to be invoked again.",
+    outputIncludes: ["start each new task by typing it again", "this host has neither"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "The role file is a data file re-read on every delegation, not an always-applied rule, so the page calls it a file.",
+    anchor:
+      "You only override what you care about. A role with no line in the rule keeps the skill's default. To restore a default, delete that role's line. A rerun of `/setup-pstack` keeps any role whose model differs from the default. When a default changes, a rule written before the change still pins the old default, so delete those role lines, or delete the file, then run `/setup-pstack` again.",
+    expectedMatches: 1,
+    replacement:
+      "You only override what you care about. A role with no line in the file keeps the skill's default. To restore a default, delete that role's line. A rerun of `/setup-pstack` keeps any role whose model differs from the default. When a default changes, a file written before the change still pins the old default, so delete those role lines, or delete the file, then run `/setup-pstack` again.",
+    outputIncludes: ["A role with no line in the file keeps the skill's default."],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "`pstack_subagent` re-reads the role file on every delegation, so a new Session is not what the change waits for.",
+    anchor: "After setup, start a new chat. The model rule applies to new sessions.",
+    expectedMatches: 1,
+    replacement:
+      "After setup the file applies from the next delegation on, because `pstack_subagent` re-reads it every time.",
+    outputIncludes: [
+      "After setup the file applies from the next delegation on, because `pstack_subagent` re-reads it every time.",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/02-poteto-mode.md",
+    reason:
+      "Nothing keeps a skill in context between tasks on this host, so the page stops crediting a Custom Mode for it.",
+    anchor:
+      "Short works because the playbook holds the structure, and a Custom Mode keeps `/poteto-mode` in context on every turn. [Set up pstack](./01-setup.md#run-your-first-task) shows how to start one. Your words carry the intent, and the skill carries the rigor.",
+    expectedMatches: 1,
+    replacement:
+      "Short works because the playbook holds the structure, and `/poteto-mode` attaches to the task that invoked it. Nothing keeps the skill in context after that task, so type it again for each new one; [set up pstack](./01-setup.md) shows a first task. Your words carry the intent, and the skill carries the rigor.",
+    outputIncludes: ["Nothing keeps the skill in context after that task"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/02-poteto-mode.md",
+    reason:
+      "There is no cloud subagent and no per-agent machine here; the only isolation this host offers is the official worktree checkout.",
+    anchor:
+      "If you run several agents against one repository on one computer, they will fight over the working tree, the ports, and the build output. The cleanest isolation is a [cloud subagent](https://cursor.com/docs/subagents#cloud-subagents). Each one gets its own VM and branch, so it can install dependencies, run your app, and record video of the result without touching your machine. Type `/in-cloud` before the task, or ask the parent chat to hand work to cloud subagents.",
+    expectedMatches: 1,
+    replacement:
+      "If you run several agents against one repository on one computer, they will fight over the working tree, the ports, and the build output. There is no cloud machine and no VM here: every agent is a local child of this Session and ends when the host process ends. What you can give each writer is its own working directory and branch, through the official worktree rows this bundle mounts, so ask for a `create_worktree` checkout per writer and pass its absolute path as that child's `cwd`. Ports, caches, credentials, and services stay shared, so run one app instance and one heavy build at a time.",
+    outputIncludes: [
+      "There is no cloud machine and no VM here",
+      "so run one app instance and one heavy build at a time",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/02-poteto-mode.md",
+    reason: "Parallel work gets its own working directory and branch, not its own machine.",
+    anchor: "## Give parallel work its own machine",
+    expectedMatches: 1,
+    replacement: "## Give parallel work its own worktree",
+    outputIncludes: ["## Give parallel work its own worktree"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/02-poteto-mode.md",
+    reason:
+      "Every agent is local on this host, so the pointer asks for a worktree instead of contrasting local with cloud.",
+    anchor: "When the work has to stay local, ask for a worktree up front:",
+    expectedMatches: 1,
+    replacement: "Ask for a worktree up front:",
+    outputIncludes: ["Ask for a worktree up front:"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/05-build-and-clean.md",
+    reason:
+      "The comment-stripping plugin ships for another host and cannot be installed here, so the page points at the outcome instead of an install that does not exist.",
+    anchor:
+      "`/deslop` ships in the `cursor-team-kit` plugin, not in pstack. If you don't have it, ask for the same outcome in plain words: remove narrating comments, unsupported guards, dead compatibility paths, and unrelated edits.",
+    expectedMatches: 1,
+    replacement:
+      "`/deslop` ships in Cursor's `cursor-team-kit` and has no counterpart here. Ask for the same outcome in plain words: remove narrating comments, unsupported guards, dead compatibility paths, and unrelated edits.",
+    outputIncludes: ["has no counterpart here"],
+  },
+  {
+    kind: "path",
+    file: "docs/guide/06-verify-and-ship.md",
+    reason:
+      "A generated verification skill is a project skill here, so it lands in `.dsh/skills/`, which is the path the generator's own body writes.",
+    anchor: "It writes `.cursor/skills/verify-<app>/`, agent-facing instructions",
+    expectedMatches: 1,
+    replacement: "It writes `.dsh/skills/verify-<app>/`, agent-facing instructions",
+    outputIncludes: [".dsh/skills/verify-<app>/"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/06-verify-and-ship.md",
+    reason:
+      "There are no Cursor Automations here; a scheduled input is a cron job or a `schedule_create` reminder.",
+    anchor:
+      "Apps change, and feature maps go out of date. Run this at least once a day, ideally from a scheduled automation so nobody has to remember:",
+    expectedMatches: 1,
+    replacement:
+      "Apps change, and feature maps go out of date. Run this at least once a day, ideally from a cron job or a `schedule_create` reminder hoisted by the top-level agent, so nobody has to remember:",
+    outputIncludes: ["a cron job or a `schedule_create` reminder"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/09-make-it-yours.md",
+    reason:
+      "History comes from `pstack_history` and the workspace search, the mode skill lands in `.dsh/skills/`, and drafting goes through the authoring playbook rather than a Cursor built-in.",
+    anchor:
+      "You don't describe your style, because [`/automate-me`](../../skills/automate-me/SKILL.md) reads it out of your history. It mines your recent transcripts in the active workspace for repeated preferences, in how you like replies, delegation, verification, code, prose, and process, then asks you which patterns are really you. It drafts `.cursor/skills/<your-name>-mode/SKILL.md` through Cursor's built-in `create-skill` flow, runs the draft through [`/unslop`](../../skills/unslop/SKILL.md), and opens a PR from a worktree so you review it like any other change.",
+    expectedMatches: 1,
+    replacement:
+      "You don't describe your style, because [`/automate-me`](../../skills/automate-me/SKILL.md) reads it out of your history. Through `pstack_history` it reads this Session and its reviewable direct children as raw events, and it covers other Sessions in the same workspace with the official search, looking for repeated preferences in how you like replies, delegation, verification, code, prose, and process, then asks you which patterns are really you. It drafts `.dsh/skills/<your-name>-mode/SKILL.md` with the authoring playbook, runs the draft through [`/unslop`](../../skills/unslop/SKILL.md), and opens a PR from a worktree so you review it like any other change.",
+    outputIncludes: ["Through `pstack_history` it reads this Session", ".dsh/skills/<your-name>-mode/SKILL.md"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/09-make-it-yours.md",
+    reason:
+      "There is no built-in skill drafter here; the playbook writes the file and this package's own checks validate it.",
+    anchor:
+      "Writing a skill matches the [Authoring or modifying a skill playbook](../../skills/poteto-mode/playbooks/authoring-a-skill.md), which routes through Cursor's built-in `create-skill`, validates the frontmatter and links, and ships the result through the Opening a PR playbook.",
+    expectedMatches: 1,
+    replacement:
+      "Writing a skill matches the [Authoring or modifying a skill playbook](../../skills/poteto-mode/playbooks/authoring-a-skill.md), which writes the `SKILL.md` by hand, validates the frontmatter, links, and structure with this package's own checks, and ships the result through the Opening a PR playbook.",
+    outputIncludes: ["with this package's own checks"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/README.md",
+    reason:
+      "The page index promised Projects and Automations, and neither exists on this host; the overnight page now covers goals, reminders, and worktrees.",
+    anchor:
+      "7. [Run work while you sleep](./07-overnight.md). Trust before loops, an overnight contract, a decision log you can audit, and Projects and automations that scale past one agent.",
+    expectedMatches: 1,
+    replacement:
+      "7. [Run work while you sleep](./07-overnight.md). Trust before long runs, an overnight contract, a decision log you can audit, and goals, reminders, and worktrees that carry a run past one agent.",
+    outputIncludes: ["goals, reminders, and worktrees that carry a run past one agent"],
   },
   // -------------------------------------------------------------------------
   // Unit 4: the workflow skills. Every spawn becomes a `pstack_subagent` call,
@@ -1450,13 +1694,15 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/perf-issue.md",
     reason:
-      "The hillclimb playbook is not ported yet, so the pointer names the gap instead of routing into unadapted text.",
+      "Hillclimb ships as ported text, so the pointer routes into it instead of naming a gap that no longer exists.",
     anchor:
       "For sustained improvement against a metric rather than a one-off fix, use the Hillclimb playbook (`playbooks/hillclimb.md`).",
     expectedMatches: 1,
     replacement:
-      "For sustained improvement against a metric rather than a one-off fix, the Hillclimb playbook is not ported to this harness yet (`playbooks/hillclimb.md` still carries Cursor wording). Keep this playbook's measurement discipline and record the metric per iteration until that playbook lands.",
-    outputIncludes: ["the Hillclimb playbook is not ported to this harness yet"],
+      "For sustained improvement against a metric rather than a one-off fix, use the Hillclimb playbook (`playbooks/hillclimb.md`), which keeps one hypothesis per iteration and needs a frozen measurement harness before the first change.",
+    outputIncludes: [
+      "use the Hillclimb playbook (`playbooks/hillclimb.md`), which keeps one hypothesis per iteration",
+    ],
   },
   {
     kind: "replace",
@@ -1815,13 +2061,16 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/opening-a-pr.md",
     reason:
-      "Babysitting needs a watcher this port does not ship, so opening a PR must not promise one.",
+      "Babysit is ported with a watcher gate of its own, so opening a PR names that gate instead of claiming the playbook is missing.",
     anchor:
       "**Babysit.** Opening a PR does not start a babysit. Post the URL and keep building. Finish the phase or stack first. Run a separate babysit pass only when the user asks for one after the whole stack exists. A babysit for each new PR stalls the build and spends checks on commits later waves restart. Push back when feedback drifts from intent.",
     expectedMatches: 1,
     replacement:
-      "**Babysit.** Opening a PR does not start a babysit. Post the URL and keep building. Finish the phase or stack first. The babysit playbook is not ported to this harness yet, so a later pass means reading that playbook's `SKILL.md` at its absolute resource path and running the parts its own text marks as available. A babysit for each new PR stalls the build and spends checks on commits later waves restart. Push back when feedback drifts from intent.",
-    outputIncludes: ["The babysit playbook is not ported to this harness yet"],
+      "**Babysit.** Opening a PR does not start a babysit. Post the URL and keep building. Finish the phase or stack first. A later pass means reading the Babysit playbook at its absolute resource path and running `check` or `threads-only`, which need one forge read and a report; its `drive` and `background` modes need a watcher that can wake this Session, so say the watch is unverified when you cannot start one. A babysit for each new PR stalls the build and spends checks on commits later waves restart. Push back when feedback drifts from intent.",
+    outputIncludes: [
+      "running `check` or `threads-only`, which need one forge read and a report",
+      "so say the watch is unverified when you cannot start one",
+    ],
   },
   // -------------------------------------------------------------------------
   // poteto-help: the page that must describe only what this build ships.
@@ -1976,15 +2225,16 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-help/SKILL.md",
     reason:
-      "Only ten playbooks are ported, so the router must name them and stop implying the rest run here.",
+      "All 23 playbooks are ported, so the router states the real set and the gate each dependent flow hits, instead of claiming a gate on every file.",
     anchor:
       'Without `/poteto-mode`, a phrase such as "babysit this pr" can start Cursor\'s own skill for the same job instead. The Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) lists every playbook and when it applies. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     expectedMatches: 1,
     replacement:
-      'Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness, and each one states the gate it cannot pass on its own: Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun plus the `orch` CLI, and Hillclimb and Visual parity cannot claim a win without a measurement or an image diff they actually ran. Those flows are shipped as text and are not verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
+      'Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness: all 23 files ship as text, and each one that depends on a capability this host lacks states that gate at the step that needs it. Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun plus the `orch` CLI, and Hillclimb and Visual parity cannot claim a win without a measurement or an image diff they actually ran. None of those flows has been verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     outputIncludes: [
       "Every playbook in the Playbooks section",
-      "Those flows are shipped as text and are not verified end to end.",
+      "all 23 files ship as text",
+      "each one that depends on a capability this host lacks states that gate at the step that needs it",
     ],
   },
   {
@@ -3900,6 +4150,47 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "`schedule_create` is not a PR event watcher",
       "a reminder may only act as a fallback heartbeat",
     ],
+  },
+  // -------------------------------------------------------------------------
+  // Unit 7: the last reader-facing copy. One troubleshooting line told a reader
+  // to start a Custom Mode, and two review templates credited a skill only when a
+  // Cursor skills directory was read; on this host neither step exists.
+  // -------------------------------------------------------------------------
+  {
+    kind: "replace",
+    file: "skills/poteto-help/SKILL.md",
+    reason:
+      "A skill never persists between tasks on this host, so the symptom points at invoking it again rather than at a mode that does not exist.",
+    anchor:
+      "| The mode stopped applying after a few turns | It was started with Enter. Start it as a Custom Mode, or start each task with `/poteto-mode`. |",
+    expectedMatches: 1,
+    replacement:
+      "| The mode stopped applying after a few turns | Nothing keeps it on here: a skill attaches to the task that invoked it. Start each task with `/poteto-mode`. |",
+    outputIncludes: ["Nothing keeps it on here: a skill attaches to the task that invoked it."],
+  },
+  {
+    kind: "replace",
+    file: "skills/reflect/references/judgment-reviewer.md",
+    reason:
+      "Skill-usage evidence must be the real DSH calls and resource paths, not a Cursor `Read` of a skills directory.",
+    anchor:
+      "Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.cursor/skills/`, `~/.cursor/skills/`, or `~/.cursor/plugins/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.",
+    expectedMatches: 1,
+    replacement:
+      "Route findings only to skills, tools, or MCPs this log used. A skill counts as used when the raw events show a `skill` tool call naming it, a `read` event for its `SKILL.md` at a resource path, or a tool call (`bash`, `grep`, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.",
+    outputIncludes: ["a `skill` tool call naming it", "at a resource path"],
+  },
+  {
+    kind: "replace",
+    file: "skills/reflect/references/tooling-reviewer.md",
+    reason:
+      "The same evidence rule as the other two lenses: DSH calls and resource paths, not a Cursor skills directory.",
+    anchor:
+      "Route findings only to skills, tools, or MCPs this transcript used. A skill counts as used when the transcript shows a `Read` of its `SKILL.md` (under `.cursor/skills/`, `~/.cursor/skills/`, or `~/.cursor/plugins/`), a `Task` prompt naming its path, or a tool call (Shell, Grep, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.",
+    expectedMatches: 1,
+    replacement:
+      "Route findings only to skills, tools, or MCPs this log used. A skill counts as used when the raw events show a `skill` tool call naming it, a `read` event for its `SKILL.md` at a resource path, or a tool call (`bash`, `grep`, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.",
+    outputIncludes: ["a `skill` tool call naming it", "at a resource path"],
   },
 ];
 

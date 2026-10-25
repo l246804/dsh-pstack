@@ -27,7 +27,7 @@ Date: 2026-10-25
 1. `/loop until X` 映射为 `create_goal` 加真实的 `update_goal` 状态机。正文要求 predicate 可证伪，达到 predicate 才 `complete`，`blocked` 只在同一具体条件跨过部署阈值时报告并写明 `blocked_reason`，并明确暂停与恢复属于操作方的直接请求、宿主重启后 active goal 回到 disarmed。Ralph 一类重复提示驱动只在操作方点名时使用，不替代 predicate。
 2. `schedule_create` 只作为 heartbeat。它是定时输入，不是事件订阅：投递目标是创建它的那个 Session，不能由 child 创建，服务层和工具层都对 delegation depth > 0 的调用方返回 `subagent_session`，也没有 pause。正文不再出现"用 reminder 盯 PR"的写法。
 3. 事件唤醒只有两种真实形态：(i) 一个阻塞到条件变化再退出的进程，作为后台任务运行，settlement 以会话内通知抵达；(ii) 调用方自己跑的轮询，读它的输出。`watch-pr` 是 (i) 的脚本实现，它自己轮询 forge 并在终局退出，因此进程是 watcher、settlement 是唤醒，而不是"订阅"。没有第三种形态，也没有 webhook。
-4. 云能力整体删除。每个 owner、verifier、live lane 都是本机 `pstack_subagent` child，隔离用 `create_worktree`：只隔离工作目录与分支，端口、缓存、凭据和外部服务共享，进程结束即全部结束。凡"关掉笔记本还在跑""跨设备恢复""云端存活"的句子全部删除，不留同类替身。
+4. 云能力整体删除。每个 owner、verifier、live lane 都是本机 `pstack_subagent` child，隔离用 `create_worktree`：只隔离工作目录与分支，端口、缓存、凭据和外部服务共享，进程结束即全部结束。隔离范围的权威表述在 [worktree 条件挂载决策](2026-10-25-worktree-conditional-mount.md)，本条只说明云能力为什么被删。凡"关掉笔记本还在跑""跨设备恢复""云端存活"的句子全部删除，不留同类替身。
 5. 轮询就写轮询。watchdog、queue、存活检测只要实际是周期性检查，正文写 poll 与检查间隔，不写 watch；把轮询说成 watcher 与把 reminder 说成 webhook 是同一个错误。
 6. 三条硬边界写在每个用到它的 playbook 的那一步里，不集中在附录：`autonomous-run` 与 `babysit` 写 heartbeat 与 watcher 的区别，`shipping`/`autopilot-full`/`autopilot-stack`/`orchestrate`/`multi-phase-plan` 写 worktree 的隔离范围与"没有 VM"，`pause-safely` 写"暂停 goal 不等于保存工作现场"、宿主重启不会替你继续。
 

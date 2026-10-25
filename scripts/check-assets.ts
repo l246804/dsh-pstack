@@ -20,7 +20,7 @@ import {
 import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
-import { EXCLUDED_SKILLS, FORBIDDEN_CURSOR_FIELDS, INTRO_SKILLS, UNIT4_PATCHED_FILES, UNIT5_FORBIDDEN_FIELDS, UNIT5_PATCHED_FILES, UNIT6_FORBIDDEN_FIELDS, UNIT6_PATCHED_FILES, patchesForFile } from "./patches.ts";
+import { EXCLUDED_SKILLS, FORBIDDEN_CURSOR_FIELDS, INTRO_SKILLS, UNIT4_PATCHED_FILES, UNIT5_FORBIDDEN_FIELDS, UNIT5_PATCHED_FILES, UNIT6_FORBIDDEN_FIELDS, UNIT6_PATCHED_FILES, UNIT7_FORBIDDEN_FIELDS, UNIT7_PATCHED_FILES, patchesForFile } from "./patches.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
@@ -101,6 +101,9 @@ export function checkAssets(): AssetsReport {
   checkUndeclaredFiles(problems);
   checkHarnessDoc(problems);
   checkRewrittenTexts(problems);
+  for (const problem of checkAssetsHostCopy()) problems.push(problem);
+  for (const problem of scanReleaseCopy(collectReleaseCopy())) problems.push(problem);
+  for (const problem of checkPlaybookClaims()) problems.push(problem);
   checkRoleAssets(problems);
   checkLicense(problems);
   checkPackageManifest(problems);
@@ -598,6 +601,316 @@ function checkHarnessDoc(problems: string[]): void {
 }
 
 /**
+ * The one install command form, and the one role-file path, the shipped copy may
+ * show.
+ *
+ * A reader follows these literally. Two spellings of the same install, or a path
+ * that only resolves on another host, is a defect review catches late, so the
+ * release gate checks it mechanically instead of trusting a read-through.
+ */
+export const INSTALL_COMMAND_PREFIX = "dsh plugin --profile <profile> ";
+export const INSTALL_ADD_COMMAND = `${INSTALL_COMMAND_PREFIX}add dsh-pstack`;
+export const INSTALL_UPGRADE_COMMAND = `${INSTALL_COMMAND_PREFIX}add dsh-pstack@latest`;
+export const INSTALL_REMOVE_COMMAND = `${INSTALL_COMMAND_PREFIX}remove dsh-pstack`;
+export const ROLE_FILE_PATH = "$DSH_HOME/pstack-models.md";
+
+/** Install commands belonging to a host this package is not. */
+const FOREIGN_INSTALL_TOKENS: readonly string[] = [
+  "/add-plugin",
+  "plugin marketplace",
+  "/plugin install",
+];
+
+/**
+ * Terms README and the guide may carry only where the sentence excludes them.
+ *
+ * The rule is about placement, not vocabulary: naming a mechanism in order to say
+ * the host lacks it is required, while recommending it is the defect.
+ */
+export const EXCLUSION_TERMS: readonly { readonly label: string; readonly pattern: RegExp }[] = [
+  { label: "/loop", pattern: /\/loop\b/ },
+  { label: "cloud agent", pattern: /cloud agents?\b/i },
+  { label: "Cursor Project", pattern: /Cursor Projects?\b/ },
+  { label: "make-bot-ui", pattern: /make-bot-ui/ },
+  { label: "automation", pattern: /automations?\b/i },
+];
+
+/** A sentence counts as excluding a term when it reports the term as absent. */
+export const EXCLUSION_MARKERS: readonly RegExp[] = [
+  /\bno\b/i,
+  /\bnone\b/i,
+  /\bnot\b/i,
+  /\bnever\b/i,
+  /\bexcluded\b/i,
+  /\bunsupported\b/i,
+  /\bcannot\b/i,
+  /\bwithout\b/i,
+  /没有/,
+  /不在/,
+  /不支持/,
+  /无等价/,
+];
+
+/** The playbooks poteto-help promises, and the gate its own body has to carry. */
+export const PLAYBOOK_COUNT = 23;
+export const PLAYBOOK_CLAIM = "Every playbook in the Playbooks section";
+export const PLAYBOOK_GATES: readonly {
+  readonly playbook: string;
+  readonly claim: string;
+  readonly evidence: string;
+}[] = [
+  {
+    playbook: "babysit.md",
+    claim: "Babysit needs a watcher that can wake the Session",
+    evidence: "watcher",
+  },
+  {
+    playbook: "shipping.md",
+    claim: "Shipping needs a real driver for the surface",
+    evidence: "driver",
+  },
+  {
+    playbook: "orchestrate.md",
+    claim: "Orchestrate needs Bun plus the `orch` CLI",
+    evidence: "Bun",
+  },
+  {
+    playbook: "hillclimb.md",
+    claim: "Hillclimb and Visual parity cannot claim a win without a measurement",
+    evidence: "measur",
+  },
+  {
+    playbook: "visual-parity.md",
+    claim: "or an image diff they actually ran",
+    evidence: "image diff",
+  },
+];
+
+export interface ReleaseCopyInput {
+  readonly file: string;
+  readonly text: string;
+  /**
+   * Whether the marketing-term placement rule applies.
+   *
+   * It is a rule about the reader-facing pages, where a promise to add a Cursor
+   * feature would be read as a claim about this host. A skill body may name browser
+   * automation as a testing technique, and that sentence is not a promise.
+   */
+  readonly exclusions?: boolean;
+}
+
+/**
+ * Audit one body of shipped copy against the release rules.
+ *
+ * Exported so a test can prove the rules fire on a known-bad fixture instead of
+ * only observing that the real tree happens to pass.
+ */
+export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly string[] {
+  const problems: string[] = [];
+
+  for (const { file, text, exclusions = true } of inputs) {
+    for (const token of FOREIGN_INSTALL_TOKENS) {
+      for (const found of findLines(text, token)) {
+        problems.push(
+          `${file}:${found.number}: install command from another host (${JSON.stringify(token)})`,
+        );
+      }
+    }
+
+    for (const found of findLines(text, "dsh plugin")) {
+      if (!found.text.includes("--profile <profile>")) {
+        problems.push(
+          `${file}:${found.number}: "dsh plugin" must name the profile as --profile <profile>`,
+        );
+      }
+    }
+
+    for (const match of text.matchAll(/\b(?:add|remove) dsh-pstack(?:@latest)?/g)) {
+      const start = match.index ?? 0;
+      const before = text.slice(Math.max(0, start - INSTALL_COMMAND_PREFIX.length), start);
+      if (before !== INSTALL_COMMAND_PREFIX) {
+        problems.push(
+          `${file}: ${JSON.stringify(match[0])} must be written as "${INSTALL_COMMAND_PREFIX}${match[0]}"`,
+        );
+      }
+    }
+
+    for (const match of text.matchAll(/pstack-models/g)) {
+      const start = match.index ?? 0;
+      const before = text.slice(Math.max(0, start - "$DSH_HOME/".length), start);
+      const after = text.slice(
+        start + "pstack-models".length,
+        start + "pstack-models".length + ".example.md".length,
+      );
+      if (before === "$DSH_HOME/" || after === ".example.md") continue;
+      const line = text.slice(0, start).split("\n").length;
+      problems.push(
+        `${file}:${line}: the role file is ${ROLE_FILE_PATH}; found ${JSON.stringify(text.slice(Math.max(0, start - 20), start + 30))}`,
+      );
+    }
+
+    if (!exclusions) continue;
+    for (const line of linesOf(text)) {
+      for (const term of EXCLUSION_TERMS) {
+        if (!term.pattern.test(line.text)) continue;
+        if (EXCLUSION_MARKERS.some((marker) => marker.test(line.text))) continue;
+        problems.push(
+          `${file}:${line.number}: names ${term.label} outside a sentence that excludes it: ${JSON.stringify(line.text.slice(0, 120))}`,
+        );
+      }
+    }
+  }
+
+  return problems;
+}
+
+/**
+ * Every shipped file, checked for the other host's name.
+ *
+ * The whole generated tree is in scope, not just Markdown: a resource file or a
+ * script comment is shipped copy too. `scripts/patches.ts` is out of scope on
+ * purpose, because an upstream anchor has to keep the upstream wording or `sync`
+ * stops matching.
+ */
+export function checkAssetsHostCopy(): readonly string[] {
+  const problems: string[] = [];
+  for (const file of walkFiles(ASSETS_ROOT)) {
+    const hits = otherHostMentionCount(readFileSync(file, "latin1"));
+    if (hits > 0) {
+      problems.push(
+        `${toRepositoryPath(file)}: names Claude ${hits} time(s); this package is the DSH build and ships no other host's install text or document pointer`,
+      );
+    }
+  }
+  return problems;
+}
+
+/** Case-insensitive mention count for the other host's name in one body of text. */
+export function otherHostMentionCount(text: string): number {
+  return countOccurrences(text.toLowerCase(), "claude");
+}
+
+/** README and the generated bodies a reader meets before or beside a skill. */
+export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
+  const inputs: ReleaseCopyInput[] = [
+    { file: "README.md", text: readFileSync(join(ROOT, "README.md"), "utf8") },
+  ];
+  for (const file of walkFiles(join(ASSETS_ROOT, "docs", "guide"))) {
+    if (!file.endsWith(".md")) continue;
+    inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8") });
+  }
+  for (const file of walkFiles(join(ASSETS_ROOT, "skills"))) {
+    if (!file.endsWith(".md")) continue;
+    inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8"), exclusions: false });
+  }
+  return inputs;
+}
+
+/**
+ * Check the playbook promise against the playbook directory.
+ *
+ * `poteto-help` states that every playbook in `poteto-mode`'s list is ported and
+ * that each dependent one names its gate. Both halves are data: 23 files exist,
+ * every file is listed, and every gate the claim names is stated in the body of
+ * the playbook it names.
+ */
+export function checkPlaybookClaims(): readonly string[] {
+  const problems: string[] = [];
+  const directory = join(ASSETS_ROOT, "skills", "poteto-mode", "playbooks");
+  if (!existsSync(directory)) {
+    return ["assets/skills/poteto-mode/playbooks: missing the ported playbooks"];
+  }
+
+  const files = readdirSync(directory)
+    .filter((name) => name.endsWith(".md"))
+    .sort();
+  if (files.length !== PLAYBOOK_COUNT) {
+    problems.push(
+      `assets/skills/poteto-mode/playbooks: expected ${PLAYBOOK_COUNT} playbooks, found ${files.length}`,
+    );
+  }
+
+  const listingPath = join(ASSETS_ROOT, "skills", "poteto-mode", "SKILL.md");
+  const listing = existsSync(listingPath) ? readFileSync(listingPath, "utf8") : "";
+  const listed: string[] = [];
+  for (const line of linesOf(playbooksSection(listing))) {
+    const title = /^- \*\*([^*]+?)\.\*\*/.exec(line.text);
+    if (title === null) continue;
+    const explicit = /File: `playbooks\/([^`]+)`/.exec(line.text);
+    listed.push(explicit?.[1] ?? `${kebabCase(title[1] as string)}.md`);
+  }
+  reportSetDifference(
+    problems,
+    "assets/skills/poteto-mode/SKILL.md playbooks",
+    files,
+    [...new Set(listed)].sort(),
+  );
+
+  const helpPath = join(ASSETS_ROOT, "skills", "poteto-help", "SKILL.md");
+  const help = existsSync(helpPath) ? readFileSync(helpPath, "utf8") : "";
+  const claim = linesOf(help).find((line) => line.text.includes(PLAYBOOK_CLAIM));
+  if (claim === undefined) {
+    problems.push(`assets/skills/poteto-help/SKILL.md: missing the "${PLAYBOOK_CLAIM}" sentence`);
+    return problems;
+  }
+
+  for (const gate of PLAYBOOK_GATES) {
+    if (!claim.text.includes(gate.claim)) {
+      problems.push(
+        `assets/skills/poteto-help/SKILL.md:${claim.number}: the playbook claim no longer states ${JSON.stringify(gate.claim)}`,
+      );
+    }
+    const body = join(directory, gate.playbook);
+    if (!existsSync(body)) {
+      problems.push(`assets/skills/poteto-mode/playbooks/${gate.playbook}: claimed but missing`);
+      continue;
+    }
+    if (!readFileSync(body, "utf8").includes(gate.evidence)) {
+      problems.push(
+        `assets/skills/poteto-help/SKILL.md:${claim.number}: the claim gives ${gate.playbook} a gate on ${JSON.stringify(gate.evidence)}, but that playbook never states it`,
+      );
+    }
+  }
+
+  return problems;
+}
+
+interface TextLine {
+  readonly number: number;
+  readonly text: string;
+}
+
+function linesOf(text: string): readonly TextLine[] {
+  return text.split("\n").map((line, index) => ({ number: index + 1, text: line }));
+}
+
+function findLines(text: string, token: string): readonly TextLine[] {
+  return linesOf(text).filter((line) => line.text.includes(token));
+}
+
+function kebabCase(title: string): string {
+  return title
+    .toLowerCase()
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/^-|-$/g, "");
+}
+
+/** The `## Playbooks` section of a skill body, up to the next level-2 heading. */
+function playbooksSection(body: string): string {
+  const lines = body.split("\n");
+  const start = lines.findIndex((line) => line.trim() === "## Playbooks");
+  if (start === -1) return "";
+  let end = lines.length;
+  for (let index = start + 1; index < lines.length; index += 1) {
+    if ((lines[index] as string).startsWith("## ")) {
+      end = index;
+      break;
+    }
+  }
+  return lines.slice(start + 1, end).join("\n");
+}
+
+/**
  * Audit the bodies the rewriting units produced.
  *
  * A rewritten skill may still name Cursor where the sentence is about Cursor, but
@@ -627,6 +940,11 @@ function checkRewrittenTexts(problems: string[]): void {
     {
       paths: UNIT6_PATCHED_FILES,
       forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT6_FORBIDDEN_FIELDS],
+      boldSkillRule: false,
+    },
+    {
+      paths: UNIT7_PATCHED_FILES,
+      forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT7_FORBIDDEN_FIELDS],
       boldSkillRule: false,
     },
   ];
