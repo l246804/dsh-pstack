@@ -93,7 +93,7 @@ describe("generated asset set", () => {
       expect(category, skill).toMatch(/^(copy|intro-only|patched)$/);
       counts[category as keyof typeof counts] += 1;
     }
-    expect(counts).toEqual({ copy: 31, "intro-only": 13, patched: 11 });
+    expect(counts).toEqual({ copy: 31, "intro-only": 6, patched: 18 });
     expect(classifications.get("poteto-help")).toBe("patched");
     expect(classifications.get("blast-radius")).toBe("patched");
     expect(classifications.get("setup-pstack")).toBe("patched");
@@ -106,10 +106,19 @@ describe("generated asset set", () => {
       "interrogate",
       "no-comments",
       "figure-it-out",
+      "recall",
+      "reflect",
+      "automate-me",
+      "show-me-your-work",
+      "typescript-best-practices",
+      "create-verification-skill",
+      "maintain-verification-skill",
     ]) {
       expect(classifications.get(skill), skill).toBe("patched");
     }
     expect(classifications.get("tdd")).toBe("copy");
+    // poteto-mode's own body is still unit 6 work; only its playbooks moved.
+    expect(classifications.get("poteto-mode")).toBe("intro-only");
   });
 
   it("requires an intro everywhere the upstream text uses host vocabulary", () => {
@@ -309,8 +318,10 @@ describe("capability table", () => {
       expect(byId.get(id)?.coverage, id).toBe("degraded");
     }
     for (const id of ["transcripts", "loop"]) {
-      expect(byId.get(id)?.coverage, id).toBe("deferred");
+      expect(byId.has(id), id).toBe(true);
     }
+    expect(byId.get("transcripts")?.coverage).toBe("degraded");
+    expect(byId.get("loop")?.coverage).toBe("deferred");
     expect(byId.get("automations")?.coverage).toBe("excluded");
     for (const id of ["skill-by-name", "project-skills", "plugin-location"]) {
       expect(byId.get(id)?.coverage, id).toBe("mapped");
@@ -333,9 +344,10 @@ describe("capability table", () => {
       expect(byId.get(id)?.coverage, id).toBe("degraded");
     }
     // The rows a later unit owns stay deferred or excluded rather than shipping early.
-    expect(byId.get("transcripts")?.coverage).toBe("deferred");
+    expect(byId.get("transcripts")?.coverage).toBe("degraded");
     expect(byId.get("loop")?.coverage).toBe("deferred");
     expect(byId.get("automations")?.coverage).toBe("excluded");
+    expect(byId.get("skill-paths-field")?.coverage).toBe("degraded");
   });
 
   it("keeps table cells single-line and pipe-free", () => {

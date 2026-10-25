@@ -609,7 +609,7 @@ export function planDelegation(
     }
     if (selection.role.key === "swarm workers") {
       diagnostics.push(
-        "role \"swarm workers\" is one route; start each worker with its own pstack_subagent call.",
+        'role "swarm workers" is a list, not a panel: its first entry is the default route for every worker, and `roleIndex` gives one race arm another entry. Each worker still needs its own pstack_subagent call, because this tool cannot compare separate calls.',
       );
     }
   }

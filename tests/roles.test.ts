@@ -85,7 +85,11 @@ describe("role manifest", () => {
     const crossJudge = findRoleSpec("arena cross-judge pool");
     expect(crossJudge?.shape).toBe("list");
     expect(crossJudge?.autoPanel).toBe(false);
-    expect(findRoleSpec("swarm workers")?.shape).toBe("single");
+    // `swarm workers` is list-valued so one race arm can pick another entry, but
+    // it is not an automatic panel: the caller still starts one worker per call.
+    expect(findRoleSpec("swarm workers")?.shape).toBe("list");
+    expect(findRoleSpec("swarm workers")?.autoPanel).toBe(false);
+    expect(AUTO_PANEL_ROLE_KEYS).not.toContain("swarm workers");
   });
 
   it("keeps the four budget tiers the setup skill offers", () => {

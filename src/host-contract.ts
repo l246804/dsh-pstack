@@ -17,12 +17,17 @@
  * - `Service.listService({ service: "llm" })`
  * - `Service.listService({ service: "tools" })`
  * - `Service.listService({ service: "agents" })`
+ * - `Service.listService({ service: "sessionQuery" })`
  *
  * Deliberate simplifications, none observable at runtime:
- * - Branded ids (`SessionId`, `MessageId`, `ReasoningEffortId`) are plain
- *   `string`; the brand is erased and only carried for documentation.
+ * - Branded ids (`SessionId`, `MessageId`, `ReasoningEffortId`,
+ *   `SessionSeq`, `SessionPersistenceRevision`) are plain `string`/`number`;
+ *   the brand is erased and only carried for documentation.
  * - `ContentBlock` names the text variant this plugin emits and leaves the other
  *   variants opaque, because the prompt this tool builds is text only.
+ * - `SessionEvent.data` stays `unknown`. Restricted history forwards raw event
+ *   payloads unchanged, so naming every event variant here would be a second,
+ *   drifting copy of the log format with no reader.
  */
 
 // ---------------------------------------------------------------------------
@@ -168,6 +173,131 @@ export interface SubagentsHost {
   startActivation(spec: SubagentActivationSpec): Promise<SubagentActivation>;
 }
 
+/**
+ * One durable direct-child catalog row.
+ *
+ * `mode` is the authorization discriminator: only `continuable` children are
+ * reviewable. `one-shot` children cannot be resumed, `external` children live in
+ * another backend, and `unknown` modes carry no review guarantee.
+ */
+export type SubagentCatalogEntry = { readonly id: string; readonly createdAt: number } & (
+  | { readonly mode: "one-shot"; readonly label?: string }
+  | { readonly mode: "external"; readonly label?: string }
+  | { readonly mode: "continuable"; readonly label: string }
+  | { readonly mode: "unknown"; readonly label?: string }
+);
+
+/**
+ * The slice of `ctx.subagents` restricted history reads for authorization.
+ *
+ * `listChildren` takes a parent session id, not a caller identity, so its result
+ * is a naming source and never an authorization boundary on its own. Restricted
+ * history pairs it with the observed `header.parentSession`.
+ */
+export interface SubagentCatalogHost {
+  listChildren(
+    parentSessionId: string,
+    signal?: AbortSignal,
+  ): Promise<readonly SubagentCatalogEntry[]>;
+}
+
+// ---------------------------------------------------------------------------
+// sessionQuery
+// ---------------------------------------------------------------------------
+
+/** The last committed log position, or `-1` when the log is empty. */
+export type SessionSeqCursor = number;
+
+/**
+ * One raw log event.
+ *
+ * Only the envelope is named. `data` is forwarded unchanged so an auditor reads
+ * the log rather than a projection: this is the reason the tool never returns
+ * `deriveMessages()` output in its place.
+ */
+export interface SessionEvent {
+  readonly type: string;
+  readonly seq: number;
+  readonly time: number;
+  readonly data: unknown;
+  readonly ignorable?: true;
+  readonly surfaceOp?:
+    | "append"
+    | { readonly op: "replace"; readonly startSeq: number; readonly endSeq: number };
+  readonly sourceEventSeqs?: readonly number[];
+}
+
+/** Immutable per-session identity plus its durable delegation position. */
+export interface SessionHeader {
+  readonly version: number;
+  readonly id: string;
+  readonly createdAt: number;
+  readonly cwd?: string;
+  readonly parentSession?: string;
+  readonly isSeeded: boolean;
+  readonly origin?: "subagent";
+  readonly delegationDepth?: number;
+  readonly agentPreset?: string;
+}
+
+/**
+ * One caller-owned observation lease.
+ *
+ * A `live` lease fixes the log position when it is built, so `events` never
+ * grows after construction. A `prepared` lease is a detached copy read from
+ * persistence; rc.3 appends synthetic interrupted-turn closers to it and marks
+ * neither them nor the persisted boundary. `revision` is present only for
+ * `prepared`. Both shapes must be released with `[Symbol.dispose]()`.
+ */
+export interface SessionObservation {
+  readonly source: "live" | "prepared";
+  readonly header: SessionHeader;
+  readonly inheritedEventCount: number;
+  readonly events: readonly SessionEvent[];
+  /** Last seq this snapshot covers; `-1` when the log was empty. */
+  readonly cursor: SessionSeqCursor;
+  /** Persistence revision of a prepared snapshot. Live snapshots omit it. */
+  readonly revision?: string;
+  retain(): SessionObservation;
+  [Symbol.dispose](): void;
+}
+
+export interface SessionObservationOptions {
+  readonly signal?: AbortSignal;
+  readonly projectionMode?: "all" | "none";
+}
+
+export interface SessionRecord {
+  readonly header: SessionHeader;
+  readonly live: boolean;
+  readonly persisted: boolean;
+  readonly formatStatus?: "current" | "migration-required";
+}
+
+/** Provider-independent session metadata predicate, ANDed with its siblings. */
+export type SessionResultFilter =
+  | { readonly kind: "id"; readonly values: readonly string[] }
+  | { readonly kind: "cwd"; readonly values: readonly (string | null)[] }
+  | { readonly kind: "created-at"; readonly from?: number; readonly to?: number }
+  | { readonly kind: "parent"; readonly values: readonly (string | null)[] }
+  | { readonly kind: "availability"; readonly values: readonly ("live" | "persisted")[] };
+
+/**
+ * The slice of `ctx.sessionQuery` restricted history reads.
+ *
+ * `observeSession` is the only raw-event reader used: `listEvents` returns a
+ * summary and `readSession` re-reads a detached copy, so neither can page one
+ * fixed snapshot. `filterSessions` answers the caller's workspace without
+ * materializing its log.
+ */
+export interface SessionQueryHost {
+  observeSession(sessionId: string, options?: SessionObservationOptions): Promise<SessionObservation>;
+  filterSessions(
+    filters: readonly SessionResultFilter[],
+    signal?: AbortSignal,
+  ): Promise<readonly SessionRecord[]>;
+}
+
 // ---------------------------------------------------------------------------
 // tools
 // ---------------------------------------------------------------------------
@@ -205,6 +335,8 @@ export interface ToolOutputDefinition {
 /** The typed same-process call input the registry supplies to `execute`. */
 export interface ToolExecutionInput {
   readonly name: string;
+  /** Corpus id of this exact call, as written to the `tool/call` event. */
+  readonly callId: string;
   readonly arguments: unknown;
   readonly agent?: Agent;
   readonly signal: AbortSignal;

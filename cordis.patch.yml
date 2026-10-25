@@ -2,7 +2,9 @@
 #
 # `pstack` registers the bundled skill provider. `pstack-subagent` registers
 # `pstack_subagent`, which starts one child per activation and re-reads the role
-# file on every delegation.
+# file on every delegation. `pstack-history` registers `pstack_history`, the
+# restricted read-only history tool; it reads raw events through `sessionQuery`
+# and authorizes the caller and its direct children only.
 #
 # The two worktree rows carry the README promise that worktree support ships as a
 # necessary dependency: the bundle turns the official integration on when the
@@ -11,6 +13,10 @@
 # composed row list rather than a startup snapshot. `scripts/worktree-mount.ts`
 # owns the text of both expressions and `check:assets` fails when this file drifts
 # from it. See docs/decisions/2026-10-25-worktree-conditional-mount.md.
+#
+# `pstack-history` is appended after the unit-4 rows so no delivered line moves.
+# Row order is not part of the history contract; the two worktree guards, by
+# contrast, stay adjacent and byte-identical to their generator.
 - insert:
     - id: pstack
       name: dsh-pstack
@@ -24,3 +30,5 @@
     - id: pstack-tool-worktree
       name: '@deepseek-ai/dsh-experimental-tool-worktree'
       disabled: !!js "(() => { const rows = ctx.fiber?.entry?.parent?.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-tool-worktree' && row.name === '@deepseek-ai/dsh-experimental-tool-worktree' && row.disabled !== true) })()"
+    - id: pstack-history
+      name: dsh-pstack/history

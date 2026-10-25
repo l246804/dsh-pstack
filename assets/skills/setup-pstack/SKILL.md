@@ -42,7 +42,7 @@ Apply a target only when that model's own `list_subagent_models({ provider, mode
 
 **(c) Show the roles and confirm.** Show every role with its route, marking any route that does not resolve on this deployment as needing a choice. Also list each line step 2 dropped as retired. Ask whether to accept as-is or change specific roles, offering the confirmed routes plus `inherit-parent` and `auto`, which both mean this role runs on the parent chat model. Prefer `ask_user_question` over free text.
 
-For the panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) the value is a list, and `pstack_subagent` starts one child per entry, alias entries included, so the list length sets the count. `arena cross-judge pool` is also a list, but `pstack_subagent` starts one child from it, chosen with `roleIndex`. `swarm workers` is the one route every worker uses, and the caller starts each worker itself. Two entries on the same route are not a cross-model panel; say so instead of implying model diversity.
+For the panel roles (`arena runners`, `architect runners`, `interrogate reviewers`) the value is a list, and `pstack_subagent` starts one child per entry, alias entries included, so the list length sets the count. `arena cross-judge pool` is also a list, but `pstack_subagent` starts one child from it, chosen with `roleIndex`. `swarm workers` is a list as well: its first entry is the default route for every worker, a race passes `roleIndex` to give different arms different entries, and the caller still starts each worker itself. Two entries on the same route are not a cross-model panel; say so instead of implying model diversity.
 
 ### 4. Validate
 

@@ -1,6 +1,6 @@
 ---
 name: reflect
-description: Spawn three parallel review subagents over the active transcript, surface learnings, and route each to a concrete edit on an existing skill. Use when the user says reflect.
+description: Spawn three parallel review subagents over this run's raw event log, surface learnings, and route each to a concrete edit on an existing skill. Use when the user says reflect.
 disable-model-invocation: true
 ---
 
@@ -12,37 +12,37 @@ Mine the current conversation for durable learnings, then route them into skill 
 
 Invoke when the user says "reflect" or "/reflect". Skip when the conversation is trivial, off-topic, or already covered by an existing skill the parent followed correctly. One-offs are not learnings.
 
-## 1. Locate the active transcript
+## 1. Read this run's raw events
 
-Before fanning out, find this conversation's transcript in the `agent-transcripts/` directory the system prompt names. Do not glob across `~/.cursor/projects/*/`. That crosses workspace boundaries and reads private chats from unrelated projects.
+Before fanning out, call `pstack_history` with `scope: "current"` for this run's raw log events, and with `scope: "children"` to list the child sessions this run may review. Read one child by passing its `sessionId`. Any other session is outside this tool: never read the session store directory, decompress a log file, or search `~/.dsh` directly, because those paths and formats are private to the host and globbing them would cross workspace boundaries.
 
-```bash
-ls -t <agent-transcripts>/*.jsonl <agent-transcripts>/*/*.jsonl <agent-transcripts>/*/subagents/*.jsonl 2>/dev/null | head -10
-```
+Page the log instead of sampling it: pass the previous page's `nextFromSeq` back as `fromSeq`, and pin `throughSeq` to the first page's value so a later page cannot absorb events that landed after you started. Open steps and turns are expected; an unbalanced tail is not an error.
 
-That covers the legacy flat (`<id>.jsonl`), current nested (`<id>/<id>.jsonl`), and subagent (`<parent>/subagents/<child>.jsonl`) layouts. For each candidate, read the first JSONL line. Take the file whose `message.content[0].text` contains the conversation's opening user prompt. If none matches, pass a tight digest of the session instead.
+The result carries raw events, not the model-visible transcript. That is deliberate: this review is about what actually happened.
 
-## 2. Spawn three reviewers in parallel
+If the tool answers `denied` or `unavailable`, say which layer failed and report this audit as unfinished. Do not substitute a summary for the log and call the review complete, and do not read an unavailable result as evidence that the run did nothing.
 
-One message, three `Task` calls, `subagent_type: generalPurpose`, agent mode (`readonly: false`). Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references, and readonly strips MCPs.
+## 2. Start three reviewers in parallel
 
-Each reviewer and the synthesizer name a role line in the `pstack-models.mdc` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
+One message, three `pstack_subagent` calls with `agent: "general"`. Reviewers need the MCP servers the log references, so do not brief them to avoid tool use; they must not write.
 
-| Lens | Role line | Default `model` | Prompt template |
-|---|---|---|---|
-| Judgment | `reflect judgment, divergent, synthesizer` | `claude-opus-5-5-xhigh` | `references/judgment-reviewer.md` |
-| Tooling | `reflect tooling` | `grok-4.7-xhigh-fast` | `references/tooling-reviewer.md` |
-| Divergent | `reflect judgment, divergent, synthesizer` | `claude-opus-5-5-xhigh` | `references/divergent-reviewer.md` |
+Each reviewer and the synthesizer name a role line in `$DSH_HOME/pstack-models.md`. Pass that line as `role`. When the file or the line is missing, omit `role` so the child inherits this run's route, and say so in the reply. There is no per-call model slug: an unknown role fails instead of silently falling back, and `inherit-parent` or `auto` means the same as omitting `role`. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.
 
-Pass each template verbatim, substituting the transcript path or digest where marked. Reviewers return findings in the `Task` response body.
+| Lens | Role line | Prompt template |
+|---|---|---|
+| Judgment | `reflect judgment, divergent, synthesizer` | `references/judgment-reviewer.md` |
+| Tooling | `reflect tooling` | `references/tooling-reviewer.md` |
+| Divergent | `reflect judgment, divergent, synthesizer` | `references/divergent-reviewer.md` |
+
+Pass each template verbatim, substituting the paged event log where marked. A reviewer cannot read this run's log on its own: inline the events you paged, or a compact summary when the log is too large, and when you inline a summary instead of the events, say so and treat the full-transcript audit as unfinished. Reviewers return findings in their completion notice.
 
 ## 3. Synthesize
 
-One `Task` call, `subagent_type: generalPurpose`, `model` from the `reflect judgment, divergent, synthesizer` line (default `claude-opus-5-5-xhigh`), agent mode (`readonly: false`). It spot-verifies citations through MCP, and readonly strips MCPs. Pass `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. It returns an Accepted / Rejected / Backlog list.
+One `pstack_subagent` call with `agent: "general"` and `role` from the `reflect judgment, divergent, synthesizer` line, inheriting this run's route when that line is missing. It spot-verifies citations through MCP, so brief it not to write. Pass `references/synthesizer.md` verbatim, with each reviewer's full output inlined where marked. It returns an Accepted / Rejected / Backlog list.
 
 ## 4. Structural enforcement check
 
-Move any Accepted item that a lint rule, script, metadata flag, or runtime check would enforce more reliably to Backlog. See the **encode-lessons-in-structure** principle skill.
+Move any Accepted item that a lint rule, script, metadata flag, or runtime check would enforce more reliably to Backlog. See `principle-encode-lessons-in-structure`; read its `SKILL.md` at its absolute resource path.
 
 ## 5. Apply
 
@@ -53,11 +53,11 @@ File each Backlog item to your team's devex or backlog tracker without waiting. 
 Follow each approved row's Routing exactly:
 
 - Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): the parent does it directly.
-- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor's built-in `create-skill` skill and run its draft / test / iterate loop.
-- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to `create-skill` and run its description-optimization loop.
-- `new skill via create-skill: <kebab-name>`: hand creation to `create-skill`. Do not invent the shape ad hoc.
+- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): follow the `authoring-a-skill` playbook, which names this package's frontmatter, link, and structure checks.
+- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): rewrite its `description` against the frontmatter rules yourself and reload the catalog to confirm it is picked up. There is no description-optimization tool here.
+- `new skill via the authoring playbook: <kebab-name>`: create it with the `authoring-a-skill` playbook and run the checks it names. Do not invent the shape ad hoc.
 
-If your environment ships a SKILL.md validator, run it on every touched skill before declaring done.
+Run the checks the `authoring-a-skill` playbook names on every touched skill before declaring done. This host ships no separate SKILL.md validator binary, so do not claim one ran.
 
 ## 6. Summarize for the user
 

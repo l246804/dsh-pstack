@@ -398,7 +398,7 @@ Explorer 用 `pstack_subagent({ agent: "general", role: "how explorer" })`，明
 
 ### 6.12 swarm
 
-每个 worker 用 `agent: "general"` 和 `role: "swarm workers"`，model race 为每个 arm 明确选择 route。base/SHA、采样方法、独立输出和 PASS/ISSUES/BLOCKED 继续保留。写 worker 需要官方 worktree 或预建 checkout，不用 `environment`。缺失结果只重试一次，第二次记 gap。不能用 Ralph 代替 race。
+每个 worker 用 `agent: "general"` 和 `role: "swarm workers"`；该角色是 list，首项是每个 worker 的默认 route，model race 的每个 arm 用 `roleIndex` 选另一 entry，worker 仍由调用方逐个启动。base/SHA、采样方法、独立输出和 PASS/ISSUES/BLOCKED 继续保留。写 worker 需要官方 worktree 或预建 checkout，不用 `environment`。缺失结果只重试一次，第二次记 gap。不能用 Ralph 代替 race。
 
 ### 6.13 interrogate
 
@@ -676,7 +676,7 @@ roleIndex?: integer        # 选择 list-valued role 的一项
 
 - 精确匹配规范化后的角色名。近似拼写只提示，不猜测。
 - `feature, refactoring` 可作为整键和单项别名，panel 角色键中的逗号不能误拆为多个角色。
-- `arena cross-judge pool` 不自动 fanout，`swarm workers` 由调用方逐个启动。并非所有 list-valued role 都展开。
+- `arena cross-judge pool` 不自动 fanout，由 `roleIndex` 选一个 judge entry；`swarm workers` 也不 fanout，首项是每个 worker 的默认 route，race 时用 `roleIndex` 给各 arm 换 entry，worker 仍由调用方逐个启动。并非所有 list-valued role 都展开。
 - route 无效时，单项调用失败并指出配置。panel 中可以保留其余 entry，但必须报告降级。若仍启动相同 parent route 的两个 child，不能声称多模型 panel。
 - `allowedModels` 是 pstack 行配置的独立精确 route 限制，启动任何 child 前先校验。它不等于 DSH native session allowedModels。继承 native policy 需要公开 seam，首版不读官方私有 projection。
 - effort 属于 adapter。缺省继承 parent route 时由 DSH 合并，显式换 route 而未指定 effort 时使用新模型默认。不要全局假定 effort 枚举或 fast 变体。

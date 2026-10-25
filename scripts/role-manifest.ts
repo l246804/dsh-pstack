@@ -148,10 +148,11 @@ export const ROLE_MANIFEST: readonly RoleSpec[] = [
   },
   {
     key: "swarm workers",
-    shape: "single",
+    shape: "list",
     autoPanel: false,
     consumers: ["swarm/SKILL.md", "poteto-mode/playbooks/multi-phase-plan.md"],
-    summary: "The route every swarm worker uses. The caller starts each worker itself.",
+    summary:
+      "One default route for every worker. A race gives each arm another entry through `roleIndex`, and the caller still starts one worker per call.",
   },
   {
     key: "architect runners",
@@ -235,8 +236,9 @@ export function renderPstackModelsExample(): string {
     "# result.",
     "#",
     "# `arena cross-judge pool` is a list too, but it is not fanned out; pass `roleIndex` to",
-    "# choose the entry. `swarm workers` is the one route every worker uses, and the caller",
-    "# starts each worker itself.",
+    "# choose the entry. `swarm workers` is a list as well: its first entry is the default",
+    "# route for every worker, `roleIndex` gives one race arm a different entry, and the",
+    "# caller still starts each worker itself.",
     "#",
     "# The defaults below are `inherit-parent` because no route is confirmed yet. Replace",
     "# them with routes your own deployment serves.",

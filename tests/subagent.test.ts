@@ -540,8 +540,8 @@ describe("panels", () => {
     expect(run.starts).toHaveLength(0);
   });
 
-  it("reminds the caller that swarm workers start one at a time", async () => {
-    const run = harness({ roleFile: "swarm workers: local/a\n" });
+  it("describes swarm workers as a list the caller starts one at a time", async () => {
+    const run = harness({ roleFile: "swarm workers: local/a, vendor/b\n" });
     const result = await delegate(
       PARENT,
       args({ role: "swarm workers" }),
@@ -549,8 +549,63 @@ describe("panels", () => {
       run.config,
       SIGNAL,
     );
+
     expect(result.children).toHaveLength(1);
-    expect(result.diagnostics.join("\n")).toContain("start each worker");
+    expect(result.children[0]?.route).toBe("local/a");
+    const diagnostics = result.diagnostics.join("\n");
+    expect(diagnostics).toContain("is a list, not a panel");
+    expect(diagnostics).toContain("its first entry is the default route");
+    expect(diagnostics).toContain("`roleIndex` gives one race arm another entry");
+    expect(diagnostics).toContain("Each worker still needs its own pstack_subagent call");
+  });
+
+  it("selects one race arm of swarm workers through roleIndex", async () => {
+    const run = harness({ roleFile: "swarm workers: local/a, vendor/b\n" });
+    const result = await delegate(
+      PARENT,
+      args({ role: "swarm workers", roleIndex: 1 }),
+      run.runtime,
+      run.config,
+      SIGNAL,
+    );
+
+    // One child: the entry is an arm route, not a panel of two children.
+    expect(result.children).toHaveLength(1);
+    expect(run.starts).toHaveLength(1);
+    expect(result.children[0]?.route).toBe("vendor/b");
+    expect(startSpecRequest(run.starts[0] as SubagentActivationSpec).agentOptions).toEqual({
+      provider: "vendor",
+      model: "b",
+    });
+  });
+
+  it("defaults swarm workers to the first entry and suggests roleIndex", async () => {
+    const run = harness({ roleFile: "swarm workers: local/a, vendor/b\n" });
+    const result = await delegate(
+      PARENT,
+      args({ role: "swarm workers" }),
+      run.runtime,
+      run.config,
+      SIGNAL,
+    );
+
+    expect(result.children[0]?.route).toBe("local/a");
+    expect(result.diagnostics.join("\n")).toContain("Pass `roleIndex` to choose another");
+  });
+
+  it("rejects an out-of-range roleIndex for swarm workers without starting anything", async () => {
+    const run = harness({ roleFile: "swarm workers: local/a, vendor/b\n" });
+
+    await expect(
+      delegate(
+        PARENT,
+        args({ role: "swarm workers", roleIndex: 5 }),
+        run.runtime,
+        run.config,
+        SIGNAL,
+      ),
+    ).rejects.toThrow(/valid indexes are 0, 1/);
+    expect(run.starts).toHaveLength(0);
   });
 });
 
@@ -711,6 +766,7 @@ describe("tool wiring", () => {
       { description: "demo", prompt: "work" },
       {
         name: TOOL_NAME,
+        callId: "call-1",
         arguments: {},
         agent: PARENT,
         signal: SIGNAL,
@@ -732,6 +788,7 @@ describe("tool wiring", () => {
         { description: "demo", prompt: "work" },
         {
           name: TOOL_NAME,
+          callId: "call-1",
           arguments: {},
           signal: SIGNAL,
           deferContext: () => {},
@@ -748,6 +805,7 @@ describe("tool wiring", () => {
       { description: "demo", prompt: "work" },
       {
         name: TOOL_NAME,
+        callId: "call-1",
         arguments: {},
         agent: PARENT,
         signal: SIGNAL,

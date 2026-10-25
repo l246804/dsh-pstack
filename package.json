@@ -16,6 +16,10 @@
       "types": "./dist/subagent.d.mts",
       "default": "./dist/subagent.mjs"
     },
+    "./history": {
+      "types": "./dist/history.d.mts",
+      "default": "./dist/history.mjs"
+    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",

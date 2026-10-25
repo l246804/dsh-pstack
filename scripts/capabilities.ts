@@ -15,7 +15,7 @@ export const HARNESS_DOC_PATH = "docs/harness/dsh.md";
  * sentence, so the disclaimer cannot drift away from the implementation.
  */
 export const HARNESS_DOC_SCOPE_LINE =
-  "> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, and the official worktree integration mounted on demand. Restricted history arrives in a later unit.";
+  "> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, and the official worktree integration mounted on demand.";
 
 export type CapabilityKind = "tool" | "path" | "model" | "host";
 
@@ -190,10 +190,11 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "transcripts",
     kind: "path",
     cursor: "`~/.cursor/projects/.../agent-transcripts`",
-    dsh: "restricted `sessionQuery` reads",
+    dsh: "`pstack_history`, a restricted read of raw `sessionQuery` events",
     detect: "agent-transcripts",
-    coverage: "deferred",
-    reason: "The history unit owns the query path and its permissions.",
+    coverage: "degraded",
+    reason:
+      "The tool pages one fixed observation of the calling session or a reviewable direct child, inside the caller's workspace; there is no transcript directory to read, no arbitrary session id, and no descendant traversal. A cold read from persistence cannot separate the stored log from the read-time interrupted-turn closers rc.3 appends, so per-event provenance is reported undeterminable and a full transcript audit stays unfinished for those sessions. The live/prepared split, pagination, and lease release are unit-tested; no real profile read has run yet.",
     unit: "5",
   },
   {
@@ -210,7 +211,7 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "not consumed; skills load by explicit invocation",
     coverage: "degraded",
     reason:
-      "Automatic attachment by file glob has no equivalent, so `typescript-best-practices` stays an explicit invocation.",
+      "Automatic attachment by file glob has no equivalent, so `typescript-best-practices` is explicit-invocation only and its body says so. The frontmatter field is dropped from the generated skill rather than shipped as a no-op.",
     unit: "not planned",
   },
   {
@@ -239,7 +240,8 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "Cursor Automations, `update_state`, `SendToUser`",
     dsh: "not mapped; routine-style automation is excluded",
     coverage: "excluded",
-    reason: "`schedule_create` is not a webhook routine, and secrets are not requested.",
+    reason:
+      "`automate-me` ships, but it drafts a `-mode` skill from authorized history and opens a PR; it does not create a webhook routine, request a secret, or wake an agent. `schedule_create` is not a webhook routine, and no secret is ever requested.",
     unit: "5",
   },
   {

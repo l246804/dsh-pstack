@@ -1,6 +1,6 @@
 # DSH harness mapping
 
-> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, and the official worktree integration mounted on demand. Restricted history arrives in a later unit.
+> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, and the official worktree integration mounted on demand.
 > The tables below are the target contract, not proof that a capability is installed in a profile.
 
 Generated from `scripts/capabilities.ts` into `assets/docs/harness/dsh.md`. Edit the table, not this file.
@@ -43,12 +43,12 @@ about this tree.
 | `~/.cursor/rules/pstack-models.mdc` | `$DSH_HOME/pstack-models.md`, read for each new delegation | mapped | - | `/setup-pstack` writes the file and `pstack_subagent` re-reads it on every delegation. An unreadable file is an error, not an empty configuration. |
 | `.cursor/skills`, `~/.cursor/skills` | `assets/skills/<name>/SKILL.md` inside this package | mapped | - | Skills ship inside the package and are read in place; nothing is copied into `$DSH_HOME/skills`, and no directory is watched. |
 | `~/.cursor/plugins`, `.cursor-plugin` | absolute resource paths inside this package | mapped | - | Each candidate carries its own skill directory as the resource base, so `references/` and `scripts/` resolve next to `SKILL.md`. |
-| `~/.cursor/projects/.../agent-transcripts` | restricted `sessionQuery` reads | deferred | 5 | The history unit owns the query path and its permissions. |
+| `~/.cursor/projects/.../agent-transcripts` | `pstack_history`, a restricted read of raw `sessionQuery` events | degraded | 5 | The tool pages one fixed observation of the calling session or a reviewable direct child, inside the caller's workspace; there is no transcript directory to read, no arbitrary session id, and no descendant traversal. A cold read from persistence cannot separate the stored log from the read-time interrupted-turn closers rc.3 appends, so per-event provenance is reported undeterminable and a full transcript audit stays unfinished for those sessions. The live/prepared split, pagination, and lease release are unit-tested; no real profile read has run yet. |
 | agent store | `.audit/<task-slug>/` or a directory the user names | mapped | - |  |
-| `paths:` auto-attach globs in SKILL.md | not consumed; skills load by explicit invocation | degraded | not planned | Automatic attachment by file glob has no equivalent, so `typescript-best-practices` stays an explicit invocation. |
+| `paths:` auto-attach globs in SKILL.md | not consumed; skills load by explicit invocation | degraded | not planned | Automatic attachment by file glob has no equivalent, so `typescript-best-practices` is explicit-invocation only and its body says so. The frontmatter field is dropped from the generated skill rather than shipped as a no-op. |
 | Custom Mode | an explicit `/poteto-mode` on each new task | degraded | 4 | No persistent mode or keyboard shortcut exists. The ported skills say so at the step where a mode would have applied. |
 | `/loop` | `create_goal`, plus `schedule_create` where a timed input fits | deferred | 6 | Goal and schedule integration lands with the long-running workflows. |
-| Cursor Automations, `update_state`, `SendToUser` | not mapped; routine-style automation is excluded | excluded | 5 | `schedule_create` is not a webhook routine, and secrets are not requested. |
+| Cursor Automations, `update_state`, `SendToUser` | not mapped; routine-style automation is excluded | excluded | 5 | `automate-me` ships, but it drafts a `-mode` skill from authorized history and opens a PR; it does not create a webhook routine, request a secret, or wake an agent. `schedule_create` is not a webhook routine, and no secret is ever requested. |
 | cloud agent, `cloud_base_branch`, dashboard | a local child with a real `cwd`, started from a local branch or a prepared checkout | degraded | 3 | No VM, cross-device resume, or dashboard is promised. Isolation is the official worktree checkout, which does not cover ports, credentials, or services. |
 | `deslop` | `/no-comments` plus one read-through of the diff | degraded | 4 | It is not the same skill under a new name; the diff read-through replaces the plugin. |
 | `control-ui`, `control-cli` | a project verification skill or an existing driver | degraded | 4 | Without a driver the verification result stays unproven, and reading source is not accepted as a substitute. |

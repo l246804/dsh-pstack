@@ -1,26 +1,41 @@
 #!/usr/bin/env bash
 # Read-only worktree prune audit. Classifies every git worktree by size, merge
-# state, uncommitted work, remote/PR state, and the most recent chat that
+# state, uncommitted work, remote/PR state, and the most recent session that
 # operated in it. Emits a table sorted by size with a suggested bucket. Never
 # deletes anything; deletion stays a human-gated step in the playbook.
 #
-# Usage: worktree-audit.sh [-b|--base <ref>] [repo-path]
+# Usage: worktree-audit.sh [-b|--base <ref>] [-s|--sessions <json>] [repo-path]
 #   repo-path defaults to the current repo.
 #   -b sets the ref the MERGED column checks against (e.g. origin/integration).
 #   Without it the base is origin/HEAD, then origin/main, then origin/master.
 #   origin/HEAD is the remote's default branch, not necessarily the branch PRs
 #   merge into; pass -b when they differ.
+#   -s takes the JSON you produced with `pstack_history`, an array of
+#   {"sessionId","cwd","lastEventTime"}. This script never reads the session
+#   store, so without it LAST_CHAT is "-" and the bucket is unknown-usage.
+#   PINNED is always "unknown": this host exposes no pinned-state source, so the
+#   user's own set decides.
 set -u
 
 base=""
+sessions=""
 while [ $# -gt 0 ]; do
 	case "$1" in
 	-b|--base) [ $# -ge 2 ] || { echo "error: $1 needs a ref" >&2; exit 2; }; base="$2"; shift 2 ;;
+	-s|--sessions) [ $# -ge 2 ] || { echo "error: $1 needs a JSON file" >&2; exit 2; }; sessions="$2"; shift 2 ;;
 	-h|--help) sed -n '2,/^set -u/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
 	-*) echo "error: unknown option: $1" >&2; exit 2 ;;
 	*) break ;;
 	esac
 done
+
+if [ -n "$sessions" ]; then
+	[ -r "$sessions" ] || { echo "error: cannot read sessions file: $sessions" >&2; exit 1; }
+	# The audit changes directory into the repo, so pin the path first.
+	sessions=$(cd "$(dirname "$sessions")" && pwd)/$(basename "$sessions")
+	jq -e 'type == "array"' "$sessions" >/dev/null 2>&1 \
+		|| { echo "error: sessions file is not a JSON array: $sessions" >&2; exit 1; }
+fi
 
 repo="${1:-$(git rev-parse --show-toplevel 2>/dev/null)}"
 [ -z "$repo" ] && { echo "not in a git repo; pass a repo path" >&2; exit 1; }
@@ -61,13 +76,10 @@ elif raw=$(gh pr list --author "@me" --state all --limit 1000 \
 fi
 [ -s "$prs" ] || echo "[]" > "$prs"
 
-# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.
-slug=$(printf '%s' "$main_wt" | sed 's#^/##; s#/#-#g')
-transcripts="$HOME/.cursor/projects/$slug/agent-transcripts"
 now=$(date +%s)
 
 echo "# base: $base"
-printf "SIZE\tAGE\tMERGED\tDIRTY\tREMOTE\tPR\tLAST_CHAT\tBUCKET\tWORKTREE\n"
+printf "SIZE\tAGE\tMERGED\tDIRTY\tREMOTE\tPR\tLAST_CHAT\tPINNED\tBUCKET\tWORKTREE\n"
 
 git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt; do
 	[ "$wt" = "$main_wt" ] && continue
@@ -100,27 +112,41 @@ git worktree list --porcelain | awk '/^worktree /{print $2}' | while read -r wt;
 		'.[] | select(.head==$b) | "#\(.number)/\(.state)"' "$prs" 2>/dev/null | head -1)
 	[ -z "$pr" ] && pr="-"
 
-	# Most recent chat whose transcript operated in this worktree. Match path
-	# followed by "/" or a quote so glint-482 does not match glint-482-r37.
-	last="-"; last_ts=0
-	if [ -d "$transcripts" ]; then
-		f=$(rg -l -e "${wt}/" -e "${wt}\"" "$transcripts" 2>/dev/null \
-			| xargs stat -f '%m %N' 2>/dev/null | sort -rn | head -1)
-		if [ -n "$f" ]; then last_ts=$(echo "$f" | awk '{print $1}')
-			last=$(date -r "$last_ts" '+%Y-%m-%d' 2>/dev/null); fi
+	# Newest supplied session whose cwd is this worktree. The caller produced
+	# that file with `pstack_history`; nothing here reads the session store.
+	last="-"; last_ts=0; usage=unknown
+	if [ -n "$sessions" ] && [ -s "$sessions" ]; then
+		usage=none
+		hit=$(jq -r --arg wt "$wt" '
+			[.[] | select((.cwd // "") == $wt or ((.cwd // "") | startswith($wt + "/")))]
+			| sort_by(.lastEventTime // 0) | last
+			| if . == null then "" else "\(.sessionId // "unknown")\n\(.lastEventTime // 0)" end
+		' "$sessions" 2>/dev/null)
+		if [ -n "$hit" ]; then
+			usage=touched
+			last=$(printf '%s\n' "$hit" | sed -n '1p')
+			last_ts=$(printf '%s\n' "$hit" | sed -n '2p')
+		fi
 	fi
 	recent=$([ "$last_ts" -gt 0 ] 2>/dev/null && [ $(( (now - last_ts) / 86400 )) -le 4 ] && echo yes || echo no)
 
+	# This host exposes no pinned-state source, so report unknown rather than
+	# guessing. The playbook takes the pinned set from the user.
+	pinned=unknown
+
+	# An unknown usage signal never reaches `safe`: without the session input the
+	# bucket stays unknown-usage, and the playbook asks the user.
 	case "$dirty" in wip:*) bucket=hold-wip ;; *)
 		case "$pr" in */open|*/draft) bucket=hold-open-pr ;; *)
-			if [ "$recent" = yes ]; then bucket=verify-recent-chat
+			if [ "$usage" = unknown ]; then bucket=unknown-usage
+			elif [ "$usage" = touched ] && [ "$recent" = yes ]; then bucket=verify-recent-chat
 			elif [ "$merged" = YES ] || [ "$pr" != "-" ]; then bucket=safe
 			else bucket=review; fi ;;
 		esac ;;
 	esac
 
-	printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
-		"$size" "$age" "$merged" "$dirty" "$remote" "$pr" "$last" "$bucket" "$wt"
+	printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" \
+		"$size" "$age" "$merged" "$dirty" "$remote" "$pr" "$last" "$pinned" "$bucket" "$wt"
 done | sort -t$'\t' -k1,1 -rh
 
 rm -f "$prs"

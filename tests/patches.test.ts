@@ -12,6 +12,8 @@ import {
   FILE_PATCHES,
   FORBIDDEN_CURSOR_FIELDS,
   UNIT4_PATCHED_FILES,
+  UNIT5_FORBIDDEN_FIELDS,
+  UNIT5_PATCHED_FILES,
   patchesForFile,
 } from "../scripts/patches.ts";
 import type { FilePatch } from "../scripts/patches.ts";
@@ -111,7 +113,7 @@ describe("patch output", () => {
 describe("declared patch data", () => {
   it("declares every patch against an existing upstream file and builds cleanly", () => {
     expect(FILE_PATCHES.length).toBeGreaterThanOrEqual(60);
-    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(25);
+    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(38);
     expect(() => validatePatchTargets(FILE_PATCHES, EXCLUDED_SKILLS, UPSTREAM_ROOT)).not.toThrow();
     expect(() => buildAssets()).not.toThrow();
   });
@@ -185,6 +187,65 @@ describe("declared patch data", () => {
     }
   });
 
+  it("rewrites every unit 5 body without leaving the anchor or a Cursor field behind", () => {
+    const assets = new Map(
+      buildAssets().map((asset) => [asset.path, asset.bytes.toString("utf8")]),
+    );
+
+    expect(UNIT5_PATCHED_FILES).toHaveLength(13);
+    for (const file of UNIT5_PATCHED_FILES) {
+      expect(patchesForFile(file).length, file).toBeGreaterThan(0);
+      const text = assets.get(file);
+      expect(text, file).toBeDefined();
+      for (const field of [...FORBIDDEN_CURSOR_FIELDS, ...UNIT5_FORBIDDEN_FIELDS]) {
+        expect(text?.includes(field), `${file}: ${field}`).toBe(false);
+      }
+      // Same rule as unit 4: a long anchor that survives means the semantic
+      // block never left, except for a patch that intentionally appends.
+      for (const patch of patchesForFile(file)) {
+        if (typeof patch.anchor !== "string" || patch.anchor.length < 80) continue;
+        if (patch.kind === "replace" && patch.replacement.includes(patch.anchor)) continue;
+        expect(text?.includes(patch.anchor), `${file}: anchor still present`).toBe(false);
+      }
+    }
+  });
+
+  it("covers the unit 5 skills and playbooks", () => {
+    for (const skill of [
+      "recall",
+      "reflect",
+      "automate-me",
+      "show-me-your-work",
+      "typescript-best-practices",
+      "create-verification-skill",
+      "maintain-verification-skill",
+    ]) {
+      expect(patchesForFile(`skills/${skill}/SKILL.md`).length, skill).toBeGreaterThan(0);
+    }
+    for (const playbook of ["eval", "session-pickup", "worktree-cleanup"]) {
+      expect(
+        patchesForFile(`skills/poteto-mode/playbooks/${playbook}.md`).length,
+        playbook,
+      ).toBeGreaterThan(0);
+    }
+    expect(patchesForFile("skills/poteto-mode/scripts/worktree-audit.sh").length).toBeGreaterThan(0);
+  });
+
+  it("no longer presents the audit script with a Cursor transcript scan", () => {
+    const assets = new Map(
+      buildAssets().map((asset) => [asset.path, asset.bytes.toString("utf8")]),
+    );
+    const script = assets.get("skills/poteto-mode/scripts/worktree-audit.sh") ?? "";
+
+    expect(script).not.toContain("agent-transcripts");
+    expect(script).not.toContain(".cursor/projects");
+    expect(script).not.toContain("stat -f");
+    expect(script).toContain("--sessions");
+    expect(script).toContain("bucket=unknown-usage");
+    expect(script).toContain("bucket=verify-recent-chat");
+    expect(script).toContain("pinned=unknown");
+  });
+
   it("keeps the same-route diagnosis in every panel skill", () => {
     const assets = new Map(
       buildAssets().map((asset) => [asset.path, asset.bytes.toString("utf8")]),
@@ -193,7 +254,7 @@ describe("declared patch data", () => {
       ["assets/skills/arena/SKILL.md", "not a cross-model arena"],
       ["assets/skills/architect/SKILL.md", "two sketches from one model"],
       ["assets/skills/interrogate/SKILL.md", "one model reading the diff twice"],
-      ["assets/skills/swarm/SKILL.md", "not a race between models"],
+      ["assets/skills/swarm/SKILL.md", "not a cross-model race"],
     ] as const) {
       expect(assets.get(file.replace(/^assets\//, "")), file).toContain(phrase);
     }

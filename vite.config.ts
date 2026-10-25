@@ -5,6 +5,7 @@ export default defineConfig({
     entry: {
       index: "src/index.ts",
       subagent: "src/subagent.ts",
+      history: "src/history.ts",
     },
     dts: {
       generator: "tsgo",

@@ -99,7 +99,7 @@ The default answer is `/poteto-mode`, which runs most of the others when its ste
 
 If a skill directory next to this one is missing from the table, read its frontmatter and route by its description. The `principle-*` directories are covered under principles below.
 
-These skills ship their text but depend on a capability this build does not have yet, so treat them as unverified: `/recall`, `/reflect`, `/automate-me`, `/show-me-your-work`, the Eval playbook, Session pickup, and Worktree cleanup. A session-history tool and the remaining long-running playbooks arrive in later units.
+`/recall`, `/reflect`, `/automate-me`, `/show-me-your-work`, the Eval playbook, Session pickup, and Worktree cleanup all ship, and they read session history through `pstack_history`. A live read of the calling session or a direct child is delivered; a cold read whose events cannot be attributed to the stored log reports the audit unfinished. Those flows have not been verified end to end on a real session yet. The remaining long-running playbooks arrive in later units.
 
 Close calls:
 
@@ -150,8 +150,9 @@ For a run that drifts, [`references/prompting.md`](references/prompting.md) has 
 
 ## Make pstack my own
 
-- [`/automate-me`](../automate-me/SKILL.md) and [`/reflect`](../reflect/SKILL.md) keep their text, but both read session history through a restricted tool this build does not have yet, so treat them as unverified until the history unit lands.
-- `/poteto-mode write a skill for <workflow>` runs the authoring playbook, which is ported; validate the result with this package's asset check, because there is no built-in drafting or evaluation tool. The eval playbook is not ported yet.
+- [`/automate-me`](../automate-me/SKILL.md) drafts a personal mode skill from the user's own history through `pstack_history`, to use alongside `/poteto-mode`.
+- [`/reflect`](../reflect/SKILL.md) after a session turns its lessons into skill edits the user approves, auditing the run from its raw event log.
+- `/poteto-mode write a skill for <workflow>` runs the authoring playbook, which is ported; validate the result with this package's asset check, because there is no built-in drafting or evaluation tool. The eval playbook tests a skill change blind and checks file reads in the candidate's own events. Those history-backed audits are not yet verified end to end on a real session.
 - Fix a misbehaving skill in its own PR, not inside the feature work where it went wrong.
 
 [Guide page 9](../../docs/guide/09-make-it-yours.md) covers each of these.
