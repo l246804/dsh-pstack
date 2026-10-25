@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Foundational Thinking
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 **Structural decisions** protect option value. **Code-level decisions** protect simplicity.
 
 **Data structures first.** Get the data shape right before writing logic. Define core types early, trace every access pattern, and choose structures that match the dominant paths.

@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Separate Before Serializing Shared State
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 When concurrent actors might share mutable state, first ask whether they need the same mutable object. If not, eliminate the sharing. When sharing is real, enforce serialization structurally: lockfiles, sequential phases, exclusive ownership. Instructions and conventions are not concurrency control.
 
 **Why:** Concurrent writes to shared state create race conditions that are intermittent, hard to reproduce, and expensive to debug.

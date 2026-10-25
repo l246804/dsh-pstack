@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Encode Lessons in Structure
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 If the lesson needs judgment and cannot be encoded, make the instruction more prominent and add an example of the failure mode.
 
 **Corollary:** If the fix is structural, only use the structural fix. The instruction is the symptom.

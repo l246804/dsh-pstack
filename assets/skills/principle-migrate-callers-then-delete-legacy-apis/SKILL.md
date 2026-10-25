@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Migrate Callers Then Delete Legacy APIs
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 - Update tests to assert the new contract, and delete tests that only protect pre-refactor implementation details
 
 **When this applies:**

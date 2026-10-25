@@ -11,8 +11,14 @@ import { chmod, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "no
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { ASSETS_ROOT, BACKUP_ROOT, ROOT, STAGING_ROOT } from "./asset-paths.ts";
-import { buildAssets, summarizeAssets } from "./build-assets.ts";
+import {
+  ASSETS_ROOT,
+  BACKUP_ROOT,
+  buildAssets,
+  ROOT,
+  STAGING_ROOT,
+  summarizeAssets,
+} from "./build-assets.ts";
 import type { Asset, AssetSummary } from "./build-assets.ts";
 
 export interface DiskAsset {

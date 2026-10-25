@@ -142,11 +142,12 @@ src/
   history.ts               # 可选只读历史工具
 scripts/
   capabilities.ts          # 工具/功能映射和分类
-  patches/                 # 每文件精确语义替换
+  patches.ts               # patch 数据、导读集合、排除项
+  apply-patches.ts         # patch 应用、重叠/次数/片段断言
+  build-assets.ts          # 纯内存生成
   role-manifest.ts         # 唯一的角色 manifest，src 直接复用
-  sync-upstream.ts         # 内存生成、原子写入、--check
-  check-patches.ts         # 锚点、互斥、最终输出检查
-  check-assets.ts          # bytes、mode、链接、资源闭包、禁词审计
+  sync-upstream.ts         # 原子写入、--check
+  check-assets.ts          # bytes、mode、链接、资源闭包、分类审计
   check-scripts.ts         # 上游脚本测试和语法检查入口
 assets/                    # 生成并提交，禁止手改
   skills/
@@ -288,7 +289,7 @@ type Patch = {
 1. 枚举 `skills/<name>/SKILL.md`，验证目录名、frontmatter name、kebab-case 和长度。
 2. 读取技能及资源的 bytes 和 executable bit。文本与二进制分开处理，禁止把二进制按 UTF-8 读入。
 3. 先应用 `exclude`，再应用文件级 patch。每项锚点必须精确命中声明次数。
-4. 对需要共享导读的文件，在 H1 后插入 DSH 指引。`bro`、`in-your-own-words`、`sharpen` 没有 H1，导读放在正文开头；不要为了让格式统一而给上游正文补标题。导读只说明实际适配文件的位置，不用它代替精确替换。
+4. 只对 `INTRO_SKILLS` 显式集合中的技能，在 H1 后插入 DSH 指引。集合由上游宿主术语检测和 DSH 适配例外共同确定，当前为 24 个。集合内技能必须都有 H1，否则构建失败；不要给全部技能默认插入，也不要为了格式统一给上游正文补标题。导读只说明实际适配文件的位置，不用它代替精确替换。
 5. 处理 frontmatter。保留 `name`、`description`、`disable-model-invocation`、`user-invocable` 和实际支持的 `whenToUse`。去掉 `icon`、`color`、`is_background`、`paths` 等当前 DSH 不消费字段，并在规则中说明。`typescript-best-practices` 的 `paths` 单独记录自动触发缺口。
 6. 只规范化目标格式需要的 CRLF、frontmatter 和最终换行。非特殊生成文件不得顺带清理全文空白。
 7. 解析 Markdown 链接，验证本地目标存在。遗漏资源先修复复制范围，不能默认改为网络链接。

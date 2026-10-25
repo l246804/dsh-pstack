@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Outcome-Oriented Execution
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 Optimize for the intended, verifiable end state rather than preserving smooth intermediate states.
 
 **Why:** Keeping every intermediate step fully stable often creates temporary compatibility code that becomes long-lived debt. Converge on the target architecture and prove correctness at explicit verification boundaries.

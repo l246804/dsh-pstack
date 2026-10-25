@@ -5,7 +5,17 @@
  * happens to it; anything other than `mapped` carries a reason and the unit that
  * delivers it, so a deferred promise cannot be mistaken for shipped behavior.
  */
-import { GENERATED_HARNESS_DOC } from "./asset-paths.ts";
+export const HARNESS_DOC_PATH = "docs/harness/dsh.md";
+
+/**
+ * Scope line rendered into the harness document.
+ *
+ * It names what this tree actually ships and keeps the later units marked as
+ * promises. `check-assets` asserts the generated document keeps this exact
+ * sentence, so the disclaimer cannot drift away from the implementation.
+ */
+export const HARNESS_DOC_SCOPE_LINE =
+  "> This package ships its static assets plus one bundled skill provider. Delegation, restricted history, and the worktree integration arrive in later units.";
 
 export type CapabilityKind = "tool" | "path" | "model" | "host";
 
@@ -141,10 +151,9 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "skill-by-name",
     kind: "tool",
     cursor: "`/name` or the named skill",
-    dsh: "read the skill through its absolute resource path",
-    coverage: "deferred",
-    reason: "Absolute resource paths come from the pack that also ships the provider unit.",
-    unit: "2",
+    dsh: "the `skill` tool for model-invocable skills, `/name` for the rest",
+    coverage: "mapped",
+    note: "The bundled provider lists all 55 skills and loads each body from its absolute path; only `setup-pstack` stays model-invocable, exactly as upstream declares.",
   },
   {
     id: "model-route",
@@ -169,11 +178,10 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "project-skills",
     kind: "path",
     cursor: "`.cursor/skills`, `~/.cursor/skills`",
-    dsh: "`.dsh/skills/<name>/SKILL.md`, `$DSH_HOME/skills`",
+    dsh: "`assets/skills/<name>/SKILL.md` inside this package",
     detect: ".cursor/skills",
-    coverage: "deferred",
-    reason: "Skill registration and lookup ship with the provider unit.",
-    unit: "2",
+    coverage: "mapped",
+    note: "Skills ship inside the package and are read in place; nothing is copied into `$DSH_HOME/skills`, and no directory is watched.",
   },
   {
     id: "plugin-location",
@@ -181,9 +189,8 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "`~/.cursor/plugins`, `.cursor-plugin`",
     dsh: "absolute resource paths inside this package",
     detect: ".cursor/plugins",
-    coverage: "deferred",
-    reason: "The package resolves its own resource root in the provider unit.",
-    unit: "2",
+    coverage: "mapped",
+    note: "Each candidate carries its own skill directory as the resource base, so `references/` and `scripts/` resolve next to `SKILL.md`.",
   },
   {
     id: "transcripts",
@@ -334,10 +341,10 @@ export function renderHarnessDoc(capabilities: readonly Capability[] = CAPABILIT
   return [
     "# DSH harness mapping",
     "",
-    "> This package currently ships static assets only. Runtime capabilities arrive with later units.",
+    HARNESS_DOC_SCOPE_LINE,
     "> The tables below are the target contract, not proof that a capability is installed in a profile.",
     "",
-    `Generated from \`scripts/capabilities.ts\` into \`assets/${GENERATED_HARNESS_DOC}\`. Edit the table, not this file.`,
+    `Generated from \`scripts/capabilities.ts\` into \`assets/${HARNESS_DOC_PATH}\`. Edit the table, not this file.`,
     "",
     "## Coverage",
     "",

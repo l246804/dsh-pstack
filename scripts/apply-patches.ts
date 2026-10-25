@@ -1,11 +1,8 @@
-/**
- * Locating and applying file patches.
- *
- * Every anchor is resolved against the upstream text exactly once, before any
- * replacement lands. The result is a single splice over the original string,
- * so a later patch can never match text an earlier patch inserted.
- */
-import type { FilePatch } from "./types.ts";
+import { statSync } from "node:fs";
+import { join, posix } from "node:path";
+
+import { PATCH_SCOPES } from "./patches.ts";
+import type { FilePatch, SkillExclusion } from "./patches.ts";
 
 export class PatchError extends Error {
   constructor(message: string) {
@@ -23,6 +20,30 @@ export interface PatchMatch {
 interface AnchorMatch {
   readonly start: number;
   readonly end: number;
+}
+
+export function validatePatchTargets(
+  patches: readonly FilePatch[],
+  exclusions: readonly SkillExclusion[],
+  upstreamRoot: string,
+): void {
+  const excluded = new Set(exclusions.map((exclusion) => exclusion.skill));
+
+  for (const patch of patches) {
+    if (patch.file !== posix.normalize(patch.file) || patch.file.includes("\\")) {
+      throw new PatchError(`${patch.file}: patch target must be a normalized POSIX path`);
+    }
+    if (!PATCH_SCOPES.some((prefix) => patch.file.startsWith(prefix))) {
+      throw new PatchError(`${patch.file}: patch target is outside ${PATCH_SCOPES.join(", ")}`);
+    }
+    const skill = patch.file.startsWith("skills/") ? patch.file.split("/")[1] : undefined;
+    if (skill !== undefined && excluded.has(skill)) {
+      throw new PatchError(`${patch.file}: patch targets an excluded skill`);
+    }
+    if (!isRegularFile(join(upstreamRoot, patch.file))) {
+      throw new PatchError(`${patch.file}: upstream target is not a regular file`);
+    }
+  }
 }
 
 export function locatePatchMatches(
@@ -79,6 +100,20 @@ export function applyFilePatches(
   return result;
 }
 
+export function assertPatchOutput(
+  file: string,
+  patches: readonly FilePatch[],
+  output: string,
+): void {
+  for (const patch of patches) {
+    for (const fragment of patch.outputIncludes ?? []) {
+      if (!output.includes(fragment)) {
+        throw new PatchError(`${file}: generated output is missing ${JSON.stringify(fragment)}`);
+      }
+    }
+  }
+}
+
 function findAnchorMatches(text: string, anchor: string | RegExp): readonly AnchorMatch[] {
   if (typeof anchor === "string") {
     if (anchor.length === 0) throw new PatchError("string anchors must not be empty");
@@ -92,7 +127,6 @@ function findAnchorMatches(text: string, anchor: string | RegExp): readonly Anch
     }
   }
 
-  // A caller may reuse a RegExp, so copy it without lastIndex state.
   const flags = `${anchor.flags.replaceAll("g", "").replaceAll("y", "")}g`;
   const regexp = new RegExp(anchor.source, flags);
   const hits: AnchorMatch[] = [];
@@ -112,4 +146,12 @@ function describeAnchor(anchor: string | RegExp): string {
     return JSON.stringify(oneLine.length > 120 ? `${oneLine.slice(0, 120)}...` : oneLine);
   }
   return String(anchor);
+}
+
+function isRegularFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
 }

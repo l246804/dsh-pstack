@@ -1,6 +1,6 @@
 # DSH harness mapping
 
-> This package currently ships static assets only. Runtime capabilities arrive with later units.
+> This package ships its static assets plus one bundled skill provider. Delegation, restricted history, and the worktree integration arrive in later units.
 > The tables below are the target contract, not proof that a capability is installed in a profile.
 
 Generated from `scripts/capabilities.ts` into `assets/docs/harness/dsh.md`. Edit the table, not this file.
@@ -33,7 +33,7 @@ about this tree.
 | `TodoWrite` | `todo_write` with the full list; a skipped step stays in `content` | mapped | - |  |
 | `Grep`, `Glob`, `Read`, `Shell` | `grep`, `glob`, `read`, `bash` | mapped | - |  |
 | built-in `create-skill` | the authoring playbook plus DSH validation | degraded | 4 | No Cursor drafting, evaluation, or optimization tool is claimed. |
-| `/name` or the named skill | read the skill through its absolute resource path | deferred | 2 | Absolute resource paths come from the pack that also ships the provider unit. |
+| `/name` or the named skill | the `skill` tool for model-invocable skills, `/name` for the rest | mapped | - | The bundled provider lists all 55 skills and loads each body from its absolute path; only `setup-pstack` stays model-invocable, exactly as upstream declares. |
 
 ## Paths, models, and host features
 
@@ -41,8 +41,8 @@ about this tree.
 | --- | --- | --- | --- | --- |
 | model slug, reasoning effort, `fast` | `role` resolved from `$DSH_HOME/pstack-models.md` | deferred | 3 | Route resolution belongs to the role unit; no model id is hardcoded in the assets. |
 | `~/.cursor/rules/pstack-models.mdc` | `$DSH_HOME/pstack-models.md`, read for each new delegation | deferred | 3 | Reading the role file is part of the role unit. |
-| `.cursor/skills`, `~/.cursor/skills` | `.dsh/skills/<name>/SKILL.md`, `$DSH_HOME/skills` | deferred | 2 | Skill registration and lookup ship with the provider unit. |
-| `~/.cursor/plugins`, `.cursor-plugin` | absolute resource paths inside this package | deferred | 2 | The package resolves its own resource root in the provider unit. |
+| `.cursor/skills`, `~/.cursor/skills` | `assets/skills/<name>/SKILL.md` inside this package | mapped | - | Skills ship inside the package and are read in place; nothing is copied into `$DSH_HOME/skills`, and no directory is watched. |
+| `~/.cursor/plugins`, `.cursor-plugin` | absolute resource paths inside this package | mapped | - | Each candidate carries its own skill directory as the resource base, so `references/` and `scripts/` resolve next to `SKILL.md`. |
 | `~/.cursor/projects/.../agent-transcripts` | restricted `sessionQuery` reads | deferred | 5 | The history unit owns the query path and its permissions. |
 | agent store | `.audit/<task-slug>/` or a directory the user names | mapped | - |  |
 | `paths:` auto-attach globs in SKILL.md | not consumed; skills load by explicit invocation | degraded | not planned | Automatic attachment by file glob has no equivalent, so `typescript-best-practices` stays an explicit invocation. |

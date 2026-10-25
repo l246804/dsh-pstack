@@ -2,35 +2,9 @@
   "name": "dsh-pstack",
   "version": "0.1.0",
   "description": "pstack for DeepSeek Harness: rigorous agent workflows ported from cursor/plugins.",
-  "keywords": [
-    "agent-skills",
-    "deepseek-harness",
-    "dsh",
-    "dsh-plugin",
-    "poteto-mode",
-    "pstack",
-    "workflow"
-  ],
-  "homepage": "https://github.com/l246804/dsh-pstack",
-  "bugs": {
-    "url": "https://github.com/l246804/dsh-pstack/issues"
-  },
   "license": "MIT",
-  "author": {
-    "name": "leiwang",
-    "email": "leiwang2000@foxmail.com"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/l246804/dsh-pstack"
-  },
-  "files": [
-    "dist",
-    "assets",
-    "README.md",
-    "LICENSE"
-  ],
   "type": "module",
+  "icon": "./icon.svg",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {
@@ -38,25 +12,44 @@
       "types": "./dist/index.d.mts",
       "default": "./dist/index.mjs"
     },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
     "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   },
   "scripts": {
     "sync": "node scripts/sync-upstream.ts",
     "sync:check": "node scripts/sync-upstream.ts --check",
     "check:upstream": "node scripts/check-upstream-tree.mjs",
-    "check:patches": "node scripts/check-patches.ts",
     "check:assets": "node scripts/check-assets.ts",
     "typecheck": "tsc --noEmit",
     "test": "vp test",
-    "check": "pnpm run check:upstream && pnpm run check:patches && pnpm run sync:check && pnpm run check:assets && pnpm run typecheck && pnpm run test && pnpm run build",
+    "check": "pnpm run check:upstream && pnpm run sync:check && pnpm run check:assets && pnpm run typecheck && pnpm run test && pnpm run build",
     "build": "vp pack",
-    "prepack": "pnpm run build",
     "dev": "vp pack --watch"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
     "typescript": "^7.0.2",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5"
   },
   "devEngines": {
     "packageManager": {
@@ -66,7 +59,7 @@
     }
   },
   "engines": {
-    "dsh": "0.2.1-rc.3",
-    "node": ">=22.19"
+    "node": ">=22.19",
+    "dsh": "0.2.1-rc.3"
   }
 }

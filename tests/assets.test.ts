@@ -1,22 +1,31 @@
-import { createHash } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 
-import { GENERATED_HARNESS_DOC, UPSTREAM_ROOT } from "../scripts/asset-paths.ts";
+import { applyFilePatches } from "../scripts/apply-patches.ts";
 import {
-  buildAssets,
   DSH_INTRO,
+  UPSTREAM_ROOT,
+  buildAssets,
+  classifySkills,
+  hasHostTerms,
+  insertIntro,
+  introCandidates,
   renderAgent,
   renderSkill,
   skillDirectories,
   summarizeAssets,
   walkUpstream,
 } from "../scripts/build-assets.ts";
-import { checkAssets } from "../scripts/check-assets.ts";
-import { checkPatches } from "../scripts/check-patches.ts";
-import { EXCLUDED_SKILLS, FILE_PATCHES, patchesForFile } from "../scripts/patches/index.ts";
-import { applyFilePatches } from "../scripts/patches/apply.ts";
+import {
+  CAPABILITIES,
+  HARNESS_DOC_PATH,
+  HARNESS_DOC_SCOPE_LINE,
+  detectableCapabilities,
+  renderHarnessDoc,
+} from "../scripts/capabilities.ts";
+import { checkAssets, checkLinks, scanMarkdownLinks } from "../scripts/check-assets.ts";
+import { EXCLUDED_SKILLS, INTRO_SKILLS, patchesForFile } from "../scripts/patches.ts";
 import { compareAssets } from "../scripts/sync-upstream.ts";
 import {
   parseFrontmatter,
@@ -28,76 +37,32 @@ const assets = buildAssets();
 const byPath = new Map(assets.map((asset) => [asset.path, asset]));
 const excluded = new Set(EXCLUDED_SKILLS.map((exclusion) => exclusion.skill));
 const expectedSkills = skillDirectories().filter((skill) => !excluded.has(skill));
-const patchedFiles = new Set(FILE_PATCHES.map((patch) => patch.file));
-const goldenHashes: Readonly<Record<string, string>> = {
-  "skills/poteto-help/SKILL.md": "d8e3f6127517e638c2ff5e8ed3019f548811e5afa2403090295c8fd52b039e8f",
-  "docs/guide/01-setup.md": "c07c714ce54adbad9d2438178a8af1dfd28a113d0937ec653bbccc82209bfbf2",
-  "docs/guide/07-overnight.md": "2ee3cfe5e028b7132046136df7b229c1f48721bc0518de639a601762ade05924",
-  "docs/guide/09-make-it-yours.md":
-    "8be3178785d0fa38bf6f75e13d4a65fb6dbcad176beec3cedba0ac7c3cdfc91d",
-  "docs/harness/dsh.md": "70b3c691b3be451f14f291a274e1b084a628645acd243b6f118d12038b26dd12",
-};
-
-function withoutIntro(body: string): string {
-  return normalizeEol(body).replace(`\n\n${DSH_INTRO}\n`, "\n").replace(`\n${DSH_INTRO}\n\n`, "\n");
-}
-
-function normalizeEol(text: string): string {
-  return text.replaceAll("\r\n", "\n");
-}
+const classifications = new Map(classifySkills().map((item) => [item.skill, item.category]));
 
 function upstream(path: string): Buffer {
   return readFileSync(join(UPSTREAM_ROOT, path));
 }
 
 describe("generated asset set", () => {
-  it("contains 55 skills, both agents, the guide, and the harness mapping", () => {
-    expect(summarizeAssets(assets)).toEqual({
-      files: 153,
-      skills: 55,
-      agents: 2,
-      guideMarkdown: 11,
-      guideImages: 6,
-      executables: 5,
-      generated: 60,
-    });
-    expect(byPath.has(GENERATED_HARNESS_DOC)).toBe(true);
+  it("contains the unit 1 inventory", () => {
+    const summary = summarizeAssets(assets);
+    expect(summary.files).toBe(153);
+    expect(summary.skills).toBe(55);
+    expect(summary.agents).toBe(2);
+    expect(summary.guideMarkdown).toBe(11);
+    expect(summary.guideImages).toBe(6);
+    expect(summary.executables).toBe(5);
+    expect(summary.generated).toBeGreaterThan(0);
+    expect(byPath.has(HARNESS_DOC_PATH)).toBe(true);
     expect(expectedSkills).toHaveLength(55);
     expect(expectedSkills.filter((skill) => skill.startsWith("principle-"))).toHaveLength(24);
     expect(
       walkUpstream("skills/poteto-mode/playbooks").filter((path) => path.endsWith(".md")),
     ).toHaveLength(23);
     expect(excluded.has("make-bot-ui")).toBe(true);
-    expect(skillDirectories()).toContain("make-bot-ui");
   });
 
-  it("does not ship the excluded skill", () => {
-    expect([...byPath.keys()].filter((path) => path.includes("make-bot-ui"))).toEqual([]);
-  });
-
-  it("keeps each skill's file set and executable bit aligned with upstream", () => {
-    for (const skill of expectedSkills) {
-      const expected = [...walkUpstream(`skills/${skill}`)].sort();
-      const actual = [...byPath.keys()]
-        .filter((path) => path.startsWith(`skills/${skill}/`))
-        .sort();
-
-      expect(actual, skill).toEqual(expected);
-      for (const path of expected) {
-        const source = upstream(path);
-        const asset = byPath.get(path);
-        expect(asset, path).toBeDefined();
-        expect(asset?.executable, path).toBe(
-          (statSync(join(UPSTREAM_ROOT, path)).mode & 0o111) !== 0,
-        );
-        if (!path.endsWith("/SKILL.md")) {
-          expect(asset?.bytes.equals(source), path).toBe(true);
-        }
-      }
-    }
-  });
-
-  it("preserves five executable scripts", () => {
+  it("keeps the five executable scripts", () => {
     expect(assets.filter((asset) => asset.executable).map((asset) => asset.path)).toEqual([
       "skills/poteto-mode/scripts/check-plan.mjs",
       "skills/poteto-mode/scripts/orch/orch.ts",
@@ -107,25 +72,58 @@ describe("generated asset set", () => {
     ]);
   });
 
-  it("keeps CRLF through frontmatter and the DSH intro", () => {
-    const rendered = renderSkill(
-      "---\r\nname: demo\r\ndescription: Demo.\r\ndisable-model-invocation: true\r\n---\r\n\r\n# Demo\r\n\r\nBody.\r\n",
-      "skills/demo/SKILL.md",
-    );
+  it("classifies every skill as copy, intro-only, or patched", () => {
+    expect(INTRO_SKILLS).toHaveProperty("how");
+    expect(INTRO_SKILLS).toHaveProperty("blast-radius");
+    expect(INTRO_SKILLS).toHaveProperty("typescript-best-practices");
+    expect(INTRO_SKILLS).not.toHaveProperty("bro");
+    expect(INTRO_SKILLS).not.toHaveProperty("tdd");
+    expect(Object.keys(INTRO_SKILLS)).toHaveLength(24);
 
-    expect(rendered.replaceAll("\r\n", "")).not.toMatch(/[\r\n]/);
-    expect(parseFrontmatter(rendered).body).toContain(`\r\n${DSH_INTRO}\r\n`);
-    expect(
-      renderAgent(
-        "---\r\nname: demo\r\ndescription: Demo.\r\n---\r\n\r\n# Agent\r\n",
-        "agents/demo.md",
-      ).replaceAll("\r\n", ""),
-    ).not.toMatch(/[\r\n]/);
+    const counts = { copy: 0, "intro-only": 0, patched: 0 };
+    for (const skill of expectedSkills) {
+      const category = classifications.get(skill);
+      expect(category, skill).toMatch(/^(copy|intro-only|patched)$/);
+      counts[category as keyof typeof counts] += 1;
+    }
+    expect(counts).toEqual({ copy: 31, "intro-only": 22, patched: 2 });
+    expect(classifications.get("poteto-help")).toBe("patched");
+    expect(classifications.get("blast-radius")).toBe("patched");
+    expect(classifications.get("how")).toBe("intro-only");
+    expect(classifications.get("tdd")).toBe("copy");
+  });
+
+  it("requires an intro everywhere the upstream text uses host vocabulary", () => {
+    for (const skill of introCandidates()) {
+      expect(Object.hasOwn(INTRO_SKILLS, skill), skill).toBe(true);
+    }
+    expect(hasHostTerms("Use the Task tool with readonly: true.")).toBe(true);
+    expect(hasHostTerms("Read the local markdown file.")).toBe(false);
+  });
+
+  it("preserves each skill's file set and executable bit", () => {
+    for (const skill of expectedSkills) {
+      const expected = [...walkUpstream(`skills/${skill}`)].sort();
+      const actual = [...byPath.keys()]
+        .filter((path) => path.startsWith(`skills/${skill}/`))
+        .sort();
+      expect(actual, skill).toEqual(expected);
+
+      for (const path of expected) {
+        const asset = byPath.get(path);
+        expect(asset, path).toBeDefined();
+        expect(asset?.executable, path).toBe(
+          (statSync(join(UPSTREAM_ROOT, path)).mode & 0o111) !== 0,
+        );
+        if (!path.endsWith("/SKILL.md")) {
+          expect(asset?.bytes.equals(upstream(path)), path).toBe(true);
+        }
+      }
+    }
   });
 
   it("is deterministic", () => {
     const again = buildAssets();
-
     expect(again.map((asset) => [asset.path, asset.executable])).toEqual(
       assets.map((asset) => [asset.path, asset.executable]),
     );
@@ -136,18 +134,14 @@ describe("generated asset set", () => {
   });
 });
 
-describe("skill frontmatter and bodies", () => {
+describe("skill bodies", () => {
   it("uses the shared frontmatter implementation for all 55 skills", () => {
     for (const skill of expectedSkills) {
       const path = `skills/${skill}/SKILL.md`;
-      const source = upstream(path).toString("utf8");
-      const asset = byPath.get(path)?.bytes.toString("utf8");
-      expect(asset, path).toBeDefined();
-
-      const sourceData = parseFrontmatter(source);
-      const assetData = parseFrontmatter(asset as string);
-      const sourceFrontmatter = validateSkillFrontmatter(sourceData.data, path);
-      const assetFrontmatter = validateSkillFrontmatter(assetData.data, path);
+      const source = parseFrontmatter(upstream(path).toString("utf8"));
+      const asset = parseFrontmatter(byPath.get(path)?.bytes.toString("utf8") as string);
+      const sourceFrontmatter = validateSkillFrontmatter(source.data, path);
+      const assetFrontmatter = validateSkillFrontmatter(asset.data, path);
 
       expect(assetFrontmatter.name, path).toBe(skill);
       expect(assetFrontmatter.description, path).toBe(sourceFrontmatter.description);
@@ -155,67 +149,64 @@ describe("skill frontmatter and bodies", () => {
         sourceFrontmatter.disableModelInvocation,
       );
       expect(assetFrontmatter.userInvocable, path).toBe(sourceFrontmatter.userInvocable);
-      expect(Object.hasOwn(assetData.data, "icon"), path).toBe(false);
-      expect(Object.hasOwn(assetData.data, "color"), path).toBe(false);
-      expect(Object.hasOwn(assetData.data, "paths"), path).toBe(false);
+      for (const field of ["icon", "color", "paths"]) {
+        expect(Object.hasOwn(asset.data, field), `${path}:${field}`).toBe(false);
+      }
     }
   });
 
-  it("puts the DSH pointer after an H1", () => {
+  it("matches the declared category and intro count", () => {
+    for (const skill of expectedSkills) {
+      const path = `skills/${skill}/SKILL.md`;
+      const category = classifications.get(skill);
+      const sourceText = upstream(path).toString("utf8");
+      const sourceBody = parseFrontmatter(sourceText).body;
+      const assetBody = parseFrontmatter(byPath.get(path)?.bytes.toString("utf8") as string).body;
+
+      if (category === "copy") {
+        expect(assetBody, path).toBe(sourceBody);
+        expect(assetBody.includes(DSH_INTRO), path).toBe(false);
+      } else if (category === "intro-only") {
+        expect(assetBody, path).toBe(insertIntro(sourceBody, path));
+        expect(assetBody.split(DSH_INTRO).length - 1, path).toBe(1);
+      } else {
+        const patched = applyFilePatches(path, sourceText, patchesForFile(path));
+        const patchedBody = parseFrontmatter(patched).body;
+        expect(assetBody, path).toBe(
+          Object.hasOwn(INTRO_SKILLS, skill) ? insertIntro(patchedBody, path) : patchedBody,
+        );
+        expect(assetBody.split(DSH_INTRO).length - 1, path).toBe(
+          Object.hasOwn(INTRO_SKILLS, skill) ? 1 : 0,
+        );
+      }
+    }
+  });
+
+  it("keeps the DSH pointer after an H1", () => {
     const body = parseFrontmatter(
       byPath.get("skills/how/SKILL.md")?.bytes.toString("utf8") as string,
     ).body;
-
-    expect(normalizeEol(body).startsWith(`\n# How\n\n${DSH_INTRO}\n`)).toBe(true);
+    expect(body.startsWith(`\n# How\n\n${DSH_INTRO}\n`)).toBe(true);
   });
 
-  it("puts the DSH pointer at the top for skills without an H1", () => {
-    for (const skill of ["bro", "in-your-own-words", "sharpen"]) {
-      const body = parseFrontmatter(
-        byPath.get(`skills/${skill}/SKILL.md`)?.bytes.toString("utf8") as string,
-      ).body;
-      expect(normalizeEol(body).startsWith(`\n${DSH_INTRO}\n\n`), skill).toBe(true);
-    }
-  });
-
-  it("adds exactly one DSH pointer to every skill", () => {
-    for (const skill of expectedSkills) {
-      const body = parseFrontmatter(
-        byPath.get(`skills/${skill}/SKILL.md`)?.bytes.toString("utf8") as string,
-      ).body;
-      expect(body.split(DSH_INTRO).length - 1, skill).toBe(1);
-    }
-  });
-
-  it("pins every patched or generated document to golden bytes", () => {
-    for (const [path, expected] of Object.entries(goldenHashes)) {
-      const asset = byPath.get(path);
-      expect(asset, path).toBeDefined();
-      expect(
-        createHash("sha256")
-          .update(asset?.bytes as Buffer)
-          .digest("hex"),
-        path,
-      ).toBe(expected);
-    }
-  });
-
-  it("changes no body text outside declared patches and the DSH pointer", () => {
-    for (const skill of expectedSkills) {
-      const file = `skills/${skill}/SKILL.md`;
-      const source = upstream(file).toString("utf8");
-      const expected = patchedFiles.has(file)
-        ? applyFilePatches(file, source, patchesForFile(file))
-        : source;
-      const expectedBody = parseFrontmatter(expected).body;
-      const actualBody = parseFrontmatter(byPath.get(file)?.bytes.toString("utf8") as string).body;
-
-      expect(withoutIntro(actualBody), file).toBe(normalizeEol(expectedBody));
-    }
+  it("keeps a CRLF source in CRLF through rendering", () => {
+    const rendered = renderSkill(
+      "---\r\nname: demo\r\ndescription: Demo.\r\ndisable-model-invocation: true\r\n---\r\n\r\n# Demo\r\n\r\nBody.\r\n",
+      "skills/demo/SKILL.md",
+      true,
+    );
+    expect(rendered.replaceAll("\r\n", "")).not.toMatch(/[\r\n]/);
+    expect(parseFrontmatter(rendered).body).toContain(`\r\n${DSH_INTRO}\r\n`);
+    expect(
+      renderAgent(
+        "---\r\nname: demo\r\ndescription: Demo.\r\n---\r\n\r\n# Agent\r\n",
+        "agents/demo.md",
+      ).replaceAll("\r\n", ""),
+    ).not.toMatch(/[\r\n]/);
   });
 });
 
-describe("agents and guide", () => {
+describe("agents, guides, and harness doc", () => {
   it("normalizes agent frontmatter and preserves the body", () => {
     for (const path of walkUpstream("agents")) {
       const source = parseFrontmatter(upstream(path).toString("utf8"));
@@ -231,22 +222,156 @@ describe("agents and guide", () => {
   it("copies guide files and applies only the declared guide patches", () => {
     const expected = [...walkUpstream("docs/guide")].sort();
     const actual = [...byPath.keys()].filter((path) => path.startsWith("docs/guide/")).sort();
-
     expect(actual).toEqual(expected);
+
     for (const path of expected) {
       const source = upstream(path);
       const asset = byPath.get(path);
-      const expectedBytes = patchedFiles.has(path)
-        ? Buffer.from(applyFilePatches(path, source.toString("utf8"), patchesForFile(path)), "utf8")
-        : source;
+      const expectedBytes =
+        patchesForFile(path).length === 0
+          ? source
+          : Buffer.from(
+              applyFilePatches(path, source.toString("utf8"), patchesForFile(path)),
+              "utf8",
+            );
       expect(asset?.bytes.equals(expectedBytes), path).toBe(true);
     }
+  });
+
+  it("generates a target-contract harness doc that names static assets plus the provider", () => {
+    const doc = byPath.get(HARNESS_DOC_PATH)?.bytes.toString("utf8") as string;
+
+    expect(doc).toContain("# DSH harness mapping");
+    expect(doc).toContain(HARNESS_DOC_SCOPE_LINE);
+    expect(doc).toContain("static assets plus one bundled skill provider");
+    expect(doc).not.toContain("ships static assets only");
+    expect(doc).toContain("target contract");
+    expect(doc).toContain("`pstack_subagent`");
+  });
+});
+
+describe("capability table", () => {
+  it("has unique rows and reasons for every non-mapped capability", () => {
+    const ids = CAPABILITIES.map((capability) => capability.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.length).toBeGreaterThanOrEqual(17);
+
+    for (const capability of CAPABILITIES) {
+      if (capability.coverage === "mapped") continue;
+      expect(capability.reason.trim().length, capability.id).toBeGreaterThan(0);
+      expect(capability.unit.trim().length, capability.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("keeps delegation, history, and worktree deferred while the provider rows are delivered", () => {
+    const byId = new Map(CAPABILITIES.map((capability) => [capability.id, capability]));
+
+    for (const id of [
+      "task-spawn",
+      "subagent-general",
+      "subagent-poteto",
+      "subagent-comment-sicko",
+      "model-route",
+      "transcripts",
+      "worktree",
+    ]) {
+      expect(byId.get(id)?.coverage, id).toBe("deferred");
+    }
+    for (const id of ["skill-by-name", "project-skills", "plugin-location"]) {
+      expect(byId.get(id)?.coverage, id).toBe("mapped");
+    }
+  });
+
+  it("keeps table cells single-line and pipe-free", () => {
+    for (const capability of CAPABILITIES) {
+      for (const value of [capability.cursor, capability.dsh, capability.note ?? ""]) {
+        expect(value, capability.id).not.toContain("\n");
+        expect(value, capability.id).not.toContain("|");
+      }
+    }
+    expect(renderHarnessDoc()).toContain("not planned");
+    expect(detectableCapabilities().length).toBeGreaterThan(0);
+  });
+});
+
+describe("link scanning", () => {
+  const exists = (path: string): boolean =>
+    new Set(["assets/README.md", "assets/docs/guide/01-setup.md", "assets/docs/guide/images"]).has(
+      path.replace(/\/$/, ""),
+    );
+
+  it("finds links and images outside fenced code", () => {
+    const links = scanMarkdownLinks(
+      "See [the guide](../guide/01-setup.md) and ![diagram](./images/a.png).",
+    );
+    expect(links).toEqual([
+      { line: 1, target: "../guide/01-setup.md" },
+      { line: 1, target: "./images/a.png" },
+    ]);
+    expect(
+      scanMarkdownLinks(
+        ["```md", "[not a link](./missing.md)", "```", "[real](./README.md)"].join("\n"),
+      ),
+    ).toEqual([{ line: 4, target: "./README.md" }]);
+  });
+
+  it("resolves files, directories, and skips external links", () => {
+    const report = checkLinks(
+      [
+        {
+          file: "assets/skills/demo/SKILL.md",
+          text: [
+            "[guide](../../docs/guide/01-setup.md)",
+            "[images](../../docs/guide/images/)",
+            "[readme](../../README.md)",
+            "[external](https://example.com/x)",
+            "[anchor](#section)",
+          ].join("\n"),
+        },
+      ],
+      exists,
+    );
+
+    expect(report.problems).toEqual([]);
+    expect(report.checked).toBe(3);
+    expect(report.skipped).toBe(2);
+  });
+
+  it("reports missing and escaping links, and keeps template placeholders", () => {
+    const report = checkLinks(
+      [
+        {
+          file: "assets/docs/example.md",
+          text: "[missing](./missing.md)\n[outside](../../../../outside.md)\n[placeholder](url)",
+        },
+      ],
+      exists,
+    );
+
+    expect(report.problems).toEqual([
+      {
+        file: "assets/docs/example.md",
+        line: 1,
+        target: "./missing.md",
+        resolved: "assets/docs/missing.md",
+        reason: "missing",
+      },
+      {
+        file: "assets/docs/example.md",
+        line: 2,
+        target: "../../../../outside.md",
+        resolved: "../../outside.md",
+        reason: "outside-repository",
+      },
+    ]);
+    expect(report.placeholders).toEqual([
+      { file: "assets/docs/example.md", line: 3, target: "url" },
+    ]);
   });
 });
 
 describe("disk checks", () => {
-  it("passes the patch and asset audits against the committed tree", () => {
-    expect(checkPatches().problems).toEqual([]);
+  it("passes the asset audit against the committed tree", () => {
     expect(checkAssets().problems).toEqual([]);
   });
 

@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Sequence work into verifiable units
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 Order work as a sequence of small units, each ending in a state you can check, and don't advance until the current one is green.
 
 **Why:** A break caught at the unit that caused it is cheap to localize. A break caught after a batch is buried, and you have already built further on a broken base. Sequencing those same units into a delivery a reviewer can replay turns "trust me" into "watch it go red, then green."

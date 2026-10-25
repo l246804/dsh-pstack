@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { applyFilePatches, PatchError } from "../scripts/patches/apply.ts";
-import { FILE_PATCHES, patchesForFile } from "../scripts/patches/index.ts";
-import type { FilePatch } from "../scripts/patches/types.ts";
-import { checkPatches } from "../scripts/check-patches.ts";
-import { assertPatchOutput } from "../scripts/build-assets.ts";
+import {
+  applyFilePatches,
+  assertPatchOutput,
+  PatchError,
+  validatePatchTargets,
+} from "../scripts/apply-patches.ts";
+import { buildAssets, UPSTREAM_ROOT } from "../scripts/build-assets.ts";
+import { EXCLUDED_SKILLS, FILE_PATCHES, patchesForFile } from "../scripts/patches.ts";
+import type { FilePatch } from "../scripts/patches.ts";
 
 const file = "skills/demo/SKILL.md";
 
@@ -62,7 +66,7 @@ describe("applyFilePatches", () => {
     expect(applyFilePatches(file, "keep\nremove me\n", [patch])).toBe("keep\n");
   });
 
-  it("rejects an empty regex match and a mismatched file", () => {
+  it("rejects an empty regex and a mismatched file", () => {
     expect(() => applyFilePatches(file, "text", [rewrite(/^/m, "x")])).toThrow(
       /matched empty text/,
     );
@@ -70,56 +74,48 @@ describe("applyFilePatches", () => {
       applyFilePatches(file, "text", [{ ...rewrite("text", "x"), file: "skills/other/SKILL.md" }]),
     ).toThrow(PatchError);
   });
+});
 
-  it("fails the build when a promised output fragment is absent", () => {
+describe("patch output", () => {
+  it("keeps every promised fragment", () => {
     expect(() => assertPatchOutput(file, [rewrite("a", "b")], "b")).not.toThrow();
     expect(() =>
       assertPatchOutput(file, [{ ...rewrite("a", "b"), outputIncludes: ["missing"] }], "b"),
     ).toThrow(/missing "missing"/);
   });
+
+  it("rejects non-normalized, directory, and excluded targets", () => {
+    const traversal = { ...rewrite("x", "y"), file: "skills/../docs/guide/01-setup.md" };
+    expect(() => validatePatchTargets([traversal], EXCLUDED_SKILLS, UPSTREAM_ROOT)).toThrow(
+      /normalized POSIX path/,
+    );
+
+    const directory = { ...rewrite("x", "y"), file: "skills/how" };
+    expect(() => validatePatchTargets([directory], EXCLUDED_SKILLS, UPSTREAM_ROOT)).toThrow(
+      /not a regular file/,
+    );
+
+    const excluded = { ...rewrite("x", "y"), file: "skills/make-bot-ui/SKILL.md" };
+    expect(() => validatePatchTargets([excluded], EXCLUDED_SKILLS, UPSTREAM_ROOT)).toThrow(
+      /excluded skill/,
+    );
+  });
 });
 
-describe("declared patches", () => {
-  it("all apply, do not overlap, and keep their output fragments", () => {
-    const report = checkPatches();
-
-    expect(report.problems).toEqual([]);
-    expect(report.patches).toBe(6);
-    expect(report.files).toBe(4);
-    expect(report.byKind).toEqual({ drop: 3, path: 1, replace: 2 });
+describe("declared patch data", () => {
+  it("has nine patches across five files and builds cleanly", () => {
+    expect(FILE_PATCHES).toHaveLength(9);
+    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(5);
+    expect(() => validatePatchTargets(FILE_PATCHES, EXCLUDED_SKILLS, UPSTREAM_ROOT)).not.toThrow();
+    expect(() => buildAssets()).not.toThrow();
   });
 
-  it("targets the excluded skill nowhere", () => {
-    expect(FILE_PATCHES.some((patch) => patch.file.includes("make-bot-ui"))).toBe(false);
+  it("returns the patches for one file", () => {
+    expect(patchesForFile("skills/poteto-help/SKILL.md")).toHaveLength(3);
+    expect(patchesForFile("skills/how/SKILL.md")).toEqual([]);
   });
 
-  it("rejects a path that only escapes its scope after normalization", () => {
-    const unsafe: FilePatch = {
-      kind: "path",
-      file: "skills/../docs/guide/01-setup.md",
-      reason: "test traversal",
-      anchor: "# Setup",
-      expectedMatches: 1,
-      replacement: "# Setup",
-    };
-
-    expect(checkPatches([unsafe]).problems.join("\n")).toContain("normalized POSIX path");
-  });
-
-  it("rejects a directory target without throwing EISDIR", () => {
-    const directory: FilePatch = {
-      kind: "path",
-      file: "skills/how",
-      reason: "test directory",
-      anchor: "x",
-      expectedMatches: 1,
-      replacement: "y",
-    };
-
-    expect(checkPatches([directory]).problems.join("\n")).toContain("not a regular file");
-  });
-
-  it("independently catches a missing output fragment", () => {
+  it("fails the build when an output fragment is missing", () => {
     const poisoned: FilePatch = {
       kind: "replace",
       file: "skills/poteto-help/SKILL.md",
@@ -130,13 +126,8 @@ describe("declared patches", () => {
       outputIncludes: ["THIS FRAGMENT NEVER APPEARS"],
     };
 
-    expect(checkPatches([poisoned]).problems.join("\n")).toContain(
-      'missing "THIS FRAGMENT NEVER APPEARS"',
+    expect(() => buildAssets([...FILE_PATCHES, poisoned])).toThrow(
+      /missing "THIS FRAGMENT NEVER APPEARS"/,
     );
-  });
-
-  it("returns the patches for one file", () => {
-    expect(patchesForFile("skills/poteto-help/SKILL.md")).toHaveLength(3);
-    expect(patchesForFile("skills/how/SKILL.md")).toEqual([]);
   });
 });

@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Subtract Before You Add
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 When evolving a system, remove complexity first, then build. Default to subtraction.
 
 Make simplification a continual investment. Leave the design slightly simpler and more capable behind the same or smaller surface than you found it.

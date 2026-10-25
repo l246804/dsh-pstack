@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Experience First
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 When implementation convenience conflicts with user delight, choose delight.
 
 - Every feature, control, and option must be justified

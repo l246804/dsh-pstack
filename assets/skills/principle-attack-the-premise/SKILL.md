@@ -6,8 +6,6 @@ disable-model-invocation: true
 
 # Attack the Premise
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
 When two or more fixes that share one premise have failed the same gate, suspect the premise, not the fixes.
 
 **Why:** Each failed fix is evidence against the belief it assumed. A third fix on the same premise spends effort where the evidence already says the cause is not.
