@@ -20,7 +20,7 @@ ${rule}
 ### PR mechanics
 ### Verdict and merge
 ### Boot recipe
-\`git show origin/main:\` /loop 1h status message
+\`create_goal\` \`schedule_create\` status message
 
 ## PR 1
 **Depends on.** None.

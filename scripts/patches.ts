@@ -99,6 +99,65 @@ export const UNIT5_FORBIDDEN_FIELDS: readonly string[] = [
 ];
 
 /**
+ * Files unit 6 rewrote to DSH semantics.
+ *
+ * `poteto-mode` and the ten long-running playbooks are here because unit 6 is
+ * where the wake mechanism stopped being a command and became a goal, a
+ * reminder, and a local watcher. The two guide pages and the three helper files
+ * carry the same claims in the reader-facing copy.
+ */
+export const UNIT6_PATCHED_FILES: readonly string[] = [
+  "skills/poteto-mode/SKILL.md",
+  "skills/poteto-mode/playbooks/autonomous-run.md",
+  "skills/poteto-mode/playbooks/babysit.md",
+  "skills/poteto-mode/playbooks/shipping.md",
+  "skills/poteto-mode/playbooks/autopilot-full.md",
+  "skills/poteto-mode/playbooks/autopilot-stack.md",
+  "skills/poteto-mode/playbooks/orchestrate.md",
+  "skills/poteto-mode/playbooks/pause-safely.md",
+  "skills/poteto-mode/playbooks/multi-phase-plan.md",
+  "skills/poteto-mode/playbooks/hillclimb.md",
+  "skills/poteto-mode/playbooks/visual-parity.md",
+  "skills/poteto-help/SKILL.md",
+  "skills/poteto-help/references/prompting.md",
+  "skills/poteto-help/references/recipes.md",
+  "docs/guide/07-overnight.md",
+  "docs/guide/10-recipes-and-pitfalls.md",
+];
+
+/**
+ * Cursor vocabulary that only the unit-6 files had to lose.
+ *
+ * `run_in_background`, `subagent_type`, and the cloud fields are already in
+ * `FORBIDDEN_CURSOR_FIELDS`; these are the extra tokens those files carried
+ * because they were the ones describing long runs. `/loop`, `cloud agent`, and
+ * `Cursor Project` each named a mechanism a reader would look for and not find.
+ * `roleIndex` is deliberately absent: it is this package's own parameter, and
+ * `swarm workers` is the list role it selects.
+ */
+export const UNIT6_FORBIDDEN_FIELDS: readonly string[] = [
+  "/loop",
+  "Cursor Project",
+  "cursor.com/blog/projects",
+  "Cursor's built-in",
+  "Cursor built-ins",
+  "restart Cursor",
+  "Cursor restart",
+  "cursor-team-kit",
+  "control-ui",
+  "control-cli",
+  "cloud agent",
+  "cloud agents",
+  "`Task`",
+  "Task schema",
+  "Task call",
+  "todolist",
+  "git show origin/main",
+  "agent-transcripts",
+  "generalPurpose",
+];
+
+/**
  * Cursor fields and paths that have no DSH equivalent.
  *
  * A unit-4 file may still name Cursor as a product where the sentence is about
@@ -149,7 +208,6 @@ export const INTRO_SKILLS: Readonly<Record<string, string>> = {
   "maintain-verification-skill": "Cursor Task/readonly vocabulary and verification-skill paths.",
   "no-comments": "Cursor Task and comment-sicko subagent vocabulary.",
   "poteto-help": "Cursor install, model-rule, and Custom Mode text.",
-  "poteto-mode": "Cursor Task, model, and Custom Mode text.",
   "principle-prove-it-works": "References show-me-your-work and needs DSH verification wording.",
   recall: "Cursor transcript paths and session history.",
   reflect: "Cursor Task and transcript vocabulary.",
@@ -191,10 +249,11 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "pstack is built for Cursor, and it also installs in Claude Code with `/plugin marketplace add cursor/plugins`, then `/plugin install pstack@cursor-plugins`. There, each command takes a `pstack:` prefix, such as `/pstack:poteto-mode`. The [Claude Code adapter](../../docs/harness/claude-code.md) maps the Cursor names, and a step that needs a Cursor-only feature, such as Bugbot or Automations, is skipped with a one-line note.\n\nOther tools can read the skills, because they use the Agent Skills format. But most workflow skills, including `/poteto-mode`, `/how`, `/why`, and `/teach`, spawn Cursor subagents with per-role models, and Custom Modes and `/loop` are Cursor features, so those parts may not work there.",
     expectedMatches: 1,
     replacement:
-      "This tree is the DSH build of pstack. The Cursor and Claude Code variants are upstream documents and are not shipped here. The [DSH harness mapping](../../docs/harness/dsh.md) maps the Cursor names onto this host, and a step that needs a capability this port does not have is reported at the step that needs it, not silently skipped.\n\nEvery workflow skill here runs through this package's bundled skill provider, and the skills that delegate start `pstack_subagent` children whose routes come from `$DSH_HOME/pstack-models.md`. There is no Custom Mode and no `/loop`; start each task with `/poteto-mode`, and treat a multi-hour run as something you supervise in the same Session.",
+      "This tree is the DSH build of pstack. The Cursor and Claude Code variants are upstream documents and are not shipped here. The [DSH harness mapping](../../docs/harness/dsh.md) maps the Cursor names onto this host, and a step that needs a capability this port does not have is reported at the step that needs it, not silently skipped.\n\nEvery workflow skill here runs through this package's bundled skill provider, and the skills that delegate start `pstack_subagent` children whose routes come from `$DSH_HOME/pstack-models.md`. There is no Custom Mode and no loop command to type: start each task with `/poteto-mode`, register a long run as a goal with `create_goal`, and treat a multi-hour run as something you supervise in the same Session unless the goal round driver is mounted.",
     outputIncludes: [
       "[DSH harness mapping](../../docs/harness/dsh.md)",
-      "There is no Custom Mode and no `/loop`",
+      "no loop command to type",
+      "register a long run as a goal with `create_goal`",
     ],
   },
   {
@@ -1893,7 +1952,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "If a skill directory next to this one is missing from the table, read its frontmatter and route by its description. The `principle-*` directories are covered under principles below.",
     expectedMatches: 1,
     replacement:
-      "If a skill directory next to this one is missing from the table, read its frontmatter and route by its description. The `principle-*` directories are covered under principles below.\n\n`/recall`, `/reflect`, `/automate-me`, `/show-me-your-work`, the Eval playbook, Session pickup, and Worktree cleanup all ship, and they read session history through `pstack_history`. A live read of the calling session or a direct child is delivered; a cold read whose events cannot be attributed to the stored log reports the audit unfinished. Those flows have not been verified end to end on a real session yet. The remaining long-running playbooks arrive in later units.",
+      "If a skill directory next to this one is missing from the table, read its frontmatter and route by its description. The `principle-*` directories are covered under principles below.\n\n`/recall`, `/reflect`, `/automate-me`, `/show-me-your-work`, the Eval playbook, Session pickup, and Worktree cleanup all ship, and they read session history through `pstack_history`. A live read of the calling session or a direct child is delivered; a cold read whose events cannot be attributed to the stored log reports the audit unfinished. Those flows have not been verified end to end on a real session yet. The long-running playbooks ship as ported text as well, and each one states the gate it cannot pass on this host.",
     outputIncludes: [
       "they read session history through `pstack_history`",
       "have not been verified end to end on a real session yet",
@@ -1907,8 +1966,11 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "- `/deslop`, `control-cli`, and `control-ui` ship in the `cursor-team-kit` plugin.\n- `/loop` and `/create-skill` are Cursor built-ins.\n- pstack has no `/orchestrate` skill. Orchestrate is a `/poteto-mode` playbook. If the slash menu shows `/orchestrate`, another plugin provides it.",
     expectedMatches: 1,
     replacement:
-      "- `/deslop`, `control-cli`, and `control-ui` ship in Cursor's `cursor-team-kit` plugin and are not ported. Read the diff once yourself, and use a project verification skill when one exists.\n- `/loop` and `/create-skill` are Cursor built-ins. This port has neither: a long run stays in one Session, and skill authoring goes through the authoring playbook.\n- pstack has no `/orchestrate` skill. Orchestrate is a `/poteto-mode` playbook, and that playbook is not ported to this harness yet.",
-    outputIncludes: ["This port has neither: a long run stays in one Session"],
+      "- No slop-strip or surface-control plugin ships here. Read the staged diff once yourself before a commit, and use a project verification skill, or a driver the repo already has, before you call a surface verified.\n- There is no loop command and no skill-drafting built-in. A long run is a goal (`create_goal`), a heartbeat reminder where a timed input fits, and a decision trail; skill authoring goes through the authoring playbook.\n- pstack has no `/orchestrate` skill. Orchestrate is a `/poteto-mode` playbook. The playbook is ported: its `.audit` store, `orch` CLI, depth-2 delegation, and inbox discipline are shipped text, while its cloud restart and cloud liveness steps are explicitly unsupported. None of it has been verified end to end.",
+    outputIncludes: [
+      "There is no loop command and no skill-drafting built-in",
+      "its cloud restart and cloud liveness steps are explicitly unsupported",
+    ],
   },
   {
     kind: "replace",
@@ -1919,10 +1981,10 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       'Without `/poteto-mode`, a phrase such as "babysit this pr" can start Cursor\'s own skill for the same job instead. The Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) lists every playbook and when it applies. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     expectedMatches: 1,
     replacement:
-      'The ported playbooks are Investigation, Bug fix, Perf issue, Runtime forensics, Trace forensics, Feature, Refactoring, Prototype, Authoring a skill, and Opening a PR. Hillclimb, Visual parity, Shipping, Babysit, Eval, Orchestrate, the two Autopilot playbooks, Session pickup, Pause safely, Multi-phase plan, and Worktree cleanup still carry Cursor wording and are not ported yet, so name that gap instead of routing into them. The Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) lists every playbook and when it applies. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
+      'Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness, and each one states the gate it cannot pass on its own: Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun plus the `orch` CLI, and Hillclimb and Visual parity cannot claim a win without a measurement or an image diff they actually ran. Those flows are shipped as text and are not verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     outputIncludes: [
-      "The ported playbooks are Investigation, Bug fix, Perf issue, Runtime forensics, Trace forensics, Feature, Refactoring, Prototype, Authoring a skill, and Opening a PR.",
-      "still carry Cursor wording and are not ported yet",
+      "Every playbook in the Playbooks section",
+      "Those flows are shipped as text and are not verified end to end.",
     ],
   },
   {
@@ -1955,8 +2017,11 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "| An overnight run moved but finished nothing | `/loop` needs a check that can pass or fail, not a duration. See [guide page 7](../../docs/guide/07-overnight.md). |",
     expectedMatches: 1,
     replacement:
-      "| An overnight run moved but finished nothing | The run needs a check that can pass or fail, not a duration. This host has no `/loop`, so an overnight run is a supervised Session. See [guide page 7](../../docs/guide/07-overnight.md). |",
-    outputIncludes: ["This host has no `/loop`, so an overnight run is a supervised Session."],
+      "| An overnight run moved but finished nothing | The run needs a check that can pass or fail, not a duration. Give the run a goal with a checkable predicate and, at most, a heartbeat reminder; automatic rounds need the goal round driver mounted, so otherwise the run is a supervised Session. See [guide page 7](../../docs/guide/07-overnight.md). |",
+    outputIncludes: [
+      "Give the run a goal with a checkable predicate",
+      "otherwise the run is a supervised Session",
+    ],
   },
   {
     kind: "replace",
@@ -2748,6 +2813,1092 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "bucket=verify-recent-chat",
       'pinned=unknown',
       'printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n"',
+    ],
+  },
+  // -------------------------------------------------------------------------
+  // Unit 6: the long-running workflows.
+  //
+  // The rule throughout is that a wake mechanism has to exist before the text
+  // claims it. There is no loop command on this host, `schedule_create` delivers
+  // a reminder and cannot subscribe to anything, and a child cannot arm one at
+  // all. So a goal carries a run, a background job settlement or a poll you run
+  // is the only event-shaped wake, and a step that needs a cloud machine is
+  // rewritten to the local child and worktree that actually exist.
+  // -------------------------------------------------------------------------
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "The fork trigger names the real question tool; `AskQuestion` is a Cursor call this host would reject.",
+    anchor:
+      '- About to `AskQuestion` on a "which approach", "how should I", or "what should this do" fork → classify it before you ask.',
+    expectedMatches: 1,
+    replacement:
+      '- About to call `ask_user_question` on a "which approach", "how should I", or "what should this do" fork → classify it before you ask.',
+    outputIncludes: ["About to call `ask_user_question` on a"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "Authoring a SKILL.md goes through the bundled playbook and this package's checks, not a Cursor built-in.",
+    anchor:
+      "Agent-facing prose also follows the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).",
+    expectedMatches: 1,
+    replacement:
+      "Agent-facing prose also follows the authoring-a-skill playbook (`playbooks/authoring-a-skill.md`), because that playbook carries this host's frontmatter, link, and structure rules.",
+    outputIncludes: [
+      "the authoring-a-skill playbook (`playbooks/authoring-a-skill.md`)",
+      "this host's frontmatter, link, and structure rules",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "No slop-strip plugin ships here, so the pre-commit trigger has to name what this host actually offers.",
+    anchor:
+      "- Before commit → the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`).",
+    expectedMatches: 1,
+    replacement:
+      "- Before commit → read the whole staged diff back once, hunting narration, leftovers, and prose a comment check cannot see. No plugin strips this for you here, and the diff read-through is the replacement.",
+    outputIncludes: ["read the whole staged diff back once"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "`control-cli` and `control-ui` are not ported, so the shipping trigger points at a driver that exists.",
+    anchor:
+      "- Shipping UI / IDE / CLI → the matching control skill. `cursor-team-kit` publishes `control-cli` (CLIs and TUIs) and `control-ui` (browser / Electron / web UIs). For bug fixes, reproduce first on the same surface yourself. Hand to the user only under the narrow Bug fix step 1 exception.",
+    expectedMatches: 1,
+    replacement:
+      "- Shipping UI / IDE / CLI → a real driver for that surface and nothing less. Use the project's own verification skill, which `create-verification-skill` builds with launch, doctor, drive, and cleanup steps, or a driver the repo already ships. No ported plugin drives a surface for you, so reading the source is not a substitute for running it, and a surface with no driver is a gap you report rather than a pass you claim. For bug fixes, reproduce first on the same surface yourself. Hand to the user only under the narrow Bug fix step 1 exception.",
+    outputIncludes: [
+      "a real driver for that surface and nothing less",
+      "a surface with no driver is a gap you report rather than a pass you claim",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason: "There is no Cursor babysit skill to steer away from on this host.",
+    anchor:
+      "the **Babysit** playbook (`playbooks/babysit.md`), not Cursor's built-in babysit skill, whose description matches the same words.",
+    expectedMatches: 1,
+    replacement: "the **Babysit** playbook (`playbooks/babysit.md`).",
+    outputIncludes: ["→ the **Babysit** playbook (`playbooks/babysit.md`). Never triggered"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "The trigger quotes what the operator says, and `/loop` is a command this host does not have.",
+    anchor: `"trust it when i'm back", "/loop until X") → a decision trail`,
+    expectedMatches: 1,
+    replacement: `"trust it when i'm back", "keep going until X") → a decision trail`,
+    outputIncludes: [`"keep going until X") → a decision trail`],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "The child kind is `pstack_subagent`'s `agent` field with three fixed values, not a Cursor subagent type.",
+    anchor:
+      "**Use `subagent_type: \"poteto-agent\"` for any subagent you spawn inside a playbook step** (code-writing delegates, ad-hoc helpers). The chat that receives `/poteto-mode` runs the playbook. Never spawn a `poteto-agent` to run the playbook itself. Routed workflow skills (`how`, `why`, `interrogate`, `reflect`, `swarm`) set their own `subagent_type` for diverse-model review. Respect what the skill prescribes, don't override to `poteto-agent`.",
+    expectedMatches: 1,
+    replacement:
+      '**Use `pstack_subagent` with `agent: "poteto-agent"` for any child you start inside a playbook step** (code-writing delegates, ad-hoc helpers). The chat that receives `/poteto-mode` runs the playbook. Never start a `poteto-agent` child to run the playbook itself. The kinds are exactly `"poteto-agent"` for implementation work, `"comment-sicko"` for the comment reviewer, and `"general"` for a plain child with no preamble. Routed workflow skills (`how`, `why`, `interrogate`, `reflect`, `swarm`) name their own kind and role for diverse-model review. Respect what the skill prescribes, don\'t override to `poteto-agent`.',
+    outputIncludes: [
+      '`pstack_subagent` with `agent: "poteto-agent"`',
+      'The kinds are exactly `"poteto-agent"` for implementation work',
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "Every default now follows the role file, because the tool takes no background flag, no read-only flag, and no model id.",
+    anchor:
+      "**Defaults for every `Task` call.** `run_in_background: true`, agent mode (readonly strips MCP), file pointers not inlined context, explicit model per role (configurable via `/setup-pstack`. Defaults `grok-4.7-xhigh-fast` for code, `claude-opus-5-5-xhigh` for prose and judgment). Code delegates tier by difficulty. The hardest changes (cross-cutting design, gnarly concurrency, subtle algorithms) go to your strongest judgment model (`claude-opus-5-5-xhigh`), whether the task needs judgment on vague intent or is a precisely specified sequence of steps to execute to the letter. Trivial mechanical edits go to your fast code model. Per-role lines in the `/setup-pstack` rule override these defaults and the model choices in the routed skills (`how`, `why`, `arena`, `swarm`, `architect`, `interrogate`, `reflect`). A role with no line keeps its default, and a role line of `inherit-parent` or `auto` runs that role on the parent chat model (omit Task `model`). Each code playbook's configured model comes from its line (`feature, refactoring`, `bug-fix`, `perf-issue`, or `hillclimb`), and the hardest changes read `hardest tasks`. Prose and judgment read `judgment and prose`.",
+    expectedMatches: 1,
+    replacement:
+      "**Defaults for every `pstack_subagent` call.** Every child is a managed activation that reports by completion notice, so there is no background flag to set. Write file pointers, not inlined context. Never swap in a narrower tool set or preset, because a narrower one can drop MCP access. Select the route by role and never by model id: `role` is a key in the role manifest, and `pstack_subagent` re-reads `$DSH_HOME/pstack-models.md` on every delegation. Code delegates tier by difficulty. The hardest changes (cross-cutting design, gnarly concurrency, subtle algorithms) go to the role `hardest tasks`, whether the task needs judgment on vague intent or is a precisely specified sequence of steps to execute to the letter. Trivial mechanical edits go to the role the task's own code playbook names. A role the file does not name, or whose line reads `inherit-parent` or `auto`, runs that child on the parent route, and omitting `role` does the same. Each code playbook's route comes from its own role key (`feature, refactoring`, `bug-fix`, `perf-issue`, or `hillclimb`), prose and judgment read `judgment and prose`, and `/setup-pstack` is what writes those lines.",
+    outputIncludes: [
+      "**Defaults for every `pstack_subagent` call.**",
+      "re-reads `$DSH_HOME/pstack-models.md` on every delegation",
+      "runs that child on the parent route, and omitting `role` does the same",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason:
+      "An effort can only come from the role file, so the fast/standard slug adjustment described a choice this tool does not offer.",
+    anchor:
+      "**Match the model to the job.** Before each spawn, start from the role's line or default and pick the reasoning level and speed the job needs. The `/setup-pstack` budget sets each role's starting level, xhigh by default. Raise it one step, up to max, for the hardest or subtlest work. Lower it one step for judgment and two or more steps for routine work. Use fast mode only when the job is urgent, meaning CI or trunk is red or a person is blocked on the result right now. Otherwise use standard speed, the same slug without `-fast`. Verification is the exception and stays on the `swarm workers` model and speed (`grok-4.7-xhigh-fast` by default). Change only the effort level and whether the slug is fast, and keep the family the role names, so a diverse panel stays diverse. If the family has no slug at that level and speed, use its nearest slug. A role on `auto` or `inherit-parent` stays on the parent model. If the Task tool rejects the adjusted slug, do not try another adjusted slug. Use the role's line or default and say so.",
+    expectedMatches: 1,
+    replacement:
+      "**Match the model to the job.** Before each call, start from the role's line in `$DSH_HOME/pstack-models.md` and change nothing about the route the tool reports. This package cannot see which providers and models a deployment serves, so an invented slug fails the call before any child starts. What you can choose is the role, and the effort inside it belongs to that role file: `/setup-pstack` writes the effort each role starts at, and a role that names no effort inherits the parent's. When a role's effort is wrong for the job, say so and let the operator change that line instead of passing a route of your own. Verification stays on the `swarm workers` role, and a role on `auto` or `inherit-parent` stays on the parent route. Report the route each child resolved, because a panel whose entries landed on one route is not a diverse panel.",
+    outputIncludes: [
+      "**Match the model to the job.** Before each call, start from the role's line",
+      "a panel whose entries landed on one route is not a diverse panel",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason: "The todo list tool is `todo_write`, not a Cursor todolist.",
+    anchor:
+      "Open a todolist whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos.",
+    expectedMatches: 1,
+    replacement:
+      "Open a `todo_write` list whose first items are the matched playbook's steps, copied in verbatim, before any task-specific todos.",
+    outputIncludes: ["Open a `todo_write` list whose first items"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason: "The playbook table may not quote a command this host does not have.",
+    anchor: `- **Autonomous run.** A long task to drive to completion without stopping ("run until done", "/loop until X").`,
+    expectedMatches: 1,
+    replacement: `- **Autonomous run.** A long task to drive to completion without stopping ("run until done", "keep going until done").`,
+    outputIncludes: [`("run until done", "keep going until done")`],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason: "A cloud-agent URL is not a pickup source on this host.",
+    anchor:
+      "- **Session pickup.** Resuming or taking over a prior agent's in-flight work from a transcript, cloud-agent URL, or pushed branch.",
+    expectedMatches: 1,
+    replacement:
+      "- **Session pickup.** Resuming or taking over a prior agent's in-flight work from an authorized session id, a pushed branch, or a decision trail.",
+    outputIncludes: ["from an authorized session id, a pushed branch, or a decision trail"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/SKILL.md",
+    reason: "This host has no editor restart whose in-flight work survives it.",
+    anchor: "on an explicit pause, going offline, a Cursor restart, or imminent context compaction.",
+    expectedMatches: 1,
+    replacement: "on an explicit pause, going offline, or imminent context compaction.",
+    outputIncludes: ["on an explicit pause, going offline, or imminent context compaction."],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autonomous-run.md",
+    reason:
+      "A duration is not a predicate, and the run has to say what a stranger could run to settle it.",
+    anchor:
+      "1. State the exit condition as a checkable predicate before the first iteration (tests green, repro fixed, all N PRs merged, pixel-diff zero).",
+    expectedMatches: 1,
+    replacement:
+      "1. State the exit condition as a checkable predicate before the first iteration (tests green, repro fixed, all N PRs merged, pixel-diff zero). A predicate a stranger cannot run is not a predicate, and a duration is not one either.",
+    outputIncludes: ["A predicate a stranger cannot run is not a predicate"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autonomous-run.md",
+    reason:
+      "There is no loop command here. The goal carries the run, a reminder is only a heartbeat, and a watcher has to be a real process.",
+    anchor:
+      "2. Pick the wake mechanism using Cursor's `/loop` command (a built-in, not a pstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
+    expectedMatches: 1,
+    replacement:
+      "2. Register that predicate as the goal before the first iteration. This host has no loop command to type, so `create_goal` is what carries a run: the goal is durable in this Session, it holds the round cap, and automatic continuation rounds proceed from it. Continuation needs the goal round driver mounted in the profile, so read `get_goal`, check whether continuation is armed and whether rounds are actually starting, and report which of the two you have instead of implying a loop. `create_goal`, `edit`, `pause`, and `resume` each need a direct request from the operator in this top-level turn, so a child cannot register or steer a run on your behalf.\n\n   Pick the wake mechanism by what this host actually has. A timed input is `schedule_create`, which delivers a reminder into this Session at a wall-clock time: use it as a heartbeat sized to when re-checking is worth a turn, never as an event subscription, because a reminder cannot watch anything, and a child cannot arm one at all. A real event needs a real watcher: a script that blocks until the condition changes and then exits, started as a background job so its settlement arrives as a notice, or a poll loop you run and read. If neither fits the event you care about, say the run is supervised and check it yourself.",
+    outputIncludes: [
+      "This host has no loop command to type",
+      "A real event needs a real watcher",
+      "because a reminder cannot watch anything, and a child cannot arm one at all",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autonomous-run.md",
+    reason: "The trigger names the real question tool.",
+    anchor: "Do not park reversible work for the human or use `AskQuestion`.",
+    expectedMatches: 1,
+    replacement: "Do not park reversible work for the operator or ask a question instead of acting.",
+    outputIncludes: ["ask a question instead of acting"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autonomous-run.md",
+    reason:
+      "Stopping is a real goal transition with a round-counted block, not a self-declared win, and Ralph is not the default driver.",
+    anchor:
+      "6. Stop when the predicate is met. A plateau is not a stop, so keep going and pivot your approach to push past it. Surface a genuine dead end rather than spinning, and never relax the predicate to declare victory.",
+    expectedMatches: 1,
+    replacement:
+      "6. Stop when the predicate is met, and record it with `update_goal` action `complete`, which also disarms continuation. Report a block only when the same concrete condition survived the deployment's consecutive-round threshold, three by default, and state it in `blocked_reason`; the host rejects a block before that count, and a plateau is not a block, so keep going and pivot your approach to push past it. Surface a genuine dead end rather than spinning, and never relax the predicate to declare victory. Pause and resume belong to the operator's direct request, and a host restart leaves an active goal disarmed, so a resumed Session has to be rearmed on purpose. A repeated-prompt driver such as Ralph is used only when the operator names it, and it never replaces the predicate.",
+    outputIncludes: [
+      "record it with `update_goal` action `complete`",
+      "the host rejects a block before that count",
+      "A repeated-prompt driver such as Ralph is used only when the operator names it",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason: "A playbook is read from the package it ships in, not from a branch.",
+    anchor: "Each tick re-reads this playbook from trunk and fixes drift,",
+    expectedMatches: 1,
+    replacement: "Each tick re-reads this playbook from the installed package and fixes drift,",
+    outputIncludes: ["Each tick re-reads this playbook from the installed package and fixes drift,"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-stack.md",
+    reason: "Both playbooks are read from the package, not from a branch.",
+    anchor: "Each tick re-reads both playbooks from trunk, and this one wins where they differ.",
+    expectedMatches: 1,
+    replacement:
+      "Each tick re-reads both playbooks from the installed package, and this one wins where they differ.",
+    outputIncludes: ["Each tick re-reads both playbooks from the installed package"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/visual-parity.md",
+    reason:
+      "A baseline that can be regenerated mid-run stops being the spec, so freezing it is part of establishing it.",
+    anchor:
+      "1. Establish the baseline first, before any migration: a visual regression harness that screenshots the current component across its states, plus the target when matching two implementations. No baseline, no parity claim. A blocking prerequisite, not a follow-up.",
+    expectedMatches: 1,
+    replacement:
+      "1. Establish the baseline first, before any migration: a visual regression harness that screenshots the current component across its states, plus the target when matching two implementations. No baseline, no parity claim. A blocking prerequisite, not a follow-up. Freeze it before the first component moves: record the harness command and the baseline image paths, and do not regenerate a baseline mid-run, because a diff against a baseline you rewrote proves nothing.",
+    outputIncludes: [
+      "Freeze it before the first component moves",
+      "a diff against a baseline you rewrote proves nothing",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/visual-parity.md",
+    reason: "The anti-shortcut clause has to say why editing the baseline is the one fatal shortcut.",
+    anchor:
+      "2. Anti-shortcut clauses, stated and held: no harness modifications, no baseline tampering, no component restructuring to make a diff pass. If the baseline looks wrong, stop and ask, don't edit it.",
+    expectedMatches: 1,
+    replacement:
+      "2. Anti-shortcut clauses, stated and held: no harness modifications, no baseline tampering, no component restructuring to make a diff pass. If the baseline looks wrong, stop and ask, don't edit it. Editing it is the one shortcut that makes every later diff meaningless.",
+    outputIncludes: ["Editing it is the one shortcut that makes every later diff meaningless."],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/visual-parity.md",
+    reason:
+      "Parallel components are local worktrees, and a worktree does not isolate ports, caches, or services.",
+    anchor:
+      "3. Migrate one component at a time. Parallelize across worktrees, one owner per component (the **separate-before-serializing-shared-state** principle skill). Shared primitives migrate first as a blocking phase.",
+    expectedMatches: 1,
+    replacement:
+      "3. Migrate one component at a time. Parallelize across local worktrees, one owner per component, because two writers in one checkout overwrite each other (the **separate-before-serializing-shared-state** principle skill). Give each owner its own `create_worktree` checkout and pass that absolute path as its `cwd`; a worktree separates the working directory and the branch, not ports, caches, or services, so name whatever else the component shares. Shared primitives migrate first as a blocking phase.",
+    outputIncludes: [
+      "Give each owner its own `create_worktree` checkout",
+      "not ports, caches, or services",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/visual-parity.md",
+    reason:
+      "There is no loop command and no control skill here, and a goal cannot measure a pixel delta.",
+    anchor:
+      "4. Verify each component against its baseline via image diff on the matching surface via the control skill. A nonzero diff is a fail. Investigate the pixel delta. `/loop` per component until the diff is zero.",
+    expectedMatches: 1,
+    replacement:
+      "4. Verify each component against its baseline with a real image diff on the matching surface. Name the comparison tool and prove it separates before migrating anything. A nonzero diff is a fail, so investigate the pixel delta and iterate until it reaches zero. If this machine has no image comparison that reports a per-image delta, stop and say so: without it the run can only report what the eye saw, and that is not a parity claim. A goal can drive the iteration when the run is long, with a zero-diff predicate and `update_goal` `complete` only when every component's diff is zero, but a goal measures nothing itself, so a completed goal is not a parity verdict.",
+    outputIncludes: [
+      "Name the comparison tool and prove it separates before migrating anything",
+      "that is not a parity claim",
+      "a completed goal is not a parity verdict",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/visual-parity.md",
+    reason: "The reply states whether parity is claimed, because the run can end without it.",
+    anchor:
+      "**Reply:** components migrated, the diff result for each, the baseline harness location, what's left.",
+    expectedMatches: 1,
+    replacement:
+      "**Reply:** components migrated, the diff result for each, the comparison tool and the frozen baseline harness location, what's left, and whether parity is claimed or unverified.",
+    outputIncludes: ["whether parity is claimed or unverified"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/pause-safely.md",
+    reason:
+      "Children are stopped through the real control tool, and a grandchild keeps running after its parent stops.",
+    anchor:
+      "1. Stop at a safe boundary. Finish the current atomic step or back out of it. Start nothing new, and cancel any nested subagents.",
+    expectedMatches: 1,
+    replacement:
+      "1. Stop at a safe boundary. Finish the current atomic step or back out of it. Start nothing new, and stop any running child with `interrupt_agent`, which asks it to stop without waiting for it. A child's own children keep running after it stops, so check `list_agents` before you call the boundary safe.",
+    outputIncludes: [
+      "stop any running child with `interrupt_agent`",
+      "A child's own children keep running after it stops",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/pause-safely.md",
+    reason:
+      "Pausing a goal is not saving the work, and no restart resumes the run for you.",
+    anchor:
+      "4. Write the resume note off-context. Capture intent, what you were doing, progress and what's verified, current state, next steps, key files, and gotchas. For the compaction trigger write it to a file like `/tmp/<slug>-resume.md`. If a show-me-your-work trail exists, point at it instead of duplicating it.",
+    expectedMatches: 1,
+    replacement:
+      "4. Write the resume note off-context. Capture intent, what you were doing, progress and what's verified, current state, next steps, key files, and gotchas. For the compaction trigger write it to a file like `/tmp/<slug>-resume.md`. If a show-me-your-work trail exists, point at it instead of duplicating it. Pausing a goal is not this step: a paused goal keeps the objective and disarms continuation, and it saves neither an uncommitted tree nor a running process. This host has no restart that resumes work for you, so the commit and the note are the whole recovery surface.",
+    outputIncludes: [
+      "Pausing a goal is not this step",
+      "the commit and the note are the whole recovery surface",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/hillclimb.md",
+    reason:
+      "The measured command is the experiment's instrument, so editing it invalidates the rows that came before.",
+    anchor:
+      "Once frozen, one repeatable command emits the metric, sampled enough to clear the noise (median of N, not a single run).",
+    expectedMatches: 1,
+    replacement:
+      "Once frozen, one repeatable command emits the metric, sampled enough to clear the noise (median of N, not a single run). Frozen means the command, its inputs, and the machine conditions stay fixed for the whole run: a harness edited mid-run measures a different thing, so changing it invalidates every earlier row and restarts the baseline.",
+    outputIncludes: ["changing it invalidates every earlier row and restarts the baseline"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/hillclimb.md",
+    reason:
+      "The attempt goes to the real role, and parallel hypotheses need separate worktrees because one checkout has one writer.",
+    anchor:
+      "- Hand the change to a subagent using your configured hillclimb model (default `grok-4.7-xhigh-fast`) with a tight scope. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. Supervise and review the diff rather than typing it (the **guard-the-context-window** principle skill). When several independent hypotheses are live, fan them to parallel subagents, each in its own worktree (the **separate-before-serializing-shared-state** principle skill).",
+    expectedMatches: 1,
+    replacement:
+      '- Hand the change to a `pstack_subagent` child with `role: "hillclimb"` and a tight scope. Its route and effort come from that role line in `$DSH_HOME/pstack-models.md`; a role the file does not name inherits the parent route, and you never pass a model id of your own. Supervise and review the diff rather than typing it (the **guard-the-context-window** principle skill). When several independent hypotheses are live, fan them to parallel children, each in its own `create_worktree` checkout, because two writers in one checkout overwrite each other (the **separate-before-serializing-shared-state** principle skill).',
+    outputIncludes: [
+      '`pstack_subagent` child with `role: "hillclimb"`',
+      "each in its own `create_worktree` checkout",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/hillclimb.md",
+    reason:
+      "An unattended hillclimb borrows the goal, never a repeated-prompt driver, because supervision is the method.",
+    anchor:
+      "If the run is unattended, borrow only the wake mechanism from the Autonomous run playbook (`playbooks/autonomous-run.md`), not its stop rule.",
+    expectedMatches: 1,
+    replacement:
+      "If the run is unattended, borrow only the goal and the wake mechanism from the Autonomous run playbook (`playbooks/autonomous-run.md`), not its stop rule: the predicate here is the hillclimb's own, and a repeated-prompt driver never replaces the supervision this step needs, because one hypothesis per iteration is a judgment call.",
+    outputIncludes: [
+      "borrow only the goal and the wake mechanism",
+      "a repeated-prompt driver never replaces the supervision this step needs",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/shipping.md",
+    reason:
+      "A verifier is a separate local child in its own worktree with a real driver, not a cloud machine and a control skill.",
+    anchor:
+      "One verifier per PR, each a Cursor cloud agent, runs the change the way a user would with the matching control skill (such as `control-ui` or `control-cli` from `cursor-team-kit`), parent against head, and posts `PASS`, `PASS+NOTES`, or `FAIL` on that PR.",
+    expectedMatches: 1,
+    replacement:
+      "One verifier per PR, each a separate `pstack_subagent` child with its own `create_worktree` checkout, runs the change the way a user would, parent against head, then posts `PASS`, `PASS+NOTES`, or `FAIL` on that PR. There is no VM and no second machine here: a verifier's isolation is a local worktree over the repository, which separates the working directory and the branch and nothing else, so name the ports, caches, and services it shares. Choose a real driver for the surface and run it, because reading the source is not a verdict.",
+    outputIncludes: [
+      "each a separate `pstack_subagent` child with its own `create_worktree` checkout",
+      "There is no VM and no second machine here",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/shipping.md",
+    reason:
+      "The queued watcher is a background process whose settlement wakes this Session, not a loop command.",
+    anchor:
+      "On GitHub, watch the run with the queued watcher from `playbooks/babysit.md` (`scripts/watch-pr/watch-pr --queued-stack --stack-prs <bottom-to-top>`) under `/loop` until it reports `COMPLETE` at the ceiling.",
+    expectedMatches: 1,
+    replacement:
+      "On GitHub, watch the run with the queued watcher from `playbooks/babysit.md` (`scripts/watch-pr/watch-pr --queued-stack --stack-prs <bottom-to-top>`) started as a background job, so its settlement notice wakes you and you re-read the run until it reports `COMPLETE` at the ceiling.",
+    outputIncludes: ["started as a background job, so its settlement notice wakes you"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason:
+      "Each owner is a local child in its own worktree; there is no cloud machine to run on.",
+    anchor:
+      "Each owner is a Cursor cloud agent that builds, opens its PR per `playbooks/opening-a-pr.md`, proves the change on the real artifact, babysits to green per `playbooks/babysit.md`, and merges once steps 4 and 5 clear it.",
+    expectedMatches: 1,
+    replacement:
+      'Each owner is a `pstack_subagent` child with `role: "feature, refactoring"` and its own `create_worktree` checkout, whose absolute path you pass as that child\'s `cwd`. It builds, opens its PR per `playbooks/opening-a-pr.md`, proves the change on the real artifact, babysits to green per `playbooks/babysit.md`, and merges once steps 4 and 5 clear it. There is no VM here: a worktree separates the working directory and the branch and nothing else, so an owner that needs a port, a cache, or a service says so before it starts.',
+    outputIncludes: [
+      '`pstack_subagent` child with `role: "feature, refactoring"`',
+      "There is no VM here",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason:
+      "The slop-strip plugin does not ship, so the code-ready gate names the diff read-through that replaces it.",
+    anchor:
+      "The code is ready only after the slop-strip (the `deslop` skill from the `cursor-team-kit` plugin (`/deslop`)) and the `/no-comments` pass, so the full swarm runs on finished code.",
+    expectedMatches: 1,
+    replacement:
+      "The code is ready only after the diff read-through, which replaces the slop-strip this port does not ship, and the `/no-comments` pass, so the full swarm runs on finished code.",
+    outputIncludes: ["which replaces the slop-strip this port does not ship"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason:
+      "Nothing here survives the host process, and there is no store path handed to the model.",
+    anchor:
+      "Assume the VM dies. Soon after starting, push and start a decision trail in the root agent's store (path in the system prompt) per the **show-me-your-work** skill, then push after every unit worth keeping.",
+    expectedMatches: 1,
+    replacement:
+      "Assume this machine and this Session die. Soon after starting, push and start a decision trail at a directory the operator named, or under `.audit/<task-slug>/` in the repository when they name none, per the **show-me-your-work** skill, then push after every unit worth keeping. Nothing here outlives the host process: every child ends with it, so the pushed branch and the trail are the only state a replacement can read.",
+    outputIncludes: [
+      "Assume this machine and this Session die",
+      "Nothing here outlives the host process",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason:
+      "Verifier lanes drive a surface through a real driver, because no control plugin is ported.",
+    anchor:
+      "They re-run the gates, prove the load-bearing behavior live on the real surface through its control skill (such as `control-ui` or `control-cli` from `cursor-team-kit`) or a named driver, and audit the diff.",
+    expectedMatches: 1,
+    replacement:
+      "They re-run the gates, prove the load-bearing behavior live on the real surface through a named driver the project ships or a verification skill it already has, and audit the diff.",
+    outputIncludes: ["through a named driver the project ships"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason:
+      "The audit tick is a reminder heartbeat plus a real watcher, not a loop command.",
+    anchor:
+      "On the operator's go, arm `/loop 1h` to audit until no delegated work is left, because long runs drift and agents stall silently.",
+    expectedMatches: 1,
+    replacement:
+      "On the operator's go, arm an hourly audit with `schedule_create` and `every_seconds: 3600`, re-arming it after each tick, because long runs drift and agents stall silently. That reminder is a heartbeat delivered into this Session and cannot see a PR, so anything event-shaped needs the background-job watcher from `playbooks/babysit.md` beside it.",
+    outputIncludes: [
+      "arm an hourly audit with `schedule_create`",
+      "That reminder is a heartbeat delivered into this Session and cannot see a PR",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason:
+      "Liveness is judged through the real child catalog and each child's own artifacts.",
+    anchor:
+      "It probes every agent, down to the leaf lanes, and judges each by its side effects, because status text and summaries can hide a stuck child.",
+    expectedMatches: 1,
+    replacement:
+      "It probes every child through `list_agents` and each child's own artifacts, judging by side effects only, because status text and summaries can hide a stuck child.",
+    outputIncludes: ["probes every child through `list_agents`"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason: "A stuck owner is interrupted and replaced, using the two tools that do exactly that.",
+    anchor: "Replace a stuck agent at once, without waiting for its stop to land.",
+    expectedMatches: 1,
+    replacement:
+      "Replace a stuck child at once: call `interrupt_agent` on it and start a fresh replacement with consolidated scope in the same move, without waiting for the stop to land.",
+    outputIncludes: [
+      "call `interrupt_agent` on it and start a fresh replacement with consolidated scope",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-full.md",
+    reason:
+      "A hold is delivered with `send_message`, which confirms delivery and not compliance.",
+    anchor:
+      "7. **Stand down at once on the operator's stop.** A hold reaches every owner as a zero-writes order. Each reports where it stands and keeps its brief until the operator releases it.",
+    expectedMatches: 1,
+    replacement:
+      "7. **Stand down at once on the operator's stop.** A hold reaches every owner as a zero-writes order sent with `send_message`, which confirms delivery and not compliance, so the hold is in force only once each owner has answered it. Each reports where it stands and keeps its brief until the operator releases it; an owner that does not answer gets `interrupt_agent`.",
+    outputIncludes: [
+      "sent with `send_message`, which confirms delivery and not compliance",
+      "an owner that does not answer gets `interrupt_agent`",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/autopilot-stack.md",
+    reason:
+      "A worktree gives one owner a checkout and a branch; it does not order, retarget, or merge a PR chain.",
+    anchor:
+      "Owners push only their own branches and report each tip and its intended parent. Only you rebase or retarget a link, because two writers on one chain undo each other.",
+    expectedMatches: 1,
+    replacement:
+      "Owners push only their own branches and report each tip and its intended parent. Only you rebase or retarget a link, because two writers on one chain undo each other. An owner's own `create_worktree` checkout is not stack management: it gives that owner a working directory and a branch, it knows nothing about PR bases, and no worktree operation orders, retargets, or merges a link.",
+    outputIncludes: [
+      "An owner's own `create_worktree` checkout is not stack management",
+      "no worktree operation orders, retargets, or merges a link",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason:
+      "Children are started and steered through the real tools, and the role is what selects a route.",
+    anchor:
+      "The loop is agentic end to end. Agents are spawned, resumed, and drained only through the Task tool. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
+    expectedMatches: 1,
+    replacement:
+      "The loop is agentic end to end. Children are started and briefed only through `pstack_subagent`, steered only through `send_message`, stopped only through `interrupt_agent`, and read only through `list_agents` and their own artifacts. Pick each child's role per the Subagents section of the `poteto-mode` skill, because the role is what selects its route.",
+    outputIncludes: [
+      "started and briefed only through `pstack_subagent`",
+      "because the role is what selects its route",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "This bundle's row caps delegation depth at two, and a child can only lower it.",
+    anchor:
+      "spawns its own workers and verifiers (nesting works to depth 3, and a nested spawn has the full Task schema including `environment`)",
+    expectedMatches: 1,
+    replacement:
+      "(spawns its own workers and verifiers, and nesting works to the depth this bundle's row allows, two, which a child can only lower further)",
+    outputIncludes: ["nesting works to the depth this bundle's row allows, two"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason:
+      "There is no cloud environment: every worker is a local child in its own worktree, sharing this machine.",
+    anchor:
+      '- **Worker / verifier.** Always `environment: "cloud"` unless the task needs this machine: `control-ui` or `control-cli` runtime verification (from `cursor-team-kit`). Reading local transcripts under `agent-transcripts/`. Simulators and local IDE state. Auth that exists only here. Cloud agents cannot read the local store, so their briefs inline what they need or point at repo paths. Prefer fewer, broader workers. One writer per worktree or branch (principle-separate-before-serializing-shared-state). Run a unit\'s verifier on a different model family from its worker.',
+    expectedMatches: 1,
+    replacement:
+      "- **Worker / verifier.** Always a local `pstack_subagent` child in its own `create_worktree` checkout. There is no cloud environment in this port, so every child runs on this machine, shares its ports, caches, and credentials, and dies with the host process. A child cannot read another child's Session, so its brief inlines what it needs or points at repository paths and the store. Prefer fewer, broader workers. One writer per worktree or branch (principle-separate-before-serializing-shared-state). Run a unit's verifier through a different role from its worker, and confirm the routes the tool reports actually differ, because two children that resolved to one route are not cross-model review.",
+    outputIncludes: [
+      "Always a local `pstack_subagent` child in its own `create_worktree` checkout",
+      "two children that resolved to one route are not cross-model review",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason:
+      "No store path is handed to the model, and Bun is a prerequisite the text has to name.",
+    anchor:
+      "Create `orchestrate/<project-slug>/` in the current agent's store (path in the system prompt). Every file has exactly one writer. Owners publish facts, readers aggregate at read time. Use `bun scripts/orch/orch.ts` for bookkeeping, written below as `orch`, while its canonical plain TSV and JSON stay readable without the CLI.",
+    expectedMatches: 1,
+    replacement:
+      "Create `orchestrate/<project-slug>/` in a directory the operator names, or under `.audit/` in the repository when they name none, because this host hands no store path to the model. Every file has exactly one writer. Owners publish facts, readers aggregate at read time. Use `bun scripts/orch/orch.ts` for bookkeeping, written below as `orch`, while its canonical plain TSV and JSON stay readable without the CLI. Bun is a hard prerequisite for that script: when `bun` is not on the PATH, read and write the TSV and JSON by hand and say which commands you could not run.",
+    outputIncludes: [
+      "because this host hands no store path to the model",
+      "Bun is a hard prerequisite for that script",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "A local child can read the store by path, so only a resume needs the orders pasted again.",
+    anchor:
+      "Local spawns may reference the standing-orders file by store path. Verbatim paste is for cloud spawns and every resume.",
+    expectedMatches: 1,
+    replacement:
+      "A spawn may reference the standing-orders file by its store path, because every child here is local and can read it. A resume is the exception: that child lost its brief, so paste the standing orders again instead of pointing at them.",
+    outputIncludes: ["A resume is the exception: that child lost its brief"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "There is no cloud default to budget against.",
+    anchor: "its spawn budget with the cloud default and the local exception list,",
+    expectedMatches: 1,
+    replacement: "its spawn budget and the rule that each worker gets its own worktree,",
+    outputIncludes: ["the rule that each worker gets its own worktree"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "A frontier watcher is a real process plus a reminder fallback, not a loop command.",
+    anchor:
+      "a frontier watcher wake (arm it via the loop skill, with a long heartbeat fallback)",
+    expectedMatches: 1,
+    replacement:
+      "and a frontier watcher wake (the queued watcher from `playbooks/babysit.md` started as a background job, with a `schedule_create` heartbeat as the fallback)",
+    outputIncludes: ["started as a background job, with a `schedule_create` heartbeat as the fallback"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "Chain rebases happen on this machine, because there is no cloud to move them to.",
+    anchor:
+      "Chain rebases run in cloud. A local rebase at this scale takes the laptop down.",
+    expectedMatches: 1,
+    replacement:
+      "Chain rebases run on this machine, because there is no cloud environment to move them to. Keep the checkout lean and the working tree clean between rebases, and treat a rebase that takes minutes as a reason to land sooner rather than to wait.",
+    outputIncludes: ["there is no cloud environment to move them to"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason:
+      "Liveness comes from the child catalog and each child's artifacts, because there is no dashboard.",
+    anchor:
+      "Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, the cloud agent's status in the Cursor dashboard. Transcript mtime is not liveness.",
+    expectedMatches: 1,
+    replacement:
+      "Probe read-only: the ledger, `units.tsv`, `gh`, pushed branches, and `list_agents` for whether a child is running or inactive. A child's own summary is not liveness, and neither is the age of a file it wrote.",
+    outputIncludes: ["`list_agents` for whether a child is running or inactive"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "Nothing survives a host restart here, so there is no cloud work to reattach.",
+    anchor:
+      "- After a Cursor restart: local agents are dead, cloud work is not. Re-read the standing orders and `units.tsv`, recompute the frontier, reattach cloud work by PR and branch rather than agent id, respawn one sub-coordinator per track from its stored brief plus current state, drain, resume. The dead session's store lock clears itself on the next write. `orch` replaces a lock whose holder pid is gone.",
+    expectedMatches: 1,
+    replacement:
+      "- After a host restart: every child is dead, because nothing here runs outside this process and no work survives it. Re-read the standing orders and `units.tsv`, recompute the frontier, reattach units by PR and branch rather than by child id, respawn one sub-coordinator per track from its stored brief plus current state, drain, resume. The dead session's store lock clears itself on the next write. `orch` replaces a lock whose holder pid is gone.",
+    outputIncludes: [
+      "every child is dead, because nothing here runs outside this process",
+      "reattach units by PR and branch rather than by child id",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "Pushed output is the survival boundary, and there is no second machine to hold it.",
+    anchor:
+      "Work that exists only on one VM when that VM dies was never done.",
+    expectedMatches: 1,
+    replacement:
+      "Work that exists only on this machine's disk and was never pushed was never done.",
+    outputIncludes: ["was never pushed was never done"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason:
+      "A reviewer's route has to be recorded, because two lanes on one route are not a second opinion.",
+    anchor: "audit the trail per show-me-your-work including its cross-model review,",
+    expectedMatches: 1,
+    replacement:
+      "audit the trail per show-me-your-work, recording the route its reviewer lane resolved so a lane that landed on the author's own route is visible as one,",
+    outputIncludes: ["recording the route its reviewer lane resolved"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/orchestrate.md",
+    reason: "The brief template asks for a driver path, because no control skill is ported.",
+    anchor: "VERIFY       exact commands or the control-skill path, plus known gotchas",
+    expectedMatches: 1,
+    replacement: "VERIFY       exact commands or the driver path, plus known gotchas",
+    outputIncludes: ["VERIFY       exact commands or the driver path, plus known gotchas"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason:
+      "Exploration children carry the real agent kind and a real read-only role, not a Cursor subagent type.",
+    anchor:
+      '3. Explore in subagents with `subagent_type: "poteto-agent"` and an explicit model per the Subagents section (the **guard-the-context-window** principle skill). Pick each subagent\'s reasoning level and fast or standard speed for the job, per the Subagents section. Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.',
+    expectedMatches: 1,
+    replacement:
+      '3. Explore in `pstack_subagent` children with `agent: "poteto-agent"` and `role: "how explorer"`, which is read-only by instruction (the **guard-the-context-window** principle skill). The route comes from that role line in `$DSH_HOME/pstack-models.md`, and a role the file does not name inherits the parent route, so name the role in each brief rather than a model id. Each child returns file pointers, conventions, test commands, and entry points. No inlined dumps.',
+    outputIncludes: [
+      '`agent: "poteto-agent"` and `role: "how explorer"`',
+      "name the role in each brief rather than a model id",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "This host hands no agent store to the model, so the plan goes in the repository.",
+    anchor: "Unless the operator names a path, write the file under the agent store's `docs/`.",
+    expectedMatches: 1,
+    replacement:
+      "Unless the operator names a path, write the file under `docs/plans/` in the repository, because this host hands no store path to the model.",
+    outputIncludes: ["write the file under `docs/plans/` in the repository"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason:
+      "The checker lives beside the bundled skill, and its two runtimes are not interchangeable.",
+    anchor:
+      "6. Run `node pstack/skills/poteto-mode/scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **encode-lessons-in-structure** principle skill).",
+    expectedMatches: 1,
+    replacement:
+      "6. Run `node <package>/skills/poteto-mode/scripts/check-plan.mjs <plan.md>`, resolving `<package>` from the bundled skill's own resource base, and fix every line it prints (the **encode-lessons-in-structure** principle skill). The checker needs Node alone; its own test file needs Bun.",
+    outputIncludes: [
+      "resolving `<package>` from the bundled skill's own resource base",
+      "The checker needs Node alone; its own test file needs Bun.",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason:
+      "Live lanes take the `swarm workers` role, and a list role with no index is one route rather than a panel.",
+    anchor:
+      "Ten lanes at the PR head drive the real surface through its control skill, per the **swarm** skill, on the `swarm workers` model (default `grok-4.7-xhigh-fast`).",
+    expectedMatches: 1,
+    replacement:
+      "Ten lanes at the PR head drive the real surface through a real driver, per the **swarm** skill, on the `swarm workers` role. Each lane's route comes from that role's entry list, and a lane that needs a specific entry names `roleIndex`; with no index every lane takes the first entry, which is one route and not a panel.",
+    outputIncludes: [
+      "on the `swarm workers` role",
+      "with no index every lane takes the first entry, which is one route and not a panel",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason:
+      "There is no control plugin, so each surface has to name a driver the project actually runs.",
+    anchor:
+      "**Control skill.** Pick it by surface. Browser, Electron, and web UIs use `control-ui` from `cursor-team-kit`. CLIs and TUIs use `control-cli` from `cursor-team-kit`. Native mobile uses whatever simulator-driving skill the repo has. A PR that touches two surfaces gets lanes on both. A surface with no control skill is a risk in Appendix C, and its live block still names how each lane drives it.",
+    expectedMatches: 1,
+    replacement:
+      "**Driver.** Pick it by surface. Browser, Electron, and web UIs need a browser driver the project already ships, or a verification skill `create-verification-skill` wrote for the project. CLIs and TUIs need a command driver with recorded exit codes and output. Native mobile uses whatever simulator driver the repo has. A PR that touches two surfaces gets lanes on both. A surface with no driver is a risk in Appendix C, and its live block still names how each lane drives it, because reading the source is not a lane.",
+    outputIncludes: [
+      "**Driver.** Pick it by surface.",
+      "because reading the source is not a lane",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "Skills are read from the installed package, not from a repository path.",
+    anchor:
+      "The program runs `pstack/skills/poteto-mode/playbooks/<execution playbook>.md`. <Who merges, and which PR ids are the operator's items that stop at merge-ready.>",
+    expectedMatches: 1,
+    replacement:
+      "The program runs `<package>/skills/poteto-mode/playbooks/<execution playbook>.md`. <Who merges, and which PR ids are the operator's items that stop at merge-ready.>",
+    outputIncludes: ["<package>/skills/poteto-mode/playbooks/<execution playbook>.md"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason:
+      "The skills ship inside the package, so a `git show` on a branch is not where they live.",
+    anchor: "- [ ] Read these from trunk at program start. Re-read them at every tick.",
+    expectedMatches: 1,
+    replacement:
+      "- [ ] Read these from the installed package at program start. Re-read them at every tick. The skills ship inside the package, so a branch of this repository is not where they live.",
+    outputIncludes: ["The skills ship inside the package, so a branch of this repository is not where they live."],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "The listed reads resolve inside the package, not against `origin/main`.",
+    anchor:
+      "  - [ ] `git show origin/main:pstack/skills/poteto-mode/playbooks/<execution playbook>.md`\n  - [ ] `git show origin/main:pstack/skills/swarm/SKILL.md`\n  - [ ] `git show origin/main:<control skill path>`\n  - [ ] `git show origin/main:pstack/skills/poteto-mode/playbooks/opening-a-pr.md`\n  - [ ] `git show origin/main:pstack/skills/<each other leaf skill the program uses>`",
+    expectedMatches: 1,
+    replacement:
+      "  - [ ] `<package>/skills/poteto-mode/playbooks/<execution playbook>.md`\n  - [ ] `<package>/skills/swarm/SKILL.md`\n  - [ ] `<driver path, or the verification skill path>`\n  - [ ] `<package>/skills/poteto-mode/playbooks/opening-a-pr.md`\n  - [ ] `<package>/skills/<each other leaf skill the program uses>`",
+    outputIncludes: [
+      "`<package>/skills/poteto-mode/playbooks/<execution playbook>.md`",
+      "`<driver path, or the verification skill path>`",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason:
+      "The tick is a goal predicate plus a reminder heartbeat, and neither one subscribes to a PR or a CI event.",
+    anchor:
+      "- [ ] On the operator's go, arm the audit tick as `/loop 1h` with the tick prompt below. Never leave the cadence to memory.",
+    expectedMatches: 1,
+    replacement:
+      "- [ ] On the operator's go, register the program predicate with `create_goal` and arm the audit tick as a `schedule_create` heartbeat with `every_seconds: 3600` and the tick prompt below. Never leave the cadence to memory. A reminder is a timed input delivered into this Session, not a subscription to a PR or a CI event, so any event-shaped wake needs the background watcher from `playbooks/babysit.md` beside it.",
+    outputIncludes: [
+      "register the program predicate with `create_goal`",
+      "not a subscription to a PR or a CI event",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "The tick re-reads the playbook from the package it runs from.",
+    anchor: '"Re-read the execution playbook from trunk.',
+    expectedMatches: 1,
+    replacement: '"Re-read the execution playbook from the installed package.',
+    outputIncludes: ['"Re-read the execution playbook from the installed package.'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "The slop-strip plugin is not ported, so the commit gate names the read-through.",
+    anchor: "- [ ] Run `/deslop` before each commit and `/no-comments` before review.",
+    expectedMatches: 1,
+    replacement:
+      "- [ ] Read the staged diff back once before each commit, then run `/no-comments` before review.",
+    outputIncludes: ["Read the staged diff back once before each commit"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason:
+      "A live lane runs in a local worktree on this machine, and the recipe has to name what it shares.",
+    anchor:
+      "Each live lane runs on its own cloud VM at the PR head. Drive through `control-ui` or `control-cli` from `cursor-team-kit`.",
+    expectedMatches: 1,
+    replacement:
+      "Each live lane runs in its own `create_worktree` checkout at the PR head. Drive it through the project's real driver. A worktree separates the working directory and the branch only, so lanes on one machine share ports, caches, and credentials, and this recipe names which of those each lane contends for.",
+    outputIncludes: [
+      "Each live lane runs in its own `create_worktree` checkout",
+      "lanes on one machine share ports, caches, and credentials",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "The lane header names the real list-valued role.",
+    anchor:
+      "Ten lanes on `<swarm workers model>` at the PR head, per the boot recipe.",
+    expectedMatches: 1,
+    replacement: "Ten lanes on `swarm workers` at the PR head, per the boot recipe.",
+    outputIncludes: ["Ten lanes on `swarm workers` at the PR head, per the boot recipe."],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "The appendices point at the package's own skill directories.",
+    anchor:
+      "<Docs to read before editing. Which PRs get `pstack/skills/how/SKILL.md` and `pstack/skills/interrogate/SKILL.md`. The trail per `pstack/skills/show-me-your-work/SKILL.md`.>",
+    expectedMatches: 1,
+    replacement:
+      "<Docs to read before editing. Which PRs get `<package>/skills/how/SKILL.md` and `<package>/skills/interrogate/SKILL.md`. The trail per `<package>/skills/show-me-your-work/SKILL.md`.>",
+    outputIncludes: ["Which PRs get `<package>/skills/how/SKILL.md`"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "A review video is recorded on this machine's checkout, not on a VM.",
+    anchor:
+      "- [ ] Record a 30 to 60 second video of the change on a lane VM. Save it as `<media path>/<pr-id>-review.mp4`.",
+    expectedMatches: 1,
+    replacement:
+      "- [ ] Record a 30 to 60 second video of the change on a lane's own checkout. Save it as `<media path>/<pr-id>-review.mp4`.",
+    outputIncludes: ["Record a 30 to 60 second video of the change on a lane's own checkout."],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason: "There is no cloud agent, and the run is carried by a goal rather than a wake command.",
+    anchor:
+      "It's a checkable finish condition, an isolated worktree or cloud agent, and a decision log you audit in the morning.",
+    expectedMatches: 1,
+    replacement:
+      "It's a checkable finish condition, a goal that carries the run, an isolated worktree, and a decision log you audit in the morning.",
+    outputIncludes: ["a goal that carries the run, an isolated worktree"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason: "The handoff line names a goal instead of a command this host does not have.",
+    anchor: "/loop until done. if you're truly stuck after a few hours, stop and write up why.",
+    expectedMatches: 1,
+    replacement:
+      "register the predicate as a goal and keep going until it holds. if you're truly stuck after a few hours, stop and write up why.",
+    outputIncludes: ["register the predicate as a goal and keep going until it holds."],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason:
+      "The wake mechanism is a real goal plus, at most, a reminder heartbeat, and neither one watches CI.",
+    anchor:
+      "- `/loop` is Cursor's built-in wake mechanism, not a pstack skill. The [Autonomous run playbook](../../skills/poteto-mode/playbooks/autonomous-run.md) uses it to re-check the finish condition on events or a heartbeat.",
+    expectedMatches: 1,
+    replacement:
+      '- "register the predicate as a goal" maps to `create_goal`. The goal is what survives a long run, and it is what the [Autonomous run playbook](../../skills/poteto-mode/playbooks/autonomous-run.md) drives: `get_goal` reads the phase back, `update_goal` with `complete` ends it, and a `schedule_create` reminder can only act as a heartbeat, because it delivers a message into this Session and cannot watch CI or a pull request.',
+    outputIncludes: [
+      '"register the predicate as a goal" maps to `create_goal`',
+      "it delivers a message into this Session and cannot watch CI or a pull request",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason:
+      "Closing this host leaves nothing running, and an active goal comes back disarmed rather than continuing.",
+    anchor:
+      "To stop a run on purpose, tell the agent to pause, or that you're about to go offline or restart Cursor.",
+    expectedMatches: 1,
+    replacement:
+      "To stop a run on purpose, tell the agent to pause, or that you're about to go offline. Closing this host ends every child and leaves nothing running in the background, and an active goal comes back disarmed, so a restarted Session has to be resumed on purpose instead of continuing by itself.",
+    outputIncludes: [
+      "Closing this host ends every child and leaves nothing running in the background",
+      "so a restarted Session has to be resumed on purpose instead of continuing by itself",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason:
+      "There is no Cursor Project and no cloud thread, so a program runs in one long-lived Session on this machine.",
+    anchor:
+      "A [Cursor Project](https://cursor.com/blog/projects) gives one coordinator agent a persistent thread. The coordinator doesn't write code. It directs subagents, which run in the cloud by default, so the work continues when your laptop is closed. That's the shape the Orchestrate playbook expects. Start your prompts to the coordinator with `/poteto-mode`, and the subagents it spawns follow the playbooks.",
+    expectedMatches: 1,
+    replacement:
+      "There is no managed thread and no remote machine here, so a program runs in one long-lived Session on this computer and stops when that Session stops. The coordinator still doesn't write code. It directs `pstack_subagent` children, each in its own worktree, and it keeps its state in the store on disk, which is what lets a cold start pick the program up. That is the shape the Orchestrate playbook expects. Start every prompt to the coordinator with `/poteto-mode`, and the children it starts follow the playbooks.",
+    outputIncludes: [
+      "so a program runs in one long-lived Session on this computer and stops when that Session stops",
+      "It directs `pstack_subagent` children, each in its own worktree",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason: "Chats are dragged into a Project upstream; here each Session keeps its own store.",
+    anchor:
+      "- Give each body of work its own Project, such as a feature, a migration, a perf push, or a tech-debt cleanup. Several can run side by side.\n- Drag related chats into the Project, finished ones included. They become context for every agent in it.",
+    expectedMatches: 1,
+    replacement:
+      "- Give each body of work its own store directory, such as a feature, a migration, a perf push, or a tech-debt cleanup. Several can run side by side in separate Sessions.\n- Point each new Session at the finished runs it needs, because a child does not inherit another Session's context and a brief is the only thing it starts from.",
+    outputIncludes: [
+      "Give each body of work its own store directory",
+      "a child does not inherit another Session's context",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason:
+      "A reminder can begin the next pass on a wall clock, and that is the whole of what it adds.",
+    anchor:
+      "Every loop above still waits for you to start it. A scheduled or event-driven automation removes that step.",
+    expectedMatches: 1,
+    replacement:
+      "Every loop above still waits for you to start it. A reminder on a wall clock can begin the next pass, and that is the whole of it: `schedule_create` delivers a follow-up into the Session that created it, cannot watch a report arrive or a pull request change, and refuses a delegated caller.",
+    outputIncludes: [
+      "A reminder on a wall clock can begin the next pass, and that is the whole of it",
+      "and refuses a delegated caller",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason: "The pitfall points at the goal, because that is where the predicate now lives.",
+    anchor: "Give `/loop` a predicate that can pass or fail.",
+    expectedMatches: 1,
+    replacement: "Give the goal a predicate that can pass or fail.",
+    outputIncludes: ["Give the goal a predicate that can pass or fail."],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/10-recipes-and-pitfalls.md",
+    reason: "The illustration's caption names a command this host does not have.",
+    anchor: "with pinned cards reading /how, /tdd, and /loop above the counter.",
+    expectedMatches: 1,
+    replacement: "with pinned cards reading /how and /tdd above the counter.",
+    outputIncludes: ["with pinned cards reading /how and /tdd above the counter."],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/10-recipes-and-pitfalls.md",
+    reason: "A vague finish condition starves a goal, not a loop command.",
+    anchor: `- **A vague finish condition.** "make it better" gives \`/loop\` nothing to check. Give a command or artifact that can pass or fail.`,
+    expectedMatches: 1,
+    replacement: `- **A vague finish condition.** "make it better" gives a goal nothing to check. Give a command or artifact that can pass or fail.`,
+    outputIncludes: ["gives a goal nothing to check"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/10-recipes-and-pitfalls.md",
+    reason: "Parallel writers get their own worktree, because there is no cloud machine to give them.",
+    anchor: `- **Parallel agents in one worktree.** They overwrite each other, and nobody can tell which agent changed what. Run them as cloud agents, or say "own worktree per attempt".`,
+    expectedMatches: 1,
+    replacement: `- **Parallel agents in one worktree.** They overwrite each other, and nobody can tell which agent changed what. Say "own worktree per attempt", and pass each child its checkout's absolute path as \`cwd\`, because a shared checkout isolates nothing.`,
+    outputIncludes: ["because a shared checkout isolates nothing"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-help/references/prompting.md",
+    reason: "A long run converges on a goal, not on a command this host lacks.",
+    anchor: "- Write done as checks every iteration can run, and give `/loop` that predicate.",
+    expectedMatches: 1,
+    replacement:
+      "- Write done as checks every iteration can run, and register that predicate as a goal so a long run has something to converge on.",
+    outputIncludes: ["register that predicate as a goal so a long run has something to converge on"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-help/references/recipes.md",
+    reason: "The overnight recipe registers a goal instead of asking for a loop command.",
+    anchor:
+      "- `/poteto-mode im going to bed. <goal> in a fresh worktree off <base>. done means <checks>. keep a decision log. don't ask me before committing. /loop until done. if you're truly stuck after a few hours, stop and write up why.`",
+    expectedMatches: 1,
+    replacement:
+      "- `/poteto-mode im going to bed. <goal> in a fresh worktree off <base>. done means <checks>. keep a decision log. don't ask me before committing. register the predicate as a goal and keep going until it holds. if you're truly stuck after a few hours, stop and write up why.`",
+    outputIncludes: ["register the predicate as a goal and keep going until it holds."],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/check-plan.mjs",
+    reason:
+      "The template no longer reads from a branch or arms a loop command, so the marker set follows it.",
+    anchor: 'const PROGRAM_MARKERS = ["git show origin/main:", "/loop 1h", "status message"];',
+    expectedMatches: 1,
+    replacement: 'const PROGRAM_MARKERS = ["create_goal", "schedule_create", "status message"];',
+    outputIncludes: ['const PROGRAM_MARKERS = ["create_goal", "schedule_create", "status message"];'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/check-plan.test.ts",
+    reason: "The fixture plan has to carry the markers the checker now requires.",
+    anchor: "\\`git show origin/main:\\` /loop 1h status message",
+    expectedMatches: 1,
+    replacement: "\\`create_goal\\` \\`schedule_create\\` status message",
+    outputIncludes: ["\\`create_goal\\` \\`schedule_create\\` status message"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/babysit.md",
+    reason: "There is no Cursor babysit skill to steer away from on this host.",
+    anchor:
+      "This playbook replaces Cursor's built-in babysit skill for these requests, so do not route there even though its description matches the same words. A request to land or ship is `playbooks/shipping.md`, which begins where this playbook ends.",
+    expectedMatches: 1,
+    replacement:
+      "A request to land or ship is `playbooks/shipping.md`, which begins where this playbook ends.",
+    outputIncludes: ["A request to land or ship is `playbooks/shipping.md`"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/babysit.md",
+    reason:
+      "Two of the four modes need no wake mechanism, and the other two need one that exists before the mode is honest.",
+    anchor: "Undeclared defaults to `drive`. Small or docs-only PRs get `check`, not `drive`.",
+    expectedMatches: 1,
+    replacement:
+      "Undeclared defaults to `drive`. Small or docs-only PRs get `check`, not `drive`. `check` and `threads-only` need one forge read and a report, so they run with no wake mechanism at all. `drive` and `background` need a watcher that can wake this Session; when you cannot start one, run the mode as `check` and say the watch is unverified instead of sleeping between polls.",
+    outputIncludes: [
+      "`check` and `threads-only` need one forge read and a report, so they run with no wake mechanism at all",
+      "say the watch is unverified instead of sleeping between polls",
+    ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/babysit.md",
+    reason:
+      "The watcher is a background process whose settlement wakes the Session, and a reminder can never stand in for a PR event.",
+    anchor:
+      "Run `drive` and `background` under `/loop` in dynamic mode. Rearm the watcher after every push wave and every verdict you act on. Watcher output drives wakeups. Never add a second sleep loop.",
+    expectedMatches: 1,
+    replacement:
+      "Run that watcher as a background job, so its settlement notice is the wake-up that ends the wait, and nothing here sleeps on a timer to guess. Rearm it after every push wave and every verdict you act on. Never run two wait loops at once. `schedule_create` is not a PR event watcher: it delivers a reminder into this Session at a wall-clock time, it cannot subscribe to anything, and a child cannot arm one, so a reminder may only act as a fallback heartbeat.",
+    outputIncludes: [
+      "so its settlement notice is the wake-up that ends the wait",
+      "`schedule_create` is not a PR event watcher",
+      "a reminder may only act as a fallback heartbeat",
     ],
   },
 ];

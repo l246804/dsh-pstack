@@ -205,6 +205,25 @@ export function introCandidates(
   return candidates;
 }
 
+/**
+ * Candidates that still rely on the shared pointer.
+ *
+ * A skill whose own `SKILL.md` this tree rewrote carries the DSH vocabulary in
+ * its own words, so the generic intro would only restate the mapping in front of
+ * text that no longer needs it. `poteto-mode` is the first skill in that state:
+ * its body still matches the host-term scan for `poteto-agent` and
+ * `inherit-parent`, which are this host's own values, not Cursor's.
+ */
+export function introRequirement(
+  exclusions: readonly SkillExclusion[] = EXCLUDED_SKILLS,
+): ReadonlySet<string> {
+  return new Set(
+    [...introCandidates(exclusions)].filter(
+      (skill) => patchesForFile(`${SKILLS_PREFIX}${skill}/SKILL.md`).length === 0,
+    ),
+  );
+}
+
 export function insertIntro(body: string, file: string): string {
   if (body.includes("DSH port of pstack.")) {
     throw new Error(`${file}: body already contains the DSH intro`);
@@ -312,7 +331,7 @@ function validateIntroScope(
     }
   }
 
-  const candidates = introCandidates(exclusions);
+  const candidates = introRequirement(exclusions);
   for (const skill of candidates) {
     if (!Object.hasOwn(introSkills, skill)) {
       throw new Error(`skill "${skill}" contains host terms but is not in INTRO_SKILLS`);

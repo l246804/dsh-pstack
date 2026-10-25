@@ -15,7 +15,7 @@ export const HARNESS_DOC_PATH = "docs/harness/dsh.md";
  * sentence, so the disclaimer cannot drift away from the implementation.
  */
 export const HARNESS_DOC_SCOPE_LINE =
-  "> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, and the official worktree integration mounted on demand.";
+  "> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, the official worktree integration mounted on demand, and a long-running-workflow pass that maps automatic goals, reminder heartbeats, and local watchers onto the host tools that actually exist.";
 
 export type CapabilityKind = "tool" | "path" | "model" | "host";
 
@@ -228,10 +228,11 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "loop",
     kind: "host",
     cursor: "`/loop`",
-    dsh: "`create_goal`, plus `schedule_create` where a timed input fits",
+    dsh: "`create_goal` for automatic continuation, plus `schedule_create` only as a timed heartbeat",
     detect: "/loop",
-    coverage: "deferred",
-    reason: "Goal and schedule integration lands with the long-running workflows.",
+    coverage: "degraded",
+    reason:
+      "There is no command to type and no event subscription. The goal carries a predicate across rounds, and its round driver is a separate host package that a profile may not mount, so a goal can be created while nothing continues on its own. A reminder only delivers a follow-up into the session that created it, refuses a delegated caller, and cannot watch a PR or CI. The event half is a background job whose settlement wakes the session, or a poll the text calls a poll. Nothing here has been exercised on a real profile.",
     unit: "6",
   },
   {
@@ -241,7 +242,7 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "not mapped; routine-style automation is excluded",
     coverage: "excluded",
     reason:
-      "`automate-me` ships, but it drafts a `-mode` skill from authorized history and opens a PR; it does not create a webhook routine, request a secret, or wake an agent. `schedule_create` is not a webhook routine, and no secret is ever requested.",
+      "`automate-me` ships, but it drafts a `-mode` skill from authorized history and opens a PR; it does not create a webhook routine, request a secret, or wake an agent. `schedule_create` is not a webhook routine, it refuses a delegated caller, and no secret is ever requested.",
     unit: "5",
   },
   {
@@ -251,7 +252,7 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "a local child with a real `cwd`, started from a local branch or a prepared checkout",
     coverage: "degraded",
     reason:
-      "No VM, cross-device resume, or dashboard is promised. Isolation is the official worktree checkout, which does not cover ports, credentials, or services.",
+      "No VM, cross-device resume, dashboard, or cloud liveness check is promised, and the long-running playbooks now say so in the step that used one. Isolation is the official worktree checkout, which does not cover ports, credentials, or services, and every child ends with the host process.",
     unit: "3",
   },
   {

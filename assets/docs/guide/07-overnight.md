@@ -1,6 +1,6 @@
 # Run work while you sleep
 
-This is the payoff for everything before it. An agent you can trust to verify its own work is an agent you can leave alone with a hard task. What makes that safe isn't hope. It's a checkable finish condition, an isolated worktree or cloud agent, and a decision log you audit in the morning.
+This is the payoff for everything before it. An agent you can trust to verify its own work is an agent you can leave alone with a hard task. What makes that safe isn't hope. It's a checkable finish condition, a goal that carries the run, an isolated worktree, and a decision log you audit in the morning.
 
 ![She waves goodnight from the door while robots keep the factory running, one updating a DECISION LOG wall board under a BUILD LOOP ACTIVE sign.](./images/overnight.jpg)
 
@@ -23,7 +23,7 @@ A good handoff has the goal, the finish condition, permissions, and an escape ha
 /poteto-mode im going to bed. migrate every caller to the new parser in a fresh worktree off <base>.
 done means zero old callers, all parser fixtures pass, old api deleted.
 keep a decision log. don't ask me before committing.
-/loop until done. if you're truly stuck after a few hours, stop and write up why.
+register the predicate as a goal and keep going until it holds. if you're truly stuck after a few hours, stop and write up why.
 ```
 
 Walk through what each line buys you:
@@ -32,12 +32,12 @@ Walk through what each line buys you:
 - "done means..." turns the goal into checks every iteration can run.
 - "fresh worktree off `<base>`" keeps the run from colliding with anything else you have open.
 - "don't ask me before committing" pre-answers the permission the agent would otherwise block on.
-- `/loop` is Cursor's built-in wake mechanism, not a pstack skill. The [Autonomous run playbook](../../skills/poteto-mode/playbooks/autonomous-run.md) uses it to re-check the finish condition on events or a heartbeat.
+- "register the predicate as a goal" maps to `create_goal`. The goal is what survives a long run, and it is what the [Autonomous run playbook](../../skills/poteto-mode/playbooks/autonomous-run.md) drives: `get_goal` reads the phase back, `update_goal` with `complete` ends it, and a `schedule_create` reminder can only act as a heartbeat, because it delivers a message into this Session and cannot watch CI or a pull request.
 - The escape hatch lets it stop at a genuine dead end and write up why, which beats eight hours of creative goal reinterpretation.
 
 Because you'll review this work after stepping away, `/poteto-mode` routes it through [`/figure-it-out`](../../skills/figure-it-out/SKILL.md), which designs the run's phases before any code and wires in the decision log.
 
-To stop a run on purpose, tell the agent to pause, or that you're about to go offline or restart Cursor. The [Pause safely playbook](../../skills/poteto-mode/playbooks/pause-safely.md) finishes or backs out of the current step, commits a work-in-progress checkpoint, and writes a resume note. A fresh chat picks the work up from that note through the Session pickup playbook. Saying "keep going" never triggers a pause.
+To stop a run on purpose, tell the agent to pause, or that you're about to go offline. Closing this host ends every child and leaves nothing running in the background, and an active goal comes back disarmed, so a restarted Session has to be resumed on purpose instead of continuing by itself. The [Pause safely playbook](../../skills/poteto-mode/playbooks/pause-safely.md) finishes or backs out of the current step, commits a work-in-progress checkpoint, and writes a resume note. A fresh chat picks the work up from that note through the Session pickup playbook. Saying "keep going" never triggers a pause.
 
 ## What the loop does all night
 
@@ -93,12 +93,12 @@ The contract above drives one task to one finish condition. Some nights hold mor
 
 ## Run many projects in parallel
 
-A [Cursor Project](https://cursor.com/blog/projects) gives one coordinator agent a persistent thread. The coordinator doesn't write code. It directs subagents, which run in the cloud by default, so the work continues when your laptop is closed. That's the shape the Orchestrate playbook expects. Start your prompts to the coordinator with `/poteto-mode`, and the subagents it spawns follow the playbooks.
+There is no managed thread and no remote machine here, so a program runs in one long-lived Session on this computer and stops when that Session stops. The coordinator still doesn't write code. It directs `pstack_subagent` children, each in its own worktree, and it keeps its state in the store on disk, which is what lets a cold start pick the program up. That is the shape the Orchestrate playbook expects. Start every prompt to the coordinator with `/poteto-mode`, and the children it starts follow the playbooks.
 
 A few habits help:
 
-- Give each body of work its own Project, such as a feature, a migration, a perf push, or a tech-debt cleanup. Several can run side by side.
-- Drag related chats into the Project, finished ones included. They become context for every agent in it.
+- Give each body of work its own store directory, such as a feature, a migration, a perf push, or a tech-debt cleanup. Several can run side by side in separate Sessions.
+- Point each new Session at the finished runs it needs, because a child does not inherit another Session's context and a brief is the only thing it starts from.
 - Give each PR a verification swarm before it merges, and let Autopilot-stack or Autopilot-full carry the queue.
 - Ask the coordinator for a plan backed by data, and have it answer open questions with prototypes before it asks you.
 
@@ -110,11 +110,11 @@ One prompt can carry a whole Project, from research through execution:
 
 ## Let loops start themselves
 
-Every loop above still waits for you to start it. A scheduled or event-driven automation removes that step. Software maintenance splits into stages that suit this well: triage a report, reproduce it, fix it, verify the fix. Two rules keep such a line trustworthy:
+Every loop above still waits for you to start it. A reminder on a wall clock can begin the next pass, and that is the whole of it: `schedule_create` delivers a follow-up into the Session that created it, cannot watch a report arrive or a pull request change, and refuses a delegated caller. Software maintenance splits into stages that suit this well: triage a report, reproduce it, fix it, verify the fix. Two rules keep such a line trustworthy:
 
 - Every stage can stop the line. Triage can decide the report is expected behavior, repro can fail to reproduce it, and the fixer can judge the change too risky. Each of those outcomes is useful, because it keeps bad work from reaching the next stage, where it costs more to undo.
 - Every stage hands over evidence. Repro attaches screenshots and video of the broken state, and the fix attaches before-and-after proof. A human can then check that the agent fixed the right thing before reading a line of code.
 
-**Pitfall:** a duration is not a finish condition. "work on this for 4 hours" gives the agent nothing to check, and you'll wake up to four hours of motion instead of a result. Give `/loop` a predicate that can pass or fail.
+**Pitfall:** a duration is not a finish condition. "work on this for 4 hours" gives the agent nothing to check, and you'll wake up to four hours of motion instead of a result. Give the goal a predicate that can pass or fail.
 
 Next: [Steer with principle names](./08-principles.md).

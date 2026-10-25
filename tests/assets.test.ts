@@ -10,7 +10,7 @@ import {
   classifySkills,
   hasHostTerms,
   insertIntro,
-  introCandidates,
+  introRequirement,
   renderAgent,
   renderSkill,
   skillDirectories,
@@ -85,7 +85,7 @@ describe("generated asset set", () => {
     expect(INTRO_SKILLS).toHaveProperty("typescript-best-practices");
     expect(INTRO_SKILLS).not.toHaveProperty("bro");
     expect(INTRO_SKILLS).not.toHaveProperty("tdd");
-    expect(Object.keys(INTRO_SKILLS)).toHaveLength(24);
+    expect(Object.keys(INTRO_SKILLS)).toHaveLength(23);
 
     const counts = { copy: 0, "intro-only": 0, patched: 0 };
     for (const skill of expectedSkills) {
@@ -93,7 +93,7 @@ describe("generated asset set", () => {
       expect(category, skill).toMatch(/^(copy|intro-only|patched)$/);
       counts[category as keyof typeof counts] += 1;
     }
-    expect(counts).toEqual({ copy: 31, "intro-only": 6, patched: 18 });
+    expect(counts).toEqual({ copy: 31, "intro-only": 5, patched: 19 });
     expect(classifications.get("poteto-help")).toBe("patched");
     expect(classifications.get("blast-radius")).toBe("patched");
     expect(classifications.get("setup-pstack")).toBe("patched");
@@ -117,14 +117,20 @@ describe("generated asset set", () => {
       expect(classifications.get(skill), skill).toBe("patched");
     }
     expect(classifications.get("tdd")).toBe("copy");
-    // poteto-mode's own body is still unit 6 work; only its playbooks moved.
-    expect(classifications.get("poteto-mode")).toBe("intro-only");
+    // Unit 6 rewrote poteto-mode's own body, so it carries the vocabulary and
+    // no longer needs the shared pointer in front of it.
+    expect(classifications.get("poteto-mode")).toBe("patched");
+    expect(INTRO_SKILLS).not.toHaveProperty("poteto-mode");
   });
 
   it("requires an intro everywhere the upstream text uses host vocabulary", () => {
-    for (const skill of introCandidates()) {
+    for (const skill of introRequirement()) {
       expect(Object.hasOwn(INTRO_SKILLS, skill), skill).toBe(true);
     }
+    // A skill this tree rewrote is exempt: its DSH text can still match the
+    // host-term scan through this host's own values, such as `poteto-agent` and
+    // `inherit-parent`, which are not Cursor words a reader has to unlearn.
+    expect(introRequirement().has("poteto-mode")).toBe(false);
     expect(hasHostTerms("Use the Task tool with readonly: true.")).toBe(true);
     expect(hasHostTerms("Read the local markdown file.")).toBe(false);
   });
@@ -299,7 +305,7 @@ describe("capability table", () => {
     }
   });
 
-  it("marks the delegation rows delivered and keeps later units deferred", () => {
+  it("marks the delegation rows delivered and keeps excluded rows excluded", () => {
     const byId = new Map(CAPABILITIES.map((capability) => [capability.id, capability]));
 
     for (const id of [
@@ -321,7 +327,7 @@ describe("capability table", () => {
       expect(byId.has(id), id).toBe(true);
     }
     expect(byId.get("transcripts")?.coverage).toBe("degraded");
-    expect(byId.get("loop")?.coverage).toBe("deferred");
+    expect(byId.get("loop")?.coverage).toBe("degraded");
     expect(byId.get("automations")?.coverage).toBe("excluded");
     for (const id of ["skill-by-name", "project-skills", "plugin-location"]) {
       expect(byId.get(id)?.coverage, id).toBe("mapped");
@@ -343,11 +349,34 @@ describe("capability table", () => {
     ]) {
       expect(byId.get(id)?.coverage, id).toBe("degraded");
     }
-    // The rows a later unit owns stay deferred or excluded rather than shipping early.
+    // No row may still be filed as a promise for a later unit: every unit shipped.
+    expect(CAPABILITIES.filter((capability) => capability.coverage === "deferred")).toEqual([]);
     expect(byId.get("transcripts")?.coverage).toBe("degraded");
-    expect(byId.get("loop")?.coverage).toBe("deferred");
+    expect(byId.get("loop")?.coverage).toBe("degraded");
     expect(byId.get("automations")?.coverage).toBe("excluded");
     expect(byId.get("skill-paths-field")?.coverage).toBe("degraded");
+  });
+
+  it("states the long-running boundaries in the loop row", () => {
+    const loop = CAPABILITIES.find((capability) => capability.id === "loop");
+    expect(loop).toBeDefined();
+    if (loop === undefined || loop.coverage === "mapped") throw new Error("loop must be degraded");
+
+    expect(loop.unit).toBe("6");
+    expect(loop.dsh).toContain("`create_goal`");
+    expect(loop.dsh).toContain("`schedule_create` only as a timed heartbeat");
+    // The three boundaries the design text did not have to state.
+    expect(loop.reason).toContain("refuses a delegated caller");
+    expect(loop.reason).toContain("cannot watch a PR or CI");
+    expect(loop.reason).toContain("Nothing here has been exercised on a real profile");
+    // A reminder may never be described as an event subscription.
+    expect(loop.reason).not.toContain("subscribes");
+
+    // The two rows this unit must not promote.
+    const automations = CAPABILITIES.find((capability) => capability.id === "automations");
+    const cloud = CAPABILITIES.find((capability) => capability.id === "cloud-agent");
+    expect(automations?.coverage).toBe("excluded");
+    expect(cloud?.coverage).toBe("degraded");
   });
 
   it("keeps table cells single-line and pipe-free", () => {

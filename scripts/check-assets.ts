@@ -13,14 +13,14 @@ import {
   UPSTREAM_ROOT,
   classifySkills,
   insertIntro,
-  introCandidates,
+  introRequirement,
   skillDirectories,
   walkUpstream,
 } from "./build-assets.ts";
 import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
-import { EXCLUDED_SKILLS, FORBIDDEN_CURSOR_FIELDS, INTRO_SKILLS, UNIT4_PATCHED_FILES, UNIT5_FORBIDDEN_FIELDS, UNIT5_PATCHED_FILES, patchesForFile } from "./patches.ts";
+import { EXCLUDED_SKILLS, FORBIDDEN_CURSOR_FIELDS, INTRO_SKILLS, UNIT4_PATCHED_FILES, UNIT5_FORBIDDEN_FIELDS, UNIT5_PATCHED_FILES, UNIT6_FORBIDDEN_FIELDS, UNIT6_PATCHED_FILES, patchesForFile } from "./patches.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
@@ -122,7 +122,7 @@ export function checkAssets(): AssetsReport {
   }
   // The split is pinned so a patch that silently stops landing, or a new patch
   // added without declaring it, fails here instead of drifting the category counts.
-  const expectedCategories = { copy: 31, "intro-only": 6, patched: 18 };
+  const expectedCategories = { copy: 31, "intro-only": 5, patched: 19 };
   if (
     skills.categories.copy !== expectedCategories.copy ||
     skills.categories["intro-only"] !== expectedCategories["intro-only"] ||
@@ -133,7 +133,7 @@ export function checkAssets(): AssetsReport {
     );
   }
 
-  for (const candidate of introCandidates()) {
+  for (const candidate of introRequirement()) {
     if (!Object.hasOwn(INTRO_SKILLS, candidate)) {
       problems.push(`skills/${candidate}: contains host terms but has no declared intro`);
     }
@@ -406,7 +406,7 @@ function checkSkills(problems: string[]): {
       if (assetData.body !== expectedBody) {
         problems.push(`assets/${skillFile}: body differs from the ${category} expectation`);
       }
-      const expectedIntroCount = category === "copy" ? 0 : 1;
+      const expectedIntroCount = Object.hasOwn(INTRO_SKILLS, skill) ? 1 : 0;
       const actualIntroCount = assetData.body.split(DSH_INTRO).length - 1;
       if (actualIntroCount !== expectedIntroCount) {
         problems.push(
@@ -566,25 +566,16 @@ function checkHarnessDoc(problems: string[]): void {
     );
   }
 
-  // Rows the shipped units do not cover yet stay deferred until their unit lands.
-  for (const deferred of ["`/loop`"]) {
-    const row = text.split("\n").find((line) => line.includes(`| ${deferred} |`));
-    if (row === undefined) {
-      problems.push(`assets/${HARNESS_DOC_PATH}: missing the "${deferred}" row`);
-      continue;
-    }
-    if (!row.includes("| deferred |")) {
-      problems.push(`assets/${HARNESS_DOC_PATH}: "${deferred}" must stay deferred`);
-    }
-  }
-
-  // Rows the shipped units delivered may not still claim to be deferred.
+  // Every row the shipped units covered is delivered, including the ones that
+  // ship degraded: a degraded row states what is lost, and it may no longer be
+  // filed as a promise belonging to a later unit.
   for (const delivered of [
     "`pstack_subagent`, which returns a child id",
     "`$DSH_HOME/pstack-models.md`",
     "the official worktree rows, mounted by this bundle when the profile lacks them",
     "the authoring playbook plus this package's frontmatter, link, and structure checks",
     "`pstack_history`, a restricted read of raw `sessionQuery` events",
+    "`create_goal` for automatic continuation, plus `schedule_create` only as a timed heartbeat",
   ]) {
     const row = text.split("\n").find((line) => line.includes(delivered));
     if (row === undefined) {
@@ -595,6 +586,15 @@ function checkHarnessDoc(problems: string[]): void {
       problems.push(`assets/${HARNESS_DOC_PATH}: "${delivered}" may not stay deferred`);
     }
   }
+
+  // No row may still promise a later unit: every unit has shipped, so a
+  // remaining `deferred` cell would be a promise nothing delivers.
+  const deferredRows = text
+    .split("\n")
+    .filter((line) => line.startsWith("| ") && line.includes("| deferred |"));
+  for (const row of deferredRows) {
+    problems.push(`assets/${HARNESS_DOC_PATH}: no row may stay deferred, found ${row}`);
+  }
 }
 
 /**
@@ -603,15 +603,34 @@ function checkHarnessDoc(problems: string[]): void {
  * A rewritten skill may still name Cursor where the sentence is about Cursor, but
  * it may not keep a field or a path this host has no replacement for: a reader
  * would call it and the host would reject the call. The check is per file because
- * later units own the remaining Cursor vocabulary, and unit 5 adds tokens that are
- * still legitimate in files another unit owns.
+ * later units own the remaining Cursor vocabulary, and units 5 and 6 add tokens
+ * that are still legitimate in files another unit owns.
+ *
+ * Unit 6 is token-only. Its files are `poteto-mode`, its playbooks, and the
+ * helper text they route through, and `poteto-mode` is the skill that tells a
+ * reader where the sibling skills live, so a bold skill name there points at a
+ * directory the same body already resolves. The routing rule applies to the
+ * skills that cannot describe themselves that way.
  */
 function checkRewrittenTexts(problems: string[]): void {
-  const files: readonly (readonly [readonly string[], readonly string[]])[] = [
-    [UNIT4_PATCHED_FILES, FORBIDDEN_CURSOR_FIELDS],
-    [UNIT5_PATCHED_FILES, [...FORBIDDEN_CURSOR_FIELDS, ...UNIT5_FORBIDDEN_FIELDS]],
+  const groups: readonly {
+    readonly paths: readonly string[];
+    readonly forbidden: readonly string[];
+    readonly boldSkillRule: boolean;
+  }[] = [
+    { paths: UNIT4_PATCHED_FILES, forbidden: FORBIDDEN_CURSOR_FIELDS, boldSkillRule: true },
+    {
+      paths: UNIT5_PATCHED_FILES,
+      forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT5_FORBIDDEN_FIELDS],
+      boldSkillRule: true,
+    },
+    {
+      paths: UNIT6_PATCHED_FILES,
+      forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT6_FORBIDDEN_FIELDS],
+      boldSkillRule: false,
+    },
   ];
-  for (const [paths, forbidden] of files) {
+  for (const { paths, forbidden, boldSkillRule } of groups) {
     for (const relativePath of paths) {
       const path = join(ASSETS_ROOT, relativePath);
       if (!existsSync(path)) {
@@ -626,7 +645,7 @@ function checkRewrittenTexts(problems: string[]): void {
           );
         }
       }
-      if (/\bthe \*\*[a-z-]+\*\* (skill|principle skill)\b/.test(text)) {
+      if (boldSkillRule && /\bthe \*\*[a-z-]+\*\* (skill|principle skill)\b/.test(text)) {
         problems.push(
           `assets/${relativePath}: names a hidden skill in bold instead of reading it at its resource path`,
         );

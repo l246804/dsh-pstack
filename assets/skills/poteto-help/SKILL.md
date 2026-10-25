@@ -47,7 +47,7 @@ If cost is the worry, say where the tokens go and how to spend fewer. pstack spe
 
 This tree is the DSH build of pstack. The Cursor and Claude Code variants are upstream documents and are not shipped here. The [DSH harness mapping](../../docs/harness/dsh.md) maps the Cursor names onto this host, and a step that needs a capability this port does not have is reported at the step that needs it, not silently skipped.
 
-Every workflow skill here runs through this package's bundled skill provider, and the skills that delegate start `pstack_subagent` children whose routes come from `$DSH_HOME/pstack-models.md`. There is no Custom Mode and no `/loop`; start each task with `/poteto-mode`, and treat a multi-hour run as something you supervise in the same Session.
+Every workflow skill here runs through this package's bundled skill provider, and the skills that delegate start `pstack_subagent` children whose routes come from `$DSH_HOME/pstack-models.md`. There is no Custom Mode and no loop command to type: start each task with `/poteto-mode`, register a long run as a goal with `create_goal`, and treat a multi-hour run as something you supervise in the same Session unless the goal round driver is mounted.
 
 ## Start a task with `/poteto-mode`
 
@@ -99,7 +99,7 @@ The default answer is `/poteto-mode`, which runs most of the others when its ste
 
 If a skill directory next to this one is missing from the table, read its frontmatter and route by its description. The `principle-*` directories are covered under principles below.
 
-`/recall`, `/reflect`, `/automate-me`, `/show-me-your-work`, the Eval playbook, Session pickup, and Worktree cleanup all ship, and they read session history through `pstack_history`. A live read of the calling session or a direct child is delivered; a cold read whose events cannot be attributed to the stored log reports the audit unfinished. Those flows have not been verified end to end on a real session yet. The remaining long-running playbooks arrive in later units.
+`/recall`, `/reflect`, `/automate-me`, `/show-me-your-work`, the Eval playbook, Session pickup, and Worktree cleanup all ship, and they read session history through `pstack_history`. A live read of the calling session or a direct child is delivered; a cold read whose events cannot be attributed to the stored log reports the audit unfinished. Those flows have not been verified end to end on a real session yet. The long-running playbooks ship as ported text as well, and each one states the gate it cannot pass on this host.
 
 Close calls:
 
@@ -112,9 +112,9 @@ Close calls:
 
 Not in pstack:
 
-- `/deslop`, `control-cli`, and `control-ui` ship in Cursor's `cursor-team-kit` plugin and are not ported. Read the diff once yourself, and use a project verification skill when one exists.
-- `/loop` and `/create-skill` are Cursor built-ins. This port has neither: a long run stays in one Session, and skill authoring goes through the authoring playbook.
-- pstack has no `/orchestrate` skill. Orchestrate is a `/poteto-mode` playbook, and that playbook is not ported to this harness yet.
+- No slop-strip or surface-control plugin ships here. Read the staged diff once yourself before a commit, and use a project verification skill, or a driver the repo already has, before you call a surface verified.
+- There is no loop command and no skill-drafting built-in. A long run is a goal (`create_goal`), a heartbeat reminder where a timed input fits, and a decision trail; skill authoring goes through the authoring playbook.
+- pstack has no `/orchestrate` skill. Orchestrate is a `/poteto-mode` playbook. The playbook is ported: its `.audit` store, `orch` CLI, depth-2 delegation, and inbox discipline are shipped text, while its cloud restart and cloud liveness steps are explicitly unsupported. None of it has been verified end to end.
 
 ## Playbooks and principles
 
@@ -127,7 +127,7 @@ Playbooks are step lists inside `/poteto-mode`, not skills, so they have no slas
 - "full autopilot on this queue" runs Autopilot-full. "stack them, don't ship" runs Autopilot-stack.
 - "run the eval playbook" runs Eval.
 
-The ported playbooks are Investigation, Bug fix, Perf issue, Runtime forensics, Trace forensics, Feature, Refactoring, Prototype, Authoring a skill, and Opening a PR. Hillclimb, Visual parity, Shipping, Babysit, Eval, Orchestrate, the two Autopilot playbooks, Session pickup, Pause safely, Multi-phase plan, and Worktree cleanup still carry Cursor wording and are not ported yet, so name that gap instead of routing into them. The Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) lists every playbook and when it applies. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.
+Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness, and each one states the gate it cannot pass on its own: Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun plus the `orch` CLI, and Hillclimb and Visual parity cannot claim a win without a measurement or an image diff they actually ran. Those flows are shipped as text and are not verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.
 
 pstack has no planning skill. Cursor's Plan Mode works alongside it. For work that spans phases or stacked PRs, asking `/poteto-mode` for a plan runs the [Multi-phase plan playbook](../poteto-mode/playbooks/multi-phase-plan.md), which writes the plan and doesn't implement it. For a design question, the Prototype playbook or `/architect` settles it in code first.
 
@@ -143,7 +143,7 @@ Principles are one-rule skills that `/poteto-mode` reads and cites in its replie
 | Runs cost more than expected | See the cost paragraph under Get set up. |
 | A skill didn't load on its own | Only `/setup-pstack` loads from the user's words. The others load when the user types them or when `/poteto-mode` runs them, and it doesn't run every skill. |
 | Parallel agents overwrote each other | Give each writer its own `create_worktree` checkout and pass its absolute path as that child's `cwd`. There is no cloud machine, and a shared checkout is not isolation. |
-| An overnight run moved but finished nothing | The run needs a check that can pass or fail, not a duration. This host has no `/loop`, so an overnight run is a supervised Session. See [guide page 7](../../docs/guide/07-overnight.md). |
+| An overnight run moved but finished nothing | The run needs a check that can pass or fail, not a duration. Give the run a goal with a checkable predicate and, at most, a heartbeat reminder; automatic rounds need the goal round driver mounted, so otherwise the run is a supervised Session. See [guide page 7](../../docs/guide/07-overnight.md). |
 | The reply claims success from a green build | Ask for the real command, flow, stored value, or profile. That's the prove-it-works principle. |
 
 For a run that drifts, [`references/prompting.md`](references/prompting.md) has one-line steers. [Guide page 10](../../docs/guide/10-recipes-and-pitfalls.md) has more pitfalls and the recipes worth copying.
