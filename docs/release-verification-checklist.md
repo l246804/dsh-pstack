@@ -4,7 +4,7 @@
 
 为什么分成两步，见 [发布验收分期](decisions/2026-10-25-release-verification-staging.md)。静态检查、`check:assets` 和单元测试通过，都不构成本文件任何一行用例的证据。
 
-单元 1 至 6 交付时的状态：静态门全绿，8 个测试文件 238 个用例通过，打包清单 173 条目，受控副本上的上游脚本测试通过。下列 40 条用例一条都没有执行，原因分三类：
+单元 1 至 7 交付时的状态：静态门全绿，13 个测试文件 307 个用例通过，随包脚本改为零安装的 Node 产物后 5 个测试文件 68 个上游用例仍在副本上通过。下列 40 条用例一条都没有执行，原因分三类：
 
 - **需要真实模型调用。** 任何要求 route、effort、child 实际请求头或 panel 结果的用例。
 - **需要真实宿主进程。** goal 的 armed/disarmed 边沿、reminder 投递、后台 job 的 settlement 通知、宿主重启后的状态。
@@ -25,20 +25,22 @@ pnpm pack --dry-run          # 记录条目数，当前基线 173
 dsh plugin --profile pstack-verify add <absolute path to this checkout>
 
 # 3. 记录环境
-node --version && bun --version
+node --version
 ```
 
-注意三点。第一，第 2 步的"本地目录作为安装规格"这一形式来自开发期链接安装的既有做法，本单元没有启动任何 profile 复核它的确切写法；执行者第一次跑时以 `dsh plugin add --help` 的实际输出为准，并把这处差异记在本清单的备注里。第二，`assets/skills/poteto-mode/scripts/bootstrap.ts` 会把依赖装进 `scripts/node_modules`，该目录在生成树里没有上游来源，`check:assets` 会判成未声明文件；脚本冒烟只能在受控副本里跑，跑完删干净，不要在待发布的生产树里跑。第三，单元 7 实测到 Bun 的默认临时目录与 `~/.bun` 在受限环境里是只读的，`bun install` 会以 `EROFS accessing temporary directory` 失败；把受控副本、`BUN_INSTALL` 与 `BUN_TMPDIR` 一起指向一个可写目录即可，命令形态见下。
+注意两点。第一，第 2 步的"本地目录作为安装规格"这一形式来自开发期链接安装的既有做法，本单元没有启动任何 profile 复核它的确切写法；执行者第一次跑时以 `dsh plugin add --help` 的实际输出为准，并把这处差异记在本清单的备注里。第二，随包脚本已是单文件 Node 产物，依赖全部内联，不再有 `bootstrap.ts`、包内 `package.json` 或 `bun.lock`，因此**不需要安装步骤，也不需要 Bun 或 bash**；脚本冒烟只在受控副本里跑，不要在待发布的生产树里跑。
 
 ```bash
-# 受控副本（不要在生产树里装依赖）
-mkdir -p .tmp/unit7-scripts .tmp/unit7-bun
-cp -R assets/skills/poteto-mode/scripts/. .tmp/unit7-scripts/
-cd .tmp/unit7-scripts
-BUN_INSTALL=<repo>/.tmp/unit7-bun BUN_TMPDIR=<repo>/.tmp/unit7-bun/tmp bun install --frozen-lockfile
-BUN_INSTALL=<repo>/.tmp/unit7-bun BUN_TMPDIR=<repo>/.tmp/unit7-bun/tmp bun test orch watch-pr check-plan.test.ts
-BUN_INSTALL=<repo>/.tmp/unit7-bun BUN_TMPDIR=<repo>/.tmp/unit7-bun/tmp bun run typecheck
+# 零安装脚本门：复制 assets/skills/、隔离 HOME/TMPDIR/XDG_CACHE_HOME、
+# node --test 跑全部随包测试，再对五个 CLI 各做一次冒烟。
+pnpm check:scripts
+
+# 单独跑某一个脚本（不需要 bun、bash 或安装）
+node assets/skills/poteto-mode/scripts/watch-pr/watch-pr.mjs --help
+node assets/skills/poteto-mode/scripts/worktree-audit.mjs --help
 ```
+
+如果要在一次性 profile 内验证模型侧入口，用 `pstack_script` 工具（`id` 取脚本名），不要拼 shell 命令：它的 `id` 是固定枚举，用宿主的 `process.execPath` 启动产物，Desktop 下自动附加 `ELECTRON_RUN_AS_NODE=1`。
 
 每条用例的记录字段固定为四项：**真实输入**、**可观察结果**、**与设计 §12.4 通过条件的差异**、**未覆盖项**。只有四项都填了，用例才可以改状态。
 
@@ -113,8 +115,10 @@ BUN_INSTALL=<repo>/.tmp/unit7-bun BUN_TMPDIR=<repo>/.tmp/unit7-bun/tmp bun run t
 
 | 项 | 现状 | 未验证原因 |
 |---|---|---|
-| Bun / Node | 脚本测试在 Bun 1.4.0、Node 24.22.1 上通过 | 没有版本矩阵，只有一个组合 |
-| 平台 | Linux 与 macOS 为主要目标，Windows 的 shell 与脚本支持未验证 | 未在 Windows 上跑过 |
+| Node | 脚本产物与随包测试在 Node 24.22.1 上通过；产物 target 为 `node22`，与 `engines.node >=22.19` 一致 | 没有版本矩阵，只有一个版本；Node 22.19 实机未跑 |
+| Bun / bash | 已不再是运行依赖：六个脚本与测试均不引用 `bun:`、不调用 bash、不安装任何包 | 无（这是架构约束，不是待验证项） |
+| Electron / Desktop | `pstack_script` 的 Electron 分支有单测覆盖（附加 `ELECTRON_RUN_AS_NODE=1`），普通 Node 分支不附加 | 未在真实 Desktop 应用内执行，仅单测与本机普通 Node 实跑 |
+| 平台 | Linux 与 macOS 为主要目标 | 未在 Windows 或 macOS 实机跑过 |
 | profiler | 只有正文里的工具名 | 未在本机实际采集与解析 |
 | 图像比较 | 只有正文里的判定纪律 | 未实际运行 diff 工具 |
 

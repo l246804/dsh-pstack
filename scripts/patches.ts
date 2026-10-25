@@ -1,3 +1,5 @@
+import { BASH_FAKE_FORGE_ANCHOR, NODE_FAKE_FORGE_REPLACEMENT } from "./runtime/tests/fixtures.ts";
+
 export type RewritingPatchKind = "rename" | "path" | "replace";
 
 interface PatchTarget {
@@ -79,7 +81,7 @@ export const UNIT5_PATCHED_FILES: readonly string[] = [
   "skills/poteto-mode/playbooks/eval.md",
   "skills/poteto-mode/playbooks/session-pickup.md",
   "skills/poteto-mode/playbooks/worktree-cleanup.md",
-  "skills/poteto-mode/scripts/worktree-audit.sh",
+  "skills/poteto-mode/scripts/worktree-audit.mjs",
 ];
 
 /**
@@ -2324,7 +2326,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       'Without `/poteto-mode`, a phrase such as "babysit this pr" can start Cursor\'s own skill for the same job instead. The Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) lists every playbook and when it applies. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     expectedMatches: 1,
     replacement:
-      'Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness: all 23 files ship as text, and each one that depends on a capability this host lacks states that gate at the step that needs it. Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun and the `orch` CLI for scripted bookkeeping but permits a disclosed manual-file fallback when Bun is absent, Hillclimb accepts no win without a working measurement harness, and Visual parity needs an image diff actually run before it can claim parity. None of those flows has been verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
+      'Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness: all 23 files ship as text, and each one that depends on a capability this host lacks states that gate at the step that needs it. Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs `pstack_script` for scripted bookkeeping but permits a disclosed manual-file fallback when the tool is unavailable, Hillclimb accepts no win without a working measurement harness, and Visual parity needs an image diff actually run before it can claim parity. None of those flows has been verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     outputIncludes: [
       "Every playbook in the Playbooks section",
       "all 23 files ship as text",
@@ -3023,15 +3025,15 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/worktree-cleanup.md",
     reason:
-      "The audit takes its session evidence from a file the caller produced with the restricted tool, and never scans the session store.",
+      "The audit takes its session evidence from a file the caller produced with the restricted tool, never scans the session store, and is invoked through `pstack_script` so it runs on the Host's own runtime.",
     anchor:
       "1. Snapshot and audit. Record `df -h /`, then run `scripts/worktree-audit.sh [-b <pr-base-ref>] [repo-path]` (principle-build-the-lever). Without `-b` it checks `MERGED` against `origin/HEAD`, so pass `-b origin/<branch>` when PRs target another branch. It reads paths from `git worktree list`, never hand-typed, since a hand-typed `myrepo-worktrees/x` misses one that lives at `.cursor/worktrees/myrepo/x` (principle-encode-lessons-in-structure). It classifies each worktree by size, age, merge state, uncommitted work, PR state, and the newest chat that touched it, then suggests a bucket. The transcript scan is slow, so background it.",
     expectedMatches: 1,
     replacement:
-      "1. Snapshot and audit. Record `df -h /`, then run `scripts/worktree-audit.sh [-b <pr-base-ref>] [--sessions <json>] [repo-path]` (principle-build-the-lever). Without `-b` it checks `MERGED` against `origin/HEAD`, so pass `-b origin/<branch>` when PRs target another branch. It reads paths from `git worktree list`, never hand-typed, since a hand-typed `myrepo-worktrees/x` misses one that lives elsewhere (principle-encode-lessons-in-structure). It classifies each worktree by size, age, merge state, uncommitted work, PR state, and the newest session that touched it, then suggests a bucket. Its session input is the JSON you produced with `pstack_history`; it never scans the session store, so without `--sessions` the LAST_CHAT column is `-`, the bucket is `unknown-usage`, and the usage signal is missing rather than guessed.",
+      "1. Snapshot and audit. Record `df -h /`, then run `pstack_script` with `id: \"worktree-audit\"` and `args: [\"-b\", \"<pr-base-ref>\", \"--sessions\", \"<json>\", \"<repo-path>\"]` (principle-build-the-lever). The tool runs the bundled script on the Host's own runtime, so no `bun`, `bash`, or `node` on the PATH is involved. Without `-b` it checks `MERGED` against `origin/HEAD`, so pass `-b origin/<branch>` when PRs target another branch. It reads paths from `git worktree list`, never hand-typed, since a hand-typed `myrepo-worktrees/x` misses one that lives elsewhere (principle-encode-lessons-in-structure). It classifies each worktree by size, age, merge state, uncommitted work, PR state, and the newest session that touched it, then suggests a bucket. Its session input is the JSON you produced with `pstack_history`; it never scans the session store, so without `--sessions` the LAST_CHAT column is `-`, the bucket is `unknown-usage`, and the usage signal is missing rather than guessed. Pass `background: true` for a large tree.",
     outputIncludes: [
-      "[--sessions <json>]",
-      "it never scans the session store",
+      "pstack_script",
+      "never scans the session store",
       "rather than guessed",
     ],
   },
@@ -3082,83 +3084,17 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "**Reply:** `df -h /` before and after with space reclaimed, the worktrees pruned, and a one-line reason for each held back (in use by which session, or which uncommitted work). State the pinned set as the user gave it, and name anything still unknown.",
     outputIncludes: ["in use by which session", "name anything still unknown"],
   },
-  {
-    kind: "replace",
-    file: "skills/poteto-mode/scripts/worktree-audit.sh",
-    reason:
-      "The header documents the new session input and the unknown pinned state instead of a transcript directory.",
-    anchor:
-      "# Read-only worktree prune audit. Classifies every git worktree by size, merge\n# state, uncommitted work, remote/PR state, and the most recent chat that\n# operated in it. Emits a table sorted by size with a suggested bucket. Never\n# deletes anything; deletion stays a human-gated step in the playbook.\n#\n# Usage: worktree-audit.sh [-b|--base <ref>] [repo-path]\n#   repo-path defaults to the current repo.\n#   -b sets the ref the MERGED column checks against (e.g. origin/integration).\n#   Without it the base is origin/HEAD, then origin/main, then origin/master.\n#   origin/HEAD is the remote's default branch, not necessarily the branch PRs\n#   merge into; pass -b when they differ.",
-    expectedMatches: 1,
-    replacement:
-      "# Read-only worktree prune audit. Classifies every git worktree by size, merge\n# state, uncommitted work, remote/PR state, and the most recent session that\n# operated in it. Emits a table sorted by size with a suggested bucket. Never\n# deletes anything; deletion stays a human-gated step in the playbook.\n#\n# Usage: worktree-audit.sh [-b|--base <ref>] [-s|--sessions <json>] [repo-path]\n#   repo-path defaults to the current repo.\n#   -b sets the ref the MERGED column checks against (e.g. origin/integration).\n#   Without it the base is origin/HEAD, then origin/main, then origin/master.\n#   origin/HEAD is the remote's default branch, not necessarily the branch PRs\n#   merge into; pass -b when they differ.\n#   -s takes the JSON you produced with `pstack_history`, an array of\n#   {\"sessionId\",\"cwd\",\"lastEventTime\"}. This script never reads the session\n#   store, so without it LAST_CHAT is \"-\" and the bucket is unknown-usage.\n#   PINNED is always \"unknown\": this host exposes no pinned-state source, so the\n#   user's own set decides.",
-    outputIncludes: [
-      "[-s|--sessions <json>]",
-      'PINNED is always "unknown"',
-      "never reads the session",
-    ],
-  },
-  {
-    kind: "replace",
-    file: "skills/poteto-mode/scripts/worktree-audit.sh",
-    reason: "The session-file option has to be parsed and validated like the base ref.",
-    anchor:
-      "\t-b|--base) [ $# -ge 2 ] || { echo \"error: $1 needs a ref\" >&2; exit 2; }; base=\"$2\"; shift 2 ;;",
-    expectedMatches: 1,
-    replacement:
-      "\t-b|--base) [ $# -ge 2 ] || { echo \"error: $1 needs a ref\" >&2; exit 2; }; base=\"$2\"; shift 2 ;;\n\t-s|--sessions) [ $# -ge 2 ] || { echo \"error: $1 needs a JSON file\" >&2; exit 2; }; sessions=\"$2\"; shift 2 ;;",
-    outputIncludes: ["-s|--sessions)"],
-  },
-  {
-    kind: "replace",
-    file: "skills/poteto-mode/scripts/worktree-audit.sh",
-    reason: "The loop variable has to exist before the option parser assigns it.",
-    anchor: "base=\"\"\nwhile [ $# -gt 0 ]; do",
-    expectedMatches: 1,
-    replacement: "base=\"\"\nsessions=\"\"\nwhile [ $# -gt 0 ]; do",
-    outputIncludes: ['sessions=""\nwhile [ $# -gt 0 ]; do'],
-  },
-  {
-    kind: "replace",
-    file: "skills/poteto-mode/scripts/worktree-audit.sh",
-    reason:
-      "A named session file has to be readable and parse before the audit spends time on worktrees.",
-    anchor:
-      "repo=\"${1:-$(git rev-parse --show-toplevel 2>/dev/null)}\"",
-    expectedMatches: 1,
-    replacement:
-      "if [ -n \"$sessions\" ]; then\n\t[ -r \"$sessions\" ] || { echo \"error: cannot read sessions file: $sessions\" >&2; exit 1; }\n\t# The audit changes directory into the repo, so pin the path first.\n\tsessions=$(cd \"$(dirname \"$sessions\")\" && pwd)/$(basename \"$sessions\")\n\tjq -e 'type == \"array\"' \"$sessions\" >/dev/null 2>&1 \\\n\t\t|| { echo \"error: sessions file is not a JSON array: $sessions\" >&2; exit 1; }\nfi\n\nrepo=\"${1:-$(git rev-parse --show-toplevel 2>/dev/null)}\"",
-    outputIncludes: ["cannot read sessions file"],
-  },
-  {
-    kind: "replace",
-    file: "skills/poteto-mode/scripts/worktree-audit.sh",
-    reason:
-      "The Cursor transcript scan is removed: the columns come from the supplied session file and an honestly unknown pinned state.",
-    anchor:
-      "# Transcripts dir: ~/.cursor/projects/<slugified-repo-path>/agent-transcripts.\nslug=$(printf '%s' \"$main_wt\" | sed 's#^/##; s#/#-#g')\ntranscripts=\"$HOME/.cursor/projects/$slug/agent-transcripts\"\nnow=$(date +%s)\n\necho \"# base: $base\"\nprintf \"SIZE\\tAGE\\tMERGED\\tDIRTY\\tREMOTE\\tPR\\tLAST_CHAT\\tBUCKET\\tWORKTREE\\n\"",
-    expectedMatches: 1,
-    replacement:
-      "now=$(date +%s)\n\necho \"# base: $base\"\nprintf \"SIZE\\tAGE\\tMERGED\\tDIRTY\\tREMOTE\\tPR\\tLAST_CHAT\\tPINNED\\tBUCKET\\tWORKTREE\\n\"",
-    outputIncludes: ['LAST_CHAT\\tPINNED\\tBUCKET\\tWORKTREE'],
-  },
-  {
-    kind: "replace",
-    file: "skills/poteto-mode/scripts/worktree-audit.sh",
-    reason:
-      "The per-worktree session lookup reads the supplied JSON, never a transcript directory, and an unknown usage signal no longer becomes `safe`.",
-    anchor:
-      "\t# Most recent chat whose transcript operated in this worktree. Match path\n\t# followed by \"/\" or a quote so glint-482 does not match glint-482-r37.\n\tlast=\"-\"; last_ts=0\n\tif [ -d \"$transcripts\" ]; then\n\t\tf=$(rg -l -e \"${wt}/\" -e \"${wt}\\\"\" \"$transcripts\" 2>/dev/null \\\n\t\t\t| xargs stat -f '%m %N' 2>/dev/null | sort -rn | head -1)\n\t\tif [ -n \"$f\" ]; then last_ts=$(echo \"$f\" | awk '{print $1}')\n\t\t\tlast=$(date -r \"$last_ts\" '+%Y-%m-%d' 2>/dev/null); fi\n\tfi\n\trecent=$([ \"$last_ts\" -gt 0 ] 2>/dev/null && [ $(( (now - last_ts) / 86400 )) -le 4 ] && echo yes || echo no)\n\n\tcase \"$dirty\" in wip:*) bucket=hold-wip ;; *)\n\t\tcase \"$pr\" in */open|*/draft) bucket=hold-open-pr ;; *)\n\t\t\tif [ \"$recent\" = yes ]; then bucket=verify-recent-chat\n\t\t\telif [ \"$merged\" = YES ] || [ \"$pr\" != \"-\" ]; then bucket=safe\n\t\t\telse bucket=review; fi ;;\n\t\tesac ;;\n\tesac\n\n\tprintf \"%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n\" \\\n\t\t\"$size\" \"$age\" \"$merged\" \"$dirty\" \"$remote\" \"$pr\" \"$last\" \"$bucket\" \"$wt\"",
-    expectedMatches: 1,
-    replacement:
-      "\t# Newest supplied session whose cwd is this worktree. The caller produced\n\t# that file with `pstack_history`; nothing here reads the session store.\n\tlast=\"-\"; last_ts=0; usage=unknown\n\tif [ -n \"$sessions\" ] && [ -s \"$sessions\" ]; then\n\t\tusage=none\n\t\thit=$(jq -r --arg wt \"$wt\" '\n\t\t\t[.[] | select((.cwd // \"\") == $wt or ((.cwd // \"\") | startswith($wt + \"/\")))]\n\t\t\t| sort_by(.lastEventTime // 0) | last\n\t\t\t| if . == null then \"\" else \"\\(.sessionId // \"unknown\")\\n\\(.lastEventTime // 0)\" end\n\t\t' \"$sessions\" 2>/dev/null)\n\t\tif [ -n \"$hit\" ]; then\n\t\t\tusage=touched\n\t\t\tlast=$(printf '%s\\n' \"$hit\" | sed -n '1p')\n\t\t\tlast_ts=$(printf '%s\\n' \"$hit\" | sed -n '2p')\n\t\tfi\n\tfi\n\trecent=$([ \"$last_ts\" -gt 0 ] 2>/dev/null && [ $(( (now - last_ts) / 86400 )) -le 4 ] && echo yes || echo no)\n\n\t# This host exposes no pinned-state source, so report unknown rather than\n\t# guessing. The playbook takes the pinned set from the user.\n\tpinned=unknown\n\n\t# An unknown usage signal never reaches `safe`: without the session input the\n\t# bucket stays unknown-usage, and the playbook asks the user.\n\tcase \"$dirty\" in wip:*) bucket=hold-wip ;; *)\n\t\tcase \"$pr\" in */open|*/draft) bucket=hold-open-pr ;; *)\n\t\t\tif [ \"$usage\" = unknown ]; then bucket=unknown-usage\n\t\t\telif [ \"$usage\" = touched ] && [ \"$recent\" = yes ]; then bucket=verify-recent-chat\n\t\t\telif [ \"$merged\" = YES ] || [ \"$pr\" != \"-\" ]; then bucket=safe\n\t\t\telse bucket=review; fi ;;\n\t\tesac ;;\n\tesac\n\n\tprintf \"%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n\" \\\n\t\t\"$size\" \"$age\" \"$merged\" \"$dirty\" \"$remote\" \"$pr\" \"$last\" \"$pinned\" \"$bucket\" \"$wt\"",
-    outputIncludes: [
-      "bucket=unknown-usage",
-      "bucket=verify-recent-chat",
-      'pinned=unknown',
-      'printf "%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\t%s\\n"',
-    ],
-  },
+  // -------------------------------------------------------------------------
+  // The shipped script bodies are not patched here any more.
+  //
+  // `worktree-audit` and `log` were shell scripts upstream; both are authored Node
+  // programs under `scripts/runtime/` now, built into the asset tree by
+  // `scripts/build-runtime.ts`. The six shell-anchored patches that used to rewrite
+  // `worktree-audit.sh` are gone with the shell script. Everything they protected is
+  // still asserted, against the built artifact instead of the shell text: no
+  // transcript scan, the `--sessions` input, `bucket=unknown-usage`,
+  // `bucket=verify-recent-chat`, and `pinned=unknown`.
+  // -------------------------------------------------------------------------
   // -------------------------------------------------------------------------
   // Unit 6: the long-running workflows.
   //
@@ -3560,13 +3496,13 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/shipping.md",
     reason:
-      "The queued watcher is a background process whose settlement wakes this Session, not a loop command.",
+      "The queued watcher is a background process whose settlement wakes this Session, not a loop command, and it is started through `pstack_script` on the Host's own runtime.",
     anchor:
       "On GitHub, watch the run with the queued watcher from `playbooks/babysit.md` (`scripts/watch-pr/watch-pr --queued-stack --stack-prs <bottom-to-top>`) under `/loop` until it reports `COMPLETE` at the ceiling.",
     expectedMatches: 1,
     replacement:
-      "On GitHub, watch the run with the queued watcher from `playbooks/babysit.md` (`scripts/watch-pr/watch-pr --queued-stack --stack-prs <bottom-to-top>`) started as a background job, so its settlement notice wakes you and you re-read the run until it reports `COMPLETE` at the ceiling.",
-    outputIncludes: ["started as a background job, so its settlement notice wakes you"],
+      "On GitHub, watch the run with the queued watcher from `playbooks/babysit.md` (`pstack_script` with `id: \"watch-pr\"`, `args: [\"--queued-stack\", \"--stack-prs\", \"<bottom-to-top>\"]`, and `background: true`) so its settlement notice wakes you, and re-read the run until it reports `COMPLETE` at the ceiling.",
+    outputIncludes: ["pstack_script", "settlement notice wakes you"],
   },
   {
     kind: "replace",
@@ -3741,10 +3677,10 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Create `orchestrate/<project-slug>/` in the current agent's store (path in the system prompt). Every file has exactly one writer. Owners publish facts, readers aggregate at read time. Use `bun scripts/orch/orch.ts` for bookkeeping, written below as `orch`, while its canonical plain TSV and JSON stay readable without the CLI.",
     expectedMatches: 1,
     replacement:
-      "Create `orchestrate/<project-slug>/` in a directory the operator names, or under `.audit/` in the repository when they name none, because this host hands no store path to the model. Every file has exactly one writer. Owners publish facts, readers aggregate at read time. Use `bun scripts/orch/orch.ts` for bookkeeping, written below as `orch`, while its canonical plain TSV and JSON stay readable without the CLI. Bun is a hard prerequisite for that script: when `bun` is not on the PATH, read and write the TSV and JSON by hand and say which commands you could not run.",
+      "Create `orchestrate/<project-slug>/` in a directory the operator names, or under `.audit/` in the repository when they name none, because this host hands no store path to the model. Every file has exactly one writer. Owners publish facts, readers aggregate at read time. Use `pstack_script` with `id: \"orch\"` for bookkeeping, written below as `orch`, while its canonical plain TSV and JSON stay readable without the CLI. The tool runs the bundled script on the Host's own runtime, so no `bun`, `bash`, or `node` on the PATH is involved; if the tool is unavailable, read and write the TSV and JSON by hand and say which commands you could not run.",
     outputIncludes: [
       "because this host hands no store path to the model",
-      "Bun is a hard prerequisite for that script",
+      'pstack_script` with `id: "orch"',
     ],
   },
   {
@@ -4196,25 +4132,6 @@ export const FILE_PATCHES: readonly FilePatch[] = [
   },
   {
     kind: "replace",
-    file: "skills/poteto-mode/scripts/check-plan.mjs",
-    reason:
-      "The template no longer reads from a branch or arms a loop command, so the marker set follows it.",
-    anchor: 'const PROGRAM_MARKERS = ["git show origin/main:", "/loop 1h", "status message"];',
-    expectedMatches: 1,
-    replacement: 'const PROGRAM_MARKERS = ["create_goal", "schedule_create", "status message"];',
-    outputIncludes: ['const PROGRAM_MARKERS = ["create_goal", "schedule_create", "status message"];'],
-  },
-  {
-    kind: "replace",
-    file: "skills/poteto-mode/scripts/check-plan.test.ts",
-    reason: "The fixture plan has to carry the markers the checker now requires.",
-    anchor: "\\`git show origin/main:\\` /loop 1h status message",
-    expectedMatches: 1,
-    replacement: "\\`create_goal\\` \\`schedule_create\\` status message",
-    outputIncludes: ["\\`create_goal\\` \\`schedule_create\\` status message"],
-  },
-  {
-    kind: "replace",
     file: "skills/poteto-mode/playbooks/babysit.md",
     reason: "There is no Cursor babysit skill to steer away from on this host.",
     anchor:
@@ -4333,4 +4250,177 @@ export const FILE_PATCHES: readonly FilePatch[] = [
 
 export function patchesForFile(file: string): readonly FilePatch[] {
   return FILE_PATCHES.filter((patch) => patch.file === file);
+}
+
+/*
+ * The fake-forge fixture `orch.test.ts` writes onto `PATH` lives in
+ * `scripts/runtime/tests/fixtures.ts`.
+ *
+ * It is there rather than here because the generated text contains `${...}`
+ * sequences the test file interpolates at its own runtime, which cannot appear in a
+ * template literal in this module without being evaluated here.
+ */
+
+/**
+ * Source rewrites applied to a script *before* it is bundled.
+ *
+ * The shipped CLIs are single-file Node bundles, so the upstream script sources
+ * need two things the upstream tree does not do: no Bun shebang, and no call that
+ * shells out to install `commander`. Both are removed here rather than in the
+ * bundle assertion, because the bundler has to see the module graph the shipped
+ * file will actually have.
+ *
+ * Deliberately separate from `FILE_PATCHES`: a patch here never reaches the asset
+ * tree as a file of its own, so it cannot disturb an asset count. `bootstrap.ts`
+ * itself is not patched — it is dropped, because nothing imports it after these.
+ */
+export const RUNTIME_SOURCE_PATCHES: readonly FilePatch[] = [
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/orch/orch.ts",
+    reason:
+      "The bundle is one file whose dependencies are already inside it, so nothing may install at startup.",
+    anchor:
+      '#!/usr/bin/env bun\n\nimport { ensureDependenciesInstalled } from "../bootstrap.ts";',
+    expectedMatches: 1,
+    replacement: "#!/usr/bin/env node",
+    outputIncludes: ["#!/usr/bin/env node"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/orch/orch.ts",
+    reason:
+      "The bundle is one file whose dependencies are already inside it, so nothing may install at startup.",
+    anchor: "\nensureDependenciesInstalled();\n",
+    expectedMatches: 1,
+    replacement: "",
+    outputIncludes: [],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/watch-pr/watch-pr",
+    reason:
+      "The bundle is one file whose dependencies are already inside it, so nothing may install at startup.",
+    anchor:
+      '#!/usr/bin/env bun\nimport { ensureDependenciesInstalled } from "../bootstrap.ts";\n\nensureDependenciesInstalled();\n',
+    expectedMatches: 1,
+    replacement: "#!/usr/bin/env node\n",
+    outputIncludes: ["#!/usr/bin/env node"],
+  },
+  // `check-plan` is already Node, but its content is now a built artifact, so its
+  // own semantic rewrite belongs to this list: the template no longer reads from a
+  // branch or arms a loop command, so the marker set follows it, and the test's
+  // fixture plan carries the markers the checker now requires.
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/check-plan.mjs",
+    reason:
+      "The template no longer reads from a branch or arms a loop command, so the marker set follows it.",
+    anchor: 'const PROGRAM_MARKERS = ["git show origin/main:", "/loop 1h", "status message"];',
+    expectedMatches: 1,
+    replacement: 'const PROGRAM_MARKERS = ["create_goal", "schedule_create", "status message"];',
+    outputIncludes: ['const PROGRAM_MARKERS = ["create_goal", "schedule_create", "status message"];'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/check-plan.test.ts",
+    reason: "The fixture plan has to carry the markers the checker now requires.",
+    anchor: "\\`git show origin/main:\\` /loop 1h status message",
+    expectedMatches: 1,
+    replacement: "\\`create_goal\\` \\`schedule_create\\` status message",
+    outputIncludes: ["\\`create_goal\\` \\`schedule_create\\` status message"],
+  },
+  // ---------------------------------------------------------------------------
+  // The five upstream test files.
+  //
+  // Only the import lines change. `bun:test` becomes `node:test` plus the support
+  // module, which supplies the same `expect` and the same two `Bun` process
+  // helpers; `import.meta.dir` becomes `import.meta.dirname` because Node has no
+  // `dir`. Every assertion body stays the upstream text, which is what keeps the
+  // coverage argument honest: these are the upstream cases, not a rewrite.
+  // ---------------------------------------------------------------------------
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/check-plan.test.ts",
+    reason: "Bun's test API is replaced by node:test plus the shipped support module.",
+    anchor: 'import { expect, test } from "bun:test";\n',
+    expectedMatches: 1,
+    replacement: 'import { test } from "node:test";\nimport { expect } from "./support.ts";\n',
+    outputIncludes: ['from "node:test"', 'from "./support.ts"'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/check-plan.test.ts",
+    reason:
+      "The test runs the shipped checker beside it, and Node spells the containing directory import.meta.dirname.",
+    anchor: 'const checker = join(import.meta.dir, "check-plan.mjs");',
+    expectedMatches: 1,
+    replacement: 'const checker = join(import.meta.dirname, "check-plan.mjs");',
+    outputIncludes: ['join(import.meta.dirname, "check-plan.mjs")'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/orch/orch.test.ts",
+    reason: "Bun's test API is replaced by node:test plus the shipped support module.",
+    anchor: 'import { afterEach, describe, expect, it } from "bun:test";\n',
+    expectedMatches: 1,
+    replacement:
+      'import { afterEach, describe, it } from "node:test";\nimport { Bun, expect } from "../support.ts";\n',
+    outputIncludes: ['from "node:test"', 'from "../support.ts"'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/orch/orch.test.ts",
+    reason:
+      "The test runs the shipped bundle beside it, and Node spells the containing directory import.meta.dirname.",
+    anchor: 'const SCRIPT = join(import.meta.dir, "orch.ts");',
+    expectedMatches: 1,
+    replacement: 'const SCRIPT = join(import.meta.dirname, "orch.mjs");',
+    outputIncludes: ['join(import.meta.dirname, "orch.mjs")'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/orch/orch.test.ts",
+    reason:
+      "The fake forge was a bash script placed on PATH; the shipped suite must not need bash, so the same fixture is written in Node.",
+    anchor: BASH_FAKE_FORGE_ANCHOR,
+    expectedMatches: 1,
+    replacement: NODE_FAKE_FORGE_REPLACEMENT,
+    outputIncludes: ["#!/usr/bin/env node"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/watch-pr/cli.test.ts",
+    reason: "Bun's test API is replaced by node:test plus the shipped support module.",
+    anchor: 'import { describe, expect, it } from "bun:test";\n',
+    expectedMatches: 1,
+    replacement:
+      'import { describe, it } from "node:test";\nimport { expect } from "../support.ts";\n',
+    outputIncludes: ['from "node:test"', 'from "../support.ts"'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/watch-pr/github.test.ts",
+    reason: "Bun's test API is replaced by node:test plus the shipped support module.",
+    anchor: 'import { describe, expect, it } from "bun:test";\n',
+    expectedMatches: 1,
+    replacement:
+      'import { describe, it } from "node:test";\nimport { expect } from "../support.ts";\n',
+    outputIncludes: ['from "node:test"', 'from "../support.ts"'],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/scripts/watch-pr/policy.test.ts",
+    reason: "Bun's test API is replaced by node:test plus the shipped support module.",
+    anchor: 'import { describe, expect, it } from "bun:test";\n',
+    expectedMatches: 1,
+    replacement:
+      'import { describe, it } from "node:test";\nimport { expect } from "../support.ts";\n',
+    outputIncludes: ['from "node:test"', 'from "../support.ts"'],
+  },
+];
+
+/** Source rewrites for one script source, if any. */
+export function runtimePatchesForFile(file: string): readonly FilePatch[] {
+  return RUNTIME_SOURCE_PATCHES.filter((patch) => patch.file === file);
 }

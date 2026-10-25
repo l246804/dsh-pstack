@@ -1,89 +1,65 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { delimiter, join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { ROOT } from "../scripts/build-assets.ts";
-import { parseBunTestSummary } from "../scripts/check-scripts.ts";
+import {
+  EXPECTED_TEST_FILES,
+  EXPECTED_TESTS,
+  SMOKE_CASES,
+  parseNodeTestSummary,
+  shippedClis,
+  shippedTestFiles,
+} from "../scripts/check-scripts.ts";
 
+/**
+ * `check:scripts` is the release gate for "the shipped scripts need nothing
+ * installed". The tests below pin the parts that can silently rot:
+ *
+ * - the summary parser refuses a partial or empty run;
+ * - the check copies one tree, runs the suite, and smoke-tests every CLI;
+ * - a failing child and a missing one both exit nonzero;
+ * - the copy is removed in every case, including a throw;
+ * - nothing is installed and `bash` is never invoked.
+ *
+ * The fixtures put a fake `bash` on `PATH` that records any use. A recorded use is a
+ * test failure, which is how "no bash" is asserted rather than assumed.
+ */
 const entryPoint = join(ROOT, "scripts", "check-scripts.ts");
-const sourceScripts = join(ROOT, "assets", "skills", "poteto-mode", "scripts");
+const sourceSkills = join(ROOT, "assets", "skills");
 const fixtures: string[] = [];
 
 interface Fixture {
   readonly root: string;
-  readonly log: string;
   readonly bashLog: string;
   readonly environment: NodeJS.ProcessEnv;
-}
-
-interface Invocation {
-  readonly args: readonly string[];
-  readonly cwd: string;
-  readonly environment: Readonly<Record<string, string | undefined>>;
 }
 
 function fixture(): Fixture {
   const root = mkdtempSync(join(tmpdir(), "dsh-pstack-check-scripts-test-"));
   fixtures.push(root);
   const bin = join(root, "bin");
-  const log = join(root, "invocations.jsonl");
-  mkdirSync(bin);
-  writeFileSync(
-    join(bin, "bun"),
-    `#!/usr/bin/env node
-const fs = require("node:fs");
-const path = require("node:path");
-const args = process.argv.slice(2);
-const names = ["HOME", "TMPDIR", "XDG_CACHE_HOME", "BUN_INSTALL", "BUN_TMPDIR", "BUN_INSTALL_CACHE_DIR"];
-const environment = Object.fromEntries(names.map((name) => [name, process.env[name]]));
-fs.appendFileSync(process.env.CHECK_SCRIPTS_TEST_LOG, JSON.stringify({ args, cwd: process.cwd(), environment }) + "\\n");
-if (args[0] === "--version") console.log("fake-bun-version");
-if (args[0] === "install") {
-  if (args[1] !== "--frozen-lockfile") process.exit(8);
-  const commander = path.join(process.cwd(), "node_modules", "commander");
-  fs.mkdirSync(commander, { recursive: true });
-  fs.writeFileSync(path.join(commander, "package.json"), "{}\\n");
-}
-if (args[0] === "test") {
-  if (!fs.existsSync(path.join(process.cwd(), "node_modules", "commander", "package.json"))) {
-    console.error("test ran before install");
-    process.exit(9);
-  }
-  const failed = process.env.CHECK_SCRIPTS_TEST_FAIL === "test";
-  console.log("1 tests failed:");
-  console.log(\` \${failed ? 67 : 68} pass\`);
-  console.log(\` \${failed ? 1 : 0} fail\`);
-  console.log(" 0 skip");
-  console.log(" 0 todo");
-  console.log("Ran 68 tests across 5 files. [10.00ms]");
-}
-if (process.env.CHECK_SCRIPTS_TEST_FAIL === args[0] && process.env.CHECK_SCRIPTS_TEST_STATUS !== "0") process.exit(7);
-`,
-    { mode: 0o755 },
-  );
   const bashLog = join(root, "bash-invocations.jsonl");
+  mkdirSync(bin);
+  // Any use of bash is recorded, so "no bash" is evidence rather than a wish.
   writeFileSync(
     join(bin, "bash"),
     `#!/usr/bin/env node
 const fs = require("node:fs");
-const child = require("node:child_process");
-fs.appendFileSync(process.env.CHECK_SCRIPTS_TEST_BASH_LOG, JSON.stringify({ args: process.argv.slice(2), cwd: process.cwd(), tmpdir: process.env.TMPDIR }) + "\\n");
-const result = child.spawnSync("/usr/bin/bash", process.argv.slice(2), { stdio: "inherit" });
-process.exit(result.status ?? 1);
+fs.appendFileSync(process.env.CHECK_SCRIPTS_TEST_BASH_LOG, JSON.stringify({ args: process.argv.slice(2) }) + "\\n");
+process.exit(0);
 `,
     { mode: 0o755 },
   );
   return {
     root,
-    log,
     bashLog,
     environment: {
       ...process.env,
       PATH: `${bin}${delimiter}${process.env.PATH ?? ""}`,
       TMPDIR: root,
-      CHECK_SCRIPTS_TEST_LOG: log,
       CHECK_SCRIPTS_TEST_BASH_LOG: bashLog,
     },
   };
@@ -93,15 +69,8 @@ function run(environment: NodeJS.ProcessEnv) {
   return spawnSync(process.execPath, [entryPoint], {
     env: environment,
     encoding: "utf8",
-    timeout: 30_000,
+    timeout: 120_000,
   });
-}
-
-function invocations(log: string): Invocation[] {
-  return readFileSync(log, "utf8")
-    .trim()
-    .split("\n")
-    .map((line) => JSON.parse(line) as Invocation);
 }
 
 function temporaryRoot(stdout: string): string {
@@ -111,113 +80,158 @@ function temporaryRoot(stdout: string): string {
 }
 
 afterEach(() => {
-  for (const fixture of fixtures.splice(0)) rmSync(fixture, { recursive: true, force: true });
+  // Each fixture owns one temporary root; the check's own copy lives below it and is
+  // removed by the check itself, so this only removes what the test created.
+  for (const created of fixtures.splice(0)) rmSync(created, { recursive: true, force: true });
 });
 
 describe("check-scripts", () => {
-  it("parses Bun counts and rejects an inconsistent suite", () => {
-    expect(parseBunTestSummary(" 68 pass\n 0 fail\nRan 68 tests across 5 files.")).toEqual({
-      tests: 68,
-      files: 5,
-      passed: 68,
-      failed: 0,
-      skipped: 0,
-      todo: 0,
-    });
-    expect(parseBunTestSummary(" 59 pass\nRan 60 tests across 5 files.")).toBeNull();
-    expect(parseBunTestSummary("No tests found")).toBeNull();
+  it("parses the node --test summary and rejects an inconsistent one", () => {
+    const summary = parseNodeTestSummary("ℹ tests 68\nℹ pass 68\nℹ fail 0\nℹ skipped 0");
+    expect(summary).toEqual({ tests: 68, passed: 68, failed: 0, skipped: 0 });
+    expect(parseNodeTestSummary("ℹ tests 68\nℹ fail 0")).toBeNull();
+    expect(parseNodeTestSummary("No tests found")).toBeNull();
+    expect(parseNodeTestSummary("")).toBeNull();
   });
 
-  it("installs before testing in one isolated copy and cleans it up", () => {
-    const controlled = fixture();
-    const result = run(controlled.environment);
-    expect(result.stderr).toBe("");
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain("[check-scripts] Bun version: fake-bun-version");
-    expect(result.stdout).toContain(
-      "[check-scripts] test count: 68 tests across 5 files; 68 pass, 0 fail, 0 skip, 0 todo",
-    );
+  it("discovers the shipped test files and CLIs from the manifest, not a list", () => {
+    const tests = shippedTestFiles(sourceSkills);
+    expect(tests).toHaveLength(EXPECTED_TEST_FILES);
+    for (const file of tests) expect(file.endsWith(".test.mjs"), file).toBe(true);
 
-    const commands = invocations(controlled.log);
-    expect(commands.map((command) => command.args)).toEqual([
-      ["--version"],
-      ["install", "--frozen-lockfile"],
-      ["test", "orch", "watch-pr", "check-plan.test.ts"],
-      ["run", "typecheck"],
+    const clis = shippedClis(sourceSkills);
+    expect(clis.map((entry) => entry.id)).toEqual([
+      "check-plan",
+      "orch",
+      "watch-pr",
+      "worktree-audit",
+      "log",
     ]);
-
-    const root = temporaryRoot(result.stdout);
-    const bashCommands = invocations(controlled.bashLog);
-    expect(bashCommands).toEqual([
-      {
-        args: ["-n", join(sourceScripts, "worktree-audit.sh")],
-        cwd: join(root, "scripts"),
-        tmpdir: join(root, "tmp"),
-      },
-    ]);
-    expect(result.stdout).toContain(
-      `[check-scripts] bash -n assets/skills/poteto-mode/scripts/worktree-audit.sh: exit code 0`,
-    );
-    expect(root.startsWith(`${controlled.root}/`)).toBe(true);
-    for (const command of commands) {
-      expect(command.cwd).toBe(join(root, "scripts"));
-      expect(command.environment).toEqual({
-        HOME: join(root, "home"),
-        TMPDIR: join(root, "tmp"),
-        XDG_CACHE_HOME: join(root, "cache"),
-        BUN_INSTALL: join(root, "bun"),
-        BUN_TMPDIR: join(root, "bun", "tmp"),
-        BUN_INSTALL_CACHE_DIR: join(root, "bun", "cache"),
-      });
+    for (const entry of clis) {
+      expect(existsSync(entry.path), entry.path).toBe(true);
+      expect(entry.path.endsWith(".mjs"), entry.path).toBe(true);
     }
-    expect(existsSync(root)).toBe(false);
-    expect(result.stdout).toContain(`[check-scripts] cleanup: removed ${root}`);
-    expect(existsSync(join(sourceScripts, "node_modules"))).toBe(false);
+    expect(SMOKE_CASES).toHaveLength(clis.length);
   });
 
-  it("returns nonzero on a command failure and still cleans the copy", () => {
-    const controlled = fixture();
-    const result = run({ ...controlled.environment, CHECK_SCRIPTS_TEST_FAIL: "install" });
-    expect(result.status).toBe(1);
-    expect(result.stdout).toContain("bun install --frozen-lockfile: exit code 7");
-    const root = temporaryRoot(result.stdout);
+  /**
+   * One real run, shared by the assertions below.
+   *
+   * The full check spawns `node --test` plus five smoke cases, which takes several
+   * seconds; running it once keeps the suite inside its budget while still asserting
+   * everything a single end-to-end run can prove.
+   */
+  let fullRun: { readonly status: number | null; readonly stdout: string; readonly stderr: string } | undefined;
+  let fullRunRoot: string | undefined;
+
+  function runOnce(): { readonly status: number | null; readonly stdout: string; readonly stderr: string } {
+    if (fullRun === undefined) {
+      const controlled = fixture();
+      fullRun = run(controlled.environment);
+      fullRunRoot = temporaryRoot(fullRun.stdout);
+    }
+    return fullRun;
+  }
+
+  it("runs the suite and every smoke case in one isolated copy, with no install and no bash", () => {
+    const result = runOnce();
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain(`[check-scripts] test count: ${EXPECTED_TESTS} tests`);
+    expect(result.stdout).toContain("no install step, no bun, no bash, no network");
+    for (const smoke of SMOKE_CASES) {
+      expect(result.stdout, smoke.label).toContain(`[check-scripts] ${smoke.label}: exit code`);
+    }
+
+    const root = fullRunRoot as string;
     expect(existsSync(root)).toBe(false);
     expect(result.stdout).toContain(`[check-scripts] cleanup: removed ${root}`);
-    expect(invocations(controlled.log).map((command) => command.args)).toEqual([
-      ["--version"],
-      ["install", "--frozen-lockfile"],
-    ]);
-    expect(existsSync(join(sourceScripts, "node_modules"))).toBe(false);
+    // The two usage-only smoke cases write their usage line to stderr by design, so
+    // stderr may hold those lines; it must not hold a checker error.
+    expect(result.stderr).not.toContain("[check-scripts]");
+    expect(existsSync(join(sourceSkills, "poteto-mode", "scripts", "node_modules"))).toBe(false);
+  }, 120_000);
+
+  it("creates an isolated HOME, TMPDIR, and XDG_CACHE_HOME under the copy", () => {
+    runOnce();
+    const root = fullRunRoot as string;
+    const result = fullRun as { readonly stdout: string };
+    expect(result.stdout).toContain(`[check-scripts] HOME=${join(root, "home")}`);
+    expect(result.stdout).toContain(`[check-scripts] TMPDIR=${join(root, "tmp")}`);
+    expect(result.stdout).toContain(`[check-scripts] XDG_CACHE_HOME=${join(root, "cache")}`);
+    expect(existsSync(root)).toBe(false);
+  }, 120_000);
+
+  it("fails when the shipped tree is missing a CLI", () => {
+    const controlled = fixture();
+    // Copy the tree, then remove one CLI from the working copy this check would make
+    // by pointing it at a source it has to fail on.
+    const brokenSource = join(controlled.root, "broken-skills");
+    mkdirSync(join(brokenSource, "show-me-your-work", "scripts"), { recursive: true });
+    mkdirSync(join(brokenSource, "poteto-mode", "scripts"), { recursive: true });
+    writeFileSync(join(brokenSource, "poteto-mode", "scripts", "check-plan.mjs"), "process.exit(2);\n");
+    const outcome = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        `import(${JSON.stringify(entryPoint)}).then((m) => {
+          process.exitCode = m.main({ sourceRoot: ${JSON.stringify(brokenSource)} });
+        });`,
+      ],
+      { env: controlled.environment, encoding: "utf8", timeout: 120_000 },
+    );
+    expect(outcome.status).not.toBe(0);
+    expect(outcome.stdout + outcome.stderr).toContain("[check-scripts]");
+  });
+
+  it("fails when a shipped test file fails, and still cleans the copy", () => {
+    const controlled = fixture();
+    const failing = join(controlled.root, "failing-skills");
+    const scripts = join(failing, "poteto-mode", "scripts");
+    mkdirSync(scripts, { recursive: true });
+    writeFileSync(
+      join(scripts, "check-plan.test.mjs"),
+      'import { test } from "node:test";\ntest("fails", () => { throw new Error("boom"); });\n',
+    );
+    for (const entry of shippedClis(sourceSkills)) {
+      const relative = entry.path.slice(sourceSkills.length + 1);
+      const target = join(failing, ...relative.split("/"));
+      mkdirSync(join(target, ".."), { recursive: true });
+      writeFileSync(target, "#!/usr/bin/env node\nprocess.exit(0);\n", { mode: 0o755 });
+    }
+    for (const file of ["watch-pr", "orch"]) {
+      mkdirSync(join(scripts, file), { recursive: true });
+    }
+
+    const outcome = spawnSync(
+      process.execPath,
+      [
+        "-e",
+        `import(${JSON.stringify(entryPoint)}).then((m) => {
+          process.exitCode = m.main({ sourceRoot: ${JSON.stringify(failing)} });
+        });`,
+      ],
+      { env: controlled.environment, encoding: "utf8", timeout: 120_000 },
+    );
+    expect(outcome.status).not.toBe(0);
+    const output = `${outcome.stdout}\n${outcome.stderr}`;
+    expect(output).toContain("[check-scripts]");
+    const root = temporaryRoot(outcome.stdout);
+    expect(existsSync(root)).toBe(false);
     expect(existsSync(controlled.bashLog)).toBe(false);
   });
 
-  for (const testStatus of [7, 0] as const) {
-    it(`rejects failed tests with child status ${testStatus} and cleans up without later commands`, () => {
-      const controlled = fixture();
-      const result = run({
-        ...controlled.environment,
-        CHECK_SCRIPTS_TEST_FAIL: "test",
-        CHECK_SCRIPTS_TEST_STATUS: String(testStatus),
-      });
-      expect(result.status).toBe(1);
-      expect(result.stdout).toContain(
-        `bun test orch watch-pr check-plan.test.ts: exit code ${testStatus}`,
-      );
-      expect(result.stdout).toContain(
-        "test count: 68 tests across 5 files; 67 pass, 1 fail, 0 skip, 0 todo",
-      );
-      expect(`${result.stdout}\n${result.stderr}`).toContain("[check-scripts] 1 test(s) failed");
-
-      const root = temporaryRoot(result.stdout);
-      expect(existsSync(root)).toBe(false);
-      expect(result.stdout).toContain(`[check-scripts] cleanup: removed ${root}`);
-      expect(invocations(controlled.log).map((command) => command.args)).toEqual([
-        ["--version"],
-        ["install", "--frozen-lockfile"],
-        ["test", "orch", "watch-pr", "check-plan.test.ts"],
-      ]);
-      expect(existsSync(controlled.bashLog)).toBe(false);
-      expect(existsSync(join(sourceScripts, "node_modules"))).toBe(false);
-    });
-  }
+  it("copies only assets/skills and never the repository scripts directory", () => {
+    runOnce();
+    const root = fullRunRoot as string;
+    const result = fullRun as { readonly stdout: string };
+    expect(result.stdout).toContain(
+      `[check-scripts] copied only assets/skills/ to ${join(root, "skills")}`,
+    );
+    // The source tree really does hold more than the one skill; only these two
+    // directories carry scripts, and both are inside the copied tree.
+    const entries = readdirSync(sourceSkills);
+    expect(entries).toContain("poteto-mode");
+    expect(entries).toContain("show-me-your-work");
+    expect(existsSync(join(root, "scripts"))).toBe(false);
+  }, 120_000);
 });

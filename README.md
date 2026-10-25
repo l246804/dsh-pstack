@@ -20,12 +20,14 @@ dsh-pstack 沿用这个思路。上游技能是内容源，DSH 专用资产单�
 
 - worktree 插件。并行写入和隔离工作目录需要它。未启用时插件自动启用，已启用时不会重复启用。
 - DSH 的 skills 和 subagents 能力，由支持的 DSH 版本提供。
-- Node.js `>=22.19`。
+- Node.js `>=22.19`。仅 npm CLI 部署需要它出现在 `PATH` 上；Desktop（Electron）部署走 Host 自己的运行时。
 - Git。worktree 需要 Git 仓库。
+
+随包的编排、PR watcher、计划检查、worktree 审计和决策日志脚本已构建为单文件 Node 产物，依赖全部内联。运行时通过 `pstack_script` 工具以宿主进程启动它们，因此**不需要 Bun，也不需要 bash，更不需要安装任何依赖**。Desktop 用户不在 `PATH` 上放 `node` 也能用：工具用 Electron 自带的 Node 运行时执行，并在需要时自动附加 `ELECTRON_RUN_AS_NODE`。
 
 worktree 只隔离工作目录和分支，不提供 VM、网络、凭据或端口隔离。需要独立机器或云端执行时，worktree 不是替代品。
 
-Linux 和 macOS 是主要验证目标，Windows 的 shell 和脚本支持未验证。
+Linux 和 macOS 是主要验证目标，Windows 未在实机验证。脚本本身已不含 shell 依赖，但 Windows 上的真实行为仍未验收。
 
 ## 与 Agent Team 的兼容性
 

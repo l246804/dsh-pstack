@@ -6,8 +6,21 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { ROOT } from "../scripts/build-assets.ts";
 
-const script = join(ROOT, "assets", "skills", "show-me-your-work", "scripts", "log.sh");
+/**
+ * The shipped `log` CLI.
+ *
+ * This file used to drive a bash script through `spawnSync("bash", …)`. The script
+ * is a Node artifact now, so the same behaviours are asserted by running that
+ * artifact with the current interpreter: no `bash`, no `date`, no `tr`.
+ *
+ * The expectations are byte-for-byte the shell script's, because
+ * `skills/show-me-your-work/SKILL.md` tells the model to open this TSV in a
+ * spreadsheet, and a changed row shape would silently corrupt that artifact.
+ */
+const script = join(ROOT, "assets", "skills", "show-me-your-work", "scripts", "log.mjs");
 const temporaryDirectories: string[] = [];
+
+const HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n";
 
 function withLog(run: (logfile: string) => void): void {
   const directory = mkdtempSync(join(tmpdir(), "dsh-pstack-log-"));
@@ -15,8 +28,9 @@ function withLog(run: (logfile: string) => void): void {
   run(join(directory, "nested", "decisions.tsv"));
 }
 
+/** Append one row, the way the skill tells the model to. */
 function append(logfile: string, cells: readonly string[]) {
-  return spawnSync("bash", [script, logfile, ...cells], { encoding: "utf8" });
+  return spawnSync(process.execPath, [script, logfile, ...cells], { encoding: "utf8" });
 }
 
 afterEach(() => {
@@ -25,7 +39,7 @@ afterEach(() => {
   }
 });
 
-describe("show-me-your-work log.sh", () => {
+describe("show-me-your-work log CLI", () => {
   it("writes one header and appends complete six-cell rows without replacing earlier rows", () => {
     withLog((logfile) => {
       for (const phase of ["first", "second"]) {
@@ -36,7 +50,7 @@ describe("show-me-your-work log.sh", () => {
       }
 
       const text = readFileSync(logfile, "utf8");
-      expect(text.startsWith("ts\tphase\tdecision\twhy\tevidence\tresult\n")).toBe(true);
+      expect(text.startsWith(HEADER)).toBe(true);
       expect(text.endsWith("\n")).toBe(true);
       const lines = text.trimEnd().split("\n");
       expect(lines).toHaveLength(3);
@@ -89,13 +103,34 @@ describe("show-me-your-work log.sh", () => {
       expect(result.status).toBe(0);
       expect(result.stderr).toBe("");
       const cells = readFileSync(logfile, "utf8").trimEnd().split("\n")[1]?.split("\t").slice(1);
-      expect(cells).toEqual([
-        "'=1+1",
-        "'+SUM(A1:A2)",
-        "'-2+3",
-        "'@command",
-        "plain",
-      ]);
+      expect(cells).toEqual(["'=1+1", "'+SUM(A1:A2)", "'-2+3", "'@command", "plain"]);
+    });
+  });
+
+  it("uses the exit code and usage line the shell script used for a wrong cell count", () => {
+    withLog((logfile) => {
+      const result = append(logfile, ["only-two", "cells"]);
+      expect(result.status).toBe(1);
+      expect(result.stderr.startsWith("usage: log.mjs ")).toBe(true);
+      expect(result.stderr).toContain("<logfile>");
+    });
+  });
+
+  it("creates a missing parent directory instead of failing", () => {
+    withLog((logfile) => {
+      const result = append(logfile, ["p", "d", "w", "e", "r"]);
+      expect(result.status).toBe(0);
+      expect(readFileSync(logfile, "utf8").startsWith(HEADER)).toBe(true);
+    });
+  });
+
+  it("appends to an existing log without adding a second header", () => {
+    withLog((logfile) => {
+      append(logfile, ["one", "d", "w", "e", "r"]);
+      append(logfile, ["two", "d", "w", "e", "r"]);
+      const text = readFileSync(logfile, "utf8");
+      expect(text.split(HEADER).length - 1).toBe(1);
+      expect(text.trimEnd().split("\n")).toHaveLength(3);
     });
   });
 });

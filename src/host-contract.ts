@@ -361,3 +361,100 @@ export interface ToolDefinition {
 export interface ToolsHost {
   register(definition: ToolDefinition): () => void;
 }
+
+// ---------------------------------------------------------------------------
+// jobs
+// ---------------------------------------------------------------------------
+
+/**
+ * A registry-issued job id, branded by the Host.
+ *
+ * Kept as a plain `string` here, like the other branded ids in this file: the brand
+ * is erased and only documents that the value is opaque and must not be parsed.
+ */
+export type JobId = string;
+
+/**
+ * A session id, branded by the Host.
+ *
+ * Plain `string` for the same reason. A job's `owner` is a session id, so the jobs
+ * slice below reuses the name rather than introducing a second spelling.
+ */
+export type SessionId = string;
+
+/** The tool call a job was started for. */
+export interface JobToolCall {
+  readonly callId: string;
+  readonly rootCallId: string;
+}
+
+/** One job's lifecycle state. */
+export type JobStatus = "running" | "stopping" | "completed" | "killed" | "failed";
+
+/** One output channel a producer may append to. */
+export type JobChannel = "stdout" | "stderr" | "log";
+
+/** A live handle on a started job. */
+export interface JobHandle {
+  readonly id: JobId;
+  append(text: string, options?: { readonly channel?: JobChannel }): void;
+  updateProgress(line: string): void;
+}
+
+/** What a producer returns so the registry can cancel it and await its outcome. */
+export interface JobHooks {
+  cancel(reason?: string): void;
+  readonly done: Promise<JobOutcome>;
+}
+
+/** How a job ended, as its producer reports it. */
+export interface JobOutcome {
+  readonly status: "completed" | "killed" | "failed";
+  readonly detail?: string;
+  readonly result?: string;
+}
+
+/** The spec handed to `jobs.start`. */
+export interface JobSpec {
+  readonly kind: "bash";
+  readonly label: string;
+  readonly owner?: SessionId;
+  readonly toolCall?: JobToolCall;
+  readonly outputLimitBytes?: number;
+  readonly run: (job: JobHandle) => JobHooks;
+}
+
+/** A fresh projection of one job. */
+export interface JobView {
+  readonly id: JobId;
+  readonly kind: string;
+  readonly label: string;
+  readonly owner?: SessionId;
+  readonly status: JobStatus;
+  readonly progress?: string;
+  readonly detail?: string;
+  readonly startedAt: number;
+  readonly finishedAt?: number;
+  readonly output: {
+    readonly total: number;
+    readonly earliest: number;
+    readonly spillPaths?: readonly string[];
+  };
+}
+
+/**
+ * The slice of `ctx.jobs` a background script run needs.
+ *
+ * `jobs` is optional in the composition: a profile without a job controller still
+ * gets `pstack_script`, and a `background: true` call is then refused with a reason
+ * instead of hanging. That is why the access the row uses is `ctx.get("jobs")` —
+ * rc.3's optional-service form — and not `ctx.jobs`.
+ *
+ * Only `start` and `get` are named. `pstack_script` starts one job and reports its
+ * id; reading output, waiting, and killing stay with the Host's own job tools, which
+ * already own the model cursor and authorization checks.
+ */
+export interface JobsHost {
+  start(spec: JobSpec): JobId;
+  get(id: JobId, caller?: SessionId): JobView;
+}

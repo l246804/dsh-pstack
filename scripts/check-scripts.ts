@@ -1,196 +1,279 @@
+/**
+ * `check:scripts`: prove the bundled scripts run with nothing installed.
+ *
+ * The shipped tree may not need Bun, `bash`, an install step, or a `node_modules`
+ * directory beside it. This check is the release gate for that promise, and it is
+ * deliberately narrow:
+ *
+ * 1. Copy `assets/skills/` to a temporary directory. Nothing writes to the committed
+ *    tree, and nothing is installed: no `bun install`, no `pnpm`, no network.
+ * 2. Isolate `HOME`, `TMPDIR`, and `XDG_CACHE_HOME` into that copy, so a tool that
+ *    reaches for a cache or a config file reaches an empty one.
+ * 3. Run every shipped `*.test.mjs` through `node --test`. A suite that silently
+ *    skips is a failure, so the file and test counts are asserted against the
+ *    runtime manifest.
+ * 4. Smoke every shipped CLI. `--help` is not enough for `check-plan`, which has no
+ *    help flag and exits 2 with a usage line, so each CLI is invoked the way its own
+ *    usage line documents.
+ *
+ * A child that cannot start at all and a child that exits an unexpected code are both
+ * failures. `finally` removes the copy.
+ */
+
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ROOT } from "./build-assets.ts";
+import { RUNTIME_CLIS, RUNTIME_TESTS } from "./runtime-manifest.ts";
 
-const SOURCE_RELATIVE = "assets/skills/poteto-mode/scripts";
-const SCRIPT_SOURCE = join(ROOT, ...SOURCE_RELATIVE.split("/"));
-const WORKTREE_AUDIT = join(SCRIPT_SOURCE, "worktree-audit.sh");
-const EXPECTED_TEST_FILES = 5;
+/** The one asset tree copied for the check. */
+export const SOURCE_RELATIVE = "assets/skills";
 
-interface Command {
+/** How many shipped test files must run. */
+export const EXPECTED_TEST_FILES = RUNTIME_TESTS.length;
+
+/** How many test cases the suite must report. */
+export const EXPECTED_TESTS = 68;
+
+/** One smoke command: a CLI and the arguments its usage line documents. */
+export interface SmokeCase {
   readonly label: string;
-  readonly executable: string;
   readonly args: readonly string[];
-  readonly kind?: "bun-version" | "bun-tests";
+  /** Exit codes that count as a pass for this case. */
+  readonly accept: readonly number[];
 }
 
-export interface BunTestSummary {
+/**
+ * The smoke cases, in `RUNTIME_CLIS` order.
+ *
+ * `--help` is the natural invocation for four of them. `check-plan` has no help flag
+ * and exits 2 with a usage line, and `log` exits 1 with one, so their cases assert
+ * that documented behaviour instead of pretending a help path exists.
+ */
+export const SMOKE_CASES: readonly SmokeCase[] = [
+  { label: "check-plan (no args: usage, exit 2)", args: [], accept: [2] },
+  { label: "orch --help", args: ["--help"], accept: [0] },
+  { label: "watch-pr --help", args: ["--help"], accept: [0] },
+  { label: "worktree-audit --help", args: ["--help"], accept: [0] },
+  { label: "log (no args: usage, exit 1)", args: [], accept: [1] },
+];
+
+/** What one child process produced. */
+export interface CommandResult {
+  readonly status: number | null;
+  readonly stdout: string;
+  readonly stderr: string;
+  readonly error?: Error;
+}
+
+/** Options for one run, so a test can drive the same code with a fake runner. */
+export interface CheckOptions {
+  /** Root of the copy. Defaults to a fresh `mkdtemp`. */
+  readonly temporaryRoot?: string;
+  /** Run one process. Injected by tests; defaults to `spawnSync`. */
+  readonly run?: (
+    executable: string,
+    args: readonly string[],
+    env: NodeJS.ProcessEnv,
+    cwd: string,
+  ) => CommandResult;
+  /** Override the copy source, so a test does not need the built tree. */
+  readonly sourceRoot?: string;
+}
+
+/** Node test-runner counts, parsed from its summary. */
+export interface NodeTestSummary {
   readonly tests: number;
-  readonly files: number;
   readonly passed: number;
   readonly failed: number;
   readonly skipped: number;
-  readonly todo: number;
 }
 
-/** Parse Bun's summary without treating a partial or empty suite as a pass. */
-export function parseBunTestSummary(output: string): BunTestSummary | null {
-  const ran = /^[ \t]*Ran (\d+) tests? across (\d+) files?\./m.exec(output);
-  const passed = count(output, "pass");
-  if (ran === null || passed === null) return null;
-
-  const summary = {
-    tests: Number(ran[1]),
-    files: Number(ran[2]),
-    passed,
-    failed: count(output, "fail") ?? 0,
-    skipped: count(output, "skip") ?? 0,
-    todo: count(output, "todo") ?? 0,
+/**
+ * Parse `node --test`'s summary lines.
+ *
+ * The reporter prints `ℹ tests 68`, `ℹ pass 68`, `ℹ fail 0`, `ℹ skipped 0`. A run
+ * with no summary is not a pass: it may have crashed before reporting.
+ */
+export function parseNodeTestSummary(output: string): NodeTestSummary | null {
+  const read = (label: string): number | null => {
+    const match = new RegExp(`^[^\\n]*\\b${label}\\s+(\\d+)\\s*$`, "m").exec(output);
+    return match === null ? null : Number(match[1]);
   };
-  return summary.passed + summary.failed + summary.skipped + summary.todo === summary.tests
-    ? summary
-    : null;
+  const tests = read("tests");
+  const passed = read("pass");
+  const failed = read("fail");
+  const skipped = read("skipped");
+  if (tests === null || passed === null || failed === null) return null;
+  return { tests, passed, failed, skipped: skipped ?? 0 };
 }
 
-function count(output: string, label: "pass" | "fail" | "skip" | "todo"): number | null {
-  const match = new RegExp(`^[ \\t]*(\\d+) ${label}[ \\t]*\\r?$`, "m").exec(output);
-  return match === null ? null : Number(match[1]);
+function write(stream: NodeJS.WritableStream, text: string): void {
+  if (text === "") return;
+  stream.write(text);
+  if (!text.endsWith("\n")) stream.write("\n");
 }
 
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+/** Every shipped test file below a tree, discovered rather than listed. */
+export function shippedTestFiles(root: string): readonly string[] {
+  const found: string[] = [];
+  const walk = (directory: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (entry.name.endsWith(".test.mjs")) found.push(path);
+    }
+  };
+  walk(root);
+  return found.sort();
 }
 
-function writeOutput(stream: NodeJS.WritableStream, output: string): void {
-  if (output === "") return;
-  stream.write(output);
-  if (!output.endsWith("\n")) stream.write("\n");
+/** Every shipped CLI, as an absolute path inside the copy. */
+export function shippedClis(root: string): readonly { readonly id: string; readonly path: string }[] {
+  return RUNTIME_CLIS.map((entry) => ({
+    id: entry.id,
+    // `assetPath` is relative to `assets/`; the copy contains `skills/` as its root.
+    path: join(root, ...entry.assetPath.replace(/^skills\//, "").split("/")),
+  }));
 }
 
-function checkInCopy(temporaryRoot: string): number {
-  const scripts = join(temporaryRoot, "scripts");
+/** The default runner: one `spawnSync` call, never a shell. */
+function spawnRunner(
+  executable: string,
+  args: readonly string[],
+  env: NodeJS.ProcessEnv,
+  cwd: string,
+): CommandResult {
+  const result = spawnSync(executable, args, {
+    cwd,
+    env,
+    encoding: "utf8",
+    maxBuffer: 32 * 1024 * 1024,
+    windowsHide: true,
+  });
+  return {
+    status: result.status,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+    ...(result.error === undefined ? {} : { error: result.error }),
+  };
+}
+
+/** Run the whole check against one temporary root. Returns the exit code. */
+export function checkInCopy(temporaryRoot: string, options: CheckOptions = {}): number {
+  const run = options.run ?? spawnRunner;
+  const copy = join(temporaryRoot, "skills");
   const directories = {
     home: join(temporaryRoot, "home"),
     tmp: join(temporaryRoot, "tmp"),
     cache: join(temporaryRoot, "cache"),
-    bunInstall: join(temporaryRoot, "bun"),
-    bunTmp: join(temporaryRoot, "bun", "tmp"),
-    bunCache: join(temporaryRoot, "bun", "cache"),
   };
   for (const directory of Object.values(directories)) mkdirSync(directory, { recursive: true });
 
-  // This is the only asset tree copied. Installs and all test-side temporary
-  // directories stay below temporaryRoot, never in the generated asset tree.
-  cpSync(SCRIPT_SOURCE, scripts, { recursive: true, errorOnExist: true });
+  const source = options.sourceRoot ?? join(ROOT, ...SOURCE_RELATIVE.split("/"));
+  cpSync(source, copy, { recursive: true, errorOnExist: true });
 
   const environment: NodeJS.ProcessEnv = {
     ...process.env,
     HOME: directories.home,
     TMPDIR: directories.tmp,
     XDG_CACHE_HOME: directories.cache,
-    BUN_INSTALL: directories.bunInstall,
-    BUN_TMPDIR: directories.bunTmp,
-    BUN_INSTALL_CACHE_DIR: directories.bunCache,
   };
+
   console.log(`[check-scripts] temporary root: ${temporaryRoot}`);
-  console.log(`[check-scripts] copied only ${SOURCE_RELATIVE}/ to ${scripts}`);
-  for (const name of [
-    "HOME",
-    "TMPDIR",
-    "XDG_CACHE_HOME",
-    "BUN_INSTALL",
-    "BUN_TMPDIR",
-    "BUN_INSTALL_CACHE_DIR",
-  ] as const) {
-    console.log(`[check-scripts] ${name}=${environment[name]}`);
+  console.log(`[check-scripts] copied only ${SOURCE_RELATIVE}/ to ${copy}`);
+  console.log(`[check-scripts] HOME=${environment["HOME"]}`);
+  console.log(`[check-scripts] TMPDIR=${environment["TMPDIR"]}`);
+  console.log(`[check-scripts] XDG_CACHE_HOME=${environment["XDG_CACHE_HOME"]}`);
+  console.log("[check-scripts] no install step, no bun, no bash, no network");
+
+  const tests = shippedTestFiles(copy);
+  console.log(`\n[check-scripts] $ node --test (${tests.length} shipped test files)`);
+  const testsResult = run(process.execPath, ["--test", ...tests], environment, copy);
+  write(process.stdout, testsResult.stdout);
+  write(process.stderr, testsResult.stderr);
+  console.log(`[check-scripts] node --test: exit code ${testsResult.status ?? "unavailable"}`);
+  if (testsResult.error !== undefined) {
+    console.error(`[check-scripts] ${testsResult.error.message}`);
+    return 1;
   }
 
-  const commands: readonly Command[] = [
-    { label: "bun --version", executable: "bun", args: ["--version"], kind: "bun-version" },
-    {
-      label: "bun install --frozen-lockfile",
-      executable: "bun",
-      args: ["install", "--frozen-lockfile"],
-    },
-    {
-      label: "bun test orch watch-pr check-plan.test.ts",
-      executable: "bun",
-      args: ["test", "orch", "watch-pr", "check-plan.test.ts"],
-      kind: "bun-tests",
-    },
-    {
-      label: "bun run typecheck",
-      executable: "bun",
-      args: ["run", "typecheck"],
-    },
-    {
-      label: `bash -n ${SOURCE_RELATIVE}/worktree-audit.sh`,
-      executable: "bash",
-      args: ["-n", WORKTREE_AUDIT],
-    },
-  ];
+  const summary = parseNodeTestSummary(`${testsResult.stdout}\n${testsResult.stderr}`);
+  if (summary === null) {
+    console.error("[check-scripts] test count: unavailable");
+    return 1;
+  }
+  console.log(
+    `[check-scripts] test count: ${summary.tests} tests across ${tests.length} files; ` +
+      `${summary.passed} pass, ${summary.failed} fail, ${summary.skipped} skip`,
+  );
+  if (summary.failed !== 0) {
+    console.error(`[check-scripts] ${summary.failed} test(s) failed`);
+    return 1;
+  }
+  if (summary.tests !== EXPECTED_TESTS) {
+    console.error(
+      `[check-scripts] expected ${EXPECTED_TESTS} tests, the suite reported ${summary.tests}`,
+    );
+    return 1;
+  }
+  if (tests.length !== EXPECTED_TEST_FILES) {
+    console.error(
+      `[check-scripts] expected ${EXPECTED_TEST_FILES} test files, found ${tests.length}`,
+    );
+    return 1;
+  }
+  if (testsResult.status !== 0) return 1;
 
-  for (const command of commands) {
-    console.log(`\n[check-scripts] $ ${command.label}`);
-    const result = spawnSync(command.executable, command.args, {
-      cwd: scripts,
-      env: environment,
-      encoding: "utf8",
-      maxBuffer: 16 * 1024 * 1024,
-      windowsHide: true,
-    });
-    writeOutput(process.stdout, result.stdout);
-    writeOutput(process.stderr, result.stderr);
-    const exitCode = result.status === null ? "unavailable" : String(result.status);
-    console.log(`[check-scripts] ${command.label}: exit code ${exitCode}`);
-    if (result.signal !== null) console.error(`[check-scripts] signal: ${result.signal}`);
-    if (result.error !== undefined) console.error(`[check-scripts] ${result.error.message}`);
-
-    const succeeded = result.error === undefined && result.status === 0;
-    if (command.kind === "bun-version" && succeeded) {
-      const version = result.stdout.trim();
-      if (version === "") {
-        console.error("[check-scripts] Bun version: unavailable");
-        return 1;
-      }
-      console.log(`[check-scripts] Bun version: ${version}`);
+  const clis = shippedClis(copy);
+  for (const [index, smoke] of SMOKE_CASES.entries()) {
+    const entry = clis[index];
+    if (entry === undefined) {
+      console.error(`[check-scripts] no shipped CLI for smoke case "${smoke.label}"`);
+      return 1;
     }
-    if (command.kind === "bun-tests") {
-      const summary = parseBunTestSummary(`${result.stdout}\n${result.stderr}`);
-      if (summary === null) {
-        console.error("[check-scripts] test count: unavailable or inconsistent");
-        return 1;
-      }
-      console.log(
-        `[check-scripts] test count: ${summary.tests} tests across ${summary.files} files; ` +
-          `${summary.passed} pass, ${summary.failed} fail, ${summary.skipped} skip, ${summary.todo} todo`,
+    console.log(`\n[check-scripts] $ ${basename(entry.path)} ${smoke.args.join(" ")}`.trimEnd());
+    const result = run(process.execPath, [entry.path, ...smoke.args], environment, copy);
+    write(process.stdout, result.stdout);
+    write(process.stderr, result.stderr);
+    console.log(`[check-scripts] ${smoke.label}: exit code ${result.status ?? "unavailable"}`);
+    if (result.error !== undefined) {
+      console.error(`[check-scripts] ${result.error.message}`);
+      return 1;
+    }
+    if (result.status === null || !smoke.accept.includes(result.status)) {
+      console.error(
+        `[check-scripts] ${smoke.label}: expected exit ${smoke.accept.join(" or ")}, found ${result.status}`,
       );
-      if (summary.failed !== 0) {
-        console.error(`[check-scripts] ${summary.failed} test(s) failed`);
-        return 1;
-      }
-      if (summary.tests === 0 || summary.files !== EXPECTED_TEST_FILES) {
-        console.error(
-          `[check-scripts] expected a non-empty suite across ${EXPECTED_TEST_FILES} files`,
-        );
-        return 1;
-      }
+      return 1;
     }
-    if (!succeeded) return 1;
   }
 
   return 0;
 }
 
-export function main(): number {
+/** Run the check. Returns the process exit code. */
+export function main(options: CheckOptions = {}): number {
   console.log(`[check-scripts] Node version: ${process.version}`);
   let temporaryRoot: string;
   try {
-    temporaryRoot = mkdtempSync(join(tmpdir(), "dsh-pstack-check-scripts-"));
+    temporaryRoot =
+      options.temporaryRoot ?? mkdtempSync(join(tmpdir(), "dsh-pstack-check-scripts-"));
   } catch (error) {
-    console.error(`[check-scripts] cannot create temporary directory: ${errorMessage(error)}`);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[check-scripts] cannot create temporary directory: ${message}`);
     return 1;
   }
 
   let exitCode = 1;
   try {
-    exitCode = checkInCopy(temporaryRoot);
+    exitCode = checkInCopy(temporaryRoot, options);
   } catch (error) {
-    console.error(`[check-scripts] ${errorMessage(error)}`);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[check-scripts] ${message}`);
     exitCode = 1;
   } finally {
     try {
@@ -202,7 +285,8 @@ export function main(): number {
         console.log(`\n[check-scripts] cleanup: removed ${temporaryRoot}`);
       }
     } catch (error) {
-      console.error(`[check-scripts] cleanup failed: ${errorMessage(error)}`);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[check-scripts] cleanup failed: ${message}`);
       exitCode = 1;
     }
   }

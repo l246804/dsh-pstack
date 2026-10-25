@@ -32,3 +32,5 @@
       disabled: !!js "(() => { const rows = ctx.fiber?.entry?.parent?.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-tool-worktree' && row.name === '@deepseek-ai/dsh-experimental-tool-worktree' && row.disabled !== true) })()"
     - id: pstack-history
       name: dsh-pstack/history
+    - id: pstack-script
+      name: dsh-pstack/script

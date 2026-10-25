@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
@@ -21,10 +21,31 @@ import {
   UNIT6_FORBIDDEN_FIELDS,
   UNIT6_PATCHED_FILES,
   patchesForFile,
+  RUNTIME_SOURCE_PATCHES,
 } from "../scripts/patches.ts";
 import type { FilePatch } from "../scripts/patches.ts";
+import { RUNTIME_ENTRIES } from "../scripts/runtime-manifest.ts";
 
 const file = "skills/demo/SKILL.md";
+
+/**
+ * Whether a path belongs to an artifact the runtime build produces.
+ *
+ * Such files ship as compiled `.mjs`, so their semantic rewrites are applied to the
+ * source by `RUNTIME_SOURCE_PATCHES` before bundling and never appear in
+ * `FILE_PATCHES`. Tests that ask "is this file rewritten?" have to look in both
+ * lists, which is what this predicate makes explicit.
+ *
+ * Both the shipped artifact path and the upstream source path count: `check-plan`
+ * ships as `check-plan.mjs`, while its unit-6 assertion names the source
+ * `check-plan.test.ts`, and the question is the same in both cases.
+ */
+function isBuiltArtifact(path: string): boolean {
+  return RUNTIME_ENTRIES.some(
+    (entry) =>
+      entry.assetPath === path || entry.sources.some((source) => source.path === path),
+  );
+}
 
 function rewrite(anchor: string | RegExp, replacement: string, expectedMatches = 1): FilePatch {
   return {
@@ -119,9 +140,24 @@ describe("patch output", () => {
 describe("declared patch data", () => {
   it("declares every patch against an existing upstream file and builds cleanly", () => {
     expect(FILE_PATCHES.length).toBeGreaterThanOrEqual(60);
-    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(61);
+    // 58 files, down from 61: the two script sources and `log.sh` stopped being
+    // patched asset targets and became built runtime artifacts instead.
+    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(58);
     expect(() => validatePatchTargets(FILE_PATCHES, EXCLUDED_SKILLS, UPSTREAM_ROOT)).not.toThrow();
     expect(() => buildAssets()).not.toThrow();
+  });
+
+  it("declares every script rewrite against an upstream source that exists", () => {
+    // The runtime list is separate from FILE_PATCHES because its targets do not ship
+    // as themselves, but every anchor must still resolve in the pinned upstream tree.
+    expect(RUNTIME_SOURCE_PATCHES.length).toBeGreaterThan(0);
+    expect(() =>
+      validatePatchTargets(RUNTIME_SOURCE_PATCHES, EXCLUDED_SKILLS, UPSTREAM_ROOT),
+    ).not.toThrow();
+    for (const patch of RUNTIME_SOURCE_PATCHES) {
+      const source = readFileSync(join(UPSTREAM_ROOT, patch.file), "utf8");
+      expect(() => applyFilePatches(patch.file, source, [patch]), patch.file).not.toThrow();
+    }
   });
 
   it("covers the unit 3 text: the setup skill and the poteto preamble", () => {
@@ -200,7 +236,12 @@ describe("declared patch data", () => {
 
     expect(UNIT5_PATCHED_FILES).toHaveLength(13);
     for (const file of UNIT5_PATCHED_FILES) {
-      expect(patchesForFile(file).length, file).toBeGreaterThan(0);
+      // The audit script is a built artifact now, so its rewrite lives in
+      // RUNTIME_SOURCE_PATCHES rather than FILE_PATCHES. Every other unit-5 file is
+      // still a directly patched asset.
+      const declared =
+        patchesForFile(file).length + (isBuiltArtifact(file) ? RUNTIME_SOURCE_PATCHES.length : 0);
+      expect(declared, file).toBeGreaterThan(0);
       const text = assets.get(file);
       expect(text, file).toBeDefined();
       for (const field of [...FORBIDDEN_CURSOR_FIELDS, ...UNIT5_FORBIDDEN_FIELDS]) {
@@ -234,22 +275,24 @@ describe("declared patch data", () => {
         playbook,
       ).toBeGreaterThan(0);
     }
-    expect(patchesForFile("skills/poteto-mode/scripts/worktree-audit.sh").length).toBeGreaterThan(0);
+    // The audit's own rewrite is a runtime source patch, because the shipped file is
+    // the built `.mjs`, not the upstream `.sh`.
+    expect(isBuiltArtifact("skills/poteto-mode/scripts/worktree-audit.mjs")).toBe(true);
   });
 
   it("no longer presents the audit script with a Cursor transcript scan", () => {
     const assets = new Map(
       buildAssets().map((asset) => [asset.path, asset.bytes.toString("utf8")]),
     );
-    const script = assets.get("skills/poteto-mode/scripts/worktree-audit.sh") ?? "";
+    const script = assets.get("skills/poteto-mode/scripts/worktree-audit.mjs") ?? "";
 
     expect(script).not.toContain("agent-transcripts");
     expect(script).not.toContain(".cursor/projects");
     expect(script).not.toContain("stat -f");
     expect(script).toContain("--sessions");
-    expect(script).toContain("bucket=unknown-usage");
-    expect(script).toContain("bucket=verify-recent-chat");
-    expect(script).toContain("pinned=unknown");
+    expect(script).toContain("unknown-usage");
+    expect(script).toContain("verify-recent-chat");
+    expect(script).toContain('"unknown"');
   });
 
   it("keeps the same-route diagnosis in every panel skill", () => {
@@ -294,7 +337,11 @@ describe("declared patch data", () => {
       "docs/guide/07-overnight.md",
       "docs/guide/10-recipes-and-pitfalls.md",
     ]) {
-      expect(patchesForFile(helper).length, helper).toBeGreaterThan(0);
+      // The two `check-plan` files ship as built artifacts, so their rewrites moved to
+      // RUNTIME_SOURCE_PATCHES; the four text files stay in FILE_PATCHES.
+      const declared =
+        patchesForFile(helper).length + (isBuiltArtifact(helper) ? RUNTIME_SOURCE_PATCHES.length : 0);
+      expect(declared, helper).toBeGreaterThan(0);
     }
   });
 

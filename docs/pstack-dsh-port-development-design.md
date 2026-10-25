@@ -764,11 +764,15 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 
 ### 12.2 上游脚本测试
 
-在 `assets/skills/poteto-mode/scripts` 的受控副本上执行其 manifest 中的测试和 typecheck。先安装锁定依赖，记录 Bun/Node 版本。`check-plan` 的模板和 marker 要同时修改并验证。`worktree-audit.sh` 做语法和跨平台分支测试，shell 不存在时明确支持边界。`log.sh` 运行追加、表头、换行和公式注入测试。
+随包脚本不再是上游的 Bun/bash 源文件，而是由 `scripts/build-runtime.ts` 打包出的单文件 Node 产物：`check-plan.mjs`、`orch/orch.mjs`、`watch-pr/watch-pr.mjs`、`worktree-audit.mjs`、`log.mjs`，以及对应的五个 `.test.mjs`。每个产物首行是 `#!/usr/bin/env node`，依赖（仅 `commander`，来自 `vendor/commander/` 的 14.0.0）全部内联，不含 `bun:` 引用和 `node_modules` 解析，也没有任何安装步骤。上游源码（`orch`、`watch-pr`、`check-plan` 及其测试）经 `RUNTIME_SOURCE_PATCHES` 改写后进入打包器，所以测试体仍是上游用例，只有 import 行与 `import.meta.dir` 被替换。
 
-主仓库 `vp test` 不会自动发现 assets 内上游测试，CI 必须单独调用 `pnpm check:scripts`（等价于 `node scripts/check-scripts.ts`）。入口只复制 `assets/skills/poteto-mode/scripts/` 到临时目录，串行执行锁文件安装、指定测试和 typecheck，再对生产树中的 `worktree-audit.sh` 做只读 `bash -n`；临时副本、Bun 安装/缓存和测试临时目录均与生产 assets 隔离，并在 `finally` 中清理。`log.sh` 的行为测试仍由 `tests/shell-scripts.test.ts` 负责。
+模型侧通过 `pstack_script` 工具调用这些脚本，不接受任意路径或 shell 字符串：`id` 是固定枚举，`args` 原样透传，入口用 `process.execPath` 启动产物，仅在 `process.versions.electron` 存在时附加 `ELECTRON_RUN_AS_NODE=1`。这就是 Desktop（Electron）没有 PATH `node` 时仍可运行的原因。
 
-**本次发布前核查状态。** `worktree-audit.sh` 已在 GNU bash 5.3.9 / Linux 上通过 `bash -n`。源码分支已人工核对：没有残留的 macOS `stat` 调用，size/age 改用 `du` 与 `git log --format=%ct`，但脚本仍依赖 Bash、jq、Git 和常见 Unix 工具。未在 macOS 或 Windows 实机执行，因此跨平台分支与 Windows 支持仍未验证。`show-me-your-work/scripts/log.sh` 已在同一 Linux 环境通过 `tests/shell-scripts.test.ts` 的 3 个用例，覆盖追加与单次表头、六列行和行尾换行、tab/CR/LF 清理，以及 `=`、`+`、`-`、`@` 四类公式前缀。这些是脚本级运行证据，不是真实会话审计、真实 worktree 清理或跨平台验收。`orch`、`watch-pr`、`check-plan` 已通过 `pnpm check:scripts` 在受控副本上完成 Bun 1.4.0 / Node 24.22.1 的检查：`bun install --frozen-lockfile` 退出码 0，指定 `bun test orch watch-pr check-plan.test.ts` 为 5 文件 68 用例通过，`bun run typecheck` 退出码 0。副本、HOME、`BUN_INSTALL`、`BUN_TMPDIR` 与 `BUN_INSTALL_CACHE_DIR` 均使用本次新建的临时可写目录，检查后已删除；生产 assets 树未安装依赖。另行诊断确认，在无 `node_modules` 的副本上跳过安装直接运行指定测试仍可能因并发 bootstrap 或 `watch-pr` 缺少 `commander` 而失败，因此上述通过结果不外推为未预装套件稳定；必须先安装锁定依赖。这些结果只覆盖脚本及其测试契约，不代表真实 PR watcher、完整编排或计划执行的行为级验证。
+`check-plan` 的模板和 marker 要同时修改并验证。`worktree-audit` 保留十列、bucket 取值、`PINNED unknown`、`--sessions` 语义和 git/du 等价逻辑，jq 用法改为 `JSON.parse`，且不扫描会话存储。`log` 保留表头只写一次、追加不覆盖、tab/CR/LF 清理、`= + - @` 前缀转义和结尾换行。
+
+主仓库 `vp test` 不会自动发现 assets 内上游测试，CI 必须单独调用 `pnpm check:scripts`（等价于 `node scripts/check-scripts.ts`）。入口是零安装的：只把 `assets/skills/` 复制到临时目录，隔离 `HOME`/`TMPDIR`/`XDG_CACHE_HOME`，用 `node --test` 跑全部随包测试，再对五个 CLI 各做一次冒烟（四个用 `--help`；`check-plan` 无 help 且无参数退出 2，`log` 无参数退出 1，按各自 usage 断言）。不调用 bun、不调用 bash、不联网；任一失败非零退出，`finally` 清理副本。`log` 的行为测试由 `tests/shell-scripts.test.ts` 负责，产物的字节契约由 `tests/runtime.test.ts` 负责。
+
+**本次发布前核查状态。** `check:scripts` 在 Linux / Node 24.22.1 上零安装通过：5 个测试文件 68 用例全部通过，五个 CLI 冒烟均按预期退出码返回，副本与隔离目录在 `finally` 中删除，生产 assets 树没有任何安装动作。`worktree-audit` 与上游 bash 版本在同一临时 git 仓库上逐列比对一致：`SIZE`（含 `du` 的块分配与目录自身块）、`AGE`、`MERGED` 的 `YES`/`no`、`DIRTY` 的 `clean`/`wip:<n>`/`scratch:<n>`、`REMOTE` 的 `pushed`/`ahead<n>`/`no-remote`、`PR` 的 `#<n>/<state>`（`gh` 小写化、`origin` 原样）、`LAST_CHAT`、`PINNED=unknown`，以及六个 bucket 的取值与按 SIZE 降序排序；错误路径的消息与退出码（未知选项 2、不可读或非数组 sessions 文件 1、缺 base 1）也一致。`log` 在同一环境上用 6 个用例覆盖上游的 3 类行为，并新增父目录创建与二次追加。这些是脚本级运行证据，不是真实会话审计、真实 worktree 清理或跨平台验收；未在 macOS 或 Windows 实机执行。
 
 ### 12.3 真实 DSH 验收
 

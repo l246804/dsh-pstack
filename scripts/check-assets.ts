@@ -21,6 +21,7 @@ import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
 import { EXCLUDED_SKILLS, FORBIDDEN_CURSOR_FIELDS, INTRO_SKILLS, UNIT4_PATCHED_FILES, UNIT5_FORBIDDEN_FIELDS, UNIT5_PATCHED_FILES, UNIT6_FORBIDDEN_FIELDS, UNIT6_PATCHED_FILES, UNIT7_FORBIDDEN_FIELDS, UNIT7_PATCHED_FILES, patchesForFile } from "./patches.ts";
+import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
@@ -110,9 +111,20 @@ export function checkAssets(): AssetsReport {
   checkIntroScope(problems);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
-  const expectedSkillFiles = skillDirectories()
-    .filter((skill) => !EXCLUDED_SKILLS.some((exclusion) => exclusion.skill === skill))
-    .reduce((total, skill) => total + walkUpstream(`${SKILLS_PREFIX}${skill}`).length, 0);
+  // The expected count is "upstream skill files, minus the ones a built artifact
+  // replaces, plus the artifacts themselves". Deriving it rather than hardcoding the
+  // number is what keeps this check honest when the runtime manifest changes.
+  const expectedSkillFiles =
+    skillDirectories()
+      .filter((skill) => !EXCLUDED_SKILLS.some((exclusion) => exclusion.skill === skill))
+      .reduce(
+        (total, skill) =>
+          total +
+          walkUpstream(`${SKILLS_PREFIX}${skill}`).filter(
+            (path) => !isReplacedUpstreamScript(path),
+          ).length,
+        0,
+      ) + RUNTIME_ENTRIES.filter((entry) => entry.assetPath.startsWith("skills/")).length;
   if (skills.files !== expectedSkillFiles) {
     problems.push(`assets: expected ${expectedSkillFiles} skill files, found ${skills.files}`);
   }
@@ -365,19 +377,28 @@ function checkSkills(problems: string[]): {
     }
     categories[category] += 1;
 
-    const upstreamFiles = walkUpstream(`${SKILLS_PREFIX}${skill}`).map((path) =>
-      path.slice(`${SKILLS_PREFIX}${skill}/`.length),
-    );
+    // A script directory ships as built artifacts, so its upstream sources are
+    // neither expected nor unexpected when absent; both sides are compared on the
+    // same rule instead of one list being treated as the whole truth.
+    const skillPrefix = `${SKILLS_PREFIX}${skill}/`;
+    const upstreamFiles = walkUpstream(`${SKILLS_PREFIX}${skill}`)
+      .filter((path) => !isReplacedUpstreamScript(path))
+      .map((path) => path.slice(skillPrefix.length));
+    const declaredScripts = RUNTIME_ENTRIES.filter((entry) =>
+      entry.assetPath.startsWith(skillPrefix),
+    ).map((entry) => entry.assetPath.slice(skillPrefix.length));
+    const expectedFiles = [...upstreamFiles, ...declaredScripts].sort();
+
     const assetFiles = walkFiles(join(assetsSkills, skill))
       .map((file) => relative(join(assetsSkills, skill), file).split(sep).join("/"))
       .sort();
     files += assetFiles.length;
 
-    for (const path of upstreamFiles) {
+    for (const path of expectedFiles) {
       if (!assetFiles.includes(path)) problems.push(`assets/skills/${skill}/${path}: missing`);
     }
     for (const path of assetFiles) {
-      if (!upstreamFiles.includes(path))
+      if (!expectedFiles.includes(path))
         problems.push(`assets/skills/${skill}/${path}: unexpected file`);
     }
 
@@ -540,15 +561,27 @@ function checkGuide(problems: string[]): { readonly markdown: number; readonly i
   return { markdown, images: actual.length - markdown };
 }
 
+/**
+ * Every asset must come from an upstream file or the runtime build.
+ *
+ * The two generated documents and the built scripts are the agreed exceptions.
+ * Without the runtime list, nine artifacts would each read as an undeclared file.
+ */
 function checkUndeclaredFiles(problems: string[]): void {
   const covered = [
     join(ASSETS_ROOT, "skills"),
     join(ASSETS_ROOT, "agents"),
     join(ASSETS_ROOT, "docs", "guide"),
   ];
+  const generated = new Set([
+    HARNESS_DOC_PATH,
+    PSTACK_MODELS_EXAMPLE_PATH,
+    ...RUNTIME_ENTRIES.map((entry) => entry.assetPath),
+  ]);
   for (const root of covered) {
     for (const file of walkFiles(root)) {
       const assetRelative = toRepositoryPath(file).slice(ASSETS_PREFIX.length);
+      if (generated.has(assetRelative)) continue;
       if (!existsSync(join(UPSTREAM_ROOT, assetRelative))) {
         problems.push(`${toRepositoryPath(file)}: no upstream source`);
       }
@@ -671,8 +704,9 @@ export const PLAYBOOK_GATES: readonly {
   },
   {
     playbook: "orchestrate.md",
-    claim: "Orchestrate needs Bun and the `orch` CLI for scripted bookkeeping",
-    evidence: "when `bun` is not on the PATH, read and write the TSV and JSON by hand and say which commands you could not run",
+    claim: "Orchestrate needs `pstack_script` for scripted bookkeeping",
+    evidence:
+      "if the tool is unavailable, read and write the TSV and JSON by hand and say which commands you could not run",
   },
   {
     playbook: "hillclimb.md",
@@ -1224,6 +1258,7 @@ function checkBundlePatch(
     "pstack-worktree",
     "pstack-tool-worktree",
     "pstack-history",
+    "pstack-script",
   ];
   const actualIds = rows.map((row) => row.id);
   if (actualIds.join(",") !== expectedIds.join(",")) {
@@ -1271,6 +1306,11 @@ function checkBundlePatch(
 
   if (!rows.some((row) => row.id === "pstack-history" && row.name === "dsh-pstack/history")) {
     problems.push('cordis.patch.yml: the history row must mount "dsh-pstack/history"');
+  }
+  // The script tool is what makes the bundled CLIs runnable without a `node` on
+  // PATH, so its row is load-bearing for the release, not optional.
+  if (!rows.some((row) => row.id === "pstack-script" && row.name === "dsh-pstack/script")) {
+    problems.push('cordis.patch.yml: the script row must mount "dsh-pstack/script"');
   }
   if (!/maxDepth:\s*2\b/.test(text)) {
     problems.push("cordis.patch.yml: pstack-subagent must carry config.maxDepth: 2");

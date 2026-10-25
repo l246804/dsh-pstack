@@ -1,13 +1,15 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { join } from "node:path";
 import { Buffer } from "node:buffer";
-import { fileURLToPath } from "node:url";
 
 import { HARNESS_DOC_PATH, renderHarnessDoc } from "./capabilities.ts";
 import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "./role-manifest.ts";
 import { assertPatchOutput, applyFilePatches, validatePatchTargets } from "./apply-patches.ts";
 import { EXCLUDED_SKILLS, FILE_PATCHES, INTRO_SKILLS, patchesForFile } from "./patches.ts";
 import type { FilePatch, SkillExclusion } from "./patches.ts";
+import { RUNTIME_ROOT } from "./build-runtime.ts";
+import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
+import { ROOT } from "./root.ts";
 import {
   parseFrontmatter,
   serializeAgentFrontmatter,
@@ -16,7 +18,14 @@ import {
   validateSkillFrontmatter,
 } from "../src/frontmatter.ts";
 
-export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+/**
+ * Re-exported so every existing `from "./build-assets.ts"` import keeps working.
+ *
+ * The constant itself lives in `./root.ts`, which imports nothing, because
+ * `build-runtime.ts` needs the repository root and this module needs the built
+ * runtime. Keeping the constant in a leaf breaks that cycle.
+ */
+export { ROOT };
 export const UPSTREAM_ROOT = join(ROOT, "upstream", "cursor-plugins", "pstack");
 export const UPSTREAM_SKILLS = join(UPSTREAM_ROOT, "skills");
 export const ASSETS_ROOT = join(ROOT, "assets");
@@ -99,11 +108,19 @@ export function buildAssets(
     if (!files.includes(`${SKILLS_PREFIX}${skill}/SKILL.md`)) {
       throw new Error(`skills/${skill}: missing SKILL.md`);
     }
-    for (const file of files) assets.push(buildAsset(file, patches, introSkills));
+    for (const file of files) {
+      // A script directory ships as built Node artifacts, never as its upstream
+      // shell or Bun sources. The replacement set is asserted non-empty below, so a
+      // prefix here can never silently drop a whole directory.
+      if (isReplacedUpstreamScript(file)) continue;
+      assets.push(buildAsset(file, patches, introSkills));
+    }
   }
   for (const file of walkUpstream("agents")) assets.push(buildAsset(file, patches, introSkills));
   for (const file of walkUpstream("docs/guide"))
     assets.push(buildAsset(file, patches, introSkills));
+
+  assets.push(...builtRuntimeAssets());
 
   assets.push({
     path: HARNESS_DOC_PATH,
@@ -122,7 +139,61 @@ export function buildAssets(
     left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
   );
   assertPatchesLanded(sorted, patches);
+  assertRuntimeAssets(sorted);
   return sorted;
+}
+
+/**
+ * Read the built runtime as assets.
+ *
+ * `runtime/` is gitignored build output; `assets/` is the committed tree. This is
+ * the one place the two meet, so a build that forgot to run the bundler fails here
+ * with a path-qualified message instead of shipping a stale tree.
+ */
+function builtRuntimeAssets(): readonly Asset[] {
+  const assets: Asset[] = [];
+  for (const entry of RUNTIME_ENTRIES) {
+    const path = join(RUNTIME_ROOT, ...entry.out.split("/"));
+    let bytes: Buffer;
+    try {
+      bytes = readFileSync(path);
+    } catch {
+      throw new Error(
+        `assets/${entry.assetPath}: missing built runtime; run \`node scripts/build-runtime.ts\` first`,
+      );
+    }
+    assets.push({
+      path: entry.assetPath,
+      bytes,
+      executable: entry.executable,
+      origin: "generated",
+    });
+  }
+  return assets;
+}
+
+/**
+ * Fail when the built scripts are not exactly the manifest.
+ *
+ * Every replaced script directory must contribute the artifacts the manifest names,
+ * and no upstream script source may survive into the tree. Without this, a wrong
+ * prefix would quietly ship both forms and the executable count would still pass.
+ */
+function assertRuntimeAssets(assets: readonly Asset[]): void {
+  const present = new Map(assets.map((asset) => [asset.path, asset]));
+  for (const entry of RUNTIME_ENTRIES) {
+    if (!present.has(entry.assetPath)) {
+      throw new Error(`assets/${entry.assetPath}: the runtime manifest names it, the tree lacks it`);
+    }
+  }
+  for (const asset of assets) {
+    if (!isReplacedUpstreamScript(asset.path)) continue;
+    if (/\.(?:sh|ts)$/.test(asset.path)) {
+      throw new Error(
+        `assets/${asset.path}: upstream script source survived; only built .mjs artifacts ship there`,
+      );
+    }
+  }
 }
 
 export function summarizeAssets(assets: readonly Asset[]): AssetSummary {
@@ -339,6 +410,17 @@ function validateIntroScope(
   }
 }
 
+/**
+ * Assert every declared patch reached the tree.
+ *
+ * `FILE_PATCHES` targets are asset files, so a missing one is a build error: it
+ * means a patch names a file the tree does not contain. `RUNTIME_SOURCE_PATCHES`
+ * targets are script *sources*, which deliberately do not ship — a patch on
+ * `orch.ts` lands in the `orch.mjs` artifact instead, and the bundler is what proves
+ * it landed. Skipping the second list here is therefore not a weakening: the runtime
+ * build asserts its own patches through `assertPatchOutput` before emitting, and
+ * `assertRuntimeAssets` below checks that every declared artifact exists.
+ */
 function assertPatchesLanded(assets: readonly Asset[], patches: readonly FilePatch[]): void {
   const byPath = new Map(assets.map((asset) => [asset.path, asset]));
   for (const patch of patches) {

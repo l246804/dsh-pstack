@@ -5,3 +5,10 @@ dist
 .DS_Store
 .assets-staging
 .assets-backup
+# Build output of scripts/build-runtime.ts. `assets/` is the committed copy.
+runtime
+# Upstream sources staged with RUNTIME_SOURCE_PATCHES applied, then bundled.
+.runtime-sources
+# Scratch space for local verification; never part of the package.
+.tmp
+

@@ -26,6 +26,7 @@ import {
 } from "../scripts/capabilities.ts";
 import { checkAssets, checkLinks, scanMarkdownLinks } from "../scripts/check-assets.ts";
 import { EXCLUDED_SKILLS, INTRO_SKILLS, patchesForFile } from "../scripts/patches.ts";
+import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../scripts/runtime-manifest.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
   ROLE_KEYS,
@@ -52,7 +53,10 @@ function upstream(path: string): Buffer {
 describe("generated asset set", () => {
   it("contains the unit 1 inventory", () => {
     const summary = summarizeAssets(assets);
-    expect(summary.files).toBe(154);
+    // 12 fewer files than the source-tree count: the two script directories ship as
+    // ten built `.mjs` artifacts instead of the upstream `.sh`, `.ts`, `.mjs`,
+    // `package.json`, and `bun.lock` sources they replaced.
+    expect(summary.files).toBe(142);
     expect(summary.skills).toBe(55);
     expect(summary.agents).toBe(2);
     expect(summary.guideMarkdown).toBe(11);
@@ -69,13 +73,13 @@ describe("generated asset set", () => {
     expect(excluded.has("make-bot-ui")).toBe(true);
   });
 
-  it("keeps the five executable scripts", () => {
+  it("keeps the five executable scripts, all Node .mjs", () => {
     expect(assets.filter((asset) => asset.executable).map((asset) => asset.path)).toEqual([
       "skills/poteto-mode/scripts/check-plan.mjs",
-      "skills/poteto-mode/scripts/orch/orch.ts",
-      "skills/poteto-mode/scripts/watch-pr/watch-pr",
-      "skills/poteto-mode/scripts/worktree-audit.sh",
-      "skills/show-me-your-work/scripts/log.sh",
+      "skills/poteto-mode/scripts/orch/orch.mjs",
+      "skills/poteto-mode/scripts/watch-pr/watch-pr.mjs",
+      "skills/poteto-mode/scripts/worktree-audit.mjs",
+      "skills/show-me-your-work/scripts/log.mjs",
     ]);
   });
 
@@ -137,15 +141,35 @@ describe("generated asset set", () => {
 
   it("preserves each skill's file set and executable bit", () => {
     for (const skill of expectedSkills) {
-      const expected = [...walkUpstream(`skills/${skill}`)].sort();
+      const upstreamFiles = [...walkUpstream(`skills/${skill}`)].sort();
+      // A script directory is the one place the tree replaces upstream files with
+      // build artifacts. Every other skill file is expected one-for-one.
+      const expected = upstreamFiles.filter((path) => !isReplacedUpstreamScript(path));
       const actual = [...byPath.keys()]
         .filter((path) => path.startsWith(`skills/${skill}/`))
         .sort();
-      expect(actual, skill).toEqual(expected);
 
-      for (const path of expected) {
+      // Upstream files that survive appear unchanged; the replaced directories are
+      // represented by exactly the artifacts the manifest declares for this skill.
+      for (const path of expected) expect(actual, `${skill}: ${path}`).toContain(path);
+      const declared = RUNTIME_ENTRIES.filter((entry) =>
+        entry.assetPath.startsWith(`skills/${skill}/`),
+      ).map((entry) => entry.assetPath);
+      for (const path of declared) expect(actual, `${skill}: ${path}`).toContain(path);
+
+      const accounted = new Set([...expected, ...declared]);
+      for (const path of actual) {
+        expect(accounted.has(path), `${skill}: ${path} is neither upstream nor a declared artifact`);
+      }
+
+      for (const path of actual) {
         const asset = byPath.get(path);
         expect(asset, path).toBeDefined();
+        const built = RUNTIME_ENTRIES.find((entry) => entry.assetPath === path);
+        if (built !== undefined) {
+          expect(asset?.executable, path).toBe(built.executable);
+          continue;
+        }
         expect(asset?.executable, path).toBe(
           (statSync(join(UPSTREAM_ROOT, path)).mode & 0o111) !== 0,
         );

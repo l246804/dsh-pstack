@@ -41,6 +41,10 @@
       "types": "./dist/history.d.mts",
       "default": "./dist/history.mjs"
     },
+    "./script": {
+      "types": "./dist/script.d.mts",
+      "default": "./dist/script.mjs"
+    },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",
