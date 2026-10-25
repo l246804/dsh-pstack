@@ -20,7 +20,8 @@ import {
 import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
-import { EXCLUDED_SKILLS, INTRO_SKILLS, patchesForFile } from "./patches.ts";
+import { EXCLUDED_SKILLS, FORBIDDEN_CURSOR_FIELDS, INTRO_SKILLS, UNIT4_PATCHED_FILES, patchesForFile } from "./patches.ts";
+import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
   ROLE_MANIFEST,
@@ -99,6 +100,7 @@ export function checkAssets(): AssetsReport {
   const guide = checkGuide(problems);
   checkUndeclaredFiles(problems);
   checkHarnessDoc(problems);
+  checkUnit4Texts(problems);
   checkRoleAssets(problems);
   checkLicense(problems);
   checkPackageManifest(problems);
@@ -117,6 +119,18 @@ export function checkAssets(): AssetsReport {
   if (guide.images !== 6) problems.push(`assets: expected 6 guide images, found ${guide.images}`);
   if (skills.categories.copy + skills.categories["intro-only"] + skills.categories.patched !== 55) {
     problems.push("assets: skill categories do not cover all 55 skills");
+  }
+  // The split is pinned so a patch that silently stops landing, or a new patch
+  // added without declaring it, fails here instead of drifting the category counts.
+  const expectedCategories = { copy: 31, "intro-only": 13, patched: 11 };
+  if (
+    skills.categories.copy !== expectedCategories.copy ||
+    skills.categories["intro-only"] !== expectedCategories["intro-only"] ||
+    skills.categories.patched !== expectedCategories.patched
+  ) {
+    problems.push(
+      `assets: expected ${expectedCategories.copy} copy / ${expectedCategories["intro-only"]} intro-only / ${expectedCategories.patched} patched skills, found ${skills.categories.copy} / ${skills.categories["intro-only"]} / ${skills.categories.patched}`,
+    );
   }
 
   for (const candidate of introCandidates()) {
@@ -553,7 +567,7 @@ function checkHarnessDoc(problems: string[]): void {
   }
 
   // Rows the shipped units do not cover yet stay deferred until their unit lands.
-  for (const deferred of ["restricted `sessionQuery` reads", "worktree isolation", "`/loop`"]) {
+  for (const deferred of ["restricted `sessionQuery` reads", "`/loop`"]) {
     const row = text.split("\n").find((line) => line.includes(`| ${deferred} |`));
     if (row === undefined) {
       problems.push(`assets/${HARNESS_DOC_PATH}: missing the "${deferred}" row`);
@@ -564,10 +578,12 @@ function checkHarnessDoc(problems: string[]): void {
     }
   }
 
-  // Rows that unit 3 delivered may not still claim to be deferred.
+  // Rows the shipped units delivered may not still claim to be deferred.
   for (const delivered of [
     "`pstack_subagent`, which returns a child id",
     "`$DSH_HOME/pstack-models.md`",
+    "the official worktree rows, mounted by this bundle when the profile lacks them",
+    "the authoring playbook plus this package's frontmatter, link, and structure checks",
   ]) {
     const row = text.split("\n").find((line) => line.includes(delivered));
     if (row === undefined) {
@@ -576,6 +592,37 @@ function checkHarnessDoc(problems: string[]): void {
     }
     if (row.includes("| deferred |")) {
       problems.push(`assets/${HARNESS_DOC_PATH}: "${delivered}" may not stay deferred`);
+    }
+  }
+}
+
+/**
+ * Audit the bodies unit 4 rewrote.
+ *
+ * A rewritten skill may still name Cursor where the sentence is about Cursor, but
+ * it may not keep a field or a path this host has no replacement for: a reader
+ * would call it and the host would reject the call. The check is per file because
+ * later units own the remaining Cursor vocabulary.
+ */
+function checkUnit4Texts(problems: string[]): void {
+  for (const relativePath of UNIT4_PATCHED_FILES) {
+    const path = join(ASSETS_ROOT, relativePath);
+    if (!existsSync(path)) {
+      problems.push(`assets/${relativePath}: missing a unit 4 file`);
+      continue;
+    }
+    const text = readFileSync(path, "utf8");
+    for (const field of FORBIDDEN_CURSOR_FIELDS) {
+      if (text.includes(field)) {
+        problems.push(
+          `assets/${relativePath}: still carries the unmapped Cursor field ${JSON.stringify(field)}`,
+        );
+      }
+    }
+    if (/\bthe \*\*[a-z-]+\*\* (skill|principle skill)\b/.test(text)) {
+      problems.push(
+        `assets/${relativePath}: names a hidden skill in bold instead of reading it at its resource path`,
+      );
     }
   }
 }
@@ -807,9 +854,12 @@ function checkPackageManifest(problems: string[]): void {
 /**
  * Check the bundle patch against the delivered rows.
  *
- * Unit 3 ships exactly two rows. A subpath row must resolve to a package export,
- * and the rows later units own must not appear yet, so a premature promise fails
- * here instead of shipping.
+ * Unit 4 ships four rows: the skill provider, the delegation tool, and the two
+ * official worktree rows whose `disabled: !!js` expressions have to stay byte
+ * identical to `scripts/worktree-mount.ts`. That module is the one place the
+ * guard logic is written and tested, so a hand edit here fails instead of shipping
+ * a mount decision nothing verified. The history row later units own must not
+ * appear yet.
  */
 function checkBundlePatch(
   problems: string[],
@@ -822,12 +872,9 @@ function checkBundlePatch(
   }
 
   const text = readFileSync(path, "utf8");
-  const rows = [...text.matchAll(/^\s*- id: (\S+)\n\s*name: (\S+)/gm)].map((match) => ({
-    id: match[1] as string,
-    name: match[2] as string,
-  }));
+  const rows = parseBundlePatchRows(text);
 
-  const expectedIds = ["pstack", "pstack-subagent"];
+  const expectedIds = ["pstack", "pstack-subagent", "pstack-worktree", "pstack-tool-worktree"];
   const actualIds = rows.map((row) => row.id);
   if (actualIds.join(",") !== expectedIds.join(",")) {
     problems.push(
@@ -835,7 +882,26 @@ function checkBundlePatch(
     );
   }
 
+  const worktreeRows = new Map(WORKTREE_ROWS.map((row) => [row.id, row]));
   for (const row of rows) {
+    const worktree = worktreeRows.get(row.id);
+    if (worktree !== undefined) {
+      if (row.name !== worktree.plugin) {
+        problems.push(
+          `cordis.patch.yml: row "${row.id}" must mount ${worktree.plugin}, found ${row.name}`,
+        );
+      }
+      const expectedGuard = worktreeRowGuardExpression(worktree);
+      if (row.disabledJs !== expectedGuard) {
+        problems.push(
+          `cordis.patch.yml: row "${row.id}" must carry the guard from scripts/worktree-mount.ts`,
+        );
+      }
+      continue;
+    }
+    if (row.disabledJs !== undefined) {
+      problems.push(`cordis.patch.yml: row "${row.id}" is not a conditional row`);
+    }
     if (row.name === "dsh-pstack") continue;
     const subpath = `./${row.name.replace(/^dsh-pstack\//, "")}`;
     if (!row.name.startsWith("dsh-pstack/")) {
@@ -847,14 +913,47 @@ function checkBundlePatch(
     }
   }
 
-  for (const later of ["pstack-history", "worktree"]) {
-    if (text.includes(later)) {
-      problems.push(`cordis.patch.yml: "${later}" belongs to a later unit and may not ship yet`);
+  for (const row of WORKTREE_ROWS) {
+    if (!rows.some((candidate) => candidate.id === row.id)) {
+      problems.push(`cordis.patch.yml: missing the conditional worktree row "${row.id}"`);
     }
+  }
+
+  if (text.includes("pstack-history")) {
+    problems.push('cordis.patch.yml: "pstack-history" belongs to a later unit and may not ship yet');
   }
   if (!/maxDepth:\s*2\b/.test(text)) {
     problems.push("cordis.patch.yml: pstack-subagent must carry config.maxDepth: 2");
   }
+}
+
+interface BundlePatchRow {
+  readonly id: string;
+  readonly name: string;
+  /** Raw text of a `disabled: !!js "..."` value, when the row is conditional. */
+  readonly disabledJs?: string;
+}
+
+/** Read the `- id:` rows of the bundle patch, including their guard expression. */
+function parseBundlePatchRows(text: string): readonly BundlePatchRow[] {
+  const rows: { id: string; name: string; disabledJs?: string }[] = [];
+  for (const line of text.split("\n")) {
+    const idMatch = /^\s*- id: (\S+)\s*$/.exec(line);
+    if (idMatch !== null) {
+      rows.push({ id: idMatch[1] as string, name: "" });
+      continue;
+    }
+    const current = rows[rows.length - 1];
+    if (current === undefined) continue;
+    const nameMatch = /^\s*name: ['"]?([^'"\s]+)['"]?\s*$/.exec(line);
+    if (nameMatch !== null) {
+      current.name = nameMatch[1] as string;
+      continue;
+    }
+    const disabledMatch = /^\s*disabled: !!js "(.*)"\s*$/.exec(line);
+    if (disabledMatch !== null) current.disabledJs = disabledMatch[1] as string;
+  }
+  return rows;
 }
 
 function checkIcon(path: string, relativePath: string, problems: string[]): void {

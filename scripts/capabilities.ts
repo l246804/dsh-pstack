@@ -15,7 +15,7 @@ export const HARNESS_DOC_PATH = "docs/harness/dsh.md";
  * sentence, so the disclaimer cannot drift away from the implementation.
  */
 export const HARNESS_DOC_SCOPE_LINE =
-  "> This package ships its static assets, one bundled skill provider, and the `pstack_subagent` delegation tool. Restricted history and the worktree integration arrive in later units.";
+  "> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, and the official worktree integration mounted on demand. Restricted history arrives in a later unit.";
 
 export type CapabilityKind = "tool" | "path" | "model" | "host";
 
@@ -137,9 +137,10 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "create-skill",
     kind: "tool",
     cursor: "built-in `create-skill`",
-    dsh: "the authoring playbook plus DSH validation",
+    dsh: "the authoring playbook plus this package's frontmatter, link, and structure checks",
     coverage: "degraded",
-    reason: "No Cursor drafting, evaluation, or optimization tool is claimed.",
+    reason:
+      "No Cursor drafting, evaluation, or optimization tool is claimed; the playbook points at the validators this package actually runs.",
     unit: "4",
   },
   {
@@ -218,7 +219,8 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "Custom Mode",
     dsh: "an explicit `/poteto-mode` on each new task",
     coverage: "degraded",
-    reason: "No persistent mode or keyboard shortcut is simulated.",
+    reason:
+      "No persistent mode or keyboard shortcut exists. The ported skills say so at the step where a mode would have applied.",
     unit: "4",
   },
   {
@@ -244,10 +246,10 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "cloud-agent",
     kind: "host",
     cursor: "cloud agent, `cloud_base_branch`, dashboard",
-    dsh: "a local child with real completion state and an explicit `cwd`",
+    dsh: "a local child with a real `cwd`, started from a local branch or a prepared checkout",
     coverage: "degraded",
     reason:
-      "No VM, cross-device resume, or dashboard is promised. Worktree-based checkout isolation arrives with the workflow unit.",
+      "No VM, cross-device resume, or dashboard is promised. Isolation is the official worktree checkout, which does not cover ports, credentials, or services.",
     unit: "3",
   },
   {
@@ -257,7 +259,7 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "`/no-comments` plus one read-through of the diff",
     detect: "deslop",
     coverage: "degraded",
-    reason: "It is not the same skill under a new name.",
+    reason: "It is not the same skill under a new name; the diff read-through replaces the plugin.",
     unit: "4",
   },
   {
@@ -267,7 +269,8 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "a project verification skill or an existing driver",
     detect: "control-ui",
     coverage: "degraded",
-    reason: "Without a driver the verification result stays unproven.",
+    reason:
+      "Without a driver the verification result stays unproven, and reading source is not accepted as a substitute.",
     unit: "4",
   },
   {
@@ -277,7 +280,7 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "triage of review comments already on a pull request",
     detect: "Bugbot",
     coverage: "preserved",
-    reason: "Starting or configuring Bugbot is out of scope for the first release.",
+    reason: "Starting or configuring Bugbot is out of scope; existing review threads are read as ordinary data.",
     unit: "4",
   },
   {
@@ -286,7 +289,7 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "built-in pull request tool",
     dsh: "resolved `gh`, or an `origin` CLI that is actually available",
     coverage: "degraded",
-    reason: "A forge path has to be resolved before the shipping steps can run.",
+    reason: "A forge path has to be resolved before the shipping steps can run; there is no built-in PR tool.",
     unit: "4",
   },
   {
@@ -295,17 +298,16 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "image generation, `/visualize`",
     dsh: "Mermaid, existing screenshots, or a real renderer",
     coverage: "degraded",
-    reason: "No image is fabricated when none can be rendered.",
+    reason: "No image is fabricated when none can be rendered, and a read-only capture stays read-only.",
     unit: "4",
   },
   {
     id: "worktree",
     kind: "host",
     cursor: "worktree isolation",
-    dsh: "the official worktree integration",
-    coverage: "deferred",
-    reason: "Parallel-write playbooks need it before they can run.",
-    unit: "4",
+    dsh: "the official worktree rows, mounted by this bundle when the profile lacks them",
+    coverage: "mapped",
+    note: "Two rows mount on demand inside the composed profile and are skipped when an equivalent row is already enabled, so the `worktrees` service is provided exactly once. Isolation covers the working directory and branch only: not ports, network, credentials, caches, or services. The four profile paths are not yet verified at runtime.",
   },
   {
     id: "make-bot-ui",

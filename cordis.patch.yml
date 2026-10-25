@@ -1,3 +1,16 @@
+# dsh-pstack bundle patch.
+#
+# `pstack` registers the bundled skill provider. `pstack-subagent` registers
+# `pstack_subagent`, which starts one child per activation and re-reads the role
+# file on every delegation.
+#
+# The two worktree rows carry the README promise that worktree support ships as a
+# necessary dependency: the bundle turns the official integration on when the
+# profile does not have it, and mounts nothing when it does. `disabled: !!js` is
+# evaluated by the Loader at every mount decision, and each expression reads the
+# composed row list rather than a startup snapshot. `scripts/worktree-mount.ts`
+# owns the text of both expressions and `check:assets` fails when this file drifts
+# from it. See docs/decisions/2026-10-25-worktree-conditional-mount.md.
 - insert:
     - id: pstack
       name: dsh-pstack
@@ -5,3 +18,9 @@
       name: dsh-pstack/subagent
       config:
         maxDepth: 2
+    - id: pstack-worktree
+      name: '@deepseek-ai/dsh-experimental-worktree'
+      disabled: !!js "(() => { const rows = ctx.fiber?.entry?.parent?.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-worktree' && row.name === '@deepseek-ai/dsh-experimental-worktree' && row.disabled !== true) })()"
+    - id: pstack-tool-worktree
+      name: '@deepseek-ai/dsh-experimental-tool-worktree'
+      disabled: !!js "(() => { const rows = ctx.fiber?.entry?.parent?.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-tool-worktree' && row.name === '@deepseek-ai/dsh-experimental-tool-worktree' && row.disabled !== true) })()"

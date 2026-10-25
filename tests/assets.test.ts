@@ -93,11 +93,22 @@ describe("generated asset set", () => {
       expect(category, skill).toMatch(/^(copy|intro-only|patched)$/);
       counts[category as keyof typeof counts] += 1;
     }
-    expect(counts).toEqual({ copy: 31, "intro-only": 21, patched: 3 });
+    expect(counts).toEqual({ copy: 31, "intro-only": 13, patched: 11 });
     expect(classifications.get("poteto-help")).toBe("patched");
     expect(classifications.get("blast-radius")).toBe("patched");
     expect(classifications.get("setup-pstack")).toBe("patched");
-    expect(classifications.get("how")).toBe("intro-only");
+    for (const skill of [
+      "how",
+      "why",
+      "architect",
+      "arena",
+      "swarm",
+      "interrogate",
+      "no-comments",
+      "figure-it-out",
+    ]) {
+      expect(classifications.get(skill), skill).toBe("patched");
+    }
     expect(classifications.get("tdd")).toBe("copy");
   });
 
@@ -123,7 +134,7 @@ describe("generated asset set", () => {
         expect(asset?.executable, path).toBe(
           (statSync(join(UPSTREAM_ROOT, path)).mode & 0o111) !== 0,
         );
-        if (!path.endsWith("/SKILL.md")) {
+        if (!path.endsWith("/SKILL.md") && patchesForFile(path).length === 0) {
           expect(asset?.bytes.equals(upstream(path)), path).toBe(true);
         }
       }
@@ -297,13 +308,34 @@ describe("capability table", () => {
     for (const id of ["subagent-comment-sicko", "readonly-field", "cloud-agent"]) {
       expect(byId.get(id)?.coverage, id).toBe("degraded");
     }
-    for (const id of ["transcripts", "worktree", "loop"]) {
+    for (const id of ["transcripts", "loop"]) {
       expect(byId.get(id)?.coverage, id).toBe("deferred");
     }
     expect(byId.get("automations")?.coverage).toBe("excluded");
     for (const id of ["skill-by-name", "project-skills", "plugin-location"]) {
       expect(byId.get(id)?.coverage, id).toBe("mapped");
     }
+  });
+
+  it("moves the unit 4 rows to their shipped state", () => {
+    const byId = new Map(CAPABILITIES.map((capability) => [capability.id, capability]));
+
+    expect(byId.get("worktree")?.coverage).toBe("mapped");
+    expect(byId.get("bugbot")?.coverage).toBe("preserved");
+    for (const id of [
+      "custom-mode",
+      "create-skill",
+      "deslop",
+      "control-ui",
+      "pr-tool",
+      "image-generation",
+    ]) {
+      expect(byId.get(id)?.coverage, id).toBe("degraded");
+    }
+    // The rows a later unit owns stay deferred or excluded rather than shipping early.
+    expect(byId.get("transcripts")?.coverage).toBe("deferred");
+    expect(byId.get("loop")?.coverage).toBe("deferred");
+    expect(byId.get("automations")?.coverage).toBe("excluded");
   });
 
   it("keeps table cells single-line and pipe-free", () => {

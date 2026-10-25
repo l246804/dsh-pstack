@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 > DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
 
-Spawn one reviewer per configured model to adversarially review code changes. The adversarial signal comes from model diversity, not assigned personas. The deliverable is a synthesized verdict. Do NOT auto-apply changes.
+Spawn one reviewer per configured route to adversarially review code changes. The adversarial signal comes from model diversity, not assigned personas; when two entries resolve to the same route, say plainly that the review is one model reading the diff twice, because that is what it is. The deliverable is a synthesized verdict. Do NOT auto-apply changes.
 
 ## Step 1, Scope
 
@@ -26,22 +26,17 @@ Before spawning reviewers, state the intent in one clear paragraph from the user
 
 ## Step 3, Spawn Reviewers
 
-Launch all reviewers in a single message with the Task tool, one per entry on the `interrogate reviewers` line in `~/.cursor/rules/pstack-models.mdc`, labeled Reviewer A, B, and so on to match the entry count. If the rule or that line is missing, use the table defaults.
+Launch all reviewers in one batch of `pstack_subagent` calls with `role: "interrogate reviewers"`. That role is a panel, so one call starts one child per entry in the role file and the result lists every child id with its actual route; label them Reviewer A, B, and so on to match the entry count. A role the file does not name inherits the parent route, and that is not a different model.
 
-| Subagent | Default model |
-|----------|---------------|
-| Reviewer A | `claude-opus-5-5-xhigh` |
-| Reviewer B | `grok-4.7-xhigh-fast` |
+Each reviewer gets `agent: "general"` and a brief that forbids writes: it may read the diff and run read-only commands, and it must not edit files. That rule is an instruction, not a sandbox, so check `git status` before and after instead of trusting the report. The route comes from the panel entry, and the tool reports the route each reviewer actually got.
 
-Each reviewer gets `subagent_type: generalPurpose`, `readonly: true`, and `model` set to its configured entry, or its table default when there is no configured line. Omit `model` for an `auto` or `inherit-parent` entry, so that reviewer runs on the parent model.
+If an entry's route does not resolve, that reviewer does not start: the error names the role file and the bad line, which is the actionable fix. The remaining entries still start, and the report records each reviewer that was skipped and why. Do not substitute a route the user did not configure, and do not let one bad entry stop the review.
 
-If the Task tool rejects a configured entry, run that reviewer on its family's table default and say so. Families go by prefix: `claude-*`, and `grok-*` with `cursor-grok-*` and `composer-*`. A refused `composer-*` entry runs on Reviewer B's default. With no family match, use Reviewer A's default. If it rejects a table default, spawn with the closest equivalent from the valid slugs in its error message (prefer the same family and reasoning tier), and open a separate PR to update the default table. Do not block the review on the slug issue. Never treat an alias entry as a rejected slug or apply either fallback to it.
-
-Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
+Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.
 
 ## Step 4, Synthesize
 
-As results come back, build a unified picture. Parse every reviewer's findings. Merge findings that describe the same issue differently, and note which models raised each one. Findings two or more models raised independently are the highest signal. Read a lone model's finding, but weight it accordingly. Note disagreements. If one model flags something and another explicitly says the opposite, that is context for the verdict.
+As results come back, build a unified picture. Parse every reviewer's findings. Merge findings that describe the same issue differently, and note which route raised each one. Findings two or more reviewers raised are the highest signal only when their routes differ: reviewers on one route share the same blind spots, and the report says so instead of calling the overlap independent confirmation. Read a lone reviewer's finding, but weight it accordingly. Note disagreements. If one reviewer flags something and another explicitly says the opposite, that is context for the verdict.
 
 ## Step 5, Lead Judgment
 

@@ -1,6 +1,6 @@
 # DSH harness mapping
 
-> This package ships its static assets, one bundled skill provider, and the `pstack_subagent` delegation tool. Restricted history and the worktree integration arrive in later units.
+> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, and the official worktree integration mounted on demand. Restricted history arrives in a later unit.
 > The tables below are the target contract, not proof that a capability is installed in a profile.
 
 Generated from `scripts/capabilities.ts` into `assets/docs/harness/dsh.md`. Edit the table, not this file.
@@ -32,7 +32,7 @@ about this tree.
 | `AskQuestion` | `ask_user_question` with `multi_select` | mapped | - |  |
 | `TodoWrite` | `todo_write` with the full list; a skipped step stays in `content` | mapped | - |  |
 | `Grep`, `Glob`, `Read`, `Shell` | `grep`, `glob`, `read`, `bash` | mapped | - |  |
-| built-in `create-skill` | the authoring playbook plus DSH validation | degraded | 4 | No Cursor drafting, evaluation, or optimization tool is claimed. |
+| built-in `create-skill` | the authoring playbook plus this package's frontmatter, link, and structure checks | degraded | 4 | No Cursor drafting, evaluation, or optimization tool is claimed; the playbook points at the validators this package actually runs. |
 | `/name` or the named skill | the `skill` tool for model-invocable skills, `/name` for the rest | mapped | - | The bundled provider lists all 55 skills and loads each body from its absolute path; only `setup-pstack` stays model-invocable, exactly as upstream declares. |
 
 ## Paths, models, and host features
@@ -46,14 +46,14 @@ about this tree.
 | `~/.cursor/projects/.../agent-transcripts` | restricted `sessionQuery` reads | deferred | 5 | The history unit owns the query path and its permissions. |
 | agent store | `.audit/<task-slug>/` or a directory the user names | mapped | - |  |
 | `paths:` auto-attach globs in SKILL.md | not consumed; skills load by explicit invocation | degraded | not planned | Automatic attachment by file glob has no equivalent, so `typescript-best-practices` stays an explicit invocation. |
-| Custom Mode | an explicit `/poteto-mode` on each new task | degraded | 4 | No persistent mode or keyboard shortcut is simulated. |
+| Custom Mode | an explicit `/poteto-mode` on each new task | degraded | 4 | No persistent mode or keyboard shortcut exists. The ported skills say so at the step where a mode would have applied. |
 | `/loop` | `create_goal`, plus `schedule_create` where a timed input fits | deferred | 6 | Goal and schedule integration lands with the long-running workflows. |
 | Cursor Automations, `update_state`, `SendToUser` | not mapped; routine-style automation is excluded | excluded | 5 | `schedule_create` is not a webhook routine, and secrets are not requested. |
-| cloud agent, `cloud_base_branch`, dashboard | a local child with real completion state and an explicit `cwd` | degraded | 3 | No VM, cross-device resume, or dashboard is promised. Worktree-based checkout isolation arrives with the workflow unit. |
-| `deslop` | `/no-comments` plus one read-through of the diff | degraded | 4 | It is not the same skill under a new name. |
-| `control-ui`, `control-cli` | a project verification skill or an existing driver | degraded | 4 | Without a driver the verification result stays unproven. |
-| Bugbot | triage of review comments already on a pull request | preserved | 4 | Starting or configuring Bugbot is out of scope for the first release. |
-| built-in pull request tool | resolved `gh`, or an `origin` CLI that is actually available | degraded | 4 | A forge path has to be resolved before the shipping steps can run. |
-| image generation, `/visualize` | Mermaid, existing screenshots, or a real renderer | degraded | 4 | No image is fabricated when none can be rendered. |
-| worktree isolation | the official worktree integration | deferred | 4 | Parallel-write playbooks need it before they can run. |
+| cloud agent, `cloud_base_branch`, dashboard | a local child with a real `cwd`, started from a local branch or a prepared checkout | degraded | 3 | No VM, cross-device resume, or dashboard is promised. Isolation is the official worktree checkout, which does not cover ports, credentials, or services. |
+| `deslop` | `/no-comments` plus one read-through of the diff | degraded | 4 | It is not the same skill under a new name; the diff read-through replaces the plugin. |
+| `control-ui`, `control-cli` | a project verification skill or an existing driver | degraded | 4 | Without a driver the verification result stays unproven, and reading source is not accepted as a substitute. |
+| Bugbot | triage of review comments already on a pull request | preserved | 4 | Starting or configuring Bugbot is out of scope; existing review threads are read as ordinary data. |
+| built-in pull request tool | resolved `gh`, or an `origin` CLI that is actually available | degraded | 4 | A forge path has to be resolved before the shipping steps can run; there is no built-in PR tool. |
+| image generation, `/visualize` | Mermaid, existing screenshots, or a real renderer | degraded | 4 | No image is fabricated when none can be rendered, and a read-only capture stays read-only. |
+| worktree isolation | the official worktree rows, mounted by this bundle when the profile lacks them | mapped | - | Two rows mount on demand inside the composed profile and are skipped when an equivalent row is already enabled, so the `worktrees` service is provided exactly once. Isolation covers the working directory and branch only: not ports, network, credentials, caches, or services. The four profile paths are not yet verified at runtime. |
 | the `/make-bot-ui` skill | excluded from the port | excluded | 1 | It targets Cursor's Grok Bot webhook and Tailscale flow, and there is no equivalent host feature. |

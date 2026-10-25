@@ -7,7 +7,13 @@ import {
   validatePatchTargets,
 } from "../scripts/apply-patches.ts";
 import { buildAssets, UPSTREAM_ROOT } from "../scripts/build-assets.ts";
-import { EXCLUDED_SKILLS, FILE_PATCHES, patchesForFile } from "../scripts/patches.ts";
+import {
+  EXCLUDED_SKILLS,
+  FILE_PATCHES,
+  FORBIDDEN_CURSOR_FIELDS,
+  UNIT4_PATCHED_FILES,
+  patchesForFile,
+} from "../scripts/patches.ts";
 import type { FilePatch } from "../scripts/patches.ts";
 
 const file = "skills/demo/SKILL.md";
@@ -104,8 +110,8 @@ describe("patch output", () => {
 
 describe("declared patch data", () => {
   it("declares every patch against an existing upstream file and builds cleanly", () => {
-    expect(FILE_PATCHES.length).toBeGreaterThanOrEqual(9);
-    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(7);
+    expect(FILE_PATCHES.length).toBeGreaterThanOrEqual(60);
+    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(25);
     expect(() => validatePatchTargets(FILE_PATCHES, EXCLUDED_SKILLS, UPSTREAM_ROOT)).not.toThrow();
     expect(() => buildAssets()).not.toThrow();
   });
@@ -116,9 +122,81 @@ describe("declared patch data", () => {
     expect(patchesForFile("agents/comment-sicko.md")).toEqual([]);
   });
 
+  it("covers the unit 4 text: eight workflow skills and ten playbooks", () => {
+    expect(UNIT4_PATCHED_FILES).toHaveLength(19);
+    for (const file of UNIT4_PATCHED_FILES) {
+      expect(patchesForFile(file).length, file).toBeGreaterThan(0);
+    }
+    for (const skill of [
+      "how",
+      "why",
+      "architect",
+      "arena",
+      "swarm",
+      "interrogate",
+      "no-comments",
+      "figure-it-out",
+    ]) {
+      expect(patchesForFile(`skills/${skill}/SKILL.md`).length, skill).toBeGreaterThan(0);
+    }
+    for (const playbook of [
+      "investigation",
+      "bug-fix",
+      "perf-issue",
+      "runtime-forensics",
+      "trace-forensics",
+      "feature",
+      "refactoring",
+      "prototype",
+      "authoring-a-skill",
+      "opening-a-pr",
+    ]) {
+      expect(
+        patchesForFile(`skills/poteto-mode/playbooks/${playbook}.md`).length,
+        playbook,
+      ).toBeGreaterThan(0);
+    }
+  });
+
   it("returns the patches for one file", () => {
-    expect(patchesForFile("skills/poteto-help/SKILL.md")).toHaveLength(3);
-    expect(patchesForFile("skills/how/SKILL.md")).toEqual([]);
+    expect(patchesForFile("skills/poteto-help/SKILL.md")).toHaveLength(20);
+    expect(patchesForFile("skills/how/SKILL.md")).toHaveLength(4);
+    expect(patchesForFile("skills/tdd/SKILL.md")).toEqual([]);
+  });
+
+  it("rewrites every unit 4 body without leaving the anchor or a Cursor field behind", () => {
+    const assets = new Map(
+      buildAssets().map((asset) => [asset.path, asset.bytes.toString("utf8")]),
+    );
+
+    for (const file of UNIT4_PATCHED_FILES) {
+      const text = assets.get(file);
+      expect(text, file).toBeDefined();
+      for (const field of FORBIDDEN_CURSOR_FIELDS) {
+        expect(text?.includes(field), `${file}: ${field}`).toBe(false);
+      }
+      // A long anchor that survives means the semantic block was never replaced.
+      // An appending patch keeps its anchor on purpose, so it is skipped here.
+      for (const patch of patchesForFile(file)) {
+        if (typeof patch.anchor !== "string" || patch.anchor.length < 80) continue;
+        if (patch.kind === "replace" && patch.replacement.includes(patch.anchor)) continue;
+        expect(text?.includes(patch.anchor), `${file}: anchor still present`).toBe(false);
+      }
+    }
+  });
+
+  it("keeps the same-route diagnosis in every panel skill", () => {
+    const assets = new Map(
+      buildAssets().map((asset) => [asset.path, asset.bytes.toString("utf8")]),
+    );
+    for (const [file, phrase] of [
+      ["assets/skills/arena/SKILL.md", "not a cross-model arena"],
+      ["assets/skills/architect/SKILL.md", "two sketches from one model"],
+      ["assets/skills/interrogate/SKILL.md", "one model reading the diff twice"],
+      ["assets/skills/swarm/SKILL.md", "not a race between models"],
+    ] as const) {
+      expect(assets.get(file.replace(/^assets\//, "")), file).toContain(phrase);
+    }
   });
 
   it("fails the build when an output fragment is missing", () => {
