@@ -16,7 +16,7 @@ Examples of the pattern:
 - User describes a flaky test the agent could have queried via an observability MCP. Routing: the debugging skill should mention the observability MCP.
 - User links a chat thread the agent could have fetched via a chat MCP. Routing: the relevant skill should mention the chat MCP.
 
-Read the active transcript at <ABSOLUTE_PATH> (or use the digest below if no path is given).
+Review the event log supplied inline below, or the explicitly labelled digest when the full log was too large. Do not look for a transcript file.
 
 Scan for:
 - Tool invocations and command flags the agent had to discover

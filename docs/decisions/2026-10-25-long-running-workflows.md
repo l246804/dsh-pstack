@@ -49,6 +49,6 @@ Date: 2026-10-25
 - reminder 无法由 child 创建，"worker 定时叫醒自己"这类写法全部改成顶层 agent 布置，`autopilot-full` 与 `multi-phase-plan` 的 tick 都受影响。
 - 没有云端存活，"假定 VM 会死"改成"假定本机与本 Session 会死"，恢复边界收缩为已推送的分支加决策日志。
 - `check-plan.mjs` 的 `PROGRAM_MARKERS` 与 `multi-phase-plan.md` 的模板是一份协议的两个副本，改一处必须同改另一处。主仓测试用受控副本跑一遍模板（通过样例与缺项样例），上游的 `check-plan.test.ts` 另跑一遍；两者都在 Node 与 Bun 上分别验证过，但这只证明协议一致，不证明计划真的被执行过。
-- `orch` 与 `watch-pr` 的运行前提是 Bun、`scripts/package.json` 里锁定的 `commander@14.0.0`，以及一个可写的临时目录（`BUN_TMPDIR`）。`bootstrap.ts` 会把依赖装进 `scripts/node_modules`，而那个目录在生成资产树里没有上游来源，`check:assets` 会把它当成未声明文件，因此脚本测试只能在受控副本上跑，不能在生产树里跑完再提交。
+- `orch` 与 `watch-pr` 的运行前提是 Bun、`assets/skills/poteto-mode/scripts/package.json` 里锁定的 `commander@14.0.0`，以及一个可写的临时目录（`BUN_TMPDIR`）。`bootstrap.ts` 会把依赖装进 `scripts/node_modules`，而那个目录在生成资产树里没有上游来源，`check:assets` 会把它当成未声明文件，因此脚本测试只能在受控副本上跑，不能在生产树里跑完再提交。
 
 行为级验收（B04、B10、B13 至 B18、B20、B21）全部未执行：本阶段只有静态检查与单元测试，没有真实模型调用、真实 child、真实 watcher、真实 PR。真实 goal 的 armed/disarmed 边沿、reminder 的实际投递、后台 job 的 settlement 通知都需要在隔离 profile 里另行验证，届时若结果与本文不符，应新写一条记录取代本记录，而不是修改本文。

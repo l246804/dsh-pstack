@@ -85,7 +85,7 @@ describe("generated asset set", () => {
     expect(INTRO_SKILLS).toHaveProperty("typescript-best-practices");
     expect(INTRO_SKILLS).not.toHaveProperty("bro");
     expect(INTRO_SKILLS).not.toHaveProperty("tdd");
-    expect(Object.keys(INTRO_SKILLS)).toHaveLength(23);
+    expect(Object.keys(INTRO_SKILLS)).toHaveLength(24);
 
     const counts = { copy: 0, "intro-only": 0, patched: 0 };
     for (const skill of expectedSkills) {
@@ -93,7 +93,7 @@ describe("generated asset set", () => {
       expect(category, skill).toMatch(/^(copy|intro-only|patched)$/);
       counts[category as keyof typeof counts] += 1;
     }
-    expect(counts).toEqual({ copy: 31, "intro-only": 5, patched: 19 });
+    expect(counts).toEqual({ copy: 30, "intro-only": 5, patched: 20 });
     expect(classifications.get("poteto-help")).toBe("patched");
     expect(classifications.get("blast-radius")).toBe("patched");
     expect(classifications.get("setup-pstack")).toBe("patched");

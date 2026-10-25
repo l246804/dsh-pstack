@@ -22,11 +22,11 @@ Run:
 
 [`/setup-pstack`](../../skills/setup-pstack/SKILL.md) detects the models you have access to, asks for a reasoning budget, shows you each role (code delegates, judgment, the review panels), and asks what you want. Answer the questions. It writes `$DSH_HOME/pstack-models.md`, the small file every pstack skill reads.
 
-The defaults run at `xhigh` reasoning, the same as the `large` budget. `unlimited` lifts each model to its highest tier, up to `max`. Opus goes to `max`. Grok tops out at `xhigh`, so it stays there. `medium` and `small` lower the reasoning and spend fewer tokens.
+The skill defaults target `xhigh` reasoning, the same as the `large` budget. `unlimited` targets `max`; `medium` targets `high`, and `small` targets `medium`. Each target is applied only to a route you explicitly choose: use it when that model advertises it, otherwise use the highest advertised effort at or below the target. If the model advertises none, `/setup-pstack` asks you to choose instead of inventing an effort. The adapter's list decides, not the model's brand. A role set to `inherit-parent` or `auto` has no route-specific effort to change.
 
 You only override what you care about. A role with no line in the file keeps the skill's default. To restore a default, delete that role's line. A rerun of `/setup-pstack` keeps any role whose model differs from the default. When a default changes, a file written before the change still pins the old default, so delete those role lines, or delete the file, then run `/setup-pstack` again.
 
-You might be wondering what happens if you use Auto. Set a role to `inherit-parent` or `auto` and pstack omits the subagent `model` field, so the subagent inherits your parent chat model. Both values mean the same thing, and neither is a model slug. For a panel role the value is a list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures `swarm workers`, the default model for every `/swarm` worker unless a race names a model for each arm.
+You might be wondering what happens if you use Auto. Set a role to `inherit-parent` or `auto` and pstack sends no explicit `agentOptions` for that child, so DSH resolves it on the parent chat route. Both values mean the same thing, and neither is a model slug. For a panel role the value is a list, and one subagent runs per entry, so the list length sets the panel size. Setup also configures `swarm workers`, the default model for every `/swarm` worker unless a race names a model for each arm.
 
 ## Accept the verification offers, or don't
 

@@ -2,6 +2,27 @@
   "name": "dsh-pstack",
   "version": "0.1.0",
   "description": "pstack for DeepSeek Harness: rigorous agent workflows ported from cursor/plugins.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l246804/dsh-pstack.git"
+  },
+  "homepage": "https://github.com/l246804/dsh-pstack#readme",
+  "bugs": {
+    "url": "https://github.com/l246804/dsh-pstack/issues"
+  },
+  "keywords": [
+    "agent-skills",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "poteto-mode",
+    "pstack",
+    "workflow"
+  ],
+  "author": {
+    "name": "leiwang",
+    "email": "leiwang2000@foxmail.com"
+  },
   "license": "MIT",
   "type": "module",
   "icon": "./icon.svg",
@@ -45,6 +66,7 @@
     "sync:check": "node scripts/sync-upstream.ts --check",
     "check:upstream": "node scripts/check-upstream-tree.mjs",
     "check:assets": "node scripts/check-assets.ts",
+    "check:scripts": "node scripts/check-scripts.ts",
     "typecheck": "tsc --noEmit",
     "test": "vp test",
     "check": "pnpm run check:upstream && pnpm run sync:check && pnpm run check:assets && pnpm run typecheck && pnpm run test && pnpm run build",

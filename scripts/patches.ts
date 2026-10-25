@@ -255,6 +255,7 @@ export const INTRO_SKILLS: Readonly<Record<string, string>> = {
   "figure-it-out": "Cursor Task, todolist, and worktree vocabulary.",
   how: "Cursor Task, model, and readonly vocabulary.",
   interrogate: "Cursor Task and model-panel vocabulary.",
+  ketchup: "Cursor /visualize and generated-image claims need DSH renderer boundaries.",
   "maintain-formal-verification-skill": "Bare verification-skill routes need DSH path loading.",
   "maintain-verification-skill": "Cursor Task/readonly vocabulary and verification-skill paths.",
   "no-comments": "Cursor Task and comment-sicko subagent vocabulary.",
@@ -359,12 +360,104 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     expectedMatches: 1,
     outputIncludes: ["**Pitfall:** a duration is not a finish condition."],
   },
+  {
+    kind: "replace",
+    file: "docs/guide/06-verify-and-ship.md",
+    reason:
+      "No image comparison tool is bundled or verified here, so the guide states the prerequisite and the unverified fallback.",
+    anchor:
+      "- A UI change walks the changed flow in the running app. When it must match a reference pixel for pixel, the [Visual parity playbook](../../skills/poteto-mode/playbooks/visual-parity.md) diffs screenshots against a frozen baseline instead of judging by eye.",
+    expectedMatches: 1,
+    replacement:
+      "- A UI change walks the changed flow in the running app. When it must match a reference pixel for pixel, the [Visual parity playbook](../../skills/poteto-mode/playbooks/visual-parity.md) requires a real image comparison against a frozen baseline, not judgment by eye. Name the comparison tool and the per-image delta it reports; this package does not supply one. If it is unavailable, mark parity unverified rather than claiming a match.",
+    outputIncludes: ["this package does not supply one", "mark parity unverified"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/07-overnight.md",
+    reason:
+      "The agent must verify that the task's actual profiling and tracing tools are available rather than assume an unspecified profiler exists.",
+    anchor:
+      "- The agent has the tools and signals you'd use yourself: the verification skill, the profiler, the logs.",
+    expectedMatches: 1,
+    replacement:
+      "- The agent has the tools and signals you'd use yourself: the verification skill and the logs, plus the profiler or tracer this task actually needs. Check that it can capture the real artifact; if it cannot, report the missing measurement rather than treating the task as verified.",
+    outputIncludes: ["Check that it can capture the real artifact", "report the missing measurement"],
+  },
+  {
+    kind: "replace",
+    file: "skills/ketchup/SKILL.md",
+    reason: "This port has no /visualize command or general image generator; Mermaid and existing captures are real inputs.",
+    anchor:
+      "A visual is a picture: a screenshot, a video, a Mermaid diagram, a chart or diagram from `/visualize`, or a generated image. A Markdown table is not a visual, even with before and after columns.",
+    expectedMatches: 1,
+    replacement:
+      "A visual is a picture: a screenshot, a video, a Mermaid diagram, or a chart rendered by a real tool available in this Session. There is no `/visualize` command here and no built-in image generator. A Markdown table is not a visual, even with before and after columns.",
+    outputIncludes: ["There is no `/visualize` command here", "a real tool available in this Session"],
+  },
+  {
+    kind: "replace",
+    file: "skills/ketchup/SKILL.md",
+    reason: "Charts and Mermaid diagrams must come from existing data and a real renderer, not a Cursor image command.",
+    anchor:
+      "Draw diagrams and charts from facts you have: a Mermaid diagram for how things connect and a `/visualize` chart for numbers. Never invent a number, and never draw or generate a picture of a screen you did not capture. Link only artifacts that exist.",
+    expectedMatches: 1,
+    replacement:
+      "Draw diagrams and charts from facts you have: a Mermaid diagram for how things connect, and a real available renderer for a numeric chart. Never invent a number, and never draw or generate a picture of a screen you did not capture. Link only artifacts that exist.",
+    outputIncludes: ["a real available renderer for a numeric chart"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "Effort availability belongs to each model's adapter metadata, not to hardcoded Opus or Grok families in the upstream guide.",
+    anchor:
+      "The defaults run at `xhigh` reasoning, the same as the `large` budget. `unlimited` lifts each model to its highest tier, up to `max`. Opus goes to `max`. Grok tops out at `xhigh`, so it stays there. `medium` and `small` lower the reasoning and spend fewer tokens.",
+    expectedMatches: 1,
+    replacement:
+      "The skill defaults target `xhigh` reasoning, the same as the `large` budget. `unlimited` targets `max`; `medium` targets `high`, and `small` targets `medium`. Each target is applied only to a route you explicitly choose: use it when that model advertises it, otherwise use the highest advertised effort at or below the target. If the model advertises none, `/setup-pstack` asks you to choose instead of inventing an effort. The adapter's list decides, not the model's brand. A role set to `inherit-parent` or `auto` has no route-specific effort to change.",
+    outputIncludes: ["The adapter's list decides, not the model's brand.", "Each target is applied only to a route you explicitly choose"],
+  },
   // -------------------------------------------------------------------------
   // Unit 7: the reader-facing copy. The guide described installing from another
   // host's marketplace, a Custom Mode that keeps a skill in context, and a cloud
   // machine for parallel work. None of the three exists here, so each page states
   // what this host actually does at the step that used to promise it.
   // -------------------------------------------------------------------------
+  {
+    kind: "replace",
+    file: "docs/guide/01-setup.md",
+    reason:
+      "The upstream intent is to keep Auto users on the parent model; DSH does that by omitting explicit child agentOptions, not by naming Cursor's Task model field.",
+    anchor:
+      "You might be wondering what happens if you use Auto. Set a role to `inherit-parent` or `auto` and pstack omits the subagent `model` field, so the subagent inherits your parent chat model.",
+    expectedMatches: 1,
+    replacement:
+      "You might be wondering what happens if you use Auto. Set a role to `inherit-parent` or `auto` and pstack sends no explicit `agentOptions` for that child, so DSH resolves it on the parent chat route.",
+    outputIncludes: ["pstack sends no explicit `agentOptions` for that child", "DSH resolves it on the parent chat route"],
+  },
+  {
+    kind: "replace",
+    file: "skills/reflect/references/judgment-reviewer.md",
+    reason:
+      "Preserve the upstream full-transcript-or-digest contract using the parent's authorized event log, not a transcript file this host does not expose.",
+    anchor: "Read the active transcript at <ABSOLUTE_PATH> (or use the digest below if no path is given).",
+    expectedMatches: 1,
+    replacement:
+      "Review the event log supplied inline below, or the explicitly labelled digest when the full log was too large. Do not look for a transcript file.",
+    outputIncludes: ["Review the event log supplied inline below", "Do not look for a transcript file."],
+  },
+  {
+    kind: "replace",
+    file: "skills/reflect/references/tooling-reviewer.md",
+    reason:
+      "Preserve the upstream full-transcript-or-digest contract using the parent's authorized event log, not a transcript file this host does not expose.",
+    anchor: "Read the active transcript at <ABSOLUTE_PATH> (or use the digest below if no path is given).",
+    expectedMatches: 1,
+    replacement:
+      "Review the event log supplied inline below, or the explicitly labelled digest when the full log was too large. Do not look for a transcript file.",
+    outputIncludes: ["Review the event log supplied inline below", "Do not look for a transcript file."],
+  },
   {
     kind: "replace",
     file: "docs/guide/01-setup.md",
@@ -1578,10 +1671,11 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Seed them with `how` over the affected subsystem and the **why** skill for regression history. Each pass, take the split that cuts the most remaining problem space, get runtime evidence, eliminate. When program state is unclear, add instrumentation or logging and read it as the code runs. Don't guess. Drive a long or stubborn hunt with Cursor's `/loop` command. Confirm the surviving *mechanism* with runtime evidence before the step-3 architect/interrogate fan-out.",
     expectedMatches: 1,
     replacement:
-      "Seed them by reading the `how` skill over the affected subsystem and the `why` skill for regression history, each at its absolute resource path. Each pass, take the split that cuts the most remaining problem space, get runtime evidence, eliminate. When program state is unclear, add instrumentation or logging and read it as the code runs. Don't guess. A long or stubborn hunt stays in this Session: keep the hypothesis list current and re-read your own instrumentation output, because automatic continuation is not available in this port yet. Confirm the surviving *mechanism* with runtime evidence before the step-3 architect/interrogate fan-out.",
+      "Seed them by reading the `how` skill over the affected subsystem and the `why` skill for regression history, each at its absolute resource path. Each pass, take the split that cuts the most remaining problem space, get runtime evidence, eliminate. When program state is unclear, add instrumentation or logging and read it as the code runs. Don't guess. Keep a long or stubborn hunt in this Session: keep the hypothesis list current and re-read your own instrumentation output. Automatic continuation requires the goal round driver and the Autonomous run playbook's exit predicate; neither replaces this runtime evidence loop. Confirm the surviving *mechanism* with runtime evidence before the step-3 architect/interrogate fan-out.",
     outputIncludes: [
       "each at its absolute resource path",
-      "because automatic continuation is not available in this port yet",
+      "Automatic continuation requires the goal round driver",
+      "neither replaces this runtime evidence loop",
     ],
   },
   {
@@ -2230,7 +2324,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       'Without `/poteto-mode`, a phrase such as "babysit this pr" can start Cursor\'s own skill for the same job instead. The Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) lists every playbook and when it applies. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     expectedMatches: 1,
     replacement:
-      'Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness: all 23 files ship as text, and each one that depends on a capability this host lacks states that gate at the step that needs it. Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun plus the `orch` CLI, and Hillclimb and Visual parity cannot claim a win without a measurement or an image diff they actually ran. None of those flows has been verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
+      'Every playbook in the Playbooks section of [`poteto-mode`](../poteto-mode/SKILL.md) is ported to this harness: all 23 files ship as text, and each one that depends on a capability this host lacks states that gate at the step that needs it. Babysit needs a watcher that can wake the Session before `drive` or `background` means anything, Shipping needs a real driver for the surface, Orchestrate needs Bun and the `orch` CLI for scripted bookkeeping but permits a disclosed manual-file fallback when Bun is absent, Hillclimb accepts no win without a working measurement harness, and Visual parity needs an image diff actually run before it can claim parity. None of those flows has been verified end to end. [Guide page 6](../../docs/guide/06-verify-and-ship.md) covers opening, babysitting, and landing a PR.',
     outputIncludes: [
       "Every playbook in the Playbooks section",
       "all 23 files ship as text",
@@ -3861,6 +3955,15 @@ export const FILE_PATCHES: readonly FilePatch[] = [
   {
     kind: "replace",
     file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
+    reason: "The verdict template reads the installed swarm asset, not the upstream repository path.",
+    anchor: "Run each full swarm per `pstack/skills/swarm/SKILL.md`.",
+    expectedMatches: 1,
+    replacement: "Run each full swarm per `<package>/skills/swarm/SKILL.md`.",
+    outputIncludes: ["Run each full swarm per `<package>/skills/swarm/SKILL.md`."],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
     reason:
       "The tick is a goal predicate plus a reminder heartbeat, and neither one subscribes to a PR or a CI event.",
     anchor:
@@ -4191,6 +4294,40 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     replacement:
       "Route findings only to skills, tools, or MCPs this log used. A skill counts as used when the raw events show a `skill` tool call naming it, a `read` event for its `SKILL.md` at a resource path, or a tool call (`bash`, `grep`, MCP, etc.) matching its documented commands. Speculative routings to skills the parent never opened do not count.",
     outputIncludes: ["a `skill` tool call naming it", "at a resource path"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/05-build-and-clean.md",
+    reason:
+      "The guide cannot tell the reader that Opening a PR runs deslop and then say that command has no counterpart; the ported playbook reads the diff instead.",
+    anchor:
+      "The [Opening a PR playbook](../../skills/poteto-mode/playbooks/opening-a-pr.md) runs `/deslop` on the diff before each commit and applies [`/unslop`](../../skills/unslop/SKILL.md) to the PR description and commit bodies.",
+    expectedMatches: 1,
+    replacement:
+      "The [Opening a PR playbook](../../skills/poteto-mode/playbooks/opening-a-pr.md) reads the diff for narrative comments, unsupported guards, dead compatibility paths, and unrelated edits before each commit, and applies [`/unslop`](../../skills/unslop/SKILL.md) to the PR description and commit bodies.",
+    outputIncludes: ["reads the diff for narrative comments, unsupported guards"],
+  },
+  {
+    kind: "replace",
+    file: "docs/guide/05-build-and-clean.md",
+    reason: "The cleanup summary names the local review and diff pass, not the unavailable deslop command.",
+    anchor:
+      "The division of labor is worth keeping straight. `/deslop` cleans slop out of the code, `/unslop` cleans it out of prose, and `/no-comments` hands the comments to a reviewer who didn't write them.",
+    expectedMatches: 1,
+    replacement:
+      "The division of labor is worth keeping straight. The diff read-through and `/no-comments` clean the code, `/unslop` cleans slop out of prose, and `/no-comments` hands the comments to a reviewer who didn't write them.",
+    outputIncludes: ["The diff read-through and `/no-comments` clean the code"],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/opening-a-pr.md",
+    reason: "A child cannot run deslop on this host; its cleanup is the explicit diff pass plus no-comments.",
+    anchor:
+      "A subagent that opens a PR runs `interrogate`, `/deslop`, and `/no-comments`, and posts the URL.",
+    expectedMatches: 1,
+    replacement:
+      "A subagent that opens a PR runs `interrogate` and `/no-comments`, reads the diff for narrative comments, unjustified guards, dead compatibility paths, and unrelated edits, and posts the URL.",
+    outputIncludes: ["runs `interrogate` and `/no-comments`, reads the diff"],
   },
 ];
 

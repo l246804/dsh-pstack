@@ -125,7 +125,7 @@ export function checkAssets(): AssetsReport {
   }
   // The split is pinned so a patch that silently stops landing, or a new patch
   // added without declaring it, fails here instead of drifting the category counts.
-  const expectedCategories = { copy: 31, "intro-only": 5, patched: 19 };
+  const expectedCategories = { copy: 30, "intro-only": 5, patched: 20 };
   if (
     skills.categories.copy !== expectedCategories.copy ||
     skills.categories["intro-only"] !== expectedCategories["intro-only"] ||
@@ -671,18 +671,18 @@ export const PLAYBOOK_GATES: readonly {
   },
   {
     playbook: "orchestrate.md",
-    claim: "Orchestrate needs Bun plus the `orch` CLI",
-    evidence: "Bun",
+    claim: "Orchestrate needs Bun and the `orch` CLI for scripted bookkeeping",
+    evidence: "when `bun` is not on the PATH, read and write the TSV and JSON by hand and say which commands you could not run",
   },
   {
     playbook: "hillclimb.md",
-    claim: "Hillclimb and Visual parity cannot claim a win without a measurement",
-    evidence: "measur",
+    claim: "Hillclimb accepts no win without a working measurement harness",
+    evidence: "Build the measurement harness, prove its sensitivity, then freeze it",
   },
   {
     playbook: "visual-parity.md",
-    claim: "or an image diff they actually ran",
-    evidence: "image diff",
+    claim: "Visual parity needs an image diff actually run",
+    evidence: "Verify each component against its baseline with a real image diff on the matching surface.",
   },
 ];
 

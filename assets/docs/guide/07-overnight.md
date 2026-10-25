@@ -9,7 +9,7 @@ This is the payoff for everything before it. An agent you can trust to verify it
 A loop you don't trust just produces unchecked work faster, and the mess compounds with every iteration. Before you leave one running, check that it has earned it:
 
 - You've done the task once by hand, or watched an agent do it, so you know what good looks like.
-- The agent has the tools and signals you'd use yourself: the verification skill, the profiler, the logs.
+- The agent has the tools and signals you'd use yourself: the verification skill and the logs, plus the profiler or tracer this task actually needs. Check that it can capture the real artifact; if it cannot, report the missing measurement rather than treating the task as verified.
 - Every stage proves its work and can stop the line when the work misses the bar.
 - You've read a few transcripts and turned the repeated failures into tools, skills, or checks.
 

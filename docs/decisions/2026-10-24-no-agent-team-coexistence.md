@@ -7,11 +7,11 @@ Date: 2026-10-24
 
 Agent Team bundle 会禁用顶层的 `tool-subagent`、`tool-subagent-fork`、`tool-subagent-control` 和 `tool-subagent-list-agents`，再插入 Team 服务、Team 工具和 Web UI。证据在 `@deepseek-ai/dsh-experimental-agent-team-profile/cordis.patch.yml:4-14,16-32`。
 
-standard preset 自己在 `preset-standard` 的插件列表里又挂了一套委派工具，见 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml:89-109`。所以 `subagent` 和 `subagent_fork` 在标准会话里仍然可见。Team 的 `send_message`、`interrupt_agent`、`list_agents` 注册在队友作用域，同名时遮蔽旧控制工具，见 `@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js:538-545`。根会话是默认 Lead，因此这三个名字在标准会话里也指向 Team 成员，而不是任意子代理。
+standard preset 自己在 `preset-standard` 的插件列表里又挂了一套委派工具，见 `@deepseek-ai/dsh-web-app/presets/standard.patch.yml:89-109`。所以 `subagent` 和 `subagent_fork` 在标准会话里仍然可见。Team 的 `send_message`、`interrupt_agent`、`list_agents` 注册在队友作用域，同名时遮蔽旧控制工具，见 `@deepseek-ai/dsh-experimental-tool-agent-team/lib/index.js:227-229,250,292-328,351-363,531-553`。根会话是默认 Lead，因此这三个名字在标准会话里也指向 Team 成员，而不是任意子代理。
 
 这会带来三个实际问题。Lead 不能用这三个工具 steer、列出或中断普通的 pstack 子代理。Team 队友和 pstack 子代理共享 `maxActiveSubagents` 池，队友占满后 pstack 派发会因容量失败。Team 的策略鼓励 `spawn_teammate`，pstack 技能要求 `pstack_subagent`，两者在提示词层面竞争派发入口。
 
-`pstack_subagent` 的角色路由和 reasoning effort 计算本身不受影响。它每次调用读取角色文件，把 `provider`、`model`、`reasoningEffort` 放进 `agentOptions` 传给 `ctx.subagents.startActivation`。Team 不替换这个工具，也不改写这条调用。证据在已安装的 `dsh-pstack/dist/subagent.mjs:96-113,313-319,396-411`。但工具面和容量的冲突仍然让这个组合不可支持。
+`pstack_subagent` 的角色路由和 reasoning effort 计算本身不受影响。它每次调用读取角色文件，把 `provider`、`model`、`reasoningEffort` 放进 `agentOptions` 传给 `ctx.subagents.startActivation`。Team 不替换这个工具，也不改写这条调用。证据在当前构建产物的 `dist/subagent.mjs:267-283,709-715,794-806,945-957`。但工具面和容量的冲突仍然让这个组合不可支持。
 
 ## 决定
 

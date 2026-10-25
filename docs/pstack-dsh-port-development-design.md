@@ -766,7 +766,9 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 
 在 `assets/skills/poteto-mode/scripts` 的受控副本上执行其 manifest 中的测试和 typecheck。先安装锁定依赖，记录 Bun/Node 版本。`check-plan` 的模板和 marker 要同时修改并验证。`worktree-audit.sh` 做语法和跨平台分支测试，shell 不存在时明确支持边界。`log.sh` 运行追加、表头、换行和公式注入测试。
 
-主仓库 `vp test` 不会自动发现 assets 内上游测试，CI 必须单独调用 `check-scripts`。
+主仓库 `vp test` 不会自动发现 assets 内上游测试，CI 必须单独调用 `pnpm check:scripts`（等价于 `node scripts/check-scripts.ts`）。入口只复制 `assets/skills/poteto-mode/scripts/` 到临时目录，串行执行锁文件安装、指定测试和 typecheck，再对生产树中的 `worktree-audit.sh` 做只读 `bash -n`；临时副本、Bun 安装/缓存和测试临时目录均与生产 assets 隔离，并在 `finally` 中清理。`log.sh` 的行为测试仍由 `tests/shell-scripts.test.ts` 负责。
+
+**本次发布前核查状态。** `worktree-audit.sh` 已在 GNU bash 5.3.9 / Linux 上通过 `bash -n`。源码分支已人工核对：没有残留的 macOS `stat` 调用，size/age 改用 `du` 与 `git log --format=%ct`，但脚本仍依赖 Bash、jq、Git 和常见 Unix 工具。未在 macOS 或 Windows 实机执行，因此跨平台分支与 Windows 支持仍未验证。`show-me-your-work/scripts/log.sh` 已在同一 Linux 环境通过 `tests/shell-scripts.test.ts` 的 3 个用例，覆盖追加与单次表头、六列行和行尾换行、tab/CR/LF 清理，以及 `=`、`+`、`-`、`@` 四类公式前缀。这些是脚本级运行证据，不是真实会话审计、真实 worktree 清理或跨平台验收。`orch`、`watch-pr`、`check-plan` 已通过 `pnpm check:scripts` 在受控副本上完成 Bun 1.4.0 / Node 24.22.1 的检查：`bun install --frozen-lockfile` 退出码 0，指定 `bun test orch watch-pr check-plan.test.ts` 为 5 文件 68 用例通过，`bun run typecheck` 退出码 0。副本、HOME、`BUN_INSTALL`、`BUN_TMPDIR` 与 `BUN_INSTALL_CACHE_DIR` 均使用本次新建的临时可写目录，检查后已删除；生产 assets 树未安装依赖。另行诊断确认，在无 `node_modules` 的副本上跳过安装直接运行指定测试仍可能因并发 bootstrap 或 `watch-pr` 缺少 `commander` 而失败，因此上述通过结果不外推为未预装套件稳定；必须先安装锁定依赖。这些结果只覆盖脚本及其测试契约，不代表真实 PR watcher、完整编排或计划执行的行为级验证。
 
 ### 12.3 真实 DSH 验收
 
