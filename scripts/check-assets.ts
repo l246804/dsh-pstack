@@ -22,6 +22,11 @@ import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapab
 import { applyFilePatches } from "./apply-patches.ts";
 import { EXCLUDED_SKILLS, INTRO_SKILLS, patchesForFile } from "./patches.ts";
 import {
+  PSTACK_MODELS_EXAMPLE_PATH,
+  ROLE_MANIFEST,
+  renderPstackModelsExample,
+} from "./role-manifest.ts";
+import {
   AGENT_DROPPED_FIELDS,
   SKILL_DROPPED_FIELDS,
   parseFrontmatter,
@@ -29,6 +34,7 @@ import {
   validateSkillFrontmatter,
 } from "../src/frontmatter.ts";
 import { loadBundledSkillIndex } from "../src/provider.ts";
+import { parseRoleFile } from "../src/models.ts";
 
 export interface MarkdownLink {
   readonly line: number;
@@ -93,6 +99,7 @@ export function checkAssets(): AssetsReport {
   const guide = checkGuide(problems);
   checkUndeclaredFiles(problems);
   checkHarnessDoc(problems);
+  checkRoleAssets(problems);
   checkLicense(problems);
   checkPackageManifest(problems);
   checkIntroScope(problems);
@@ -284,8 +291,15 @@ function checkLayout(problems: string[]): void {
   }
 
   const allowedDocs = new Set(["guide", "harness"]);
+  const allowedDocFiles = new Set([PSTACK_MODELS_EXAMPLE_PATH.replace("docs/", "")]);
   for (const entry of readdirSync(join(ASSETS_ROOT, "docs"), { withFileTypes: true })) {
-    if (!entry.isDirectory() || !allowedDocs.has(entry.name)) {
+    if (entry.isDirectory()) {
+      if (!allowedDocs.has(entry.name)) {
+        problems.push(`assets/docs/${entry.name}: unexpected entry`);
+      }
+      continue;
+    }
+    if (!entry.isFile() || !allowedDocFiles.has(entry.name)) {
       problems.push(`assets/docs/${entry.name}: unexpected entry`);
     }
   }
@@ -452,14 +466,22 @@ function checkAgents(problems: string[]): number {
   for (const name of actual) {
     const path = `${AGENTS_PREFIX}${name}`;
     try {
-      const source = parseFrontmatter(readFileSync(join(UPSTREAM_ROOT, path), "utf8"));
+      const sourceText = readFileSync(join(UPSTREAM_ROOT, path), "utf8");
+      const patches = patchesForFile(path);
+      const expectedText =
+        patches.length === 0 ? sourceText : applyFilePatches(path, sourceText, patches);
+      const source = parseFrontmatter(expectedText);
       const asset = parseFrontmatter(readFileSync(join(assetsAgents, name), "utf8"));
       const frontmatter = validateAgentFrontmatter(asset.data, `assets/${path}`);
 
       if (frontmatter.name !== name.replace(/\.md$/, "")) {
         problems.push(`assets/${path}: name "${frontmatter.name}" does not match its file name`);
       }
-      if (asset.body !== source.body) problems.push(`assets/${path}: body differs from its source`);
+      if (asset.body !== source.body) {
+        problems.push(
+          `assets/${path}: body differs from ${patches.length === 0 ? "its source" : "its patched expectation"}`,
+        );
+      }
       for (const field of AGENT_DROPPED_FIELDS) {
         if (Object.hasOwn(asset.data, field)) {
           problems.push(`assets/${path}: field "${field}" must be dropped`);
@@ -526,10 +548,12 @@ function checkHarnessDoc(problems: string[]): void {
   const text = readFileSync(path, "utf8");
   if (!text.includes(HARNESS_DOC_SCOPE_LINE)) {
     problems.push(
-      `assets/${HARNESS_DOC_PATH}: must state that the tree ships static assets plus the bundled skill provider`,
+      `assets/${HARNESS_DOC_PATH}: must state which rows this tree actually ships`,
     );
   }
-  for (const deferred of ["`Task` spawn", "restricted `sessionQuery` reads", "worktree isolation"]) {
+
+  // Rows the shipped units do not cover yet stay deferred until their unit lands.
+  for (const deferred of ["restricted `sessionQuery` reads", "worktree isolation", "`/loop`"]) {
     const row = text.split("\n").find((line) => line.includes(`| ${deferred} |`));
     if (row === undefined) {
       problems.push(`assets/${HARNESS_DOC_PATH}: missing the "${deferred}" row`);
@@ -537,6 +561,110 @@ function checkHarnessDoc(problems: string[]): void {
     }
     if (!row.includes("| deferred |")) {
       problems.push(`assets/${HARNESS_DOC_PATH}: "${deferred}" must stay deferred`);
+    }
+  }
+
+  // Rows that unit 3 delivered may not still claim to be deferred.
+  for (const delivered of [
+    "`pstack_subagent`, which returns a child id",
+    "`$DSH_HOME/pstack-models.md`",
+  ]) {
+    const row = text.split("\n").find((line) => line.includes(delivered));
+    if (row === undefined) {
+      problems.push(`assets/${HARNESS_DOC_PATH}: missing the "${delivered}" row`);
+      continue;
+    }
+    if (row.includes("| deferred |")) {
+      problems.push(`assets/${HARNESS_DOC_PATH}: "${delivered}" may not stay deferred`);
+    }
+  }
+}
+
+/**
+ * Audit the generated role-file example and the skill that reads it.
+ *
+ * The example is the only place the role list appears in shipped text, and it is
+ * generated from the manifest. The `setup-pstack` skill points at it instead of
+ * restating the keys, so a hand-written copy cannot drift from the parser.
+ */
+function checkRoleAssets(problems: string[]): void {
+  const path = join(ASSETS_ROOT, PSTACK_MODELS_EXAMPLE_PATH);
+  if (!existsSync(path)) {
+    problems.push(
+      `assets/${PSTACK_MODELS_EXAMPLE_PATH}: missing; setup-pstack reads it for the role list`,
+    );
+    return;
+  }
+
+  const text = readFileSync(path, "utf8");
+  if (text !== renderPstackModelsExample()) {
+    problems.push(
+      `assets/${PSTACK_MODELS_EXAMPLE_PATH}: differs from the renderer in scripts/role-manifest.ts`,
+    );
+  }
+  for (const role of ROLE_MANIFEST) {
+    const count = text.split(`\n${role.key}: `).length - 1 + (text.startsWith(`${role.key}: `) ? 1 : 0);
+    if (count !== 1) {
+      problems.push(
+        `assets/${PSTACK_MODELS_EXAMPLE_PATH}: expected exactly one line for role "${role.key}", found ${count}`,
+      );
+    }
+  }
+  if (text.includes("claude-") || text.includes("grok-") || text.includes("gpt-")) {
+    problems.push(
+      `assets/${PSTACK_MODELS_EXAMPLE_PATH}: must not hardcode a model id; this package cannot know which routes a deployment serves`,
+    );
+  }
+
+  // The example doubles as a convergence baseline, so it has to parse as a role
+  // file: copying it must yield a working policy, not a page of diagnostics.
+  const parsed = parseRoleFile(text, `assets/${PSTACK_MODELS_EXAMPLE_PATH}`);
+  if (parsed.status !== "loaded") {
+    problems.push(`assets/${PSTACK_MODELS_EXAMPLE_PATH}: does not parse as a role file`);
+  } else {
+    if (parsed.issues.length > 0) {
+      const first = parsed.issues[0] as { line?: number; message: string };
+      problems.push(
+        `assets/${PSTACK_MODELS_EXAMPLE_PATH}:${first.line ?? 0}: the example must parse cleanly: ${first.message}`,
+      );
+    }
+    if (parsed.roles.size !== ROLE_MANIFEST.length) {
+      problems.push(
+        `assets/${PSTACK_MODELS_EXAMPLE_PATH}: expected ${ROLE_MANIFEST.length} roles, parsed ${parsed.roles.size}`,
+      );
+    }
+  }
+
+  const skillPath = join(ASSETS_ROOT, "skills", "setup-pstack", "SKILL.md");
+  if (!existsSync(skillPath)) {
+    problems.push("assets/skills/setup-pstack/SKILL.md: missing");
+    return;
+  }
+  const skill = readFileSync(skillPath, "utf8");
+
+  if (!skill.includes("../../docs/pstack-models.example.md")) {
+    problems.push(
+      "assets/skills/setup-pstack/SKILL.md: must point at ../../docs/pstack-models.example.md for the role list",
+    );
+  }
+  if (!skill.includes("$DSH_HOME/pstack-models.md")) {
+    problems.push("assets/skills/setup-pstack/SKILL.md: must name $DSH_HOME/pstack-models.md");
+  }
+  if (!skill.includes("list_subagent_models")) {
+    problems.push(
+      "assets/skills/setup-pstack/SKILL.md: must discover routes through list_subagent_models",
+    );
+  }
+  if (skill.includes("disable-model-invocation")) {
+    problems.push(
+      "assets/skills/setup-pstack/SKILL.md: must stay model-invocable; it is the only bundled skill the model may call",
+    );
+  }
+  for (const role of ROLE_MANIFEST) {
+    if (skill.includes(`${role.key}:`)) {
+      problems.push(
+        `assets/skills/setup-pstack/SKILL.md: must not restate the role manifest (found "${role.key}:")`,
+      );
     }
   }
 }
@@ -626,11 +754,13 @@ function checkPackageManifest(problems: string[]): void {
   }
 
   const exportsMap = asRecord(record["exports"]) ?? {};
-  for (const subpath of ["./cordis.patch.yml", "./locale/*.json", "./icon"]) {
+  for (const subpath of ["./cordis.patch.yml", "./locale/*.json", "./icon", "./subagent"]) {
     if (!(subpath in exportsMap)) {
       problems.push(`package.json: "exports" must expose "${subpath}"`);
     }
   }
+
+  checkBundlePatch(problems, exportsMap);
 
   const shipped = Array.isArray(record["files"])
     ? record["files"].filter((value): value is string => typeof value === "string")
@@ -671,6 +801,59 @@ function checkPackageManifest(problems: string[]): void {
         problems.push(`${file}: "meta.${field}" must be a non-empty string`);
       }
     }
+  }
+}
+
+/**
+ * Check the bundle patch against the delivered rows.
+ *
+ * Unit 3 ships exactly two rows. A subpath row must resolve to a package export,
+ * and the rows later units own must not appear yet, so a premature promise fails
+ * here instead of shipping.
+ */
+function checkBundlePatch(
+  problems: string[],
+  exportsMap: Record<string, unknown>,
+): void {
+  const path = join(ROOT, "cordis.patch.yml");
+  if (!existsSync(path)) {
+    problems.push("cordis.patch.yml: missing the bundle patch");
+    return;
+  }
+
+  const text = readFileSync(path, "utf8");
+  const rows = [...text.matchAll(/^\s*- id: (\S+)\n\s*name: (\S+)/gm)].map((match) => ({
+    id: match[1] as string,
+    name: match[2] as string,
+  }));
+
+  const expectedIds = ["pstack", "pstack-subagent"];
+  const actualIds = rows.map((row) => row.id);
+  if (actualIds.join(",") !== expectedIds.join(",")) {
+    problems.push(
+      `cordis.patch.yml: expected rows ${expectedIds.join(", ")}, found ${describeList(actualIds)}`,
+    );
+  }
+
+  for (const row of rows) {
+    if (row.name === "dsh-pstack") continue;
+    const subpath = `./${row.name.replace(/^dsh-pstack\//, "")}`;
+    if (!row.name.startsWith("dsh-pstack/")) {
+      problems.push(`cordis.patch.yml: row "${row.id}" must load this package or a subpath of it`);
+    } else if (!(subpath in exportsMap)) {
+      problems.push(
+        `cordis.patch.yml: row "${row.id}" loads "${row.name}", but package.json exports has no "${subpath}"`,
+      );
+    }
+  }
+
+  for (const later of ["pstack-history", "worktree"]) {
+    if (text.includes(later)) {
+      problems.push(`cordis.patch.yml: "${later}" belongs to a later unit and may not ship yet`);
+    }
+  }
+  if (!/maxDepth:\s*2\b/.test(text)) {
+    problems.push("cordis.patch.yml: pstack-subagent must carry config.maxDepth: 2");
   }
 }
 

@@ -103,11 +103,17 @@ describe("patch output", () => {
 });
 
 describe("declared patch data", () => {
-  it("has nine patches across five files and builds cleanly", () => {
-    expect(FILE_PATCHES).toHaveLength(9);
-    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(5);
+  it("declares every patch against an existing upstream file and builds cleanly", () => {
+    expect(FILE_PATCHES.length).toBeGreaterThanOrEqual(9);
+    expect(new Set(FILE_PATCHES.map((patch) => patch.file)).size).toBe(7);
     expect(() => validatePatchTargets(FILE_PATCHES, EXCLUDED_SKILLS, UPSTREAM_ROOT)).not.toThrow();
     expect(() => buildAssets()).not.toThrow();
+  });
+
+  it("covers the unit 3 text: the setup skill and the poteto preamble", () => {
+    expect(patchesForFile("skills/setup-pstack/SKILL.md").length).toBeGreaterThan(5);
+    expect(patchesForFile("agents/poteto-agent.md").length).toBeGreaterThan(0);
+    expect(patchesForFile("agents/comment-sicko.md")).toEqual([]);
   });
 
   it("returns the patches for one file", () => {

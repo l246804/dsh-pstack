@@ -15,7 +15,7 @@ export const HARNESS_DOC_PATH = "docs/harness/dsh.md";
  * sentence, so the disclaimer cannot drift away from the implementation.
  */
 export const HARNESS_DOC_SCOPE_LINE =
-  "> This package ships its static assets plus one bundled skill provider. Delegation, restricted history, and the worktree integration arrive in later units.";
+  "> This package ships its static assets, one bundled skill provider, and the `pstack_subagent` delegation tool. Restricted history and the worktree integration arrive in later units.";
 
 export type CapabilityKind = "tool" | "path" | "model" | "host";
 
@@ -49,35 +49,33 @@ export const CAPABILITIES: readonly Capability[] = [
     kind: "tool",
     cursor: "`Task` spawn",
     dsh: "`pstack_subagent`, which returns a child id and reports by completion notice",
-    coverage: "deferred",
-    reason: "The tool is built in the delegation unit; the ship-date text still describes Task.",
-    unit: "3",
+    coverage: "mapped",
+    note: "Every call starts a managed activation and returns the child id; the result arrives as a completion notice, so nothing polls. A panel role starts one child per configured entry and reports a partial start instead of rolling back.",
   },
   {
     id: "subagent-general",
     kind: "tool",
     cursor: "`subagent_type: generalPurpose`",
     dsh: '`agent: "general"`',
-    coverage: "deferred",
-    reason: "Agent presets arrive with the delegation unit.",
-    unit: "3",
+    coverage: "mapped",
+    note: "A plain child with no injected preamble. `agent` accepts only the three pstack kinds, never a DSH agent preset id.",
   },
   {
     id: "subagent-poteto",
     kind: "tool",
     cursor: "`subagent_type: poteto-agent`",
     dsh: '`agent: "poteto-agent"`, with the preamble injected by the tool',
-    coverage: "deferred",
-    reason: "The preamble injection is part of the delegation unit.",
-    unit: "3",
+    coverage: "mapped",
+    note: "The preamble is read from the packaged asset at an absolute path and the `poteto-mode` instructions path is injected into the brief. A missing preamble blocks that agent type instead of degrading to a plain child.",
   },
   {
     id: "subagent-comment-sicko",
     kind: "tool",
     cursor: "`comment-sicko` subagent",
-    dsh: '`agent: "comment-sicko"`, kept read-only',
-    coverage: "deferred",
-    reason: "The comment-review child needs the delegation unit before it can run.",
+    dsh: '`agent: "comment-sicko"`, briefed read-only',
+    coverage: "degraded",
+    reason:
+      "The persona preamble is injected, but the no-write rule is brief text rather than a sandbox, so a reviewer's scope still has to be checked.",
     unit: "3",
   },
   {
@@ -86,9 +84,8 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "`run_in_background: true`",
     dsh: "field removed; children start as activations",
     detect: "run_in_background",
-    coverage: "deferred",
-    reason: "Field removal lands with the delegation text patches.",
-    unit: "3",
+    coverage: "mapped",
+    note: "`pstack_subagent` takes no background flag: every child is a managed activation and reports through a completion notice.",
   },
   {
     id: "readonly-field",
@@ -104,18 +101,16 @@ export const CAPABILITIES: readonly Capability[] = [
     kind: "tool",
     cursor: "`resume`",
     dsh: "a fresh child; `send_message` only when state is expensive to move",
-    coverage: "deferred",
-    reason: "The continuation policy is delivered with the delegation unit.",
-    unit: "3",
+    coverage: "mapped",
+    note: "`pstack_subagent` always starts a fresh child. `send_message` continues a live one; a settled child is never silently resumed.",
   },
   {
     id: "attachments",
     kind: "tool",
     cursor: "`file_attachments`",
     dsh: "real paths listed in the brief",
-    coverage: "deferred",
-    reason: "Attachment handling is rewritten together with the delegation text.",
-    unit: "3",
+    coverage: "mapped",
+    note: "The brief carries real paths; no invented attachment argument exists in the tool schema.",
   },
   {
     id: "askquestion",
@@ -160,19 +155,17 @@ export const CAPABILITIES: readonly Capability[] = [
     kind: "model",
     cursor: "model slug, reasoning effort, `fast`",
     dsh: "`role` resolved from `$DSH_HOME/pstack-models.md`",
-    coverage: "deferred",
-    reason: "Route resolution belongs to the role unit; no model id is hardcoded in the assets.",
-    unit: "3",
+    coverage: "mapped",
+    note: "A role value is `inherit-parent`, `auto`, `<provider>/<model>`, or `<provider>/<model> [effort]`. The effort is validated against the live adapter metadata before a child starts; no model id is hardcoded in the assets.",
   },
   {
     id: "models-rule",
     kind: "path",
     cursor: "`~/.cursor/rules/pstack-models.mdc`",
     dsh: "`$DSH_HOME/pstack-models.md`, read for each new delegation",
-    detect: "pstack-models.mdc",
-    coverage: "deferred",
-    reason: "Reading the role file is part of the role unit.",
-    unit: "3",
+    detect: "pstack-models",
+    coverage: "mapped",
+    note: "`/setup-pstack` writes the file and `pstack_subagent` re-reads it on every delegation. An unreadable file is an error, not an empty configuration.",
   },
   {
     id: "project-skills",
@@ -251,9 +244,10 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "cloud-agent",
     kind: "host",
     cursor: "cloud agent, `cloud_base_branch`, dashboard",
-    dsh: "a local child with real completion state and worktree isolation",
+    dsh: "a local child with real completion state and an explicit `cwd`",
     coverage: "degraded",
-    reason: "No VM, cross-device resume, or dashboard is promised.",
+    reason:
+      "No VM, cross-device resume, or dashboard is promised. Worktree-based checkout isolation arrives with the workflow unit.",
     unit: "3",
   },
   {

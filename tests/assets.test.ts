@@ -26,7 +26,13 @@ import {
 } from "../scripts/capabilities.ts";
 import { checkAssets, checkLinks, scanMarkdownLinks } from "../scripts/check-assets.ts";
 import { EXCLUDED_SKILLS, INTRO_SKILLS, patchesForFile } from "../scripts/patches.ts";
+import {
+  PSTACK_MODELS_EXAMPLE_PATH,
+  ROLE_KEYS,
+  renderPstackModelsExample,
+} from "../scripts/role-manifest.ts";
 import { compareAssets } from "../scripts/sync-upstream.ts";
+import { parseRoleFile } from "../src/models.ts";
 import {
   parseFrontmatter,
   validateAgentFrontmatter,
@@ -46,7 +52,7 @@ function upstream(path: string): Buffer {
 describe("generated asset set", () => {
   it("contains the unit 1 inventory", () => {
     const summary = summarizeAssets(assets);
-    expect(summary.files).toBe(153);
+    expect(summary.files).toBe(154);
     expect(summary.skills).toBe(55);
     expect(summary.agents).toBe(2);
     expect(summary.guideMarkdown).toBe(11);
@@ -54,6 +60,7 @@ describe("generated asset set", () => {
     expect(summary.executables).toBe(5);
     expect(summary.generated).toBeGreaterThan(0);
     expect(byPath.has(HARNESS_DOC_PATH)).toBe(true);
+    expect(byPath.has(PSTACK_MODELS_EXAMPLE_PATH)).toBe(true);
     expect(expectedSkills).toHaveLength(55);
     expect(expectedSkills.filter((skill) => skill.startsWith("principle-"))).toHaveLength(24);
     expect(
@@ -86,9 +93,10 @@ describe("generated asset set", () => {
       expect(category, skill).toMatch(/^(copy|intro-only|patched)$/);
       counts[category as keyof typeof counts] += 1;
     }
-    expect(counts).toEqual({ copy: 31, "intro-only": 22, patched: 2 });
+    expect(counts).toEqual({ copy: 31, "intro-only": 21, patched: 3 });
     expect(classifications.get("poteto-help")).toBe("patched");
     expect(classifications.get("blast-radius")).toBe("patched");
+    expect(classifications.get("setup-pstack")).toBe("patched");
     expect(classifications.get("how")).toBe("intro-only");
     expect(classifications.get("tdd")).toBe("copy");
   });
@@ -138,7 +146,11 @@ describe("skill bodies", () => {
   it("uses the shared frontmatter implementation for all 55 skills", () => {
     for (const skill of expectedSkills) {
       const path = `skills/${skill}/SKILL.md`;
-      const source = parseFrontmatter(upstream(path).toString("utf8"));
+      const declared = patchesForFile(path);
+      const sourceText = upstream(path).toString("utf8");
+      const source = parseFrontmatter(
+        declared.length === 0 ? sourceText : applyFilePatches(path, sourceText, declared),
+      );
       const asset = parseFrontmatter(byPath.get(path)?.bytes.toString("utf8") as string);
       const sourceFrontmatter = validateSkillFrontmatter(source.data, path);
       const assetFrontmatter = validateSkillFrontmatter(asset.data, path);
@@ -207,9 +219,13 @@ describe("skill bodies", () => {
 });
 
 describe("agents, guides, and harness doc", () => {
-  it("normalizes agent frontmatter and preserves the body", () => {
+  it("normalizes agent frontmatter and keeps the patched body", () => {
     for (const path of walkUpstream("agents")) {
-      const source = parseFrontmatter(upstream(path).toString("utf8"));
+      const declared = patchesForFile(path);
+      const sourceText = upstream(path).toString("utf8");
+      const source = parseFrontmatter(
+        declared.length === 0 ? sourceText : applyFilePatches(path, sourceText, declared),
+      );
       const asset = parseFrontmatter(byPath.get(path)?.bytes.toString("utf8") as string);
       const frontmatter = validateAgentFrontmatter(asset.data, path);
 
@@ -238,12 +254,12 @@ describe("agents, guides, and harness doc", () => {
     }
   });
 
-  it("generates a target-contract harness doc that names static assets plus the provider", () => {
+  it("generates a target-contract harness doc that names what this tree ships", () => {
     const doc = byPath.get(HARNESS_DOC_PATH)?.bytes.toString("utf8") as string;
 
     expect(doc).toContain("# DSH harness mapping");
     expect(doc).toContain(HARNESS_DOC_SCOPE_LINE);
-    expect(doc).toContain("static assets plus one bundled skill provider");
+    expect(doc).toContain("the `pstack_subagent` delegation tool");
     expect(doc).not.toContain("ships static assets only");
     expect(doc).toContain("target contract");
     expect(doc).toContain("`pstack_subagent`");
@@ -263,20 +279,28 @@ describe("capability table", () => {
     }
   });
 
-  it("keeps delegation, history, and worktree deferred while the provider rows are delivered", () => {
+  it("marks the delegation rows delivered and keeps later units deferred", () => {
     const byId = new Map(CAPABILITIES.map((capability) => [capability.id, capability]));
 
     for (const id of [
       "task-spawn",
       "subagent-general",
       "subagent-poteto",
-      "subagent-comment-sicko",
+      "background-field",
+      "resume",
+      "attachments",
       "model-route",
-      "transcripts",
-      "worktree",
+      "models-rule",
     ]) {
+      expect(byId.get(id)?.coverage, id).toBe("mapped");
+    }
+    for (const id of ["subagent-comment-sicko", "readonly-field", "cloud-agent"]) {
+      expect(byId.get(id)?.coverage, id).toBe("degraded");
+    }
+    for (const id of ["transcripts", "worktree", "loop"]) {
       expect(byId.get(id)?.coverage, id).toBe("deferred");
     }
+    expect(byId.get("automations")?.coverage).toBe("excluded");
     for (const id of ["skill-by-name", "project-skills", "plugin-location"]) {
       expect(byId.get(id)?.coverage, id).toBe("mapped");
     }
@@ -405,5 +429,56 @@ describe("disk checks", () => {
     expect(compareAssets(assets, mode).join("\n")).toContain(
       "mode differs: assets/skills/how/SKILL.md",
     );
+  });
+});
+
+describe("role file example", () => {
+  const example = byPath.get(PSTACK_MODELS_EXAMPLE_PATH)?.bytes.toString("utf8") as string;
+
+  it("is generated from the manifest and lists all 17 roles once", () => {
+    expect(example).toBe(renderPstackModelsExample());
+    expect(ROLE_KEYS).toHaveLength(17);
+    for (const key of ROLE_KEYS) {
+      expect(example.split(`\n${key}: `).length - 1, key).toBe(1);
+    }
+    expect(example).toContain("# budget:");
+  });
+
+  it("never hardcodes a model id or asks for a credential", () => {
+    for (const banned of ["claude-", "grok-", "gpt-", "api_key", "API key"]) {
+      expect(example).not.toContain(banned);
+    }
+    for (const key of ROLE_KEYS) {
+      expect(example).toContain(`${key}: inherit-parent`);
+    }
+  });
+
+  it("parses as a working role file, so copying it converges instead of erroring", () => {
+    const parsed = parseRoleFile(example, "assets/docs/pstack-models.example.md");
+    expect(parsed.status).toBe("loaded");
+    if (parsed.status !== "loaded") return;
+
+    expect(parsed.issues).toEqual([]);
+    expect(parsed.roles.size).toBe(17);
+    expect(parsed.budget).toBe("none (unset)");
+    for (const key of ROLE_KEYS) {
+      expect(parsed.roles.get(key)?.routes, key).toEqual([{ kind: "inherit" }]);
+    }
+  });
+
+  it("points setup-pstack at the example instead of restating the roles", () => {
+    const skill = byPath.get("skills/setup-pstack/SKILL.md")?.bytes.toString("utf8") as string;
+
+    expect(skill).toContain("../../docs/pstack-models.example.md");
+    expect(skill).toContain("$DSH_HOME/pstack-models.md");
+    expect(skill).toContain("list_subagent_models");
+    expect(skill).not.toContain("disable-model-invocation");
+    expect(skill).not.toContain("AskQuestion");
+    expect(skill).not.toContain("pstack-models.mdc");
+    expect(skill).not.toContain("alwaysApply");
+    expect(skill).toContain("A child that already started keeps the route it started with.");
+    for (const key of ROLE_KEYS) {
+      expect(skill.includes(`${key}:`), key).toBe(false);
+    }
   });
 });

@@ -1,3 +1,7 @@
 - insert:
     - id: pstack
       name: dsh-pstack
+    - id: pstack-subagent
+      name: dsh-pstack/subagent
+      config:
+        maxDepth: 2

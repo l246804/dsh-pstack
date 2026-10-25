@@ -4,6 +4,7 @@ import { Buffer } from "node:buffer";
 import { fileURLToPath } from "node:url";
 
 import { HARNESS_DOC_PATH, renderHarnessDoc } from "./capabilities.ts";
+import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "./role-manifest.ts";
 import { assertPatchOutput, applyFilePatches, validatePatchTargets } from "./apply-patches.ts";
 import { EXCLUDED_SKILLS, FILE_PATCHES, INTRO_SKILLS, patchesForFile } from "./patches.ts";
 import type { FilePatch, SkillExclusion } from "./patches.ts";
@@ -107,6 +108,12 @@ export function buildAssets(
   assets.push({
     path: HARNESS_DOC_PATH,
     bytes: Buffer.from(renderHarnessDoc(), "utf8"),
+    executable: false,
+    origin: "generated",
+  });
+  assets.push({
+    path: PSTACK_MODELS_EXAMPLE_PATH,
+    bytes: Buffer.from(renderPstackModelsExample(), "utf8"),
     executable: false,
     origin: "generated",
   });

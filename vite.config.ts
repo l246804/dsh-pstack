@@ -4,6 +4,7 @@ export default defineConfig({
   pack: {
     entry: {
       index: "src/index.ts",
+      subagent: "src/subagent.ts",
     },
     dts: {
       generator: "tsgo",
