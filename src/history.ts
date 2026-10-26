@@ -30,6 +30,8 @@
  * `docs/decisions/2026-10-25-restricted-history.md`.
  */
 
+import { isAbsolute, relative, resolve, sep } from "node:path";
+
 import type {
   JsonSchemaNode,
   SessionEvent,
@@ -384,6 +386,39 @@ export interface ObservedAuthorizationInput {
 }
 
 /**
+ * How a child's recorded directory relates to the caller's current one.
+ *
+ * A child's `cwd` is fixed when the child is created (`prepareContinuable` in
+ * `dsh-subagent` resolves the directory and writes it into the header), while
+ * `create_worktree` and `workingDirectory.set` change only the *current*
+ * directory of a session. So a child legitimately started in a worktree or a
+ * subdirectory of the caller's project has a different `cwd` from the caller even
+ * though it is working on the same project.
+ *
+ * Both sides are normalised with `resolve` first, which absorbs separator
+ * differences, trailing slashes, and `..` segments on every platform:
+ *
+ * - `same`    — identical after normalisation.
+ * - `nested`  — the child sits inside the caller's directory. Worktree pools and
+ *               `repo/sub` land here: working isolation, not a foreign project.
+ * - `foreign` — anything else, which stays `cross-workspace`.
+ */
+export function workspaceRelation(
+  callerCwd: string,
+  childCwd: string,
+): "same" | "nested" | "foreign" {
+  const caller = resolve(callerCwd);
+  const child = resolve(childCwd);
+  if (child === caller) return "same";
+  const pathBetween = relative(caller, child);
+  // `relative` returns an absolute path when the two share no root (a different
+  // Windows drive, most often), and that is never a containment relationship.
+  if (isAbsolute(pathBetween)) return "foreign";
+  if (pathBetween.split(sep).includes("..")) return "foreign";
+  return "nested";
+}
+
+/**
  * Second half of authorization, run against the header actually returned.
  *
  * This repeats the identity and workspace check on the data that will be
@@ -408,8 +443,13 @@ export function authorizeObserved(input: ObservedAuthorizationInput): ObservedRe
   }
 
   if (callerCwd === undefined) return "workspace-unknown";
-  if (observedHeader.cwd !== callerCwd) return "cross-workspace";
-  return null;
+  if (observedHeader.cwd === undefined) return "cross-workspace";
+  // `nested` is allowed: a child in a worktree or a subdirectory is doing isolated
+  // work inside the caller's own project. `foreign` still means some other
+  // project directory, which stays refused.
+  return workspaceRelation(callerCwd, observedHeader.cwd) === "foreign"
+    ? "cross-workspace"
+    : null;
 }
 
 /** Render one authorization rejection for the caller. */
@@ -467,7 +507,7 @@ export function describeObservedFailure(rejection: ObservedRejection): {
       return {
         code: "cross-workspace",
         message:
-          "That session belongs to another workspace. pstack_history does not open arbitrary session ids across workspaces.",
+          "That session belongs to a different project directory. A child inside the caller's own directory, including a worktree checkout under it, is readable; a directory elsewhere is not. pstack_history does not open arbitrary session ids across workspaces. To read one anyway, ask the user to confirm that specific session in the conversation and read it from a session whose working directory is that project.",
       };
   }
 }

@@ -13,6 +13,7 @@ import {
   assembleEventsResult,
   authorizeObserved,
   authorizeTarget,
+  workspaceRelation,
   childrenResult,
   classifyBackendFailure,
   createHistoryTool,
@@ -348,6 +349,75 @@ describe("child authorization", () => {
     expect(result.kind === "denied" && result.code).toBe("cross-workspace");
   });
 
+  it("allows a child in a worktree inside the caller's project", async () => {
+    // A child's `cwd` is fixed at creation, while `create_worktree` changes the
+    // *current* directory. The documented flow — parent pre-creates the checkout
+    // and passes the absolute path to the child — therefore always looks like a
+    // workspace mismatch unless nesting is accepted.
+    const worktree = "/workspace/project/.agents/worktrees/wt-1";
+    const run = harness({
+      children: [CHILD_ENTRY],
+      observe: () => lease({ header: header({ ...CHILD, cwd: worktree }), events: events(1) }),
+    });
+    const result = await readHistory(
+      args({ scope: "children", sessionId: CHILD_ID }),
+      exec(CALLER_ID),
+      run.runtime,
+    );
+
+    expect(result.kind).toBe("events");
+    expect(result.kind === "events" && result.requestedSessionId).toBe(CHILD_ID);
+  });
+
+  it("allows a child in a plain subdirectory of the caller's project", async () => {
+    const run = harness({
+      children: [CHILD_ENTRY],
+      observe: () =>
+        lease({ header: header({ ...CHILD, cwd: `${WORKSPACE}/sub` }), events: events(1) }),
+    });
+    const result = await readHistory(
+      args({ scope: "children", sessionId: CHILD_ID }),
+      exec(CALLER_ID),
+      run.runtime,
+    );
+    expect(result.kind).toBe("events");
+  });
+
+  it("still denies a session in an unrelated project", async () => {
+    // `/workspace/other` shares the `/workspace` prefix with the caller but is a
+    // sibling, not a descendant, so it must stay refused. A `startsWith` check
+    // without a separator boundary would wrongly allow it.
+    const run = harness({
+      children: [CHILD_ENTRY],
+      observe: () =>
+        lease({ header: header({ ...CHILD, cwd: "/workspace/others" }), events: events(1) }),
+    });
+    const result = await readHistory(
+      args({ scope: "children", sessionId: CHILD_ID }),
+      exec(CALLER_ID),
+      run.runtime,
+    );
+    expect(result.kind).toBe("denied");
+    expect(result.kind === "denied" && result.code).toBe("cross-workspace");
+  });
+
+  it("names how to obtain authorization in the denial message", async () => {
+    const run = harness({
+      children: [CHILD_ENTRY],
+      observe: () =>
+        lease({ header: header({ ...CHILD, cwd: "/other/project" }), events: events(1) }),
+    });
+    const result = await readHistory(
+      args({ scope: "children", sessionId: CHILD_ID }),
+      exec(CALLER_ID),
+      run.runtime,
+    );
+    expect(result.kind).toBe("denied");
+    // A bare refusal is not actionable; the message has to say what would make it
+    // acceptable.
+    expect(result.kind === "denied" && result.message).toContain("ask the user");
+  });
+
   it("denies a child read when the caller has no workspace", async () => {
     const homeless = header({ id: CALLER_ID });
     const run = harness({
@@ -440,6 +510,38 @@ describe("child authorization", () => {
         callerCwd: WORKSPACE,
       }),
     ).toBe("target-changed");
+  });
+});
+
+describe("workspace relation", () => {
+  it("classifies the three tiers", () => {
+    expect(workspaceRelation("/repo", "/repo")).toBe("same");
+    expect(workspaceRelation("/repo", "/repo/.agents/worktrees/wt-1")).toBe("nested");
+    expect(workspaceRelation("/repo", "/repo/sub")).toBe("nested");
+    expect(workspaceRelation("/repo", "/other/project")).toBe("foreign");
+    expect(workspaceRelation("/repo", "/tmp/wt-1")).toBe("foreign");
+  });
+
+  it("does not treat a shared prefix as containment", () => {
+    // The mistake a bare `startsWith` makes: `/workspace/others` is a sibling of
+    // `/workspace/project`, not a child of it.
+    expect(workspaceRelation("/workspace/project", "/workspace/project2")).toBe("foreign");
+    expect(workspaceRelation("/workspace/project", "/workspace/projector")).toBe("foreign");
+  });
+
+  it("normalises both sides before comparing", () => {
+    // Trailing separators, `.`/`..` segments, and duplicated slashes are all
+    // separator-versus-separator differences, not workspace changes.
+    expect(workspaceRelation("/repo/", "/repo")).toBe("same");
+    expect(workspaceRelation("/repo", "/repo/./sub/")).toBe("nested");
+    expect(workspaceRelation("/repo", "/repo/sub/../sub")).toBe("nested");
+    expect(workspaceRelation("/repo", "/repo//sub")).toBe("nested");
+  });
+
+  it("refuses a path that climbs out of the caller's directory", () => {
+    expect(workspaceRelation("/repo/sub", "/repo")).toBe("foreign");
+    expect(workspaceRelation("/repo", "/repo/../etc")).toBe("foreign");
+    expect(workspaceRelation("/repo", "/")).toBe("foreign");
   });
 });
 
