@@ -9,6 +9,7 @@ import {
   SCRIPT_IDS,
   ScriptInputError,
   TOOL_NAME,
+  OUTPUT_SCHEMA,
   buildScriptParameters,
   apply,
   createPstackScriptTool,
@@ -22,6 +23,7 @@ import {
   scriptPath,
 } from "../src/script.ts";
 import type { JobId, JobSpec, JobsHost, JobView } from "../src/host-contract.ts";
+import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
 import { ROOT } from "../scripts/build-assets.ts";
 
 const fixtures: string[] = [];
@@ -393,5 +395,69 @@ describe("tool registration", () => {
     expect(registered).toEqual([TOOL_NAME]);
     // `apply` itself does not read the optional service; each call does.
     expect(reads).toEqual([]);
+  });
+});
+
+describe("the declared output schema accepts every outcome the tool produces", () => {
+  /** A foreground result with an overridable terminating signal. */
+  function foreground(signal: NodeJS.Signals | null): Record<string, unknown> {
+    return {
+      kind: "foreground",
+      id: "log",
+      exitCode: signal === null ? 0 : 1,
+      signal,
+      timedOut: false,
+      stdout: "",
+      stderr: "",
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      durationMs: 7,
+    };
+  }
+
+  it("is inside the Host's supported schema subset", () => {
+    // `minimum`, `format`, and type arrays are outside it; asserting the subset
+    // here is what keeps a future edit from silently degrading the generated SDK.
+    expect(() => assertSupportedJsonSchema(OUTPUT_SCHEMA)).not.toThrow();
+    expect(jsonSchemaToTs(OUTPUT_SCHEMA as never)).not.toBe("unknown");
+  });
+
+  it("accepts a clean exit, where the signal is null", () => {
+    // The regression this section exists for: before the fix, this value was the
+    // tool's most common output and the Host rejected it.
+    expect(violations(OUTPUT_SCHEMA, foreground(null))).toEqual([]);
+  });
+
+  it("accepts a signal-terminated exit", () => {
+    expect(violations(OUTPUT_SCHEMA, foreground("SIGKILL"))).toEqual([]);
+  });
+
+  it("accepts a background result", () => {
+    const value = { kind: "background", id: "watch-pr", jobId: "bash-1", status: "running" };
+    expect(violations(OUTPUT_SCHEMA, value)).toEqual([]);
+  });
+
+  it("rejects a foreground result that omits a field the model reads", () => {
+    const { exitCode: _omitted, ...withoutExitCode } = foreground(null);
+    expect(violations(OUTPUT_SCHEMA, withoutExitCode).length).toBeGreaterThan(0);
+  });
+
+  it("rejects a value that mixes the two kinds", () => {
+    const mixed = { ...foreground(null), jobId: "bash-1" };
+    expect(violations(OUTPUT_SCHEMA, mixed).length).toBeGreaterThan(0);
+  });
+
+  it("accepts what runForeground really returns for a clean exit", async () => {
+    const result = await runForeground(parseScriptArgs({ id: "worktree-audit", args: ["--help"] }));
+    expect(result.signal).toBeNull();
+    expect(violations(OUTPUT_SCHEMA, result)).toEqual([]);
+  });
+
+  it("accepts what a real failing run returns", async () => {
+    // `log` with no arguments writes a usage line and exits 1.
+    const result = await runForeground(parseScriptArgs({ id: "log", args: [] }));
+    expect(result.exitCode).toBe(1);
+    expect(result.signal).toBeNull();
+    expect(violations(OUTPUT_SCHEMA, result)).toEqual([]);
   });
 });

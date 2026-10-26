@@ -456,24 +456,67 @@ export function buildScriptParameters(): Record<string, unknown> {
   };
 }
 
-const OUTPUT_SCHEMA: JsonSchemaNode = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    kind: { type: "string", enum: ["foreground", "background"] },
-    id: { type: "string", description: "Which bundled script ran." },
-    exitCode: { type: "integer", description: "Foreground exit code. Omitted for a background run." },
-    signal: { type: "string", description: "Terminating signal, when one killed the foreground run." },
-    timedOut: { type: "boolean", description: "True when the foreground timeout fired." },
-    stdout: { type: "string" },
-    stderr: { type: "string" },
-    stdoutTruncated: { type: "boolean" },
-    stderrTruncated: { type: "boolean" },
-    durationMs: { type: "integer" },
-    jobId: { type: "string", description: "Background job id. Omitted for a foreground run." },
-    status: { type: "string", description: "Background job status at start." },
-  },
-  required: ["kind", "id"],
+/**
+ * The declared shape of one outcome, exported so tests can validate real results.
+ *
+ * Split by `kind` instead of one flat object. The flat form could only require
+ * `kind` and `id`, so a foreground result that omitted `exitCode` was still
+ * "valid" and the schema proved nothing about the fields the model reads.
+ *
+ * `signal` is nullable because `child_process` reports `null` whenever the child
+ * exited on its own — that is every successful run. Declaring it `string` made
+ * the registry reject the tool's own normal output: `createSuccessResult()`
+ * validates before rendering, so **every** clean exit surfaced to the model as
+ * `tool "pstack_script" returned invalid output`.
+ */
+export const OUTPUT_SCHEMA: JsonSchemaNode = {
+  oneOf: [
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        kind: { type: "string", const: "foreground" },
+        id: { type: "string", description: "Which bundled script ran." },
+        exitCode: { type: "integer", description: "The child's exit code." },
+        signal: {
+          oneOf: [{ type: "string" }, { type: "null" }],
+          description: "Terminating signal, or null when the script exited on its own.",
+        },
+        timedOut: {
+          type: "boolean",
+          description: "True when this tool's own timeout killed the run.",
+        },
+        stdout: { type: "string" },
+        stderr: { type: "string" },
+        stdoutTruncated: { type: "boolean" },
+        stderrTruncated: { type: "boolean" },
+        durationMs: { type: "integer" },
+      },
+      required: [
+        "kind",
+        "id",
+        "exitCode",
+        "signal",
+        "timedOut",
+        "stdout",
+        "stderr",
+        "stdoutTruncated",
+        "stderrTruncated",
+        "durationMs",
+      ],
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        kind: { type: "string", const: "background" },
+        id: { type: "string", description: "Which bundled script started." },
+        jobId: { type: "string", description: "The Host job id to read or stop." },
+        status: { type: "string", description: "Job status when the call returned." },
+      },
+      required: ["kind", "id", "jobId", "status"],
+    },
+  ],
 };
 
 /** The slices of the Cordis context this tool needs. */
