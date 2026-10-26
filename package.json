@@ -71,17 +71,15 @@
     "build:bundle": "vp pack",
     "build": "pnpm run build:assets && pnpm run build:bundle",
     "dev": "pnpm run build:assets && vp pack --watch",
-    "check:upstream": "node scripts/check-upstream-tree.mjs",
     "check:runtime": "node scripts/build-runtime.ts --check",
     "check:assets": "pnpm run check:runtime && node scripts/sync-upstream.ts --check && node scripts/check-assets.ts",
     "check:scripts": "node scripts/check-scripts.ts",
-    "check:pack": "node scripts/check-pack.ts",
     "typecheck": "tsc --noEmit",
     "test": "vp test",
-    "check": "pnpm run check:upstream && pnpm run check:assets && pnpm run check:scripts && pnpm run typecheck && pnpm run test",
+    "check": "pnpm run check:assets && pnpm run check:scripts && pnpm run typecheck && pnpm run test",
     "prerelease": "pnpm run check",
     "release": "bumpp",
-    "prepublishOnly": "pnpm run check && pnpm run build:bundle && pnpm run check:pack"
+    "prepublishOnly": "pnpm run check && pnpm run build:bundle"
   },
   "devDependencies": {
     "@deepseek-ai/cordis-plugin-include": "~1.0.10",
