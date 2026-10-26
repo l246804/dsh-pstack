@@ -17,7 +17,7 @@
  * expansion by a shell, and no way to name another executable.
  */
 
-import { spawn as spawnChild } from "node:child_process";
+import { spawn as spawnChild, type ChildProcess } from "node:child_process";
 
 import type {
   JobId,
@@ -347,27 +347,89 @@ export async function runBackground(
   // Already resolved by the caller; see `resolveWorkingDirectory`.
   const cwd = options.cwd;
 
+  /**
+   * Settles when the child either started or failed to start, or when the registry
+   * never invoked the producer at all.
+   *
+   * `run` fills this in, so the caller can await the real startup outcome instead of
+   * guessing at one with a timer. `child_process` emits exactly one of `spawn` or
+   * `error`:
+   *
+   * - `spawn` fires once the child has been created, before any stdio or exit event.
+   * - `error` fires instead when creation failed (ENOENT, EACCES, EMFILE), and no
+   *   `spawn` ever follows.
+   *
+   * So these two events are mutually exclusive and jointly exhaustive for "did it
+   * start", which is exactly the question the tool has to answer. Measured on this
+   * Node: a missing binary reports ENOENT through `error`, while a real binary —
+   * including one that exits immediately or runs slowly — reports `spawn` with no
+   * error.
+   *
+   * `state` exists because the promise must never be able to hang. Two cases would
+   * otherwise leave it pending forever:
+   *
+   * - a registry that registers a job without calling `run` (a stub, or a future
+   *   controller with a different contract). `dsh-jobs-local` does call it
+   *   synchronously (`hooks = spec.run(handle)`), but the tool cannot assume which
+   *   implementation it is talking to — and hanging is far worse than reporting
+   *   "started", because the model never gets an answer at all.
+   * - `run` throwing synchronously, which would skip both event handlers.
+   *
+   * Both are treated as "started" only in the sense of "do not claim a failure we did
+   * not observe": a genuinely failed job still settles as `failed` through `done`, and
+   * the Host's job tools report that.
+   */
+  let reportStarted: ((failure: string | null) => void) | undefined;
+  const state: { settled: boolean; ran: boolean } = { settled: false, ran: false };
+  const started = new Promise<string | null>((settle) => {
+    reportStarted = (failure) => {
+      if (state.settled) return;
+      state.settled = true;
+      settle(failure);
+    };
+  });
+
   const jobId = jobs.start({
     kind: "bash",
     label: `pstack_script ${args.id}`,
     ...(options.caller === undefined ? {} : { owner: options.caller }),
     outputLimitBytes: args.outputLimitBytes ?? DEFAULT_OUTPUT_LIMIT_BYTES,
     run: (job) => {
-      const child = spawnChild(execPath, [path, ...args.args], {
-        cwd,
-        env: environment,
-        stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true,
-      });
+      state.ran = true;
+      const settleStarted = reportStarted as (failure: string | null) => void;
+      let child: ChildProcess;
+      try {
+        child = spawnChild(execPath, [path, ...args.args], {
+          cwd,
+          env: environment,
+          stdio: ["ignore", "pipe", "pipe"],
+          windowsHide: true,
+        });
+      } catch (error) {
+        // A synchronous throw from `spawn` (an invalid argument, or a platform
+        // failure that does not become an event) would otherwise leave the caller
+        // waiting forever, because no listener was ever attached.
+        settleStarted((error as NodeJS.ErrnoException).code ?? "spawn-threw");
+        throw error;
+      }
+
       child.stdout?.on("data", (chunk: Buffer) => job.append(chunk.toString("utf8"), { channel: "stdout" }));
       child.stderr?.on("data", (chunk: Buffer) => job.append(chunk.toString("utf8"), { channel: "stderr" }));
+
+      // Report the startup outcome to the caller waiting above. `once` on both, and
+      // the promise settles on whichever arrives first, so a late `error` after a
+      // successful `spawn` cannot overwrite the answer.
+      child.once("spawn", () => settleStarted(null));
+      child.once("error", (error) => {
+        // Only the error code. `child_process`'s `error.message` embeds the host's
+        // absolute path to the artefact, and the model has no business seeing the
+        // host layout.
+        settleStarted((error as NodeJS.ErrnoException).code ?? "spawn-failed");
+      });
 
       const done = new Promise<{ status: "completed" | "killed" | "failed"; detail?: string }>(
         (settle) => {
           child.once("error", (error) => {
-            // Only the error code. `child_process`'s `error.message` embeds the host's
-            // absolute path to the artefact, and the model has no business seeing the
-            // host layout.
             settle({
               status: "failed",
               detail: (error as NodeJS.ErrnoException).code ?? "spawn-failed",
@@ -391,24 +453,54 @@ export async function runBackground(
     },
   });
 
-  // Do not guess. `jobs.start` cannot reject after registering a job, so a fixed wait
-  // was the only way to notice an immediate spawn failure — and 250 ms answered the
-  // question wrongly in both directions: a job that failed at 400 ms was reported to
-  // the model as "started" and never corrected, while a slow start paid the wait for
-  // nothing.
+  // Wait for the real startup outcome, not a guess.
   //
-  // One microtask is the honest boundary: it catches a throw from `run` itself, which
-  // is the only failure that is *this* call's. Anything later is the job's own
-  // settlement, which the Host's job tools report — the same place this package already
-  // tells the model to read.
-  await Promise.resolve();
-  const view = jobs.get(jobId, options.caller);
-  if (view.status === "failed") {
+  // Three attempts preceded this, and each failed differently:
+  //
+  // 1. A fixed 250 ms wait. Failures before it were caught, failures after it were
+  //    reported to the model as "started" and never corrected.
+  // 2. One microtask (`await Promise.resolve()`). `spawn` reports ENOENT
+  //    asynchronously, so this caught nothing at all — measured: after one microtask
+  //    the error had not fired yet, and it appeared ~100 ms later. That made the tool
+  //    report `running` for a job that never started, which is worse than the timer.
+  // 3. This: race `spawn` against `error`, which are mutually exclusive and jointly
+  //    exhaustive for "did the child start". No duration is involved, so no
+  //    latency assumption can be wrong.
+  //
+  // If the registry never invoked the producer, the promise would never settle, so
+  // that case is answered up front rather than awaited. `dsh-jobs-local` calls
+  // `spec.run` synchronously, but a stub registry need not, and hanging is the one
+  // outcome the model can do nothing with.
+  /**
+   * Turn a reported start failure into the tool error.
+   *
+   * The code only. A foreground run is how the caller sees the actual error, and
+   * naming the code keeps host paths out of the model's context.
+   */
+  const failStart = (reason: string): never => {
     throw new ScriptMissingError(
-      `background job ${jobId} failed to start. Run the same script in the foreground to see its error.`,
+      `background job ${jobId} failed to start (${reason}). ` +
+        "Run the same script in the foreground to see its error.",
     );
+  };
+
+  if (!state.ran) {
+    // The registry registered a job without invoking the producer, so there is no
+    // child to observe. Report what the registry itself says, and refuse to present a
+    // terminal failure as a started job.
+    const view = jobs.get(jobId, options.caller);
+    if (view.status === "failed") failStart("the job controller reported a failed start");
+    return { kind: "background", id: args.id, jobId, status: view.status };
   }
 
+  const startFailure = await started;
+  if (startFailure !== null) failStart(startFailure);
+
+  // A controller may also settle the job as failed after `spawn` but before this
+  // call returns. That is still a start failure from the model's point of view: it
+  // has been told nothing it could act on yet.
+  const view = jobs.get(jobId, options.caller);
+  if (view.status === "failed") failStart("the job controller reported a failed start");
   return { kind: "background", id: args.id, jobId, status: view.status };
 }
 

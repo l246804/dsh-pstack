@@ -456,18 +456,55 @@ describe("session matching is separator-agnostic", () => {
 });
 
 describe("background start failures are not guessed", () => {
-  it("does not wait a fixed interval before reporting started", () => {
-    // F21: a fixed 250 ms window found failures earlier than that and missed later
-    // ones, reporting "started" for a job that had already failed at 300 ms. The tool
-    // now yields one microtask, so the only failure it claims is one `run` threw
-    // synchronously. This asserts the *absence* of the old constant and the presence of
-    // the fast path, since a timing test here would be flaky by construction.
-    const source = readFileSync(
-      join(ROOT, "src", "script.ts"),
-      "utf8",
+  it("reports a job that never started as a start failure", async () => {
+    // This is the regression the three earlier attempts each missed.
+    //
+    // `spawn` reports ENOENT asynchronously, so neither a fixed interval nor a single
+    // microtask observes it reliably: measured, the error had not fired after one
+    // microtask and appeared ~100 ms later. The tool therefore answered
+    // `{kind: "background", status: "running"}` for a child that was never created.
+    //
+    // A missing interpreter is the cleanest reproduction — `execPath` names a binary
+    // that does not exist, so no process is ever made. `execPath` is a `runBackground`
+    // option (the tool always uses the Host's own runtime), so the test drives that
+    // function directly rather than going through `execute`.
+    const { ScriptMissingError, runBackground, parseScriptArgs } = await import(
+      "../src/script.ts"
     );
+
+    const jobs = {
+      start(spec: { run: (job: unknown) => unknown }) {
+        // Invoke the producer for real, the way `dsh-jobs-local` does synchronously.
+        spec.run({ append() {}, updateProgress() {} });
+        return "bash-1";
+      },
+      get() {
+        return {
+          id: "bash-1",
+          kind: "bash",
+          label: "x",
+          status: "running" as const,
+          startedAt: 0,
+          output: { total: 0, earliest: 0 },
+        };
+      },
+    };
+
+    await expect(
+      runBackground(parseScriptArgs({ id: "log", args: [], background: true }), {
+        jobs: jobs as never,
+        execPath: join(ROOT, "definitely-not-a-real-interpreter"),
+        cwd: ROOT,
+      }),
+    ).rejects.toBeInstanceOf(ScriptMissingError);
+  });
+
+  it("decides from the spawn/error race, not from a timing window", () => {
+    // The property being pinned is structural: no fixed interval and no single-tick
+    // guess. Both were tried and both were wrong for measured reasons.
+    const source = readFileSync(join(ROOT, "src", "script.ts"), "utf8");
     expect(source).not.toContain("BACKGROUND_CONFIRM_MS");
-    expect(source).toContain("await Promise.resolve();");
+    expect(source).not.toContain("await Promise.resolve();");
   });
 
   it("does not put a host path into the start-failure message", async () => {
