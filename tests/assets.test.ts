@@ -35,7 +35,12 @@ import {
   scanMarkdownLinks,
   staticInventoryProblems,
 } from "../scripts/check-assets.ts";
-import { EXCLUDED_SKILLS, INTRO_SKILLS, patchesForFile } from "../scripts/patches.ts";
+import {
+  EXCLUDED_SKILLS,
+  INTRO_SKILLS,
+  INVOCATION_FLAG_OVERRIDES,
+  patchesForFile,
+} from "../scripts/patches.ts";
 import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../scripts/runtime-manifest.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
@@ -217,13 +222,61 @@ describe("skill bodies", () => {
 
       expect(assetFrontmatter.name, path).toBe(skill);
       expect(assetFrontmatter.description, path).toBe(sourceFrontmatter.description);
-      expect(assetFrontmatter.disableModelInvocation, path).toBe(
-        sourceFrontmatter.disableModelInvocation,
-      );
-      expect(assetFrontmatter.userInvocable, path).toBe(sourceFrontmatter.userInvocable);
       for (const field of ["icon", "color", "paths"]) {
         expect(Object.hasOwn(asset.data, field), `${path}:${field}`).toBe(false);
       }
+    }
+  });
+
+  /**
+   * Invocation flags are compared against the *upstream* frontmatter.
+   *
+   * The check above compares against `applyFilePatches` output, which is this package's
+   * own rewrite. Any patch that touched an invocation flag was therefore "consistent
+   * with upstream" by construction: `sourceFrontmatter` already held the patched value,
+   * so a patch flipping `disable-model-invocation: true` to `user-invocable: false` —
+   * opposite meanings, the first hides the skill from the model while leaving it
+   * user-callable, the second hides it from both — still passed.
+   *
+   * An override has to be declared in `INVOCATION_FLAG_OVERRIDES` with a reason, and
+   * every entry must still differ from upstream, so the list cannot rot into a
+   * permanent exemption.
+   */
+  it("keeps the invocation flags the upstream skill declares", () => {
+    for (const skill of expectedSkills) {
+      const path = `skills/${skill}/SKILL.md`;
+      if (Object.hasOwn(INVOCATION_FLAG_OVERRIDES, path)) continue;
+      // Upstream, with no patch applied.
+      const raw = parseFrontmatter(upstream(path).toString("utf8"));
+      const upstreamFlags = validateSkillFrontmatter(raw.data, path);
+      const asset = parseFrontmatter(byPath.get(path)?.bytes.toString("utf8") as string);
+      const assetFlags = validateSkillFrontmatter(asset.data, path);
+
+      expect(assetFlags.disableModelInvocation, `${path}:disable-model-invocation`).toBe(
+        upstreamFlags.disableModelInvocation,
+      );
+      expect(assetFlags.userInvocable, `${path}:user-invocable`).toBe(upstreamFlags.userInvocable);
+    }
+  });
+
+  it("keeps every declared invocation override live", () => {
+    // A stale entry is how a whitelist becomes a silent exemption for whatever a later
+    // patch happens to do to that file.
+    for (const [path, override] of Object.entries(INVOCATION_FLAG_OVERRIDES)) {
+      expect(override.reason.trim().length, path).toBeGreaterThan(0);
+      expect(expectedSkills, path).toContain(
+        path.replace(/^skills\//, "").replace(/\/SKILL\.md$/, ""),
+      );
+
+      const raw = parseFrontmatter(upstream(path).toString("utf8"));
+      const upstreamFlags = validateSkillFrontmatter(raw.data, path);
+      const asset = parseFrontmatter(byPath.get(path)?.bytes.toString("utf8") as string);
+      const assetFlags = validateSkillFrontmatter(asset.data, path);
+
+      const changed =
+        assetFlags.disableModelInvocation !== upstreamFlags.disableModelInvocation ||
+        assetFlags.userInvocable !== upstreamFlags.userInvocable;
+      expect(changed, `${path}: override declared but the flags still match upstream`).toBe(true);
     }
   });
 

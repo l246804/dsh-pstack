@@ -4504,3 +4504,19 @@ export const ALL_FORBIDDEN_FIELDS: readonly string[] = [
   ...UNIT6_FORBIDDEN_FIELDS,
   ...UNIT7_FORBIDDEN_FIELDS,
 ];
+
+/**
+ * Skills whose invocation flags deliberately differ from upstream.
+ *
+ * Empty, and that is the assertion: all 55 ported skills keep the
+ * `disable-model-invocation` and `user-invocable` values upstream declares, so nothing
+ * here needs an exemption. The map exists so that the day one is genuinely needed, it
+ * is a visible, reasoned entry instead of a test that compares the output with the
+ * output.
+ *
+ * `tests/assets.test.ts` compares against the *unpatched* upstream frontmatter and
+ * fails for any difference not listed here, and separately asserts that every entry
+ * still differs from upstream — a stale entry would otherwise turn into a permanent
+ * exemption for whatever the next patch does to that file.
+ */
+export const INVOCATION_FLAG_OVERRIDES: Readonly<Record<string, { readonly reason: string }>> = {};
