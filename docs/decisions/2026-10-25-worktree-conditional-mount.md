@@ -1,7 +1,9 @@
 # 决定：worktree 由本 bundle 条件挂载，按组合行去重
 
-Status: accepted
+Status: superseded
 Date: 2026-10-25
+
+> **已被取代（2026-10-26）。** 下面第 3 条的事实前提「读 `ctx.fiber.entry.parent.data`，父条目组在创建子项之前已赋值完整的组合行数组」实测为假：真实求值时 `ctx.fiber.entry` 是外层 `include` 行，它看到的兄弟行数组只有 `include` 自己，因此守卫恒不触发、两行永远挂载。现在的守卫读 `ctx[Symbol.for("cordis.entry")]`。见 [worktree 守卫读本行 entry](2026-10-26-worktree-guard-reads-own-entry.md)。本记录其余判断（按组合行去重、不用 `ctx.get("worktrees")`、读不到时返回 false、行 id 属于兼容契约）继续有效，正文保留原文不改写。
 
 ## 背景
 

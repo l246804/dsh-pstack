@@ -38,9 +38,17 @@ function shippedGuard(rowId: string): string {
   return match[1] as string;
 }
 
-/** The minimal loader context shape the guard reads. */
+/**
+ * The minimal loader context shape the guard reads.
+ *
+ * `Symbol.for("cordis.entry")` is the key the Loader uses for "this entry"
+ * (`cordis-plugin-loader/lib/index.js:312,324`). The shape here mirrors that,
+ * but a hand-built context cannot prove *which* entry the Loader hands over —
+ * that is what the real-assembly case in `tests/plugin-wiring.test.ts` is for.
+ */
 function contextWith(rows: readonly LoaderRow[] | undefined): unknown {
-  return { fiber: { entry: { parent: { data: rows } } } };
+  const entry = { parent: { data: rows } };
+  return { [Symbol.for("cordis.entry")]: entry };
 }
 
 const RUNTIME = "@deepseek-ai/dsh-experimental-worktree";

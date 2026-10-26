@@ -15,11 +15,13 @@
  *
  * Two deliberate choices, both visible in the tests:
  *
- * 1. The expression reads the composed row list (`ctx.fiber.entry.parent.data`,
- *    the group whose `update()` assigned the full array before creating children),
- *    not the `worktrees` service. A service lookup cannot tell this row's own
- *    provider from another row's, and it is not yet provided while sibling entries
- *    are still importing.
+ * 1. The expression reads the composed row list from **this row's** loader entry
+ *    (`ctx[Symbol.for("cordis.entry")].parent.data`), not from the `worktrees`
+ *    service. A service lookup cannot tell this row's own provider from another
+ *    row's, and it is not yet provided while sibling entries are still importing.
+ *    It must be the entry handle rather than `ctx.fiber.entry`: see
+ *    `worktreeRowGuardExpression` and
+ *    `docs/decisions/2026-10-26-worktree-guard-reads-own-entry.md`.
  * 2. A row whose own `disabled` is a `!!js` expression counts as a provider. That
  *    leans toward "do not mount" rather than risking a duplicate provider we cannot
  *    see; the cost is a worktree row somebody disabled by expression.
@@ -107,7 +109,18 @@ export function hasExternalProvider(
 export function worktreeRowGuardExpression(row: WorktreeRowMount): string {
   return (
     "(() => { " +
-    "const rows = ctx.fiber?.entry?.parent?.data; " +
+    // Read THIS row's entry, not the enclosing include entry. The Loader mounts
+    // each entry's context with `Symbol.for('cordis.entry')` pointing at the entry
+    // itself (`cordis-plugin-loader/lib/index.js:324`), so it is the only handle
+    // that sees the composed sibling rows.
+    //
+    // `ctx.fiber.entry` resolves to the outer `include` row instead: measured on a
+    // real Loader, `ownId` is `include:guarded` while `fiberEntryId` is `include`
+    // and `fiberSiblings` is `["include"]` — an array holding only `include`. Its
+    // `name` is `cordis:include`, which never matches an official worktree plugin,
+    // so that form returned false for every profile and both rows always mounted.
+    "const own = ctx[Symbol.for('cordis.entry')]; " +
+    "const rows = own && own.parent && own.parent.data; " +
     "if (!Array.isArray(rows)) return false; " +
     "return rows.some((row) => row !== null && typeof row === 'object' && " +
     `row.id !== '${row.id}' && row.name === '${row.plugin}' && row.disabled !== true) ` +

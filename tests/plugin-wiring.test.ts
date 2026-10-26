@@ -242,7 +242,7 @@ describe("the worktree guard reads the row it is judging", () => {
     expect(conflicts(assembly.logs)).toEqual([]);
   });
 
-  it.skip("disables both rows when the profile already mounts the official one", async () => {
+  it("disables both rows when the profile already mounts the official one", async () => {
     const assembly = await assemble([
       { id: "worktree", name: OFFICIAL_WORKTREE },
       { id: "tool-worktree", name: OFFICIAL_TOOL_WORKTREE },

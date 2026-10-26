@@ -10,9 +10,12 @@
 # necessary dependency: the bundle turns the official integration on when the
 # profile does not have it, and mounts nothing when it does. `disabled: !!js` is
 # evaluated by the Loader at every mount decision, and each expression reads the
-# composed row list rather than a startup snapshot. `scripts/worktree-mount.ts`
-# owns the text of both expressions and `check:assets` fails when this file drifts
-# from it. See docs/decisions/2026-10-25-worktree-conditional-mount.md.
+# composed row list rather than a startup snapshot. The row handle is
+# `ctx[Symbol.for('cordis.entry')]` (this entry), not `ctx.fiber.entry`, which
+# resolves to the enclosing `include` row and therefore never sees these siblings.
+# `scripts/worktree-mount.ts` owns the text of both expressions and `check:assets`
+# fails when this file drifts from it. See
+# docs/decisions/2026-10-26-worktree-guard-reads-own-entry.md.
 #
 # `pstack-history` is appended after the unit-4 rows so no delivered line moves.
 # Row order is not part of the history contract; the two worktree guards, by
@@ -26,10 +29,10 @@
         maxDepth: 2
     - id: pstack-worktree
       name: '@deepseek-ai/dsh-experimental-worktree'
-      disabled: !!js "(() => { const rows = ctx.fiber?.entry?.parent?.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-worktree' && row.name === '@deepseek-ai/dsh-experimental-worktree' && row.disabled !== true) })()"
+      disabled: !!js "(() => { const own = ctx[Symbol.for('cordis.entry')]; const rows = own && own.parent && own.parent.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-worktree' && row.name === '@deepseek-ai/dsh-experimental-worktree' && row.disabled !== true) })()"
     - id: pstack-tool-worktree
       name: '@deepseek-ai/dsh-experimental-tool-worktree'
-      disabled: !!js "(() => { const rows = ctx.fiber?.entry?.parent?.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-tool-worktree' && row.name === '@deepseek-ai/dsh-experimental-tool-worktree' && row.disabled !== true) })()"
+      disabled: !!js "(() => { const own = ctx[Symbol.for('cordis.entry')]; const rows = own && own.parent && own.parent.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-tool-worktree' && row.name === '@deepseek-ai/dsh-experimental-tool-worktree' && row.disabled !== true) })()"
     - id: pstack-history
       name: dsh-pstack/history
     - id: pstack-script
