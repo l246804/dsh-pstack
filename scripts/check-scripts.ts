@@ -38,8 +38,18 @@ export const EXPECTED_TEST_FILES = RUNTIME_TESTS.length;
 /** How many test cases the suite must report. */
 export const EXPECTED_TESTS = 68;
 
-/** One smoke command: a CLI and the arguments its usage line documents. */
+/**
+ * One smoke command: a CLI and the arguments its usage line documents.
+ *
+ * `id` is the pairing key, and it must equal `RUNTIME_CLIS[].id`. Pairing by array
+ * index was the defect: the two lists are maintained for different reasons
+ * (`RUNTIME_CLIS` is in "the order the reviews and the prose name them"), so a
+ * reordering silently pointed `orch --help` at `check-plan` and the smoke proved
+ * nothing — or failed for the wrong reason.
+ */
 export interface SmokeCase {
+  /** Matches a `RUNTIME_CLIS[].id`. */
+  readonly id: string;
   readonly label: string;
   readonly args: readonly string[];
   /** Exit codes that count as a pass for this case. */
@@ -47,18 +57,18 @@ export interface SmokeCase {
 }
 
 /**
- * The smoke cases, in `RUNTIME_CLIS` order.
+ * The smoke cases, one per shipped CLI.
  *
  * `--help` is the natural invocation for four of them. `check-plan` has no help flag
  * and exits 2 with a usage line, and `log` exits 1 with one, so their cases assert
  * that documented behaviour instead of pretending a help path exists.
  */
 export const SMOKE_CASES: readonly SmokeCase[] = [
-  { label: "check-plan (no args: usage, exit 2)", args: [], accept: [2] },
-  { label: "orch --help", args: ["--help"], accept: [0] },
-  { label: "watch-pr --help", args: ["--help"], accept: [0] },
-  { label: "worktree-audit --help", args: ["--help"], accept: [0] },
-  { label: "log (no args: usage, exit 1)", args: [], accept: [1] },
+  { id: "check-plan", label: "check-plan (no args: usage, exit 2)", args: [], accept: [2] },
+  { id: "orch", label: "orch --help", args: ["--help"], accept: [0] },
+  { id: "watch-pr", label: "watch-pr --help", args: ["--help"], accept: [0] },
+  { id: "worktree-audit", label: "worktree-audit --help", args: ["--help"], accept: [0] },
+  { id: "log", label: "log (no args: usage, exit 1)", args: [], accept: [1] },
 ];
 
 /** What one child process produced. */
@@ -229,10 +239,31 @@ export function checkInCopy(temporaryRoot: string, options: CheckOptions = {}): 
   if (testsResult.status !== 0) return 1;
 
   const clis = shippedClis(copy);
-  for (const [index, smoke] of SMOKE_CASES.entries()) {
-    const entry = clis[index];
+
+  // The id sets must match exactly. Equal lengths are not enough: a missing case for
+  // one CLI and a duplicate for another would leave the lengths equal and one CLI
+  // unsmoked. This is what makes "forgot a smoke case" a failure rather than a
+  // silently smaller check.
+  const shippedIds = new Set(clis.map((entry) => entry.id));
+  const smokedIds = new Set(SMOKE_CASES.map((smoke) => smoke.id));
+  for (const id of shippedIds) {
+    if (!smokedIds.has(id)) {
+      console.error(`[check-scripts] no smoke case for the shipped CLI "${id}"`);
+      return 1;
+    }
+  }
+  for (const id of smokedIds) {
+    if (!shippedIds.has(id)) {
+      console.error(`[check-scripts] smoke case "${id}" names a CLI that does not ship`);
+      return 1;
+    }
+  }
+
+  for (const smoke of SMOKE_CASES) {
+    // Looked up by id, never by position: `RUNTIME_CLIS` order is editorial.
+    const entry = clis.find((candidate) => candidate.id === smoke.id);
     if (entry === undefined) {
-      console.error(`[check-scripts] no shipped CLI for smoke case "${smoke.label}"`);
+      console.error(`[check-scripts] no shipped CLI with id "${smoke.id}"`);
       return 1;
     }
     console.log(`\n[check-scripts] $ ${basename(entry.path)} ${smoke.args.join(" ")}`.trimEnd());

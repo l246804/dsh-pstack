@@ -112,6 +112,11 @@ describe("check-scripts", () => {
       expect(entry.path.endsWith(".mjs"), entry.path).toBe(true);
     }
     expect(SMOKE_CASES).toHaveLength(clis.length);
+    // Paired by id, not by position: the two lists are maintained for different
+    // reasons, so equal lengths alone proved nothing about which CLI each smoke hits.
+    expect(SMOKE_CASES.map((smoke) => smoke.id).sort()).toEqual(
+      clis.map((entry) => entry.id).sort(),
+    );
   });
 
   /**

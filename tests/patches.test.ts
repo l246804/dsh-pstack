@@ -6,7 +6,9 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   applyFilePatches,
+  assertDropLanded,
   assertPatchOutput,
+  assertPatchOutputIsEvidence,
   PatchError,
   validatePatchTargets,
 } from "../scripts/apply-patches.ts";
@@ -444,19 +446,151 @@ describe("declared patch data", () => {
     }
   });
 
-  it("fails the build when an output fragment is missing", () => {
+  it("fails the build when a patch promises a fragment it does not write", () => {
+    // The build-level counterpart of `assertPatchOutputIsEvidence`: a promise the
+    // patch's own replacement does not contain is rejected before anything is
+    // rendered, which is what makes `outputIncludes` mean "this patch's addition".
     const poisoned: FilePatch = {
       kind: "replace",
       file: "skills/poteto-help/SKILL.md",
       reason: "test fragment",
       anchor: "# Poteto help",
       expectedMatches: 1,
-      replacement: "# Poteto help",
+      replacement: "# Poteto help\n\nA line this patch introduced.",
       outputIncludes: ["THIS FRAGMENT NEVER APPEARS"],
     };
 
     expect(() => buildAssets([...FILE_PATCHES, poisoned])).toThrow(
-      /missing "THIS FRAGMENT NEVER APPEARS"/,
+      /is not part of this patch's replacement/,
     );
+  });
+});
+
+describe("outputIncludes is evidence, not a coincidence", () => {
+  /**
+   * A patch whose promised fragment is already in the source.
+   *
+   * This is the F13 defect in its smallest form: the assertion passes no matter
+   * what the patch does, because the check only asked whether the fragment appears
+   * somewhere in the rendered file.
+   */
+  it("rejects a fragment that already exists upstream", () => {
+    const patch = {
+      kind: "replace" as const,
+      file: "skills/x/SKILL.md",
+      reason: "r",
+      anchor: "old sentence",
+      expectedMatches: 1,
+      replacement: "new sentence",
+      outputIncludes: ["a sentence that was already here"],
+    };
+    expect(() =>
+      assertPatchOutputIsEvidence(patch.file, patch, "a sentence that was already here\nold sentence\n"),
+    ).toThrow(/already exists upstream/);
+  });
+
+  it("rejects a fragment the replacement does not contain", () => {
+    // A promise about text this patch never writes cannot be evidence about it.
+    const patch = {
+      kind: "replace" as const,
+      file: "skills/x/SKILL.md",
+      reason: "r",
+      anchor: "old sentence",
+      expectedMatches: 1,
+      replacement: "new sentence",
+      outputIncludes: ["something else entirely"],
+    };
+    expect(() =>
+      assertPatchOutputIsEvidence(patch.file, patch, "old sentence\n"),
+    ).toThrow(/is not part of this patch's replacement/);
+  });
+
+  it("accepts a fragment the replacement really introduces", () => {
+    const patch = {
+      kind: "replace" as const,
+      file: "skills/x/SKILL.md",
+      reason: "r",
+      anchor: "old sentence",
+      expectedMatches: 1,
+      replacement: "brand new sentence",
+      outputIncludes: ["brand new sentence"],
+    };
+    expect(() =>
+      assertPatchOutputIsEvidence(patch.file, patch, "old sentence\n"),
+    ).not.toThrow();
+  });
+
+  it("leaves drop patches to the span check", () => {
+    // A drop's `outputIncludes` describes what *survives*, and every surviving word is
+    // already upstream, so holding it to the same rule would make drops unassertable.
+    const patch = {
+      kind: "drop" as const,
+      file: "skills/x/SKILL.md",
+      reason: "r",
+      anchor: "remove me\n",
+      expectedMatches: 1,
+      outputIncludes: ["keep me"],
+    };
+    expect(() =>
+      assertPatchOutputIsEvidence(patch.file, patch, "remove me\nkeep me\n"),
+    ).not.toThrow();
+  });
+});
+
+describe("a deletion has to actually delete", () => {
+  it("rejects a drop that left its span in place", () => {
+    // The F13 failure mode: change the drop into a no-op and both `sync --check` and
+    // `check:assets` still passed, because the only assertion was "this text is
+    // still somewhere in the file".
+    const patch = {
+      kind: "drop" as const,
+      file: "skills/x/SKILL.md",
+      reason: "r",
+      anchor: "this section must go\n",
+      expectedMatches: 1,
+    };
+    const source = "header\nthis section must go\nfooter\n";
+    expect(() => assertDropLanded(patch.file, [patch], source, source)).toThrow(
+      /did not remove its span/,
+    );
+    expect(() =>
+      assertDropLanded(patch.file, [patch], source, "header\nfooter\n"),
+    ).not.toThrow();
+  });
+
+  it("rejects a replace whose promised removal survives", () => {
+    // A `replace` that only deletes cannot use `outputIncludes`, so it names the text
+    // it removes instead.
+    const patch = {
+      kind: "replace" as const,
+      file: "skills/x/SKILL.md",
+      reason: "r",
+      anchor: "drop this clause. keep this one.",
+      expectedMatches: 1,
+      replacement: "keep this one.",
+      removedIncludes: ["drop this clause."],
+    };
+    const source = "drop this clause. keep this one.\n";
+    expect(() =>
+      assertDropLanded(patch.file, [patch], source, "drop this clause. keep this one.\n"),
+    ).toThrow(/promised to remove/);
+    expect(() =>
+      assertDropLanded(patch.file, [patch], source, "keep this one.\n"),
+    ).not.toThrow();
+  });
+
+  it("rejects a removal the source never contained", () => {
+    const patch = {
+      kind: "replace" as const,
+      file: "skills/x/SKILL.md",
+      reason: "r",
+      anchor: "keep this one.",
+      expectedMatches: 1,
+      replacement: "keep this one.",
+      removedIncludes: ["text that was never there"],
+    };
+    expect(() =>
+      assertDropLanded(patch.file, [patch], "keep this one.\n", "keep this one.\n"),
+    ).toThrow(/not in the upstream source/);
   });
 });

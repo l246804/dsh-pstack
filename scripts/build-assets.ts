@@ -4,7 +4,13 @@ import { Buffer } from "node:buffer";
 
 import { HARNESS_DOC_PATH, renderHarnessDoc } from "./capabilities.ts";
 import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "./role-manifest.ts";
-import { assertPatchOutput, applyFilePatches, validatePatchTargets } from "./apply-patches.ts";
+import {
+  applyFilePatches,
+  assertDropLanded,
+  assertPatchOutput,
+  assertPatchOutputIsEvidence,
+  validatePatchTargets,
+} from "./apply-patches.ts";
 import { EXCLUDED_SKILLS, FILE_PATCHES, INTRO_SKILLS, patchesForFile } from "./patches.ts";
 import type { FilePatch, SkillExclusion } from "./patches.ts";
 import { RUNTIME_ROOT } from "./build-runtime.ts";
@@ -358,6 +364,11 @@ function buildAsset(
   }
 
   const text = decodeUtf8(source, upstreamRelativePath);
+  // Every promise is checked against the *source* first, so a fragment that is
+  // already upstream cannot vouch for a patch that did nothing.
+  for (const patch of patches) {
+    assertPatchOutputIsEvidence(upstreamRelativePath, patch, text);
+  }
   const patched =
     patches.length === 0 ? text : applyFilePatches(upstreamRelativePath, text, patches);
   const output =
@@ -372,6 +383,9 @@ function buildAsset(
         : patched;
 
   assertPatchOutput(upstreamRelativePath, patches, output);
+  // A `drop` is only proven by the removed span being gone: `outputIncludes` on a
+  // drop describes what survives, so on its own it cannot prove the deletion.
+  assertDropLanded(upstreamRelativePath, patches, text, output);
 
   const bytes = Buffer.from(output, "utf8");
   return {

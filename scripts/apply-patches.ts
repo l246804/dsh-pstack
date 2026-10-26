@@ -100,6 +100,111 @@ export function applyFilePatches(
   return result;
 }
 
+/**
+ * Assert that a `replace` patch's promised fragments are evidence of the replacement.
+ *
+ * `outputIncludes` means "the text this patch introduces", not "text somewhere in the
+ * file". The old check ran on the whole rendered output, so a fragment that upstream
+ * already contains made the assertion true no matter what the patch did: changing a
+ * `replace` back to its own anchor still passed. Measured before this function
+ * existed: 4 of 320 `replace` patches declared fragments that were already in the
+ * upstream source.
+ *
+ * Only `replace` patches are checked for two reasons:
+ *
+ * 1. A `drop` has no replacement to introduce anything. Its `outputIncludes`
+ *    legitimately describes *surviving* content ("this row's neighbour is still
+ *    there"), and no fragment of that kind can be absent from upstream. The half that
+ *    proves a drop is `assertDropLanded`, which requires the removed span to be gone.
+ * 2. `path` and `reflow` patches rewrite in place, so the same argument applies.
+ *
+ * For a `replace`, both conditions have to hold: the fragment must not already be
+ * upstream, and it must appear inside this patch's own `replacement`.
+ */
+export function assertPatchOutputIsEvidence(
+  file: string,
+  patch: FilePatch,
+  source: string,
+): void {
+  if (patch.kind !== "replace") return;
+  for (const fragment of patch.outputIncludes ?? []) {
+    if (source.includes(fragment)) {
+      throw new PatchError(
+        `${file}: outputIncludes ${JSON.stringify(fragment)} already exists upstream, so it ` +
+          `proves nothing; assert a fragment the replacement introduces`,
+      );
+    }
+    if (!patch.replacement.includes(fragment)) {
+      throw new PatchError(
+        `${file}: outputIncludes ${JSON.stringify(fragment)} is not part of this patch's ` +
+          `replacement, so the patch cannot have introduced it`,
+      );
+    }
+  }
+}
+
+/**
+ * Assert that a `drop` patch really removed the span it matched.
+ *
+ * The general `outputIncludes` check cannot prove this: it only asks whether the
+ * promise text is present, and a drop that removes nothing leaves every other
+ * fragment untouched. This re-locates the anchor in the *source*, takes the exact
+ * dropped text, and requires it to be absent from the output.
+ */
+/**
+ * Assert that every deletion a patch promises really happened.
+ *
+ * Two shapes mean "this text is gone", and both are needed:
+ *
+ * - a `drop` patch, whose whole purpose is removal — the span it matched must be
+ *   absent from the output;
+ * - a `replace` patch that carries `removedIncludes`, for the case where the
+ *   replacement keeps some of the anchor. Such a patch cannot be proven by
+ *   `outputIncludes` at all, because every surviving word is already in the source.
+ *
+ * The check the review found missing: a `drop` whose replacement was changed to equal
+ * its anchor left the section in the tree while `sync --check` and `check:assets`
+ * both passed, because the only assertion was "this text still appears somewhere".
+ */
+export function assertDropLanded(
+  file: string,
+  patches: readonly FilePatch[],
+  source: string,
+  output: string,
+): void {
+  // Anchors are located against the original source, so the spans are the exact
+  // bytes the patch was supposed to delete.
+  const matches = locatePatchMatches(file, source, patches);
+  for (const match of matches) {
+    if (match.patch.kind === "drop") {
+      const dropped = source.slice(match.start, match.end);
+      if (dropped === "") continue;
+      if (output.includes(dropped)) {
+        throw new PatchError(
+          `${file}: drop patch did not remove its span; the output still contains ` +
+            `${JSON.stringify(dropped.slice(0, 80))}`,
+        );
+      }
+      continue;
+    }
+
+    for (const fragment of match.patch.removedIncludes ?? []) {
+      if (!source.includes(fragment)) {
+        throw new PatchError(
+          `${file}: removedIncludes ${JSON.stringify(fragment)} is not in the upstream source, ` +
+            `so this patch cannot be the thing that removed it`,
+        );
+      }
+      if (output.includes(fragment)) {
+        throw new PatchError(
+          `${file}: the patch promised to remove ${JSON.stringify(fragment)}, and the output ` +
+            `still contains it`,
+        );
+      }
+    }
+  }
+}
+
 export function assertPatchOutput(
   file: string,
   patches: readonly FilePatch[],

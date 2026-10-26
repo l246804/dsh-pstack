@@ -8,8 +8,17 @@ interface PatchTarget {
   readonly reason: string;
   readonly anchor: string | RegExp;
   readonly expectedMatches: number;
-  /** Fragments that must survive in the final generated text. */
+  /** Fragments the patch must introduce; see `assertPatchOutputIsEvidence`. */
   readonly outputIncludes?: readonly string[];
+  /**
+   * Fragments the patch must remove.
+   *
+   * A `replace` that only deletes text has no fragment it can be said to introduce,
+   * so `outputIncludes` would either be empty or name text the anchor already
+   * contains. This is the other half: the named text must be absent from the output
+   * and present in the upstream source, which is exactly what the patch removed.
+   */
+  readonly removedIncludes?: readonly string[];
 }
 
 export interface RewritingPatch extends PatchTarget {
@@ -1783,7 +1792,9 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       '3. Plan the fix from the trace. If it crosses a function boundary, read the `architect` skill\'s `SKILL.md` at its absolute resource path and run it first. Delegate implementation to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "perf-issue"`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Review the diff. Capture a post-fix trace.',
     outputIncludes: [
       '`agent: "poteto-agent"` and `role: "perf-issue"`',
-      "Review the diff. Capture a post-fix trace.",
+      // Replaced "Review the diff. Capture a post-fix trace.", which the anchor keeps
+      // verbatim and which therefore proved nothing about this patch.
+      "Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.",
     ],
   },
   {
@@ -2269,7 +2280,9 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     expectedMatches: 1,
     replacement:
       "Enabling the bundle adds the skill catalog and the `pstack_subagent` tool; nothing runs until the user invokes a skill. Only `/setup-pstack` loads from the user's words.",
-    outputIncludes: ["Only `/setup-pstack` loads from the user's words."],
+    // The old fragment was the sentence the anchor already contains, so it held even
+    // if the replacement had kept the original text. This one is new text.
+    outputIncludes: ["Enabling the bundle adds the skill catalog"],
   },
   {
     kind: "replace",
@@ -2401,7 +2414,9 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "- [`/automate-me`](../automate-me/SKILL.md) drafts a personal mode skill from the user's own history through `pstack_history`, to use alongside `/poteto-mode`.\n- [`/reflect`](../reflect/SKILL.md) after a session turns its lessons into skill edits the user approves, auditing the run from its raw event log.\n- `/poteto-mode write a skill for <workflow>` runs the authoring playbook, which is ported; validate the result with this package's asset check, because there is no built-in drafting or evaluation tool. The eval playbook tests a skill change blind and checks file reads in the candidate's own events. Those history-backed audits are not yet verified end to end on a real session.",
     outputIncludes: [
       "through `pstack_history`",
-      "The eval playbook tests a skill change blind",
+      // Replaced "The eval playbook tests a skill change blind", which the anchor
+      // already contains and which therefore proved nothing about this patch.
+      "checks file reads in the candidate's own events",
       "not yet verified end to end on a real session",
     ],
   },
@@ -3199,7 +3214,10 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "the **Babysit** playbook (`playbooks/babysit.md`), not Cursor's built-in babysit skill, whose description matches the same words.",
     expectedMatches: 1,
     replacement: "the **Babysit** playbook (`playbooks/babysit.md`).",
-    outputIncludes: ["→ the **Babysit** playbook (`playbooks/babysit.md`). Never triggered"],
+    // The old assertion was the *anchor's* surrounding sentence with its "not
+    // Cursor's built-in …" clause removed by hand; it did not appear in the
+    // replacement at all. This is the text the patch actually introduces.
+    outputIncludes: ["playbook (`playbooks/babysit.md`)."],
   },
   {
     kind: "replace",
@@ -4172,7 +4190,12 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     expectedMatches: 1,
     replacement:
       "A request to land or ship is `playbooks/shipping.md`, which begins where this playbook ends.",
-    outputIncludes: ["A request to land or ship is `playbooks/shipping.md`"],
+    // This patch deletes the first sentence and keeps the second, so no fragment can
+    // be "new" — every surviving word is already upstream. The deletion is what has
+    // to be proven, and for a `replace` that means naming the removed clause here:
+    // `assertDropLanded` reads the anchor and requires the span it no longer covers
+    // to be gone from the output.
+    removedIncludes: ["This playbook replaces Cursor's built-in babysit skill for these requests"],
   },
   {
     kind: "replace",
