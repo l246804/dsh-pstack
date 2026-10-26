@@ -3,6 +3,10 @@
 Status: accepted
 Date: 2026-10-25
 
+> **部分被取代（2026-10-26）。** 下面第 1 条里「`inject` 为 `tools`、`subagents`、`sessionQuery`」这个判断是错的，已被 [F01 记录](2026-10-26-f01-optional-session-query.md) 取代：`sessionQuery` 是硬依赖时，缺该服务的 profile 里整行 inactive，工具根本不注册，第 4 条要求的 "不可用就返回 unsupported" 反而无法满足。现在改为按调用用 `ctx.get("sessionQuery")` 可选读取。
+>
+> 本记录其余内容继续有效，因此 Status 保持 `accepted` 而不是整份 `superseded`：第 2 至 5 条（`src/host-contract.ts` 作为唯一契约复述点、输入字段、单快照分页、两段授权、来源不可判定即报未完成）都仍是当前实现。正文保留原文不改写。
+
 ## 背景
 
 [移植总决策](2026-10-24-upstream-generated-port.md)定下"历史读取以 `sessionQuery` 为后端，新增受限只读工具，从同一份完整逻辑快照分页返回原始事件，按调用 Agent 和直接父子关系授权"。设计文档 §10.2 进一步给了 DTO 字段：`snapshotEvents()`、`persistedThroughSeq`、逐事件 `provenance`。

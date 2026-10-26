@@ -127,6 +127,7 @@ export function checkAssets(): AssetsReport {
   checkIntroScope(problems);
   for (const problem of checkConceptCoverage()) problems.push(problem);
   for (const problem of checkScriptReferences()) problems.push(problem);
+  for (const problem of checkDesignRowList()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
   // The expected count is "upstream skill files, minus the ones a built artifact
@@ -1128,6 +1129,51 @@ export const SCRIPT_REFERENCE_ALLOWLIST: readonly {
  * and `scripts`, so a bare `scripts/log.mjs` would not match.
  */
 const SCRIPT_REFERENCE = /((?:[\w./-]*\/)?scripts\/[\w./-]+\.mjs)\b/g;
+
+/**
+ * The design document's §3.3 row list must match `cordis.patch.yml`.
+ *
+ * §3.3 is the section an implementer copies from, so a row list that disagrees with
+ * the shipped patch is not a stale paragraph — it is an instruction to build the
+ * wrong composition. It had drifted to three rows while six ship, and the section
+ * also restated `inject` lists that no longer held.
+ *
+ * This check only compares the row ids, which is the part that is mechanically
+ * comparable. The prose around it (which service each row injects) points at
+ * `src/*.ts` instead of restating the lists, because a restated list is exactly what
+ * drifted the first time.
+ */
+export function checkDesignRowList(): readonly string[] {
+  const problems: string[] = [];
+  const docPath = join(ROOT, "docs", "pstack-dsh-port-development-design.md");
+  if (!existsSync(docPath)) {
+    return ["docs/pstack-dsh-port-development-design.md: missing; §3.3 is the row contract"];
+  }
+  const patchPath = join(ROOT, "cordis.patch.yml");
+  if (!existsSync(patchPath)) return ["cordis.patch.yml: missing the bundle patch"];
+
+  const shipped = [...readFileSync(patchPath, "utf8").matchAll(/^\s+- id: (\S+)$/gm)].map(
+    (match) => match[1] as string,
+  );
+
+  const text = readFileSync(docPath, "utf8");
+  const section = /### 3\.3 [^\n]*\n([\s\S]*?)(?=\n### |\n## )/.exec(text);
+  if (section === null) {
+    problems.push("docs/pstack-dsh-port-development-design.md: §3.3 not found");
+    return problems;
+  }
+  const documented = [...(section[1] as string).matchAll(/^\s+- id: (\S+)$/gm)].map(
+    (match) => match[1] as string,
+  );
+
+  if (documented.join(",") !== shipped.join(",")) {
+    problems.push(
+      `docs/pstack-dsh-port-development-design.md §3.3: documents rows ` +
+        `[${documented.join(", ")}], but cordis.patch.yml ships [${shipped.join(", ")}]`,
+    );
+  }
+  return problems;
+}
 
 export function checkScriptReferences(): readonly string[] {
   const problems: string[] = [];

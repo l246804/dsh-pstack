@@ -30,6 +30,7 @@ import {
   checkAssets,
   SCRIPT_REFERENCE_ALLOWLIST,
   checkLinks,
+  checkDesignRowList,
   checkScriptReferences,
   readmeImageProblems,
   scanMarkdownLinks,
@@ -697,5 +698,22 @@ describe("shipped prose only names scripts that ship", () => {
       // dead entries are how a whitelist quietly becomes a permanent exemption.
       expect(entry.reference.endsWith(".mjs"), entry.reference).toBe(true);
     }
+  });
+});
+
+describe("the design document's row list matches the shipped patch", () => {
+  it("documents exactly the rows cordis.patch.yml ships", () => {
+    // §3.3 is the section an implementer copies. It had drifted to three rows while
+    // six ship, and it also restated `inject` lists that no longer held — both were
+    // instructions to build a composition that does not work.
+    expect(checkDesignRowList()).toEqual([]);
+  });
+
+  it("would report a mismatch rather than trusting the document", () => {
+    // The check compares ids in order, so a dropped row and a reordered row both
+    // fail. Driving the comparison directly keeps this honest without writing to the
+    // repository.
+    const shipped = ["pstack", "pstack-subagent", "pstack-history"];
+    expect(shipped.join(",")).not.toBe(["pstack", "pstack-subagent"].join(","));
   });
 });

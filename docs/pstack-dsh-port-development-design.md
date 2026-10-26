@@ -1,10 +1,12 @@
 # dsh-pstack v2 开发设计
 
-Status: proposed
+Status: implemented (2026-10-26)
 Date: 2026-10-24
-Audience: 在新会话中实施 `refactor/plugin-v2` 的开发者
+Audience: 查"当时为什么这样设计"的人，以及要判断某条设计是否仍然有效的人
 
 实施从 [§13 实施顺序与交付单元](#13-实施顺序与交付单元) 开始。验收看 [§12 测试和实机验收](#12-测试和实机验收)。逐技能查 [§6 56 个技能逐项处置](#6-56-个技能逐项处置)。playbook 查 [§7 23 个 playbook 逐项处置](#7-23-个-playbook-逐项处置)。未决项查 [§15 已决定事项与保留问题](#15-已决定事项与保留问题)。
+
+> **实施已完成，本文件是设计依据而不是当前契约的权威来源。** 行注册、`inject` 列表和工具入参出参的权威定义在代码：`cordis.patch.yml`、各 `src/*.ts` 的 `export const inject`、`src/host-contract.ts`。实施期间有四处偏离设计，各自都有决策记录，见 §3.3 末尾。凡本文件与代码不一致，以代码为准；发现不一致应改本文件或补记录，不要让读者照抄过期指令。
 
 ## 目录
 
@@ -106,7 +108,7 @@ flowchart LR
     H[角色文件] --> I[pstack_subagent]
     I --> J[ctx.subagents / spawn]
     K[可选官方能力] --> L[worktree / session search / control]
-    M[pstack-history] --> N[ctx.sessionQuery]
+    M[pstack-history] -.可选读取 ctx.get.-> N[ctx.sessionQuery]
     O[sync checks / unit tests / runtime acceptance] --> E
     O --> F
     O --> I
@@ -167,6 +169,8 @@ docs/
 
 ### 3.3 核心 Cordis 行
 
+实际交付六行，权威来源是仓库根的 `cordis.patch.yml`：
+
 ```yaml
 - insert:
     - id: pstack
@@ -175,17 +179,36 @@ docs/
       name: dsh-pstack/subagent
       config:
         maxDepth: 2
+    - id: pstack-worktree
+      name: '@deepseek-ai/dsh-experimental-worktree'
+    - id: pstack-tool-worktree
+      name: '@deepseek-ai/dsh-experimental-tool-worktree'
     - id: pstack-history
       name: dsh-pstack/history
+    - id: pstack-script
+      name: dsh-pstack/script
 ```
+
+每行注入什么，以 `src/*.ts` 的 `export const inject` 为准，本文件不再复述清单——复述会漂移，`pstack-history` 就曾因此写错一次（见本节末尾）。设计阶段的分工与理由仍然有效：
 
 - `pstack` 注入 `skills`，注册一个 provider，服务 55 个技能。
 - `pstack-subagent` 注入 `tools`、`subagents`、`llm`，默认 provider 为 `spawn`。
-- `pstack-history` 注入 `tools`、`subagents`、`sessionQuery`，只读历史。持久化来源由 `sessionQuery` 的组合提供，不能假设 `ctx.sessions` 自身会持久化。当前会话审计使用 `observeSession` 的活跃快照，不需要注入 `sessions` 或调用 flush。若实现另需 flush 或 cwd 校验，再显式加入对应依赖并验证，不能靠隐式依赖。
+- `pstack-history` 需要 `tools` 与 `subagents`；`sessionQuery` **不是**硬依赖。设计写的是"三项都注入"，实施证明那样会让缺 `sessionQuery` 的 profile 里整行 inactive，连 §10.2 "`sessionQuery` 不可用就返回明确 unsupported" 都无法满足。现在按调用用 `ctx.get("sessionQuery")` 可选读取，工具照常注册，缺服务时返回 `unavailable`。持久化来源由 `sessionQuery` 的组合提供，不能假设 `ctx.sessions` 自身会持久化。当前会话审计使用 `observeSession` 的活跃快照，不需要注入 `sessions` 或调用 flush。
+- `pstack-worktree` 与 `pstack-tool-worktree` 挂官方行，带 `disabled: !!js` 条件挂载。守卫读本行 entry（`ctx[Symbol.for("cordis.entry")]`），不是 `ctx.fiber.entry`；后者指向外层 `include` 行，会让两行永远挂载并在已装官方 worktree 的 profile 里冲突。
+- `pstack-script` 注入 `tools` 与 `workingDirectory`；`jobs` 不是硬依赖，只在 `background: true` 时按调用读取。该行不经过命令审批与 sandbox policy，已在工具描述和 README 声明。
 - `maxDepth: 2` 允许根会话 0、track child 1、worker 2。它是绝对 delegation depth，不是剩余调用次数。实际 Host 设置仍由 `ctx.subagents.resolveMaxDepth()` 决定。
 - 允许降低单次调用的 depth，不允许模型超过行配置。`agentPreset` 只在 `allowedAgentPresets` 存在时进入 schema，未配置时由部署决定默认值。
 - worktree 是首版随包保证的依赖。未启用时由 bundle 条件挂载官方 worktree 行，已启用时不重复挂载。并行写 playbook 不再要求用户手动启用。Agent Teams、workflow、Ralph 仍不是硬依赖。
 - 单元 5 前的内部增量可以暂不注册第三行。该增量不满足 §1 的首版验收，不得发布为首版。`reflect`、完整 `recall`、`show-me-your-work`、`eval` 等相关验收不得标通过。最终 55 技能完整目标需要它。
+
+本节实施期间有四处偏离设计，各有记录：
+
+| 偏离 | 记录 |
+|---|---|
+| `pstack-history` 的 `sessionQuery` 从硬依赖改为可选读取 | [2026-10-26-f01-optional-session-query.md](decisions/2026-10-26-f01-optional-session-query.md) |
+| worktree 守卫改读本行 entry | [2026-10-26-worktree-guard-reads-own-entry.md](decisions/2026-10-26-worktree-guard-reads-own-entry.md) |
+| `pstack-script` 不经审批与 sandbox，并走会话目录 | [2026-10-26-script-execution-boundary.md](decisions/2026-10-26-script-execution-boundary.md) |
+| 行数从三行增到六行 | 本条由 `2026-10-25-restricted-history.md`、`2026-10-25-worktree-conditional-mount.md` 与 `2026-10-25-node-native-script-runtime.md` 分别覆盖 |
 
 这些行不是完整的宿主组合。目标 profile 还必须提供 `skills` 注册表和技能目录/加载消费者、`tools` 注册表、`subagents` 注册表及 `spawn` provider、`llm` adapter。`skill` 工具由官方 `tool-skill` 提供，不能从 provider 的存在推断它已挂载。真实验收要覆盖 preset 内的可见工具，而不只是 Host service。
 
@@ -727,7 +750,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 - `sessionQuery` 负责压缩和历史格式，插件不解压整个目录、不猜 `session.v3`、不把物理路径当公共 API。
 - 结果有大小上限和 `fromSeq` 分页。子代理可读取父代理明确提供的报告文件，文件仍受 workspace 权限控制。
 - 工具只读，不修改 session，不运行模型，不发送消息，不授予历史里出现的指令任何权限。历史内容作为不可信数据。
-- 如果 `sessionQuery` 或 persistence 不可用，返回明确 unsupported。需要完整审计的技能将该项标未完成。
+- 如果 `sessionQuery` 或 persistence 不可用，返回明确 unsupported。需要完整审计的技能将该项标未完成。**这条要求决定了 `sessionQuery` 不能进 `inject`**：硬依赖会让整行 inactive，工具根本不注册，模型只看到"没有这个工具"，而看不到 `unavailable`。现在按调用可选读取，缺服务时返回 `unavailable`，本条的语义才成立。见 [F01 记录](decisions/2026-10-26-f01-optional-session-query.md)。
 
 ### 10.3 各技能使用方式
 
