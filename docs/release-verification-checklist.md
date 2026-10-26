@@ -4,7 +4,7 @@
 
 为什么分成两步，见 [发布验收分期](decisions/2026-10-25-release-verification-staging.md)。静态检查、`check:assets` 和单元测试通过，都不构成本文件任何一行用例的证据。
 
-单元 1 至 7 交付时的状态：静态门全绿，13 个测试文件 307 个用例通过，随包脚本改为零安装的 Node 产物后 5 个测试文件 68 个上游用例仍在副本上通过。下列 40 条用例一条都没有执行，原因分三类：
+单元 1 至 7 交付时（commit `6dedbf7`）的状态：静态门全绿，13 个测试文件 307 个用例通过，随包脚本改为零安装的 Node 产物后 5 个测试文件 68 个上游用例仍在副本上通过。这是那一刻的快照，不是当前数字——当前规模见 `pnpm run test` 的实际输出。下列 36 条用例一条都没有执行，原因分三类：
 
 - **需要真实模型调用。** 任何要求 route、effort、child 实际请求头或 panel 结果的用例。
 - **需要真实宿主进程。** goal 的 armed/disarmed 边沿、reminder 投递、后台 job 的 settlement 通知、宿主重启后的状态。
@@ -19,7 +19,7 @@
 pnpm install
 pnpm sync:check && pnpm check:assets
 pnpm build
-pnpm pack --dry-run          # 记录条目数，当前基线 173
+pnpm pack --dry-run          # 记录条目数；当前基线 166
 
 # 2. 建一次性 profile，并把工作区目录链接安装进去
 dsh plugin --profile pstack-verify add <absolute path to this checkout>
@@ -28,7 +28,24 @@ dsh plugin --profile pstack-verify add <absolute path to this checkout>
 node --version
 ```
 
-注意两点。第一，第 2 步的"本地目录作为安装规格"这一形式来自开发期链接安装的既有做法，本单元没有启动任何 profile 复核它的确切写法；执行者第一次跑时以 `dsh plugin add --help` 的实际输出为准，并把这处差异记在本清单的备注里。第二，随包脚本已是单文件 Node 产物，依赖全部内联，不再有 `bootstrap.ts`、包内 `package.json` 或 `bun.lock`，因此**不需要安装步骤，也不需要 Bun 或 bash**；脚本冒烟只在受控副本里跑，不要在待发布的生产树里跑。
+注意三点。
+
+第一，第 2 步已在 rc.3 上实测确认，不再是待核实的写法。`dsh plugin --profile <name> <args...>` 把参数**原样转发给该 profile 目录里的 pnpm**（`dsh plugin --help` 原文：`args — pnpm arguments, forwarded verbatim`），profile 不存在时先按模板初始化，然后执行转发的命令。因此：
+
+- `dsh plugin add <spec>` 等价于在该 profile 目录里跑 `pnpm add <spec>`；
+- **不存在 `dsh plugin add --help` 这个子命令**：`--help` 会被当成要安装的包名交给 pnpm。本条目前一版让执行者"以 `dsh plugin add --help` 的实际输出为准"，那个探查方式本身是错的，已改掉；
+- 顺带确认了一处会误导的报错来源：`dsh --profile <不存在的名字> --dump-config` 会报 `profile "x" does not exist; create it with 'dsh plugin --profile x add <package>'`。这条信息里的命令是宿主自己给出的，与本文第 2 步一致，可以作为交叉验证；
+- 安装完成后 `dsh plugin` 会重写 profile 的 `package.json`，把新依赖里**声明了 `dsh.bundle`** 的包追加进 `dsh.profile.bundles`（`reconcile()` 的行为），不需要手工改 bundles。本包的 `package.json` 有 `dsh.bundle.patch`，所以链接安装后应当自动成为一层。**安装后务必立刻核对**：
+
+```bash
+node -e 'const p=require(process.argv[1]);console.log(p.dsh?.profile?.bundles)' \
+  "$HOME/.dsh/profiles/pstack-verify/package.json"
+# 期望输出里包含 dsh-pstack；若没有，说明这个 spec 没被当成 bundle，需要记下差异
+```
+
+第二，随包脚本已是单文件 Node 产物，依赖全部内联，不再有 `bootstrap.ts`、包内 `package.json` 或 `bun.lock`，因此**不需要安装步骤，也不需要 Bun 或 bash**；脚本冒烟只在受控副本里跑，不要在待发布的生产树里跑。
+
+第三，`pnpm pack --dry-run` 的 166 由五部分构成：`assets` 142、`dist` 17、`locale` 2、`cordis.patch.yml`/`package.json`/`README.md`/`LICENSE`/`static` 各 1。基线变化时先按这五部分定位是哪一类变了，再决定是否更新本行。
 
 ```bash
 # 零安装脚本门：复制 assets/skills/、隔离 HOME/TMPDIR/XDG_CACHE_HOME、
@@ -41,6 +58,29 @@ node assets/skills/poteto-mode/scripts/worktree-audit.mjs --help
 ```
 
 如果要在一次性 profile 内验证模型侧入口，用 `pstack_script` 工具（`id` 取脚本名），不要拼 shell 命令：它的 `id` 是固定枚举，用宿主的 `process.execPath` 启动产物，Desktop 下自动附加 `ELECTRON_RUN_AS_NODE=1`。
+
+## 前置：不启动也能做的装配核对
+
+启动之前先跑这一步。它不需要模型、不需要凭据，能在几十秒内把"六个行有没有进去、行 id 对不对"这类装配问题定位掉，避免带着错误的组合去跑 36 条用例。
+
+**前提：profile 必须已经存在。** `--dump-config` 对不存在的 profile 直接报错退出（`profile "x" does not exist; create it with 'dsh plugin --profile x add <package>'`），所以这一步排在第 1 步安装之后，不能拿它做第 0 步的预检。
+
+```bash
+# 组合树（三者的差别只在叠加层次）
+dsh --profile pstack-verify --dump-config           # profile 层 + --patch 覆盖层
+dsh --profile pstack-verify --dump-default-config   # 只有模板层，不含用户层
+dsh --profile pstack-verify --dump-config-schema    # 条目的 JSON Schema，不挂载
+```
+
+`--dump-config` 用的是与启动同一套 `applyEntryPatches` 语义，`cordis-plugin-include` 对该函数的注释原文是"`dsh --dump-config` so a dump can never drift from what boots"（挂载与离线 dump 共用这一个实现）。所以它能作为装配证据，而不是第二套实现。
+
+核对三项：
+
+1. `pstack`、`pstack-subagent`、`pstack-worktree`、`pstack-tool-worktree`、`pstack-history`、`pstack-script` 六个行 id 都在；
+2. 两个 worktree 行的 `disabled` 求值结果符合预期（profile 里没有官方 worktree 行时应为启用）；
+3. 与设计 §3.3 的行清单一致——不一致时改设计文档或补记录，不要照抄过期清单。
+
+这一步**不能**替代 worktree 四路径用例：`disabled` 是逐次求值的，dump 只能证明"此刻的求值结果"，不能证明"跟着组合变化"。后者仍然只能在真实启动与重载中观察。
 
 每条用例的记录字段固定为四项：**真实输入**、**可观察结果**、**与设计 §12.4 通过条件的差异**、**未覆盖项**。只有四项都填了，用例才可以改状态。
 
@@ -84,6 +124,17 @@ node assets/skills/poteto-mode/scripts/worktree-audit.mjs --help
 | 3 禁用后重新启用 | 禁用官方 worktree 行再重载，确认本包两行接管；恢复后再确认不重复 | 需要真实配置重载，`disabled` 的逐次求值无法在单测里证明"跟着组合走" |
 | 4 升级路径 | 对已装 profile 升级到新 checkout，确认行 id 与守卫不变、服务仍只提供一次 | 需要真实升级流程 |
 
+### 跨工具主链路的实机断言
+
+下面四条对应 2026-10-26 的 P1 修复。它们各自都有单测与静态门，但**每一条的失败形态都只在真实装配下出现**，因此必须在这里单独记录，不能用单测绿灯代替。编号用 T 前缀，不并入上面的 B/S 用例集（那 36 条按 §12.4 定义，不增不减）。
+
+| 用例 | 复现命令 | 未验证原因 |
+|---|---|---|
+| T01 六行全部注册 | 一次性 profile 启动后，确认 `pstack`、`pstack-subagent`、`pstack-worktree`、`pstack-tool-worktree`、`pstack-history`、`pstack-script` 六个行都挂载 | 单测用 `ResolvingInclude` 映射模块名，真实 profile 走 pnpm 安装后的包解析；`pstack-script` 曾因缺 `export const inject` 在**任何** profile 都不注册 |
+| T02 无 `sessionQuery` 时历史工具仍在 | 装一个不含 sessionQuery 服务的组合，确认 `pstack_history` **仍出现在工具表**且调用返回 `kind: "unavailable"`、`code: "service-unavailable"` | 声明为硬依赖时 Cordis 让整行 inert，工具根本不存在，模型看到的是"没有这个工具"而不是"本 profile 不可用"；只有真实组合能证伪 |
+| T03 `pstack_script` 落在会话目录 | 在该工具上用相对路径跑 `id: "log"`，确认 TSV 落在**会话当前目录**（含 worktree 会话） | 省略 `cwd` 时曾继承 Host 进程目录；单测覆盖了 `resolveWorkingDirectory`，但"会话目录是什么"由宿主 `workingDirectory.ensure` 决定，只能实机观察 |
+| T04 后台启动失败不谎报 | 让 `background: true` 跑一个不存在的解释器（或删掉目标产物），确认调用**抛错**而不是返回 `status: "running"` | 三次实现都错过：固定 250ms 窗口、单 microtask 都观察不到异步 ENOENT。现为 `spawn`/`error` 事件竞争，但仍需在宿主的真实 jobs 服务下确认 `jobs.start` 同步调用 `run` 这一前提成立 |
+
 ## 单元 5：会话历史与相关技能
 
 | 用例 | 复现命令 | 未验证原因 |
@@ -116,7 +167,7 @@ node assets/skills/poteto-mode/scripts/worktree-audit.mjs --help
 | 项 | 现状 | 未验证原因 |
 |---|---|---|
 | Node | 脚本产物与随包测试在 Node 24.22.1 上通过；产物 target 为 `node22`，与 `engines.node >=22.19` 一致 | 没有版本矩阵，只有一个版本；Node 22.19 实机未跑 |
-| Bun / bash | 已不再是运行依赖：六个脚本与测试均不引用 `bun:`、不调用 bash、不安装任何包 | 无（这是架构约束，不是待验证项） |
+| Bun / bash | 已不再是运行依赖：5 个随包 CLI 与 5 个随包测试包（共 10 个产物）均不引用 `bun:`、不调用 bash、不安装任何包 | 无（这是架构约束，不是待验证项） |
 | Electron / Desktop | `pstack_script` 的 Electron 分支有单测覆盖（附加 `ELECTRON_RUN_AS_NODE=1`），普通 Node 分支不附加 | 未在真实 Desktop 应用内执行，仅单测与本机普通 Node 实跑 |
 | 平台 | Linux 与 macOS 为主要目标 | 未在 Windows 或 macOS 实机跑过 |
 | profiler | 只有正文里的工具名 | 未在本机实际采集与解析 |
@@ -125,4 +176,7 @@ node assets/skills/poteto-mode/scripts/worktree-audit.mjs --help
 ## 备注
 
 - 执行中出现与设计文档冲突的结果时，先记录实际观察，再新写一条决策记录取代相关约定，不改文档来迁就结果。
-- S12 与 B12 共用一次运行，但各自记录一条，因此表中 40 行对应 40 个用例 ID。
+- S12 与 B12 共用一次运行，但各自记录一条，因此用例表 36 行对应 36 个用例 ID（B01–B23 共 23 条，S01–S13 共 13 条），与设计 §12.4 的编号集合逐一相等（2026-10-26 核对：两侧差集均为空）。
+- 本清单共有四张记录表，各自的计数口径不同，不要相加：**B/S 用例 36 条**（§12.4 定义的验收样例）、**worktree 路径 4 条**、**T 用例 4 条**（跨工具主链路，按修复引入，不属于 §12.4）、**环境矩阵 6 项**（约束与缺口，不是用例）。
+- 本文件此前三处数字有误，2026-10-26 一并更正：`pnpm pack` 基线 173 → 166（实测，且拆出五部分构成）；"40 条用例" → 36 条（该数字自 `f4e8cd1` 起就与表格行数不符，一路抄了下来）；"六个脚本" → 5 个 CLI + 5 个测试包。凡再改这些数字，请附上产生它的命令。
+- 执行者第一次跑时若发现命令形式与本文不符（宿主版本演进、pnpm 参数差异等），以实际输出为准并就地更正本文，不要只在会话里口述。
