@@ -417,8 +417,9 @@ function buildRow(worktree, context) {
 		aheadCount: aheadText === void 0 ? void 0 : Number(aheadText.trim())
 	});
 	const pr = prColumn(branch === "" ? void 0 : branch, context.prs);
-	const usageKnown = context.sessions !== void 0 && context.sessions.length > 0;
 	const session = lastSession(worktree, context.sessions);
+	const usageKnown = session !== void 0;
+	const sessionsProvided = context.sessions !== void 0;
 	const bucket = bucketFor({
 		dirty,
 		pr,
@@ -436,8 +437,24 @@ function buildRow(worktree, context) {
 		lastChat: lastChatColumn(session),
 		pinned: PINNED,
 		bucket,
+		note: usageNote({
+			usageKnown,
+			sessionsProvided
+		}),
 		worktree
 	};
+}
+/**
+* Why a row's usage signal is what it is.
+*
+* Both "nobody supplied a session list" and "a list was supplied but it never
+* mentioned this worktree" produce the `unknown-usage` bucket, and the caller has
+* to fix a different thing in each case: build the list, or widen it. Collapsing
+* them would lose that distinction, which is the only diagnostic the row carries.
+*/
+function usageNote(input) {
+	if (input.usageKnown) return void 0;
+	return input.sessionsProvided ? "no session in the supplied list touched this worktree" : "no session list supplied";
 }
 /** Sort rows by SIZE descending, preserving the original order on a tie. */
 function sortRows(rows) {
@@ -474,6 +491,11 @@ function renderTable(rows, base) {
 		row.bucket,
 		row.worktree
 	].join("	"));
+	const notes = rows.filter((row) => row.note !== void 0);
+	if (notes.length > 0) {
+		lines.push("# usage signal unknown for:");
+		for (const row of notes) lines.push(`#   ${row.worktree}: ${row.note}`);
+	}
 	return `${lines.join("\n")}\n`;
 }
 /**
@@ -636,4 +658,4 @@ function main(argv, io = {
 const entryPoint = process.argv[1];
 if (entryPoint !== void 0 && resolve(entryPoint) === fileURLToPath(import.meta.url)) process.exitCode = main(process.argv.slice(2));
 //#endregion
-export { AuditError, HEADER, PINNED, RECENT_DAYS, UNKNOWN_USAGE_BUCKET, USAGE, ageColumn, bucketFor, buildRow, dirtyColumn, formatSize, isRecent, lastChatColumn, lastSession, main, mergedColumn, normalizeGh, normalizeOrigin, parseArgs, prColumn, readForgePrs, readSessionsFile, remoteColumn, renderTable, resolveBase, sizeColumn, sortRows, worktreePaths };
+export { AuditError, HEADER, PINNED, RECENT_DAYS, UNKNOWN_USAGE_BUCKET, USAGE, ageColumn, bucketFor, buildRow, dirtyColumn, formatSize, isRecent, lastChatColumn, lastSession, main, mergedColumn, normalizeGh, normalizeOrigin, parseArgs, prColumn, readForgePrs, readSessionsFile, remoteColumn, renderTable, resolveBase, sizeColumn, sortRows, usageNote, worktreePaths };

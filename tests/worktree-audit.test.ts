@@ -9,9 +9,10 @@
  * `scripts/runtime/tests/` and `check:scripts`.
  */
 
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
@@ -21,6 +22,7 @@ import {
   PINNED,
   UNKNOWN_USAGE_BUCKET,
   bucketFor,
+  buildRow,
   formatSize,
   isRecent,
   lastChatColumn,
@@ -29,6 +31,7 @@ import {
   readSessionsFile,
   renderTable,
   sortRows,
+  usageNote,
 } from "../scripts/runtime/worktree-audit.ts";
 import type { AuditRow, SessionInput } from "../scripts/runtime/worktree-audit.ts";
 
@@ -92,6 +95,30 @@ describe("bucketFor", () => {
     expect(
       bucketFor({ dirty: "scratch:3", pr: "-", merged: "YES", usageKnown: true, usedRecently: false }),
     ).toBe("safe");
+  });
+
+  it("keeps an unmerged, unused worktree in review rather than safe", () => {
+    expect(
+      bucketFor({ dirty: "clean", pr: "-", merged: "NO", usageKnown: true, usedRecently: false }),
+    ).toBe("review");
+  });
+});
+
+describe("usageNote", () => {
+  it("says nothing once a session matched", () => {
+    expect(usageNote({ usageKnown: true, sessionsProvided: true })).toBeUndefined();
+    expect(usageNote({ usageKnown: true, sessionsProvided: false })).toBeUndefined();
+  });
+
+  it("distinguishes a missing list from an inadequate one", () => {
+    // Both land in `unknown-usage`, and the caller fixes a different thing in each
+    // case, so the diagnostic must not collapse them.
+    expect(usageNote({ usageKnown: false, sessionsProvided: false })).toBe(
+      "no session list supplied",
+    );
+    expect(usageNote({ usageKnown: false, sessionsProvided: true })).toBe(
+      "no session in the supplied list touched this worktree",
+    );
   });
 });
 
@@ -313,5 +340,90 @@ describe("sortRows and renderTable", () => {
     expect(lines[1]).toBe(HEADER.join("\t"));
     expect(lines[2]?.split("\t")).toHaveLength(HEADER.length);
     expect(text.endsWith("\n")).toBe(true);
+  });
+});
+
+describe("buildRow's usage decision", () => {
+  /**
+   * A throwaway repository, plus one worktree whose branch is fully merged.
+   *
+   * `buildRow` shells out to `git`, so the usage decision can only be observed on a
+   * real worktree. That is the point: the defect was in the composition of
+   * `lastSession` and `bucketFor`, not in either function alone.
+   */
+  function mergedWorktree(): { readonly repo: string; readonly worktree: string; readonly head: number } {
+    const repo = temporaryDirectory();
+    const run = (cwd: string, args: readonly string[]): string =>
+      execFileSync("git", args, { cwd, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    run(repo, ["init", "--quiet", "-b", "main"]);
+    run(repo, ["config", "user.email", "t@example.invalid"]);
+    run(repo, ["config", "user.name", "t"]);
+    writeFileSync(join(repo, "file.txt"), "one\n");
+    run(repo, ["add", "."]);
+    run(repo, ["commit", "--quiet", "-m", "one"]);
+    const worktree = join(repo, "..", `${basename(repo)}-wt`);
+    run(repo, ["worktree", "add", "--quiet", "-b", "side", worktree]);
+    return { repo, worktree, head: 1_700_000_000 };
+  }
+
+  it("reports unknown-usage when the supplied list never mentions the worktree", () => {
+    // The regression this section exists for: the list is non-empty, so the old
+    // `sessions.length > 0` said usage was known, `merged` was YES, and the row
+    // reached `safe` — a deletion candidate produced from missing evidence.
+    const { repo, worktree, head } = mergedWorktree();
+    try {
+      const row = buildRow(worktree, {
+        base: "main",
+        repo,
+        mainWorktree: repo,
+        prs: [],
+        sessions: [{ sessionId: "a", cwd: "/other/project", lastEventTime: head }],
+        now: head,
+      });
+      expect(row.merged).toBe("YES");
+      expect(row.lastChat).toBe("-");
+      expect(row.bucket).toBe(UNKNOWN_USAGE_BUCKET);
+      expect(row.note).toBe("no session in the supplied list touched this worktree");
+    } finally {
+      rmSync(worktree, { recursive: true, force: true });
+    }
+  });
+
+  it("distinguishes a missing list from an inadequate one", () => {
+    const { repo, worktree, head } = mergedWorktree();
+    try {
+      const row = buildRow(worktree, {
+        base: "main",
+        repo,
+        mainWorktree: repo,
+        prs: [],
+        sessions: undefined,
+        now: head,
+      });
+      expect(row.bucket).toBe(UNKNOWN_USAGE_BUCKET);
+      expect(row.note).toBe("no session list supplied");
+    } finally {
+      rmSync(worktree, { recursive: true, force: true });
+    }
+  });
+
+  it("leaves safe reachable once a session really touched the worktree", () => {
+    const { repo, worktree, head } = mergedWorktree();
+    try {
+      const row = buildRow(worktree, {
+        base: "main",
+        repo,
+        mainWorktree: repo,
+        prs: [],
+        // Well past `RECENT_DAYS`, so the row can reach `safe`.
+        sessions: [{ sessionId: "s-1", cwd: worktree, lastEventTime: head - 30 * 86_400 }],
+        now: head,
+      });
+      expect(row.lastChat).toBe("s-1");
+      expect(row.bucket).toBe("safe");
+      expect(row.note).toBeUndefined();
+    } finally {
+      rmSync(worktree, { recursive: true, force: true });
+    }
   });
 });

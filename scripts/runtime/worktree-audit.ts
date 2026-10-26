@@ -47,6 +47,8 @@ export interface AuditRow {
   readonly lastChat: string;
   readonly pinned: string;
   readonly bucket: string;
+  /** Why the usage signal is unknown, when it is. Absent once a session matched. */
+  readonly note?: string;
   readonly worktree: string;
 }
 
@@ -498,8 +500,15 @@ export function buildRow(worktree: string, context: AuditContext): AuditRow {
 
   // The newest supplied session whose cwd is this worktree. The caller produced
   // that list with `pstack_history`; nothing here reads the session store.
-  const usageKnown = context.sessions !== undefined && context.sessions.length > 0;
+  //
+  // `usageKnown` means "this worktree has a matching session", not "a non-empty
+  // array was supplied". The difference decides whether a worktree becomes a
+  // deletion candidate: with the array-non-empty form, a list that simply never
+  // mentioned this checkout marked `merged: YES` as `safe`, i.e. "no usage record"
+  // was read as "proven unused".
   const session = lastSession(worktree, context.sessions);
+  const usageKnown = session !== undefined;
+  const sessionsProvided = context.sessions !== undefined;
 
   const bucket = bucketFor({
     dirty,
@@ -519,8 +528,27 @@ export function buildRow(worktree: string, context: AuditContext): AuditRow {
     lastChat: lastChatColumn(session),
     pinned: PINNED,
     bucket,
+    note: usageNote({ usageKnown, sessionsProvided }),
     worktree,
   };
+}
+
+/**
+ * Why a row's usage signal is what it is.
+ *
+ * Both "nobody supplied a session list" and "a list was supplied but it never
+ * mentioned this worktree" produce the `unknown-usage` bucket, and the caller has
+ * to fix a different thing in each case: build the list, or widen it. Collapsing
+ * them would lose that distinction, which is the only diagnostic the row carries.
+ */
+export function usageNote(input: {
+  readonly usageKnown: boolean;
+  readonly sessionsProvided: boolean;
+}): string | undefined {
+  if (input.usageKnown) return undefined;
+  return input.sessionsProvided
+    ? "no session in the supplied list touched this worktree"
+    : "no session list supplied";
 }
 
 /** Sort rows by SIZE descending, preserving the original order on a tie. */
@@ -559,6 +587,15 @@ export function renderTable(rows: readonly AuditRow[], base: string): string {
         row.worktree,
       ].join("\t"),
     );
+  }
+  // The column set is a documented contract, so the usage diagnostics go below the
+  // table as a comment block rather than becoming an eleventh column. Both cases
+  // land in `unknown-usage`, but they call for different fixes — build the list, or
+  // widen it — and collapsing them would throw that difference away.
+  const notes = rows.filter((row) => row.note !== undefined);
+  if (notes.length > 0) {
+    lines.push("# usage signal unknown for:");
+    for (const row of notes) lines.push(`#   ${row.worktree}: ${row.note as string}`);
   }
   return `${lines.join("\n")}\n`;
 }
