@@ -129,7 +129,7 @@ describe("the playbook promise matches the playbook directory", () => {
 
 describe("the README keeps its required elements", () => {
   it("keeps the logo, version, warning, dependency promise, commands, and quick start", () => {
-    expect(readme).toContain('<img src="icon.svg"');
+    expect(readme).toContain('<img src="static/icon.png"');
     expect(readme).toContain("0.2.1-rc.3");
     expect(readme).toContain("禁止与 Agent Team 同时启用");
     expect(readme).toContain("未启用时插件自动启用，已启用时不会重复启用");

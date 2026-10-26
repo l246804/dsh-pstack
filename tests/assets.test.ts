@@ -5,6 +5,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { applyFilePatches } from "../scripts/apply-patches.ts";
 import {
   DSH_INTRO,
+  ROOT,
   UPSTREAM_ROOT,
   buildAssets,
   classifySkills,
@@ -24,7 +25,14 @@ import {
   detectableCapabilities,
   renderHarnessDoc,
 } from "../scripts/capabilities.ts";
-import { checkAssets, checkLinks, scanMarkdownLinks } from "../scripts/check-assets.ts";
+import {
+  STATIC_FILES,
+  checkAssets,
+  checkLinks,
+  readmeImageProblems,
+  scanMarkdownLinks,
+  staticInventoryProblems,
+} from "../scripts/check-assets.ts";
 import { EXCLUDED_SKILLS, INTRO_SKILLS, patchesForFile } from "../scripts/patches.ts";
 import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../scripts/runtime-manifest.ts";
 import {
@@ -488,6 +496,43 @@ describe("link scanning", () => {
     expect(report.placeholders).toEqual([
       { file: "assets/docs/example.md", line: 3, target: "url" },
     ]);
+  });
+});
+
+describe("the static directory is the one home for hand-maintained resources", () => {
+  it("declares exactly the files on disk", () => {
+    expect(staticInventoryProblems(STATIC_FILES, [...STATIC_FILES])).toEqual([]);
+    expect(STATIC_FILES).toContain("icon.png");
+  });
+
+  it("reports an undeclared file, a missing one, and a nested one", () => {
+    expect(staticInventoryProblems(["icon.png"], ["icon.png", "extra.png"]).join("\n")).toContain(
+      "static: unexpected extra.png",
+    );
+    expect(staticInventoryProblems(["icon.png"], []).join("\n")).toContain("static: missing icon.png");
+    expect(staticInventoryProblems(["icon.png"], ["icon.png", "deep/x.png"]).join("\n")).toContain(
+      "static/deep/x.png: nested entries are not allowed",
+    );
+  });
+
+  it("pins README images to a declared static file", () => {
+    const readme = (src: string): string => `<img src="${src}" alt="logo" width="96">`;
+    expect(readmeImageProblems(["icon.png"], readme("static/icon.png"))).toEqual([]);
+    expect(readmeImageProblems(["icon.png"], readme("https://example.com/x.png"))).toEqual([]);
+    expect(readmeImageProblems(["icon.png"], readme("icon.svg")).join("\n")).toContain(
+      'README.md: image "icon.svg" must live under static/',
+    );
+    expect(readmeImageProblems(["icon.png"], readme("static/other.png")).join("\n")).toContain(
+      'README.md: image "static/other.png" is not a declared static file',
+    );
+  });
+
+  it("keeps the packaged icon inside the host's format and size limits", () => {
+    const bytes = statSync(join(ROOT, "static", "icon.png")).size;
+    expect(bytes).toBeGreaterThan(0);
+    expect(bytes).toBeLessThanOrEqual(256 * 1024);
+    const head = readFileSync(join(ROOT, "static", "icon.png")).subarray(0, 8);
+    expect([...head]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
   });
 });
 

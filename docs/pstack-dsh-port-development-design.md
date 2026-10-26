@@ -156,7 +156,8 @@ assets/                    # 生成并提交，禁止手改
 locale/
   en.json
   zh.json
-icon.svg
+static/                    # 手工维护的静态资源，禁止从上游生成
+  icon.png
 tests/
 docs/
   decisions/
@@ -332,7 +333,7 @@ type Patch = {
 - `show-me-your-work/scripts/log.sh` 保留追加、表头、tab/换行清理和公式注入防护，并验证可执行位。
 - `docs/guide/` 与 `poteto-help` 按最终实现写安装、角色、worktree、goal、会话历史和降级说明。图片随包，链接不指向漏拷文件。
 - 首批必须实现的文件 patch 包括 `blast-radius/SKILL.md:33-48` 中对 `why`、`arena`、`unslop` 的运行时引用。它们都改为按 resource base 的绝对路径读取，不能因上游 Claude 没有 adapter 就原样保留裸调用。
-- 发布前检查实际 packed file list。至少包含 `dist`、`assets`、`cordis.patch.yml`、README、LICENSE、locale 和 icon。本地 linked install 不过滤目录，因此还要检查 registry tarball。
+- 发布前检查实际 packed file list。至少包含 `dist`、`assets`、`cordis.patch.yml`、README、LICENSE、locale、`static` 和 icon。本地 linked install 不过滤目录，因此还要检查 registry tarball。
 
 ## 6. 56 个技能逐项处置
 
@@ -740,7 +741,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 ## 11. 配置、安装和升级
 
 - 包声明 `dsh.bundle.patch`，Host 入口导出 `apply`、必要的 `inject` 和 `Config`。
-- `locale/en.json`、`locale/zh.json` 提供 `meta.title`、`meta.description`。提供合法原创或许可 icon，并在 `package.json` 导出 `./locale/*.json` 和 `./icon`。
+- `locale/en.json`、`locale/zh.json` 提供 `meta.title`、`meta.description`。提供合法原创或许可 icon，放在 `static/` 并在 `package.json` 导出 `./locale/*.json` 和 `./icon`。`static/` 是手工维护静态资源的唯一目录，内容由 `check:assets` 按 `STATIC_FILES` 清点，见 [静态资源目录决策](decisions/2026-10-26-static-resource-directory.md)。
 - 开发时用 `plugin_manager install_bundle` 安装工作区目录，不手改 profile manifest，不在 profile 中运行 pnpm。安装需要批准，当前调查未改变 profile。
 - 是否立即可用看返回的 `application` 和 `nextStep`，不能笼统承诺重启或热更新。替换 Host 包常需按管理器要求重启。
 - `Config.listConfigs` 的 inactive 不等于工具在所有 preset 不可用。验收还要看当前 Agent 的 `Tool.listTools` 和实际调用。

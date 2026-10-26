@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { isAbsolute, join, posix, relative, resolve, sep } from "node:path";
+import { extname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -95,6 +95,7 @@ export function checkAssets(): AssetsReport {
   }
 
   checkLayout(problems);
+  checkStaticDirectory(problems);
   const skills = checkSkills(problems);
   const bundledSkills = checkBundledSkills(problems);
   const agents = checkAgents(problems);
@@ -304,6 +305,63 @@ export function main(): number {
   console.error(`assets check failed (${report.problems.length} problem(s)):`);
   for (const problem of report.problems) console.error(`  ${problem}`);
   return 1;
+}
+
+/**
+ * Audit the hand-maintained static directory against its declared contents.
+ *
+ * A new file under `static/` reaches the published package through `files`, so
+ * an undeclared one ships without a decision covering it. The declared list is
+ * the record of what this package authored; nested directories are refused so
+ * the inventory stays a flat, reviewable list.
+ */
+function checkStaticDirectory(problems: string[]): void {
+  if (!existsSync(STATIC_ROOT)) {
+    problems.push("static/: missing; it holds the packaged static resources");
+    return;
+  }
+  const actual = walkFiles(STATIC_ROOT).map((file) => toRepositoryPath(file).slice(STATIC_PREFIX.length));
+  for (const problem of staticInventoryProblems(STATIC_FILES, actual)) problems.push(problem);
+  for (const problem of readmeImageProblems(STATIC_FILES, readFileSync(join(ROOT, "README.md"), "utf8")))
+    problems.push(problem);
+}
+
+/** The inventory rule on its own, so a test can feed it a directory listing. */
+export function staticInventoryProblems(
+  declared: readonly string[],
+  actual: readonly string[],
+): readonly string[] {
+  const problems: string[] = [];
+  reportSetDifference(problems, "static", [...declared].sort(), actual);
+  for (const name of actual) {
+    if (name.includes("/")) problems.push(`static/${name}: nested entries are not allowed`);
+  }
+  return problems;
+}
+
+/**
+ * README images are the one place a static file is addressed by path, and a
+ * rename there breaks the first thing a reader sees. HTML `<img>` is not a
+ * Markdown link, so the link checker never sees it.
+ */
+export function readmeImageProblems(
+  declared: readonly string[],
+  readme: string,
+): readonly string[] {
+  const problems: string[] = [];
+  for (const match of readme.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/gu)) {
+    const target = match[1] as string;
+    if (/^[A-Za-z][A-Za-z\d+.-]*:/u.test(target)) continue;
+    if (!target.startsWith(STATIC_PREFIX)) {
+      problems.push(`README.md: image "${target}" must live under ${STATIC_PREFIX}`);
+      continue;
+    }
+    const name = target.slice(STATIC_PREFIX.length);
+    if (!declared.includes(name)) {
+      problems.push(`README.md: image "${target}" is not a declared static file`);
+    }
+  }
+  return problems;
 }
 
 function checkLayout(problems: string[]): void {
@@ -646,6 +704,16 @@ export const INSTALL_ADD_COMMAND = `${INSTALL_COMMAND_PREFIX}add dsh-pstack`;
 export const INSTALL_UPGRADE_COMMAND = `${INSTALL_COMMAND_PREFIX}add dsh-pstack@latest`;
 export const INSTALL_REMOVE_COMMAND = `${INSTALL_COMMAND_PREFIX}remove dsh-pstack`;
 export const ROLE_FILE_PATH = "$DSH_HOME/pstack-models.md";
+/**
+ * The one directory for hand-maintained static resources.
+ *
+ * `assets/` is generated from upstream and refuses undeclared files, so artwork
+ * this package authors itself needs somewhere else. New static files are added
+ * here and to `STATIC_FILES` in the same change; anything else under `static/`
+ * is a file shipped without review.
+ */
+export const STATIC_ROOT = join(ROOT, "static");
+export const STATIC_FILES: readonly string[] = ["icon.png"];
 
 /** Install commands belonging to a host this package is not. */
 const FOREIGN_INSTALL_TOKENS: readonly string[] = [
@@ -1191,7 +1259,7 @@ function checkPackageManifest(problems: string[]): void {
   const shipped = Array.isArray(record["files"])
     ? record["files"].filter((value): value is string => typeof value === "string")
     : [];
-  for (const required of ["dist", "assets", "cordis.patch.yml", "locale/*.json", "icon.svg"]) {
+  for (const required of ["dist", "assets", "cordis.patch.yml", "locale/*.json", "static"]) {
     if (!shipped.includes(required)) {
       problems.push(`package.json: "files" must include "${required}"`);
     }
@@ -1201,7 +1269,11 @@ function checkPackageManifest(problems: string[]): void {
   if (typeof icon !== "string") {
     problems.push('package.json: "icon" must name the packaged icon');
   } else {
-    checkIcon(join(ROOT, icon), icon, problems);
+    const iconPath = join(ROOT, icon);
+    if (!isInside(STATIC_ROOT, iconPath)) {
+      problems.push(`package.json: "icon" must live under static/, found "${icon}"`);
+    }
+    checkIcon(iconPath, icon, problems);
   }
 
   const localeDirectory = join(ROOT, "locale");
@@ -1346,18 +1418,55 @@ function parseBundlePatchRows(text: string): readonly BundlePatchRow[] {
   return rows;
 }
 
+/** Extensions a plugin icon may use, as the host reads them. */
+const ICON_EXTENSIONS = new Map([
+  [".svg", "svg"],
+  [".png", "png"],
+  [".jpg", "jpeg"],
+  [".jpeg", "jpeg"],
+  [".webp", "webp"],
+]);
+
 function checkIcon(path: string, relativePath: string, problems: string[]): void {
   if (!existsSync(path)) {
     problems.push(`${relativePath}: missing the packaged icon`);
     return;
   }
   const bytes = statSync(path).size;
+  if (bytes === 0) {
+    problems.push(`${relativePath}: icon is empty`);
+  }
   if (bytes > 256 * 1024) {
     problems.push(`${relativePath}: icon is larger than 256 KiB`);
   }
-  const head = readFileSync(path, "utf8").slice(0, 64).trimStart();
-  if (!head.startsWith("<svg") && !head.startsWith("<?xml")) {
-    problems.push(`${relativePath}: icon must be an SVG document`);
+  const extension = extname(path).toLowerCase();
+  if (!ICON_EXTENSIONS.has(extension)) {
+    problems.push(`${relativePath}: icon must be SVG, PNG, JPEG, or WebP`);
+    return;
+  }
+  // The host sniffs the same four formats and rejects the rest, so the check
+  // reads the leading bytes rather than trusting the file name.
+  const head = readFileSync(path).subarray(0, 12);
+  const kind = ICON_EXTENSIONS.get(extension);
+  if (!sniffIcon(head, kind)) {
+    problems.push(`${relativePath}: contents are not a ${kind?.toUpperCase()} image`);
+  }
+}
+
+function sniffIcon(head: Buffer, kind: string | undefined): boolean {
+  switch (kind) {
+    case "png":
+      return head.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    case "jpeg":
+      return head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff;
+    case "webp":
+      return head.subarray(0, 4).toString("latin1") === "RIFF" && head.subarray(8, 12).toString("latin1") === "WEBP";
+    case "svg": {
+      const text = head.toString("utf8").trimStart();
+      return text.startsWith("<svg") || text.startsWith("<?xml");
+    }
+    default:
+      return false;
   }
 }
 
@@ -1458,6 +1567,7 @@ function messageOf(error: unknown): string {
 }
 
 const ASSETS_PREFIX = "assets/";
+const STATIC_PREFIX = "static/";
 const entryPoint = process.argv[1];
 if (entryPoint !== undefined && resolve(entryPoint) === fileURLToPath(import.meta.url)) {
   process.exitCode = main();

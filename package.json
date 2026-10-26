@@ -25,7 +25,7 @@
   },
   "license": "MIT",
   "type": "module",
-  "icon": "./icon.svg",
+  "icon": "./static/icon.png",
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {
@@ -47,7 +47,7 @@
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg",
+    "./icon": "./static/icon.png",
     "./package.json": "./package.json"
   },
   "files": [
@@ -55,7 +55,7 @@
     "assets",
     "cordis.patch.yml",
     "locale/*.json",
-    "icon.svg",
+    "static",
     "README.md",
     "LICENSE"
   ],

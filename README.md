@@ -1,6 +1,6 @@
 # dsh-pstack
 
-<img src="icon.svg" alt="pstack logo" width="96" height="96">
+<img src="static/icon.png" alt="pstack logo" width="96" height="96">
 
 pstack 的 DeepSeek Harness 移植。它把 Cursor pstack 的技能、playbook、原则和角色化子代理工作流带到 DSH。
 
