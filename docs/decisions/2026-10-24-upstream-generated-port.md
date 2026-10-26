@@ -1,6 +1,6 @@
 # 决定：从原始 pstack 生成 DSH 专用资产并显式降级宿主能力
 
-Status: proposed
+Status: accepted
 Date: 2026-10-24
 
 > 本文提到的 `docs/pstack-dsh-port-development-design.md` 已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除。本记录的决定本身已经落地在 `scripts/build-assets.ts`、`scripts/patches.ts` 与 `assets/`，不再依赖那份文档。
