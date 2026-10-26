@@ -194,8 +194,7 @@ export const UNIT7_PATCHED_FILES: readonly string[] = [
 export const UNIT7_FORBIDDEN_FIELDS: readonly string[] = [
   ".cursor/skills",
   ".cursor/rules",
-  "pstack-models.mdc",
-  "/in-cloud",
+  "pstack-models.mdc",  "/in-cloud",
   "Option+Enter",
   "Agents Window",
   "Cursor's built-in",
@@ -208,6 +207,27 @@ export const UNIT7_FORBIDDEN_FIELDS: readonly string[] = [
   "plugin marketplace",
   "Create a Custom Mode",
   "Start it as a Custom Mode",
+];
+
+/**
+ * Files patched by an earlier unit and never listed in an audit group.
+ *
+ * `agents/poteto-agent.md`, `skills/blast-radius/SKILL.md`, `skills/ketchup/SKILL.md`,
+ * and `skills/setup-pstack/SKILL.md` carried 21 patches between them and were named
+ * in none of `UNIT4`–`UNIT7_PATCHED_FILES`, so the forbidden-token audit never read
+ * them. Measured before the fix: 58 patched files, 55 audited, and these four were
+ * the difference.
+ *
+ * The lesson is the check, not the four names: `checkRewrittenTexts` now asserts
+ * that every file in `FILE_PATCHES` appears in some group, so a later patch cannot
+ * land in a file no audit reads. This list exists to satisfy that invariant for
+ * files whose unit already shipped.
+ */
+export const UNIT8_PATCHED_FILES: readonly string[] = [
+  "skills/setup-pstack/SKILL.md",
+  "skills/ketchup/SKILL.md",
+  "skills/blast-radius/SKILL.md",
+  "agents/poteto-agent.md",
 ];
 
 /**
@@ -4448,3 +4468,16 @@ export const RUNTIME_SOURCE_PATCHES: readonly FilePatch[] = [
 export function runtimePatchesForFile(file: string): readonly FilePatch[] {
   return RUNTIME_SOURCE_PATCHES.filter((patch) => patch.file === file);
 }
+
+/**
+ * Every forbidden token, for the files audited by the closure check.
+ *
+ * `UNIT8_PATCHED_FILES` holds files patched by several units and audited by none
+ * until now, so no per-unit subset is safe: the audit runs against the union.
+ */
+export const ALL_FORBIDDEN_FIELDS: readonly string[] = [
+  ...FORBIDDEN_CURSOR_FIELDS,
+  ...UNIT5_FORBIDDEN_FIELDS,
+  ...UNIT6_FORBIDDEN_FIELDS,
+  ...UNIT7_FORBIDDEN_FIELDS,
+];

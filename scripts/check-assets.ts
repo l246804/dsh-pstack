@@ -20,7 +20,22 @@ import {
 import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
-import { EXCLUDED_SKILLS, FORBIDDEN_CURSOR_FIELDS, INTRO_SKILLS, UNIT4_PATCHED_FILES, UNIT5_FORBIDDEN_FIELDS, UNIT5_PATCHED_FILES, UNIT6_FORBIDDEN_FIELDS, UNIT6_PATCHED_FILES, UNIT7_FORBIDDEN_FIELDS, UNIT7_PATCHED_FILES, patchesForFile } from "./patches.ts";
+import {
+  ALL_FORBIDDEN_FIELDS,
+  EXCLUDED_SKILLS,
+  FILE_PATCHES,
+  FORBIDDEN_CURSOR_FIELDS,
+  INTRO_SKILLS,
+  UNIT4_PATCHED_FILES,
+  UNIT5_FORBIDDEN_FIELDS,
+  UNIT5_PATCHED_FILES,
+  UNIT6_FORBIDDEN_FIELDS,
+  UNIT6_PATCHED_FILES,
+  UNIT7_FORBIDDEN_FIELDS,
+  UNIT7_PATCHED_FILES,
+  UNIT8_PATCHED_FILES,
+  patchesForFile,
+} from "./patches.ts";
 import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
@@ -110,6 +125,7 @@ export function checkAssets(): AssetsReport {
   checkLicense(problems);
   checkPackageManifest(problems);
   checkIntroScope(problems);
+  for (const problem of checkConceptCoverage()) problems.push(problem);
   for (const problem of checkScriptReferences()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
@@ -724,20 +740,48 @@ const FOREIGN_INSTALL_TOKENS: readonly string[] = [
 ];
 
 /**
- * Terms README and the guide may carry only where the sentence excludes them.
+ * Terms README and the shipped bodies may carry only where the sentence excludes them.
  *
  * The rule is about placement, not vocabulary: naming a mechanism in order to say
  * the host lacks it is required, while recommending it is the defect.
+ *
+ * `automation` means *Cursor Automations*, the webhook routine the capability table
+ * lists as excluded. It is deliberately not a bare `/automations?/`: "browser
+ * automation", "review-automation comments", and "traditional automation" are
+ * ordinary technical English about testing and PR comments, and matching them made
+ * three shipped sentences fail for saying something true. The forms here are the
+ * ones that name the product — a capitalised `Automations`, or the plural as its own
+ * noun.
  */
 export const EXCLUSION_TERMS: readonly { readonly label: string; readonly pattern: RegExp }[] = [
   { label: "/loop", pattern: /\/loop\b/ },
   { label: "cloud agent", pattern: /cloud agents?\b/i },
   { label: "Cursor Project", pattern: /Cursor Projects?\b/ },
   { label: "make-bot-ui", pattern: /make-bot-ui/ },
-  { label: "automation", pattern: /automations?\b/i },
+  // A capitalised plural as a noun ("Automations、cloud agents"), or the definite
+  // forms that name the product. Not "browser automation".
+  { label: "Cursor Automations", pattern: /(?<![-\w])(?:\bAutomations\b|Cursor Automations?|scheduled automations?\b|nightly automations?\b)/ },
 ];
 
-/** A sentence counts as excluding a term when it reports the term as absent. */
+/**
+ * Where one clause ends and the next begins.
+ *
+ * Sentence punctuation, a colon, and a contrastive conjunction. The colon matters
+ * for the exact shapes that shipped: "No waiting: use /loop" puts the negation in
+ * the lead-in and the recommendation after it, so treating the colon as ordinary
+ * punctuation made the whole line one "excluding" clause. A comma stays inside the
+ * clause, because "no cloud agents, so run it locally" excludes the term.
+ */
+const CLAUSE_SPLIT = /(?<=[.;!?:])\s+|\s+(?:but|however|instead|yet)\b\s*/i;
+
+/**
+ * A sentence counts as excluding a term when it reports the term as absent.
+ *
+ * Applied per clause by `excludesTerm`; the list itself is the vocabulary of
+ * negation, not the whole rule. `without` is deliberately absent: it negates
+ * whatever follows it, which in "ship without review by adding automations" is the
+ * review, so `excludesTerm` checks it against the term's own window instead.
+ */
 export const EXCLUSION_MARKERS: readonly RegExp[] = [
   /\bno\b/i,
   /\bnone\b/i,
@@ -746,12 +790,86 @@ export const EXCLUSION_MARKERS: readonly RegExp[] = [
   /\bexcluded\b/i,
   /\bunsupported\b/i,
   /\bcannot\b/i,
-  /\bwithout\b/i,
-  /没有/,
-  /不在/,
-  /不支持/,
-  /无等价/,
+  /\bdoes not\b/i,
+  /\bhas no\b/i,
+  /\bis not\b/i,
 ];
+
+/**
+ * Negations that follow the term, because Chinese puts them there.
+ *
+ * "`make-bot-ui` 不在支持范围" is an exclusion, and its marker sits after the term.
+ * Kept separate from `EXCLUSION_MARKERS` so the English side stays a pure
+ * "negation before the term" rule.
+ */
+const CJK_EXCLUSION_MARKERS: readonly RegExp[] = [/没有/, /不在/, /不支持/, /无等价/, /不可用/];
+
+/**
+ * Whether a line names `term` in order to say the host lacks it.
+ *
+ * The previous rule was "this line contains any negation word", which is a
+ * different question and passes sentences that *recommend* the very thing the
+ * capability table calls unavailable:
+ *
+ *     "No waiting: use /loop and let it run until done."
+ *     "Never skip it: run /make-bot-ui to build the page."
+ *     "Ship without review by adding automations that fire nightly."
+ *
+ * Each has a negation word and none of them excludes anything. So the negation has
+ * to be in the same clause as the term, and before it:
+ *
+ * 1. Take the clause the term sits in, cutting at sentence punctuation and at
+ *    contrastive conjunctions ("no cloud agents, but /loop keeps going" does not
+ *    exclude `/loop`).
+ * 2. Require a negation marker before the term inside that clause.
+ *
+ * This is still a lexical check, not a parser, so it is deliberately conservative in
+ * one direction: an unusual paraphrase that does exclude a term may be reported, and
+ * the fix is then to phrase the exclusion plainly. The opposite error — silently
+ * accepting a recommendation — is the one that shipped.
+ */
+export function excludesTerm(line: string, term: RegExp): boolean {
+  const match = term.exec(line);
+  if (match === null) return false;
+  const start = match.index ?? 0;
+  const end = start + match[0].length;
+
+  // The clause the term appears in, up to and including the term itself.
+  const before = line.slice(0, start);
+  const clause = `${before.split(CLAUSE_SPLIT).at(-1) ?? ""}${match[0]}`;
+
+  // A Chinese exclusion can put the negation on either side of the term —
+  // "`make-bot-ui` 不在支持范围" and "专属能力没有等价物，包括 Automations" are both
+  // exclusions. So the CJK markers are checked against the whole line: they are
+  // unambiguous (no technical English uses 不支持 to recommend something), and the
+  // English markers cannot match them.
+  if (CJK_EXCLUSION_MARKERS.some((marker) => marker.test(line))) return true;
+
+  // Negation before the term, in the same clause.
+  if (EXCLUSION_MARKERS.some((marker) => marker.test(clause))) return true;
+
+  // English can also negate *after* the term: "Cursor Project is not supported on
+  // this host", "X has no equivalent". Only a short predicate directly after the
+  // term counts, so "use /loop. There is no reason to wait" does not become an
+  // exclusion of `/loop`.
+  const after = (line.slice(end).split(CLAUSE_SPLIT)[0] ?? "").trimStart();
+  if (/^(?:is|are|was|were|has|have|can|could|will|would|does|do)\s+(?:not|never)\b/i.test(after)) {
+    return true;
+  }
+  if (/^(?:is|are)\s+(?:unsupported|excluded|unavailable|not supported)\b/i.test(after)) return true;
+  if (/^(?:has|have)\s+no\b/i.test(after)) return true;
+
+  // "without" is the one marker a recommendation can carry: "ship without review by
+  // adding automations" negates the *review*, not the automation. It only excludes
+  // when it binds directly to the term — "without /loop", "no support for cloud
+  // agents" — so it is checked against a window ending at the term, and the term has
+  // to be the thing the preposition governs.
+  const window = line.slice(Math.max(0, start - 32), end);
+  const binding = /(?:\bwithout|\bno support for|\bthere (?:is|are) no|\bhas no|\bhave no)\s+(?:[\w`/-]+\s+){0,2}$/.exec(
+    window,
+  );
+  return binding !== null;
+}
 
 /** The playbooks poteto-help promises, and the gate its own body has to carry. */
 export const PLAYBOOK_COUNT = 23;
@@ -856,7 +974,7 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
     for (const line of linesOf(text)) {
       for (const term of EXCLUSION_TERMS) {
         if (!term.pattern.test(line.text)) continue;
-        if (EXCLUSION_MARKERS.some((marker) => marker.test(line.text))) continue;
+        if (excludesTerm(line.text, term.pattern)) continue;
         problems.push(
           `${file}:${line.number}: names ${term.label} outside a sentence that excludes it: ${JSON.stringify(line.text.slice(0, 120))}`,
         );
@@ -902,9 +1020,14 @@ export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
     if (!file.endsWith(".md")) continue;
     inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8") });
   }
+  // Skill bodies run the exclusion rule too. `exclusions: false` used to switch it
+  // off for all 110 of them, so a skill could re-promise Custom Mode, `/loop`, or a
+  // cloud agent and every static gate stayed green — the capability table would say
+  // `degraded` while the shipped body recommended the thing. `excludesTerm` decides
+  // per clause now, so the legitimate "this host has no X" sentences still pass.
   for (const file of walkFiles(join(ASSETS_ROOT, "skills"))) {
     if (!file.endsWith(".md")) continue;
-    inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8"), exclusions: false });
+    inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8") });
   }
   return inputs;
 }
@@ -1131,7 +1254,29 @@ function checkRewrittenTexts(problems: string[]): void {
       forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT7_FORBIDDEN_FIELDS],
       boldSkillRule: false,
     },
+    {
+      paths: UNIT8_PATCHED_FILES,
+      // The union, not one segment per unit: these files were patched by several
+      // units and audited by none, so nothing may be assumed about which tokens they
+      // carried.
+      forbidden: [...ALL_FORBIDDEN_FIELDS],
+      boldSkillRule: false,
+    },
   ];
+
+  // Every patched file must be in some group. This is the invariant that failed
+  // silently: four files carried 21 patches and no audit ever read them, and no
+  // check noticed because the groups were a hand-written list with no closure
+  // condition. A new patch now fails the gate until its file is audited.
+  const audited = new Set(groups.flatMap((group) => group.paths));
+  for (const file of new Set(FILE_PATCHES.map((patch) => patch.file))) {
+    if (!audited.has(file)) {
+      problems.push(
+        `assets/${file}: patched but in no audit group, so nothing checks it for forbidden tokens`,
+      );
+    }
+  }
+
   for (const { paths, forbidden, boldSkillRule } of groups) {
     for (const relativePath of paths) {
       const path = join(ASSETS_ROOT, relativePath);
@@ -1575,6 +1720,137 @@ function checkIntroScope(problems: string[]): void {
     if (!existing.has(skill)) problems.push(`INTRO_SKILLS: unknown skill "${skill}"`);
     if (reason.trim() === "") problems.push(`INTRO_SKILLS: "${skill}" needs a reason`);
   }
+}
+
+/**
+ * One Cursor concept that a port has to dispose of somehow.
+ *
+ * `disposition` is the sentence a reviewer needs when the concept shows up in a file
+ * no unit rewrote: it says what the port decided to do about it, so the fix is
+ * "apply this disposition", not "invent a policy at review time".
+ */
+export interface KnownConcept {
+  readonly label: string;
+  readonly pattern: RegExp;
+  readonly disposition: string;
+}
+
+/**
+ * Cursor concepts the upstream skills actually use, and how this port handles each.
+ *
+ * The list is deliberately wider than `HOST_TERMS` in `build-assets.ts`. That list
+ * answers "does this skill need a DSH pointer" and is a build input; this one answers
+ * "does an unreviewed file use a concept we have a policy for", which has to include
+ * the concepts that are already handled elsewhere so a *new* use is visible.
+ */
+export const KNOWN_CONCEPTS: readonly KnownConcept[] = [
+  {
+    label: "`create-skill`",
+    pattern: /`create-skill`/,
+    disposition: "authoring goes through the ported create-verification-skill playbooks",
+  },
+  {
+    label: "Agents Window",
+    pattern: /Agents Window/,
+    disposition: "excluded: this host has no window surface",
+  },
+  {
+    label: "agent store",
+    pattern: /agent store/i,
+    disposition: "replaced: the operator names a path, or the repository does",
+  },
+  {
+    label: "`/visualize`",
+    pattern: /`\/visualize`/,
+    disposition: "degraded: Mermaid, or an existing artifact",
+  },
+  {
+    label: "control-ui",
+    pattern: /control-ui/,
+    disposition: "excluded: no control surface ships",
+  },
+  {
+    label: "Rules for this workspace",
+    pattern: /Rules for this workspace/,
+    disposition: "replaced: the skill text itself states the rule",
+  },
+  {
+    label: "Custom Mode",
+    pattern: /Custom Mode/,
+    disposition: "excluded: no mode survives, and the capability table says so",
+  },
+  {
+    label: "SendToUser",
+    pattern: /SendToUser/,
+    disposition: "excluded: the turn reply is the only channel",
+  },
+  {
+    label: "update_state",
+    pattern: /update_state/,
+    disposition: "excluded: no such tool exists here",
+  },
+  {
+    label: "cursor-team-kit",
+    pattern: /cursor-team-kit/,
+    disposition: "excluded: the plugin has no counterpart here",
+  },
+  {
+    label: "Task tool",
+    pattern: /`Task`|\bTask (tool|subagent|call)/,
+    disposition: "replaced by `pstack_subagent`",
+  },
+  {
+    label: "`/loop`",
+    pattern: /`\/loop`/,
+    disposition: "replaced by a goal, a reminder, and a background watcher",
+  },
+];
+
+/**
+ * Fail when an upstream file uses a known concept but no unit rewrote it.
+ *
+ * `checkRewrittenTexts` only reads the files a unit patched, so a concept appearing
+ * in an *unpatched* file is copied into the tree verbatim and no gate fails. Measured
+ * before this check: adding `skills/zz-new-flow/SKILL.md` with `create-skill`,
+ * `Agents Window`, `/visualize`, `control-ui`, and "agent store" made `pnpm sync`
+ * exit 0 and the file shipped as-is; the only complaint was the skill count, which a
+ * change that also removed a skill would silence.
+ *
+ * Neither side is a hand-written list: the concepts come from `KNOWN_CONCEPTS` and
+ * the files come from the upstream tree, so this closes over new upstream content.
+ * A file is covered when some unit patched it (and therefore audits it) or when the
+ * skill is excluded outright.
+ */
+export function checkConceptCoverage(): readonly string[] {
+  const problems: string[] = [];
+  const audited = new Set(
+    [
+      ...UNIT4_PATCHED_FILES,
+      ...UNIT5_PATCHED_FILES,
+      ...UNIT6_PATCHED_FILES,
+      ...UNIT7_PATCHED_FILES,
+      ...UNIT8_PATCHED_FILES,
+    ],
+  );
+  const excluded = new Set(EXCLUDED_SKILLS.map((exclusion) => exclusion.skill));
+
+  const root = join(UPSTREAM_ROOT, "pstack");
+  for (const absolute of walkFiles(join(root, "skills"))) {
+    if (!absolute.endsWith(".md")) continue;
+    const relativePath = relative(root, absolute).split(sep).join("/");
+    const skill = relativePath.split("/")[1] ?? "";
+    if (excluded.has(skill)) continue;
+    if (audited.has(relativePath)) continue;
+    const text = readFileSync(absolute, "utf8");
+    for (const concept of KNOWN_CONCEPTS) {
+      if (!concept.pattern.test(text)) continue;
+      problems.push(
+        `upstream/${relativePath}: uses ${concept.label} but no unit rewrote it, so nothing ` +
+          `applies the disposition (${concept.disposition}); patch it in scripts/patches.ts`,
+      );
+    }
+  }
+  return problems;
 }
 
 function reportSetDifference(

@@ -13,6 +13,8 @@ import {
   PLAYBOOK_GATES,
   ROLE_FILE_PATH,
   checkAssetsHostCopy,
+  checkConceptCoverage,
+  excludesTerm,
   checkPlaybookClaims,
   collectReleaseCopy,
   otherHostMentionCount,
@@ -145,5 +147,57 @@ describe("the README keeps its required elements", () => {
     };
     expect(manifest.engines?.dsh).toBe("0.2.1-rc.3");
     expect(readme).toContain(manifest.engines?.dsh as string);
+  });
+});
+
+describe("a recommendation cannot hide behind a negation word", () => {
+  it("reports a term recommended after a negation lead-in", () => {
+    // Each of these carries a negation word and recommends the thing the capability
+    // table calls unavailable. The previous rule was "the line contains a negation
+    // word", so all four passed.
+    for (const text of [
+      "No waiting: use /loop and let it run until done.",
+      "Not slow: run it as cloud agents in parallel.",
+      "Never skip it: run /make-bot-ui to build the page.",
+    ]) {
+      expect(scan(text).length, text).toBeGreaterThan(0);
+    }
+  });
+
+  it("still accepts the shapes that really do exclude", () => {
+    for (const text of [
+      "There are no cloud agents here, and no /loop command to type.",
+      "`make-bot-ui` 不在支持范围，没有等价闭环。",
+      "Cursor Project is not supported on this host.",
+      "This host has no /loop command.",
+    ]) {
+      expect(scan(text), text).toEqual([]);
+    }
+  });
+
+  it("scopes the negation to the clause the term is in", () => {
+    // A negation in the next clause, or after a contrastive conjunction, does not
+    // reach the term.
+    const loop = EXCLUSION_TERMS.find((entry) => entry.label === "/loop")?.pattern as RegExp;
+    expect(excludesTerm("There is no dashboard. Use /loop instead.", loop)).toBe(false);
+    expect(excludesTerm("There are no cloud agents, but /loop keeps going.", loop)).toBe(false);
+    expect(excludesTerm("There is no /loop command here.", loop)).toBe(true);
+  });
+});
+
+describe("concept coverage closes over new upstream content", () => {
+  it("reports nothing for the tree as it stands", () => {
+    // A concept from `KNOWN_CONCEPTS` appearing in a file no unit rewrote means the
+    // text was copied verbatim with no disposition applied.
+    expect(checkConceptCoverage()).toEqual([]);
+  });
+
+  it("names every patched file in some audit group", () => {
+    // The invariant F11 was missing: 4 files carried 21 patches and no audit read
+    // them. It is asserted through the real gate rather than by re-deriving the sets.
+    const problems = scanReleaseCopy(collectReleaseCopy());
+    expect(problems.filter((problem) => problem.includes("patched but in no audit group"))).toEqual(
+      [],
+    );
   });
 });
