@@ -71,9 +71,11 @@
     "check:upstream": "node scripts/check-upstream-tree.mjs",
     "check:assets": "node scripts/check-assets.ts",
     "check:scripts": "node scripts/check-scripts.ts",
+    "build:runtime": "node scripts/build-runtime.ts",
+    "check:runtime": "node scripts/build-runtime.ts --check",
     "typecheck": "tsc --noEmit",
     "test": "vp test",
-    "check": "pnpm run check:upstream && pnpm run sync:check && pnpm run check:assets && pnpm run typecheck && pnpm run test && pnpm run build",
+    "check": "pnpm run check:upstream && pnpm run build:runtime && pnpm run check:runtime && pnpm run sync:check && pnpm run check:assets && pnpm run check:scripts && pnpm run typecheck && pnpm run test && pnpm run build",
     "build": "vp pack",
     "dev": "vp pack --watch"
   },

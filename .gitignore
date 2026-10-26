@@ -6,7 +6,16 @@ dist
 .assets-staging
 .assets-backup
 # Build output of scripts/build-runtime.ts. `assets/` is the committed copy.
-runtime
+#
+# The leading slash is load-bearing: a bare `runtime` is an any-depth path-segment
+# rule, so it also ignores `scripts/runtime/` — the hand-written sources
+# (`log.ts`, `worktree-audit.ts`, and `tests/{expect,support,fixtures}.ts`) that
+# `scripts/patches.ts` imports. A fresh clone then cannot run
+# `node scripts/build-runtime.ts` at all (`ERR_MODULE_NOT_FOUND
+# scripts/runtime/tests/fixtures.ts`). Anchoring the rule to the repository root
+# keeps the build output ignored while the sources stay tracked. Do not "tidy"
+# this back to a bare `runtime`.
+/runtime
 # Upstream sources staged with RUNTIME_SOURCE_PATCHES applied, then bundled.
 .runtime-sources
 # Scratch space for local verification; never part of the package.
