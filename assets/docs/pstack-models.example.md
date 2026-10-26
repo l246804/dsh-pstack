@@ -16,8 +16,8 @@
 #   `gateway/vendor-a/model-x` is provider `gateway` with model
 #   `vendor-a/model-x`. No segment may be empty.
 # - `<provider>/<model> [effort]` sets the reasoning effort that role *starts* at.
-#   It is a baseline, not a verdict: a caller raises or lowers it per delegation
-#   with `reasoningEffort`, and a running child can change its own with
+#   It is a baseline and a floor, not a verdict: a caller raises or lowers it per
+#   delegation with `reasoningEffort`, and a running child can change its own with
 #   `set_reasoning_effort`. The effort must appear in that model's supported effort
 #   list. This package assumes no ladder of its own, so it never invents a token
 #   and reports the real ones whenever it refuses one.

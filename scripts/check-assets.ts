@@ -22,6 +22,7 @@ import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapab
 import { applyFilePatches } from "./apply-patches.ts";
 import {
   ALL_FORBIDDEN_FIELDS,
+  BASELINE_NOT_CEILING,
   DELEGATION_EFFORT_SENTENCE,
   UPSTREAM_EFFORT_SENTENCE,
   EXCLUDED_SKILLS,
@@ -1495,11 +1496,22 @@ function checkEffortCapabilityCopy(): readonly string[] {
   }
 
   // 2. `poteto-mode` is where a model learns the rule. It must state the capability,
-  //    not forbid it.
+  //    not forbid it, and it must say what a role line's effort *is*.
+  //
+  //    The baseline sentence is checked by its content and not by its heading, because
+  //    the failure this guards against is not a deleted paragraph: e4a14da kept a
+  //    paragraph in this exact position and reversed its meaning. A reader who is told
+  //    the effort is a choice, in the same breath as being told the role line fixes it,
+  //    will believe the second sentence.
   const poteto = join(ASSETS_ROOT, "skills/poteto-mode/SKILL.md");
   if (existsSync(poteto)) {
     const text = readFileSync(poteto, "utf8");
-    for (const required of ["**The effort is yours to choose.**", "`reasoningEffort`", "`set_reasoning_effort`"]) {
+    for (const required of [
+      "**The effort is yours to choose.**",
+      "`reasoningEffort`",
+      "`set_reasoning_effort`",
+      BASELINE_NOT_CEILING,
+    ]) {
       if (!text.includes(required)) {
         problems.push(
           `assets/skills/poteto-mode/SKILL.md: must document the per-delegation effort control (${required} is missing)`,
@@ -1508,12 +1520,36 @@ function checkEffortCapabilityCopy(): readonly string[] {
     }
   }
 
-  // 3. No shipped skill may tell a model that effort is off limits. This is the exact
-  //    wording the regression introduced, so it is the wording that has to stay out.
+  // 3. The generated role-file example has to carry the same claim. `checkRoleAssets`
+  //    already pins the file byte-for-byte against `renderPstackModelsExample`, so the
+  //    assertion is made against the renderer's output: that is the copy a future edit
+  //    would change, and pinning it here keeps the two documents on one sentence.
+  //
+  //    The comparison collapses whitespace, because the example is wrapped prose inside
+  //    `#` comments and the sentence legitimately straddles a line break. Asserting the
+  //    raw substring would make a rewrap look like a semantic regression.
+  const example = renderPstackModelsExample().replace(/\s+/g, " ");
+  if (!example.includes(BASELINE_NOT_CEILING)) {
+    problems.push(
+      `scripts/role-manifest.ts: renderPstackModelsExample no longer states ${JSON.stringify(BASELINE_NOT_CEILING)}, so the role-file example describes a fixed effort instead of a starting one`,
+    );
+  }
+
+  // 3. No shipped skill may tell a model that effort is fixed. Two families of wording:
+  //    the literal phrases the regression introduced, and the general "the role line
+  //    decides, so leave it alone" reading that the same regression produced.
+  //
+  //    The second family is the dangerous one. `e4a14da` never wrote "effort is
+  //    forbidden"; it wrote that the effort "belongs to that role file" and that a wrong
+  //    value should be reported to the operator. Every one of those sentences is
+  //    individually defensible about routing and only wrong about effort, which is why
+  //    nothing caught them.
   const forbidden = [
     "Never invent a model id or an effort",
     "let the operator change that line",
     "an effort can only come from the role file",
+    "the effort inside it belongs to that role file",
+    "change nothing about the route the tool reports",
   ];
   for (const relativePath of carriers) {
     const path = join(ASSETS_ROOT, relativePath);

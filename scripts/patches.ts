@@ -312,6 +312,27 @@ export const DELEGATION_EFFORT_SENTENCE =
   " Start from the level the role line names, raise it for hard work and lower it for routine work by passing `reasoningEffort`; a child that cannot call `set_reasoning_effort` keeps the level you gave it.";
 
 /**
+ * The claim that a role line is a starting point rather than a ceiling.
+ *
+ * This is the exact assertion `e4a14da` inverted. Its replacement text said the effort
+ * "can only come from the role file", which reads as a fixed value, and the skills then
+ * told the model to leave that line alone. Every sentence that describes the parameter
+ * as a choice depends on this one being true, so it is stated once and reused by the
+ * two documents that have to say it in their own words: the `poteto-mode` skill and the
+ * generated role-file example.
+ *
+ * `check-assets` asserts both still carry it. Losing it while keeping
+ * `reasoningEffort` documented in the same breath would describe a knob the reader is
+ * told not to turn, which is worse than not mentioning the knob at all.
+ *
+ * The value is the phrase as it appears in prose, so both call sites can embed it
+ * verbatim. An earlier value here began with "as a baseline…" while the sentence read
+ * "It is a baseline…", and the mismatch is exactly the kind of two-copies drift this
+ * constant exists to prevent.
+ */
+export const BASELINE_NOT_CEILING = "a baseline and a floor, not a verdict";
+
+/**
  * Skills that get the shared DSH pointer. The set is data, not a default for
  * every skill. Most entries carry Cursor/Claude host vocabulary; the two
  * overrides need DSH-specific routing and frontmatter handling.
