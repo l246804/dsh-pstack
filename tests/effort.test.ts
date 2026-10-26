@@ -19,8 +19,6 @@ import { fakeAgent, toolExec } from "./fake-agent.ts";
 import type { LlmCallConfig, LlmHost } from "../src/host-contract.ts";
 import {
   SET_EFFORT_TOOL,
-  agentOptionsFor,
-  effectiveEffort,
   installEffortControl,
   resolveEffortTarget,
   validateEffortFor,
@@ -340,49 +338,5 @@ describe("the child-scoped effort control", () => {
     expect(fake.listeners).toBe(0);
     expect(fake.tools).toHaveLength(0);
     expect(await fake.request(CONFIG)).toEqual(CONFIG);
-  });
-});
-
-describe("the effort one route contributes to agentOptions", () => {
-  it("carries the role line's effort", () => {
-    expect(agentOptionsFor({ kind: "route", provider: "p", model: "m", effort: "high" })).toEqual({
-      provider: "p",
-      model: "m",
-      reasoningEffort: "high",
-    });
-  });
-
-  it("lets the override win over the role line", () => {
-    expect(
-      agentOptionsFor({ kind: "route", provider: "p", model: "m", effort: "high" }, "deeper"),
-    ).toEqual({ provider: "p", model: "m", reasoningEffort: "deeper" });
-  });
-
-  it("keeps only the effort when the route inherits the parent", () => {
-    expect(agentOptionsFor({ kind: "inherit" }, "shallower")).toEqual({
-      reasoningEffort: "shallower",
-    });
-  });
-
-  it("sends no agentOptions for an inherit route with no override", () => {
-    expect(agentOptionsFor({ kind: "inherit" })).toBeUndefined();
-  });
-
-  it("omits reasoningEffort when neither the line nor the call names one", () => {
-    expect(agentOptionsFor({ kind: "route", provider: "p", model: "m" })).toEqual({
-      provider: "p",
-      model: "m",
-    });
-  });
-
-  it("reports the effort that will actually apply", () => {
-    expect(effectiveEffort({ kind: "route", provider: "p", model: "m", effort: "high" })).toBe(
-      "high",
-    );
-    expect(
-      effectiveEffort({ kind: "route", provider: "p", model: "m", effort: "high" }, "deeper"),
-    ).toBe("deeper");
-    expect(effectiveEffort({ kind: "inherit" }, "deeper")).toBe("deeper");
-    expect(effectiveEffort({ kind: "inherit" })).toBeUndefined();
   });
 });

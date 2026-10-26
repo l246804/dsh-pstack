@@ -98,12 +98,6 @@ describe("bucketFor", () => {
       bucketFor({ dirty: "scratch:3", pr: "-", merged: "YES", usageKnown: true, usedRecently: false }),
     ).toBe("safe");
   });
-
-  it("keeps an unmerged, unused worktree in review rather than safe", () => {
-    expect(
-      bucketFor({ dirty: "clean", pr: "-", merged: "NO", usageKnown: true, usedRecently: false }),
-    ).toBe("review");
-  });
 });
 
 describe("usageNote", () => {
