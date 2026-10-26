@@ -26,7 +26,7 @@ Date: 2026-10-26
 - **派发时覆盖**：`pstack_subagent` 接受 `reasoningEffort`，作用于本次调用的每个 panel entry。启动前对每个 entry 逐解析它真正会请求的 route（显式 route > `session.requestHeader()` > `Agent.options`）并校验；任一 entry 不符则整次调用失败，一个 child 都不启动。继承 parent 的 entry 用父会话实际 route 校验。
 - **child 自调**：启动后用 `ctx.agents.get(childId)` 取句柄，在该 child 自身作用域注册 `agent/request` waterfall 与 `set_reasoning_effort`。改动作用于下一次请求，已在飞行中的请求不变。注册随 child 销毁解除，兄弟 child 互不可见。
 - **取不到 child 句柄不算启动失败**：child 保持下发档位，结果诊断里说明它无法自调。`agents` 因此不进 `inject`，按 `ctx.get("agents")` 每次读取，避免重演 `sessionQuery` 那次"硬依赖让整行 inert"。
-- **角色行语义改写**：从 "pins an adapter-owned reasoning effort" 改成 "sets the reasoning effort that role *starts* at"，并写明它**既不是上限也不是下限**。
+- **角色行语义改写**：从 "pins an adapter-owned reasoning effort" 改成上游的 `starting level`，即"该角色起步的档位"。
 - **正文恢复**：22 处上游句子以一条共享常量 `DELEGATION_EFFORT_SENTENCE` 补回；`how`/`why`/`poteto-mode` 三处禁止性措辞改写为真实能力。`fast` 不恢复，因为 speed 不是本包的旋钮。
 - **`inject` 不变**（`["tools", "subagents", "llm"]`），`agents` 走可选服务读取。
 
@@ -50,14 +50,17 @@ Date: 2026-10-26
 
 `check-assets` 新增了一条**正向**检查（`checkEffortCapabilityCopy`）：此前所有检查都是"某个 token 不得出现"，这种形状对"能力被悄悄删掉"完全免疫——删除只会让违规文本消失。新检查从上游 anchor 反推期望集合（24 个文件，不是写死的数字），要求每个丢了该句的文件都携带共享常量、`poteto-mode` 必须写明 `reasoningEffort`／`set_reasoning_effort`／基线断言、生成的角色文件示例必须产出同一句基线断言、且回退措辞不得再出现。
 
-### 更正：上限说了，下限说错了
+### 更正：措辞绕了两圈，回到上游的 `starting level`
 
-初版把角色行的 effort 描述成"基线和**下限**"（`a baseline and a floor`）。这是本仓库发明的概念，两个层面都错：
+这段文字的三次修订值得记下来，因为每一次的动机都成立、结果都不是最优：
 
-- **与实现矛盾。** `agentOptionsFor` 用覆盖值直接替换角色行，`set_reasoning_effort` 也不做比较，所以传一个比角色行更低的档位完全有效，且不会警告。"下限"会让读者以为低值会被拒绝或被抬到角色行。
-- **与上游矛盾。** 上游写的是 "Lower it one step for judgment and two or more steps for routine work"，明确允许下调。
+1. **初版** `a baseline and a floor`。`floor` 是本仓库发明的概念：`agentOptionsFor` 用覆盖值直接替换角色行，`set_reasoning_effort` 也不做比较，所以更低的档位完全有效。"下限"会让读者以为低值会被拒绝或抬回，恰好否掉了这个能力最主要的用途（routine work 下调）。
+2. **第二版** `neither a ceiling nor a floor`。修正了错误，但变成了防御式表述：用两个上游从未出现的词去否认两件不会发生的事。第二次提交还为了"消除不一致"把这个错误措辞对齐到了示例文件——把一致性看得比正确性重。
+3. **现在** `starting level`。这正是上游 `poteto-mode` 的原话："The `/setup-pstack` budget sets each role's **starting level**, xhigh by default." 上游把它与 "Lower it one step for judgment and two or more steps for routine work" 并列，所以"可以下调"本来就已经说过了，不需要再用否定句补一次。
 
-现在统一为"既不是上限也不是下限"（`neither a ceiling nor a floor`）。这次错误还暴露了守卫的局限：常量是"唯一拼法"，所以守卫能防两份拷贝漂移，却不能判断这个拼法本身对不对——它忠实地保护了一个错句子。守卫保护一致性，不保护正确性；正确性靠阅读和这条更正。
+**教训不是"措辞要贴上游"，而是这个能力本来就该照上游写。** 上游用 `starting level`，是因为它只陈述起点；`floor` 和 `ceiling` 都是在替读者推断边界，而两次推断都出了偏差。当初误加 `floor` 的直接原因，是漏读了紧随其后的 `Lower it one step` 那半句。
+
+守卫的局限也由此确认：`STARTING_LEVEL` 是"唯一拼法"，能防两份文档漂移，但不能判断这个拼法对不对——第二版它忠实地保护了一个防御式的句子达一个提交。守卫保护一致性，不保护正确性；正确性靠阅读、靠对照上游、靠这条记录。
 
 真要实现"某些角色不得低于某档位"，那是新能力（行级配置或 policy seam），不属于 `reasoningEffort` 的语义，见设计文档 §9.1。
 

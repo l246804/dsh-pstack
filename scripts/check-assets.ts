@@ -22,7 +22,7 @@ import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapab
 import { applyFilePatches } from "./apply-patches.ts";
 import {
   ALL_FORBIDDEN_FIELDS,
-  BASELINE_NOT_CEILING,
+  STARTING_LEVEL,
   DELEGATION_EFFORT_SENTENCE,
   UPSTREAM_EFFORT_SENTENCE,
   EXCLUDED_SKILLS,
@@ -1510,7 +1510,11 @@ function checkEffortCapabilityCopy(): readonly string[] {
       "**The effort is yours to choose.**",
       "`reasoningEffort`",
       "`set_reasoning_effort`",
-      BASELINE_NOT_CEILING,
+      STARTING_LEVEL,
+      // `STARTING_LEVEL` alone is not enough: a paragraph can keep the phrase and still
+      // say the role line is where the level stays, which is the inversion this check
+      // exists for. This fragment is the half that states the level does not hold.
+      "it names where the role starts and not where it stays",
     ]) {
       if (!text.includes(required)) {
         problems.push(
@@ -1529,9 +1533,9 @@ function checkEffortCapabilityCopy(): readonly string[] {
   //    `#` comments and the sentence legitimately straddles a line break. Asserting the
   //    raw substring would make a rewrap look like a semantic regression.
   const example = renderPstackModelsExample().replace(/\s+/g, " ");
-  if (!example.includes(BASELINE_NOT_CEILING)) {
+  if (!example.includes(STARTING_LEVEL)) {
     problems.push(
-      `scripts/role-manifest.ts: renderPstackModelsExample no longer states ${JSON.stringify(BASELINE_NOT_CEILING)}, so the role-file example describes a fixed effort instead of a starting one`,
+      `scripts/role-manifest.ts: renderPstackModelsExample no longer states ${JSON.stringify(STARTING_LEVEL)}, so the role-file example describes a fixed effort instead of a starting one`,
     );
   }
 

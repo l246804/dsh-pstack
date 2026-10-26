@@ -15,13 +15,11 @@
 #   provider is the text before it and the model is everything after it, so
 #   `gateway/vendor-a/model-x` is provider `gateway` with model
 #   `vendor-a/model-x`. No segment may be empty.
-# - `<provider>/<model> [effort]` sets the reasoning effort that role *starts* at.
-#   That value is neither a ceiling nor a floor. A caller raises or lowers it per
-#   delegation with `reasoningEffort`, and a running child can change its own with
-#   `set_reasoning_effort`; nothing clamps either direction to this line. The effort
-#   must appear in that model's supported effort list. This package assumes no
-#   ladder of its own, so it never invents a token and reports the real ones
-#   whenever it refuses one.
+# - `<provider>/<model> [effort]` sets the starting level for that role. A caller
+#   raises or lowers it per delegation with `reasoningEffort`, and a running child
+#   can change its own with `set_reasoning_effort`. The effort must appear in that
+#   model's supported effort list. This package assumes no ladder of its own, so it
+#   never invents a token and reports the real ones whenever it refuses one.
 #
 # `arena runners`, `architect runners`, and `interrogate reviewers` are panels: the
 # value is a comma-separated list and one child starts per entry. Two entries on the

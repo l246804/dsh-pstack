@@ -73,7 +73,7 @@ dsh plugin --profile <profile> add dsh-pstack
 
 ### 推理档位
 
-角色行里的档位是那个角色**起步**用的档位，是基线，既不是上限也不是下限。实际档位随任务难度双向浮动：
+角色行里的档位是那个角色**起步**用的档位。实际档位随任务难度双向浮动：
 
 - 调用 `pstack_subagent` 时传 `reasoningEffort`，覆盖本次派发中每个 panel 项的档位。难任务调高，机械活调低。
 - 子代理自己可以调 `set_reasoning_effort`，从下一步生效，已在飞行中的请求不受影响。

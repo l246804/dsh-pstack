@@ -681,7 +681,7 @@ reasoningEffort?: string   # 覆盖角色行的起始档位，本次派发有效
 
 默认 `agent` 为 `poteto-agent`。`role` 省略时继承 parent route。`roleIndex` 必须和 `role` 同时提供，且是非负安全整数。`agentPreset` 只影响 preset，不是 pstack 的 `agent` 类型。
 
-`reasoningEffort` 是**自由 token，不是枚举**。档位名属于 adapter，本包不维护通用阶梯，所以 schema 里不写 `enum`；合法值由目标模型 `llm.resolveModelInfo` 的 `reasoning.efforts` 决定，被拒时诊断列出该模型真实档位。这一条是对 §4.1 的直接落实：`effort 由真实 adapter 元数据决定` 是限制取值范围，不是禁止覆盖。角色行的 effort 只是起始值，**既不是上限也不是下限**：`agentOptionsFor` 用覆盖值直接替换角色行，`set_reasoning_effort` 也不做任何比较或夹取，所以调低与调高同等有效，且不会给出警告。上游同样没有下限概念（"Lower it one step for judgment and two or more steps for routine work"）。
+`reasoningEffort` 是**自由 token，不是枚举**。档位名属于 adapter，本包不维护通用阶梯，所以 schema 里不写 `enum`；合法值由目标模型 `llm.resolveModelInfo` 的 `reasoning.efforts` 决定，被拒时诊断列出该模型真实档位。这一条是对 §4.1 的直接落实：`effort 由真实 adapter 元数据决定` 是限制取值范围，不是禁止覆盖。角色行的 effort 是那个角色的**起始档位**（上游用语 `starting level`）：`agentOptionsFor` 用覆盖值直接替换角色行，`set_reasoning_effort` 也不做任何比较或夹取，所以调低与调高同等有效，且不会给出警告。上游把它与 "Lower it one step for judgment and two or more steps for routine work" 并列，因此下调本来就是预期行为。
 
 需要"某些角色不得低于某档位"是另一件事，本包没有实现：那要么是新的行级配置，要么是 policy seam，不属于 `reasoningEffort` 的语义。
 
