@@ -329,8 +329,16 @@ export const DELEGATION_EFFORT_SENTENCE =
  * verbatim. An earlier value here began with "as a baseline…" while the sentence read
  * "It is a baseline…", and the mismatch is exactly the kind of two-copies drift this
  * constant exists to prevent.
+ *
+ * It says "neither a ceiling nor a floor" and deliberately not "a floor". An earlier
+ * revision read "a baseline and a floor", which invented a guarantee the code does not
+ * provide: `agentOptionsFor` replaces the role value outright, so a caller may go below
+ * it, and `set_reasoning_effort` has no comparison either. Upstream has no floor
+ * concept — it says "Lower it one step for judgment and two or more steps for routine
+ * work" — so the word was this repository's invention, and it would have made a reader
+ * believe a low override would be refused or raised.
  */
-export const BASELINE_NOT_CEILING = "a baseline and a floor, not a verdict";
+export const BASELINE_NOT_CEILING = "neither a ceiling nor a floor";
 
 /**
  * Skills that get the shared DSH pointer. The set is data, not a default for
@@ -3335,11 +3343,11 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "**Match the model to the job.** Before each spawn, start from the role's line or default and pick the reasoning level and speed the job needs. The `/setup-pstack` budget sets each role's starting level, xhigh by default. Raise it one step, up to max, for the hardest or subtlest work. Lower it one step for judgment and two or more steps for routine work. Use fast mode only when the job is urgent, meaning CI or trunk is red or a person is blocked on the result right now. Otherwise use standard speed, the same slug without `-fast`. Verification is the exception and stays on the `swarm workers` model and speed (`grok-4.7-xhigh-fast` by default). Change only the effort level and whether the slug is fast, and keep the family the role names, so a diverse panel stays diverse. If the family has no slug at that level and speed, use its nearest slug. A role on `auto` or `inherit-parent` stays on the parent model. If the Task tool rejects the adjusted slug, do not try another adjusted slug. Use the role's line or default and say so.",
     expectedMatches: 1,
     replacement:
-      "**Match the model and the effort to the job.** The route is not yours to invent: it comes from the role's line in `$DSH_HOME/pstack-models.md`, and this package cannot see which providers and models a deployment serves, so an invented slug fails the call before any child starts. A role on `auto` or `inherit-parent` stays on the parent route. Report the route each child resolved, because a panel whose entries landed on one route is not a diverse panel.\n\n**The effort is yours to choose.** The role line names the level that role *starts* at, as a baseline and a floor, not a verdict. Pass `reasoningEffort` to raise it for the hardest or subtlest work and to lower it for judgment or routine work, per delegation. The value must be one the target model advertises, because this package assumes no universal ladder: when a token does not fit, the tool refuses the call and lists that model's real efforts, so read the refusal instead of guessing a neighbour. Verification is the exception and stays on the `swarm workers` role at its configured level.\n\n**A child can change its own level.** Every child gets `set_reasoning_effort`, which applies from its next step. You do not have to predict the right level up front, and a child that finds the work harder than its brief suggested is expected to say so and raise it. A child with no live local handle keeps the level it was started with and reports that.",
+      "**Match the model and the effort to the job.** The route is not yours to invent: it comes from the role's line in `$DSH_HOME/pstack-models.md`, and this package cannot see which providers and models a deployment serves, so an invented slug fails the call before any child starts. A role on `auto` or `inherit-parent` stays on the parent route. Report the route each child resolved, because a panel whose entries landed on one route is not a diverse panel.\n\n**The effort is yours to choose.** The role line names the level that role *starts* at: it is neither a ceiling nor a floor, only a starting point. Pass `reasoningEffort` to raise it for the hardest or subtlest work and to lower it for judgment or routine work, per delegation. Going lower is allowed and gets no warning: nothing clamps your value to the role line, and there is no ladder here to say what \"one step lower\" means, so pick a token the model advertises rather than a neighbour of the role's. The value must be one the target model advertises, because this package assumes no universal ladder: when a token does not fit, the tool refuses the call and lists that model's real efforts, so read the refusal instead of guessing. Verification is the exception and stays on the `swarm workers` role at its configured level.\n\n**A child can change its own level.** Every child gets `set_reasoning_effort`, which applies from its next step. You do not have to predict the right level up front, and a child that finds the work harder than its brief suggested is expected to say so and raise it; one that finds the rest mechanical should lower it. A child with no live local handle keeps the level it was started with and reports that.",
     outputIncludes: [
       "**Match the model and the effort to the job.**",
       "**The effort is yours to choose.**",
-      "as a baseline and a floor, not a verdict",
+      "neither a ceiling nor a floor",
       "**A child can change its own level.**",
       "the tool refuses the call and lists that model's real efforts",
     ],

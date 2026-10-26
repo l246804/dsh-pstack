@@ -5,7 +5,7 @@ Date: 2026-10-26
 
 ## 背景
 
-`pstack_subagent` 现在只能静态使用角色行里写死的 `[effort]`：调用方无法为单次派发换档，child 也无法在运行中改变自己的档位。而 pstack 原设计里，角色行的 effort 是**起始基线和下限**，实际档位按任务难度上下浮动。
+`pstack_subagent` 现在只能静态使用角色行里写死的 `[effort]`：调用方无法为单次派发换档，child 也无法在运行中改变自己的档位。而 pstack 原设计里，角色行的 effort 只是**起始值**，实际档位按任务难度双向浮动（上游："Raise it one step… Lower it one step for judgment and two or more steps for routine work"）。
 
 这项能力曾经实现过，在 `89825c6`（2026-10-23）里：`pstack_subagent` 接受 `reasoningEffort` 参数并按 panel entry 逐个校验，child 作用域注册 `set_reasoning_effort` 工具，`agent/request` waterfall 改写下一次请求。`docs/porting/decisions.md` 当时也有 "## Reasoning effort" 一节。
 
@@ -26,7 +26,7 @@ Date: 2026-10-26
 - **派发时覆盖**：`pstack_subagent` 接受 `reasoningEffort`，作用于本次调用的每个 panel entry。启动前对每个 entry 逐解析它真正会请求的 route（显式 route > `session.requestHeader()` > `Agent.options`）并校验；任一 entry 不符则整次调用失败，一个 child 都不启动。继承 parent 的 entry 用父会话实际 route 校验。
 - **child 自调**：启动后用 `ctx.agents.get(childId)` 取句柄，在该 child 自身作用域注册 `agent/request` waterfall 与 `set_reasoning_effort`。改动作用于下一次请求，已在飞行中的请求不变。注册随 child 销毁解除，兄弟 child 互不可见。
 - **取不到 child 句柄不算启动失败**：child 保持下发档位，结果诊断里说明它无法自调。`agents` 因此不进 `inject`，按 `ctx.get("agents")` 每次读取，避免重演 `sessionQuery` 那次"硬依赖让整行 inert"。
-- **角色行语义改写**：从 "pins an adapter-owned reasoning effort" 改成 "sets the reasoning effort that role *starts* at"，并写明它是基线不是上限。
+- **角色行语义改写**：从 "pins an adapter-owned reasoning effort" 改成 "sets the reasoning effort that role *starts* at"，并写明它**既不是上限也不是下限**。
 - **正文恢复**：22 处上游句子以一条共享常量 `DELEGATION_EFFORT_SENTENCE` 补回；`how`/`why`/`poteto-mode` 三处禁止性措辞改写为真实能力。`fast` 不恢复，因为 speed 不是本包的旋钮。
 - **`inject` 不变**（`["tools", "subagents", "llm"]`），`agents` 走可选服务读取。
 
@@ -48,7 +48,18 @@ Date: 2026-10-26
 
 多了一个可观察面：`agent/request` waterfall 每步都会被调用一次。空闲时 `next()` 只是回放已冻结的配置，开销可忽略，但它确实让 child 的每一步都经过本包的代码，所以任何在这里抛出的错误都会变成该 child 的请求失败。因此 listener 只做纯值替换，不做 I/O，也不重新校验——校验只发生在 `set_reasoning_effort` 被调用时。
 
-`check-assets` 新增了一条**正向**检查（`checkEffortCapabilityCopy`）：此前所有检查都是"某个 token 不得出现"，这种形状对"能力被悄悄删掉"完全免疫——删除只会让违规文本消失。新检查要求 22 处补丁都携带那句共享常量、`poteto-mode` 必须写明 `reasoningEffort` 与 `set_reasoning_effort`、且禁止三处回退措辞再次出现。
+`check-assets` 新增了一条**正向**检查（`checkEffortCapabilityCopy`）：此前所有检查都是"某个 token 不得出现"，这种形状对"能力被悄悄删掉"完全免疫——删除只会让违规文本消失。新检查从上游 anchor 反推期望集合（24 个文件，不是写死的数字），要求每个丢了该句的文件都携带共享常量、`poteto-mode` 必须写明 `reasoningEffort`／`set_reasoning_effort`／基线断言、生成的角色文件示例必须产出同一句基线断言、且回退措辞不得再出现。
+
+### 更正：上限说了，下限说错了
+
+初版把角色行的 effort 描述成"基线和**下限**"（`a baseline and a floor`）。这是本仓库发明的概念，两个层面都错：
+
+- **与实现矛盾。** `agentOptionsFor` 用覆盖值直接替换角色行，`set_reasoning_effort` 也不做比较，所以传一个比角色行更低的档位完全有效，且不会警告。"下限"会让读者以为低值会被拒绝或被抬到角色行。
+- **与上游矛盾。** 上游写的是 "Lower it one step for judgment and two or more steps for routine work"，明确允许下调。
+
+现在统一为"既不是上限也不是下限"（`neither a ceiling nor a floor`）。这次错误还暴露了守卫的局限：常量是"唯一拼法"，所以守卫能防两份拷贝漂移，却不能判断这个拼法本身对不对——它忠实地保护了一个错句子。守卫保护一致性，不保护正确性；正确性靠阅读和这条更正。
+
+真要实现"某些角色不得低于某档位"，那是新能力（行级配置或 policy seam），不属于 `reasoningEffort` 的语义，见设计文档 §9.1。
 
 **取代关系**：本记录取代 `docs/porting/decisions.md` 的 "## Reasoning effort" 一节（该文件随 `659acce` 删失）。它与 `docs/decisions/2026-10-24-no-agent-team-coexistence.md` 的关系是**修复**而非取代：那条记录假设 `reasoningEffort` 存在，本记录是让该假设重新成立。
 

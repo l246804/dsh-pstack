@@ -204,7 +204,7 @@ describe("the role line is a starting baseline", () => {
     expect(result.children[0]?.route).toBe("local/a [deep]");
   });
 
-  it("lets the call lower it", async () => {
+  it("lets the call lower it, and does not clamp to the role line", async () => {
     const run = harness(SINGLE_ROLE);
     await delegate(
       fakeAgent().agent,
@@ -213,7 +213,26 @@ describe("the role line is a starting baseline", () => {
       CONFIG,
       SIGNAL,
     );
+    // `shallow` is below the role line's `normal`. Nothing raises it back.
     expect(soleAgentOptions(run.starts)).toMatchObject({ reasoningEffort: "shallow" });
+  });
+
+  it("accepts an effort below the role line with no floor warning", async () => {
+    // The failure a "floor" reading produces: a caller believes the role line is the
+    // minimum and stops lowering. `normal` is the middle advertised value here, so
+    // going below it is the case that has to work silently and be reported honestly.
+    const run = harness(SINGLE_ROLE);
+    const result = await delegate(
+      fakeAgent().agent,
+      args({ role: "bug-fix", reasoningEffort: "shallow" }),
+      run.runtime,
+      CONFIG,
+      SIGNAL,
+    );
+    expect(result.children[0]?.effort).toBe("shallow");
+    expect(result.children[0]?.route).toBe("local/a [shallow]");
+    const diagnostics = result.diagnostics.join("\n");
+    expect(diagnostics).not.toMatch(/floor|minimum|below the role|clamp/i);
   });
 
   it("says in a diagnostic that the role line was overridden", async () => {

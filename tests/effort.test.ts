@@ -213,6 +213,20 @@ describe("the child-scoped effort control", () => {
     expect(await fake.request(CONFIG)).toMatchObject({ reasoningEffort: "shallower" });
   });
 
+  it("lets a child go below the level it was started at", async () => {
+    // `ADVERTISED` is ordered deepest-first, so `shallower` is the lowest value. A floor
+    // reading would refuse this or raise it back; the control does neither, because the
+    // starting effort is a starting point and not a minimum.
+    const fake = fakeAgent({ provider: "provider", model: "model" });
+    installEffortControl(fake.agent, fakeLlm().llm, "deeper");
+    const tool = fake.tools.find((entry) => entry.name === SET_EFFORT_TOOL)!;
+
+    const reply = await tool.execute({ effort: "shallower" }, toolExec(fake.agent));
+    expect(await fake.request(CONFIG)).toMatchObject({ reasoningEffort: "shallower" });
+    // The confirmation states the change without asking permission or naming a floor.
+    expect(String(reply)).not.toMatch(/floor|minimum|clamp/i);
+  });
+
   it("does not rewrite a request that already passed the waterfall", async () => {
     const fake = fakeAgent({ provider: "provider", model: "model" });
     installEffortControl(fake.agent, fakeLlm().llm, "deeper");
