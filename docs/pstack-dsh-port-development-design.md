@@ -909,7 +909,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 
 ### 单元 7：发布审查
 
-同步 README、guide、poteto-help、决策记录和排除说明。运行完整静态检查、单元测试、`sync:check`、`check:assets`、打包清单和受控副本上的脚本测试；不启动真实 profile，不安装到任何 profile，不操作真实 PR。
+同步 README、guide、poteto-help、决策记录和排除说明。运行 `pnpm run release`——它先跑只读的 `check`（上游镜像树、`runtime/` 与 `assets/` 的字节比对、资产规则、零安装脚本门、类型检查、单元测试），再重新打包并跑 `check:pack` 校验 tarball 形状；不启动真实 profile，不安装到任何 profile，不操作真实 PR。命令分层见 [构建与校验命令决策](decisions/2026-10-26-build-and-check-commands.md)。
 
 验收：所有公开承诺与实际结果一致，未验证项明确保留在 `docs/release-verification-checklist.md`，不把静态同步或单元测试当作运行通过。§12.3 的实机步骤与 §12.4 的行为级用例改为发布批准后另行执行，见 [发布验收分期](decisions/2026-10-25-release-verification-staging.md)。
 
@@ -918,7 +918,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 | 风险 | 具体后果 | 处理 |
 |---|---|---|
 | 只做词替换 | 句子保留 Cursor 行为，工具根本不存在 | 文件级语义 patch；`check:assets` 断言生成树 `assets/` 里不出现 claude、没有别的宿主的安装命令、角色文件路径只有一种写法，README 与 guide 的禁词只能出现在排除语境；真实调用验收未执行 |
-| 局部替换后二次替换 | 新 DSH 文本再次被改写 | 互斥区间、最终输出 golden、`sync:check` |
+| 局部替换后二次替换 | 新 DSH 文本再次被改写 | 互斥区间、最终输出 golden、`check:assets` 里的字节比对 |
 | 角色和 panel 不一致 | 看似多模型，实际同一父模型多次 | 单一 manifest、如实降级、`roleIndex` 越界与 autoPanel 拒绝有单元测试；真实 request header 验证未执行 |
 | `disable-model-invocation` 被误解 | 编排器调 `skill` 失败 | 保留 flag，内部按路径读取 |
 | 把日志当明文 | 压缩或新版本日志读不出，且可能越权 | `sessionQuery` 逻辑读取、身份和 cwd 授权、分页与 lease 有单元测试 |
@@ -926,7 +926,8 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 | 把 reminder 当 webhook | PR/外部事件没有触发却宣称自动化 | 正文只把 `schedule_create` 写成定时输入，并且不给 child 布置；watcher 未实机验证 |
 | 脚本和文本脱节 | 计划检查器接受错误协议或审计脚本读错目录 | 同步 patch 和测试，独立 `check-scripts`；受控副本上通过，生产树不能跑 |
 | 生成资产手改 | 下次同步覆盖，实际内容无法复现 | 只改规则和生成器，`--check` 拒绝漂移 |
-| 升级只跑同步 | 插件能生成但安装或运行失败 | 提交前跑 `pnpm check` 与打包清单；真实 profile smoke 未执行 |
+| 升级只跑同步 | 插件能生成但安装或运行失败 | 提交前跑 `pnpm run release`（只读 `check` + 重打包 + `check:pack`）；真实 profile smoke 未执行 |
+| 只跑 `build:bundle` 或只跑 `build:assets` | `dist` 指向 `assets/` 里不存在的路径，安装后才报"脚本找不到" | `build` 一条链写全；`check:pack` 断言 `dist/script.mjs` 携带每个 `assetPath`、`dist/subagent.mjs` 携带每个角色 |
 | 与 Agent Team 同启 | Team 遮蔽控制工具、共享激活容量、提示词竞争 | 禁止同 profile 启用，README 保留警告原文；无运行时检测 |
 | 隐藏缺失能力 | 质量门槛被静默降低 | 局部 unsupported、保留未验证状态，help 不写幻想功能；未验证项集中在 `docs/release-verification-checklist.md` |
 

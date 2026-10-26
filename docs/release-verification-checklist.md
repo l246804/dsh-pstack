@@ -17,9 +17,8 @@
 ```bash
 # 1. 在 checkout 内构建，确认生成树不漂移
 pnpm install
-pnpm sync:check && pnpm check:assets
-pnpm build
-pnpm pack --dry-run          # 记录条目数；当前基线 166
+pnpm run build                # runtime/ → assets/ → dist/，一条链写完
+pnpm run release              # check 全家 + 重新打包 + 打包清单自检（含条目数）
 
 # 2. 建一次性 profile，并把工作区目录链接安装进去
 dsh plugin --profile pstack-verify add <absolute path to this checkout>
@@ -45,12 +44,12 @@ node -e 'const p=require(process.argv[1]);console.log(p.dsh?.profile?.bundles)' 
 
 第二，随包脚本已是单文件 Node 产物，依赖全部内联，不再有 `bootstrap.ts`、包内 `package.json` 或 `bun.lock`，因此**不需要安装步骤，也不需要 Bun 或 bash**；脚本冒烟只在受控副本里跑，不要在待发布的生产树里跑。
 
-第三，`pnpm pack --dry-run` 的 166 由五部分构成：`assets` 142、`dist` 17、`locale` 2、`cordis.patch.yml`/`package.json`/`README.md`/`LICENSE`/`static` 各 1。基线变化时先按这五部分定位是哪一类变了，再决定是否更新本行。
+第三，条目数不再手抄。`pnpm run check:pack` 从生成器、`dist/`、`locale/`、`static/` 和根文件推导出应有集合，再与 `pnpm pack --dry-run --json` 的实际条目逐条比对，并按五栏打印：`assets`、`dist`、`locale`、`static`、`root`。基线变化时先看是哪一栏变了，再决定是否要改东西——不要改数字。当前实测输出见该命令的 `entries` 一行。
 
 ```bash
 # 零安装脚本门：复制 assets/skills/、隔离 HOME/TMPDIR/XDG_CACHE_HOME、
 # node --test 跑全部随包测试，再对五个 CLI 各做一次冒烟。
-pnpm check:scripts
+pnpm run check:scripts
 
 # 单独跑某一个脚本（不需要 bun、bash 或安装）
 node assets/skills/poteto-mode/scripts/watch-pr/watch-pr.mjs --help
@@ -178,5 +177,5 @@ dsh --profile pstack-verify --dump-config-schema    # 条目的 JSON Schema，�
 - 执行中出现与设计文档冲突的结果时，先记录实际观察，再新写一条决策记录取代相关约定，不改文档来迁就结果。
 - S12 与 B12 共用一次运行，但各自记录一条，因此用例表 36 行对应 36 个用例 ID（B01–B23 共 23 条，S01–S13 共 13 条），与设计 §12.4 的编号集合逐一相等（2026-10-26 核对：两侧差集均为空）。
 - 本清单共有四张记录表，各自的计数口径不同，不要相加：**B/S 用例 36 条**（§12.4 定义的验收样例）、**worktree 路径 4 条**、**T 用例 4 条**（跨工具主链路，按修复引入，不属于 §12.4）、**环境矩阵 6 项**（约束与缺口，不是用例）。
-- 本文件此前三处数字有误，2026-10-26 一并更正：`pnpm pack` 基线 173 → 166（实测，且拆出五部分构成）；"40 条用例" → 36 条（该数字自 `f4e8cd1` 起就与表格行数不符，一路抄了下来）；"六个脚本" → 5 个 CLI + 5 个测试包。凡再改这些数字，请附上产生它的命令。
+- 本文件此前三处数字有误，2026-10-26 一并更正：`pnpm pack` 基线 173 → 166（实测，且拆出五部分构成）；"40 条用例" → 36 条（该数字自 `f4e8cd1` 起就与表格行数不符，一路抄了下来）；"六个脚本" → 5 个 CLI + 5 个测试包。凡再改这些数字，请附上产生它的命令。此后条目数改由 `pnpm run check:pack` 现场推导，本文不再写死基线，见[构建与校验命令决策](decisions/2026-10-26-build-and-check-commands.md)。
 - 执行者第一次跑时若发现命令形式与本文不符（宿主版本演进、pnpm 参数差异等），以实际输出为准并就地更正本文，不要只在会话里口述。

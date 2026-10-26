@@ -106,7 +106,7 @@ export function checkAssets(): AssetsReport {
   const problems: string[] = [];
 
   if (!existsSync(ASSETS_ROOT)) {
-    return emptyReport(["assets/: missing; run `pnpm sync` first"]);
+    return emptyReport(["assets/: missing; run `pnpm run build:assets` first"]);
   }
 
   checkLayout(problems);
@@ -1995,7 +1995,7 @@ export const KNOWN_CONCEPTS: readonly KnownConcept[] = [
  * `checkRewrittenTexts` only reads the files a unit patched, so a concept appearing
  * in an *unpatched* file is copied into the tree verbatim and no gate fails. Measured
  * before this check: adding `skills/zz-new-flow/SKILL.md` with `create-skill`,
- * `Agents Window`, `/visualize`, `control-ui`, and "agent store" made `pnpm sync`
+ * `Agents Window`, `/visualize`, `control-ui`, and "agent store" made `pnpm run build:assets`
  * exit 0 and the file shipped as-is; the only complaint was the skill count, which a
  * change that also removed a skill would silence.
  *

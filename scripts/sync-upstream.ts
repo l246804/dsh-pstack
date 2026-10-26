@@ -101,7 +101,19 @@ export async function writeAssets(assets: readonly Asset[]): Promise<void> {
 
 export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
   const check = argv.includes("--check");
-  const assets = buildAssets();
+
+  let assets;
+  try {
+    assets = buildAssets();
+  } catch (error) {
+    // `buildAssets` reads the built `runtime/`, so a fresh clone fails here before
+    // it can even compare. An uncaught throw printed a stack trace above a message
+    // that already said what to run, which reads as a crash rather than a
+    // precondition. The stub `pnpm run build:assets` chains the two steps, so the
+    // fix is one command and the message can name it.
+    console.error(`assets cannot be built: ${messageOf(error)}`);
+    return 1;
+  }
   const summary = summarizeAssets(assets);
 
   if (!check) {
@@ -118,8 +130,14 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
 
   console.error(`assets/ differs from a fresh build (${problems.length} difference(s)):`);
   for (const problem of problems) console.error(`  ${problem}`);
-  console.error("Run `pnpm sync` to regenerate the tree. Edit the rules, never assets/.");
+  console.error(
+    "Run `pnpm run build:assets` to regenerate the tree. Edit the rules, never assets/.",
+  );
   return 1;
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function describeSummary(summary: AssetSummary): string {

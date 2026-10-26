@@ -269,3 +269,62 @@ describe("README links resolve inside the published tarball", () => {
     expect(problems).toEqual([]);
   });
 });
+
+describe("the build and check command families", () => {
+  const scripts = (
+    JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
+      readonly scripts: Record<string, string>;
+    }
+  ).scripts;
+
+  /**
+   * The split this guards: a writing command and a reading command may not share a
+   * name, and `check` may not write.
+   *
+   * The defect it closes is the one the split was made for: `check` used to start
+   * with `build:runtime`, so it wrote `runtime/` before comparing anything, and
+   * `build` produced only `dist/` while looking like the whole build.
+   */
+  it("names every writing command build:* and every reading one check:*", () => {
+    const aggregates = new Set(["build", "check", "release", "prepublishOnly"]);
+    const inherited = new Set(["dev", "test", "typecheck"]);
+    for (const name of Object.keys(scripts)) {
+      if (aggregates.has(name) || inherited.has(name)) continue;
+      expect(name.startsWith("build:") || name.startsWith("check:"), name).toBe(true);
+    }
+  });
+
+  it("keeps `check` free of writes and of the bundle", () => {
+    const check = scripts["check"] as string;
+    expect(check).not.toContain("build:");
+    expect(check).not.toContain("vp pack");
+    expect(check).toContain("check:assets");
+    expect(check).toContain("test");
+  });
+
+  it("makes the full build cover runtime, assets, and the bundle", () => {
+    const build = scripts["build"] as string;
+    expect(build).toContain("build:assets");
+    expect(build).toContain("build:bundle");
+    // `build:assets` rebuilds `runtime/` first, so a build that only regenerates
+    // `assets/` would carry a stale runtime into the tracked tree.
+    expect(scripts["build:assets"] as string).toContain("build:runtime");
+  });
+
+  it("keeps no alias for a command it renamed", () => {
+    // `sync` and `sync:check` were removed rather than kept as aliases: one behaviour
+    // under two names is what this split exists to remove.
+    expect(scripts["sync"]).toBeUndefined();
+    expect(scripts["sync:check"]).toBeUndefined();
+    expect(scripts["build:assets"]).toContain("sync-upstream.ts");
+    expect(scripts["check:assets"]).toContain("sync-upstream.ts");
+  });
+
+  it("runs the release gate before publishing", () => {
+    expect(scripts["prepublishOnly"]).toBe("pnpm run release");
+    const release = scripts["release"] as string;
+    expect(release).toContain("check");
+    expect(release).toContain("build:bundle");
+    expect(release).toContain("check:pack");
+  });
+});

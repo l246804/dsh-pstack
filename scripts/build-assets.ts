@@ -165,7 +165,7 @@ function builtRuntimeAssets(): readonly Asset[] {
       bytes = readFileSync(path);
     } catch {
       throw new Error(
-        `assets/${entry.assetPath}: missing built runtime; run \`node scripts/build-runtime.ts\` first`,
+        `assets/${entry.assetPath}: missing built runtime; run \`pnpm run build:assets\` first, which rebuilds runtime/ and then regenerates assets/`,
       );
     }
     assets.push({
