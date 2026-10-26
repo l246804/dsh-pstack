@@ -36,7 +36,7 @@ import {
   UNIT8_PATCHED_FILES,
   patchesForFile,
 } from "./patches.ts";
-import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
+import { RUNTIME_CLIS, RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
@@ -127,6 +127,7 @@ export function checkAssets(): AssetsReport {
   checkIntroScope(problems);
   for (const problem of checkConceptCoverage()) problems.push(problem);
   for (const problem of checkScriptReferences()) problems.push(problem);
+  for (const problem of checkScriptIdReferences()) problems.push(problem);
   for (const problem of checkDesignRowList()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
@@ -1099,17 +1100,62 @@ export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
  * `SCRIPT_REFERENCE_ALLOWLIST` carries any `.mjs` reference that is intentionally
  * not a shipped path. Each entry states a reason, so the list cannot quietly absorb
  * a real breakage.
+ *
+ * The list is **empty on purpose**. It previously held `scripts/check-plan.mjs`,
+ * described as "the plan template names the checker by bundle-relative path as an
+ * illustration" — but once §9 retargeted that line at `pstack_script` with
+ * `id: "check-plan"`, no such reference existed anywhere in `assets/`. The entry
+ * matched nothing and described a situation that had stopped existing, so it was
+ * removed rather than left as an example of an exemption nobody needs. Every `.mjs`
+ * path reference in shipped prose must now resolve.
  */
 export const SCRIPT_REFERENCE_ALLOWLIST: readonly {
   readonly reference: string;
   readonly reason: string;
-}[] = [
-  {
-    reference: "scripts/check-plan.mjs",
-    reason:
-      "The plan template names the checker by bundle-relative path as an illustration; the runtime id `check-plan` is how it is actually invoked, and that is asserted beside it.",
-  },
-];
+}[] = [];
+
+/**
+ * A `pstack_script` call whose `id` names a bundled CLI.
+ *
+ * The window stops at the next sentence boundary (`.` or newline within 120
+ * characters), which is what keeps an unrelated `id:` field out of the match: the
+ * watch-pr fixtures contain `headRefOid: "head"` and similar, and an unbounded
+ * pattern reported eleven of those as bad script ids.
+ */
+const SCRIPT_ID_REFERENCE = /`pstack_script`[^\n.]{0,120}?\bid: \\?"([a-z0-9][a-z0-9-]*)\\?"/g;
+
+/**
+ * Every `id` the prose passes to `pstack_script` must name a shipped CLI.
+ *
+ * The sibling check above validates *paths*, and paths are no longer how the prose
+ * reaches these scripts: `shipping.md`, `orchestrate.md`, `worktree-cleanup.md`, and
+ * `multi-phase-plan.md` all say `` `pstack_script` with `id: "…"` ``. A typo there
+ * (`id: "watch-prr"`) is a call the tool rejects at runtime, and nothing caught it —
+ * the path check does not match it and `id` is not otherwise audited.
+ *
+ * The truth source is `RUNTIME_CLIS`, the same list `pstack_script`'s closed enum is
+ * built from, so the two cannot disagree. `RUNTIME_TESTS` ids are excluded because the
+ * tool cannot be asked to run a test bundle.
+ */
+export function checkScriptIdReferences(): readonly string[] {
+  const problems: string[] = [];
+  const known = new Set(RUNTIME_CLIS.map((entry) => entry.id));
+
+  for (const file of walkFiles(ASSETS_ROOT).filter((path) => path.endsWith(".md"))) {
+    const repositoryPath = toRepositoryPath(file);
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SCRIPT_ID_REFERENCE)) {
+      const id = match[1] as string;
+      if (known.has(id)) continue;
+      const line = text.slice(0, match.index).split("\n").length;
+      problems.push(
+        `${repositoryPath}:${line}: passes id ${JSON.stringify(id)} to pstack_script, but no ` +
+          `shipped CLI has that id (known: ${[...known].join(", ")})`,
+      );
+    }
+  }
+  return problems;
+}
 
 /**
  * A `.mjs` path with a `scripts/` segment, as it appears inside a code span.

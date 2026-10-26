@@ -31,6 +31,7 @@ import {
   SCRIPT_REFERENCE_ALLOWLIST,
   checkLinks,
   checkDesignRowList,
+  checkScriptIdReferences,
   checkScriptReferences,
   readmeImageProblems,
   scanMarkdownLinks,
@@ -42,7 +43,11 @@ import {
   INVOCATION_FLAG_OVERRIDES,
   patchesForFile,
 } from "../scripts/patches.ts";
-import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../scripts/runtime-manifest.ts";
+import {
+  RUNTIME_CLIS,
+  RUNTIME_ENTRIES,
+  isReplacedUpstreamScript,
+} from "../scripts/runtime-manifest.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
   ROLE_KEYS,
@@ -715,5 +720,48 @@ describe("the design document's row list matches the shipped patch", () => {
     // repository.
     const shipped = ["pstack", "pstack-subagent", "pstack-history"];
     expect(shipped.join(",")).not.toBe(["pstack", "pstack-subagent"].join(","));
+  });
+});
+
+describe("prose reaches bundled CLIs by id, not only by path", () => {
+  it("names no id that is not a shipped CLI", () => {
+    // The path check cannot see `` `pstack_script` with `id: "…"` ``, and that form now
+    // carries the real entry point in shipping, orchestrate, worktree-cleanup, and
+    // multi-phase-plan. A typo there is a call the tool rejects at runtime.
+    expect(checkScriptIdReferences()).toEqual([]);
+  });
+
+  it("keeps the path allowlist empty, so every .mjs reference must resolve", () => {
+    // It once held `scripts/check-plan.mjs`, described as a bundle-relative
+    // illustration — but §9 retargeted that line at `id: "check-plan"`, so the entry
+    // matched nothing and described a case that had stopped existing.
+    expect(SCRIPT_REFERENCE_ALLOWLIST).toEqual([]);
+    expect(checkScriptReferences()).toEqual([]);
+  });
+
+  it("reports an id that names no shipped CLI", () => {
+    // Drive the same matcher the check uses, so this proves the rule without writing
+    // to the repository.
+    const pattern = /`pstack_script`[^\n.]{0,120}?\bid: \\?"([a-z0-9][a-z0-9-]*)\\?"/g;
+    const known = new Set(RUNTIME_CLIS.map((entry) => entry.id));
+
+    const bad = `Run \`pstack_script\` with \`id: "worktree-auditor"\` and args.`;
+    const good = `Run \`pstack_script\` with \`id: "worktree-audit"\` and args.`;
+    expect([...bad.matchAll(pattern)].map((m) => m[1])).toEqual(["worktree-auditor"]);
+    expect(known.has("worktree-auditor")).toBe(false);
+    expect([...good.matchAll(pattern)].map((m) => m[1])).toEqual(["worktree-audit"]);
+    expect(known.has("worktree-audit")).toBe(true);
+  });
+
+  it("does not mistake an unrelated id field for a script id", () => {
+    // The watch-pr fixtures contain `headRefOid: "head"`; an unbounded pattern
+    // reported eleven of those as bad script ids before the window was added.
+    const pattern = /`pstack_script`[^\n.]{0,120}?\bid: \\?"([a-z0-9][a-z0-9-]*)\\?"/g;
+    const unrelated = `The fixture sets headRefOid: "head" and oid: "head".`;
+    expect([...unrelated.matchAll(pattern)]).toEqual([]);
+
+    // And the window stops at a sentence boundary, so a later id is not attributed.
+    const nextSentence = `Run \`pstack_script\`. The payload has id: "head".`;
+    expect([...nextSentence.matchAll(pattern)]).toEqual([]);
   });
 });
