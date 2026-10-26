@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 //#region .runtime-sources/skills/poteto-mode/scripts/worktree-audit.ts
 /**
@@ -228,13 +228,27 @@ function prColumn(branch, prs) {
 	const hit = prs.find((pr) => pr.head === branch);
 	return hit === void 0 ? "-" : `#${hit.number}/${hit.state}`;
 }
+/**
+* Whether a session's recorded cwd is this worktree or a directory below it.
+*
+* Both sides go through `resolve` before comparing. `git worktree list` returns
+* platform separators while a session's `cwd` may have been written by a different
+* source, so on Windows `C:\repo\wt` and `C:/repo/wt` name the same checkout but are
+* different strings. The old comparison hardcoded `/`, so it matched nothing there:
+* every `LAST_CHAT` was `-` and every bucket silently degraded to `unknown-usage`.
+*
+* `resolve` also normalises trailing separators and `..` segments, so neither can
+* make one path look like an ancestor of the other by accident.
+*/
+function sameOrInside(cwd, worktree) {
+	const child = resolve(cwd);
+	const parent = resolve(worktree);
+	return child === parent || child.startsWith(`${parent}${sep}`);
+}
 /** The newest supplied session whose cwd is this worktree or below it. */
 function lastSession(worktree, sessions) {
 	if (sessions === void 0 || sessions.length === 0) return void 0;
-	const matches = sessions.filter((session) => {
-		const cwd = session.cwd ?? "";
-		return cwd === worktree || cwd.startsWith(`${worktree}/`);
-	});
+	const matches = sessions.filter((session) => sameOrInside(session.cwd ?? "", worktree));
 	if (matches.length === 0) return void 0;
 	return matches.toSorted((left, right) => (left.lastEventTime ?? 0) - (right.lastEventTime ?? 0))[matches.length - 1];
 }
@@ -658,4 +672,4 @@ function main(argv, io = {
 const entryPoint = process.argv[1];
 if (entryPoint !== void 0 && resolve(entryPoint) === fileURLToPath(import.meta.url)) process.exitCode = main(process.argv.slice(2));
 //#endregion
-export { AuditError, HEADER, PINNED, RECENT_DAYS, UNKNOWN_USAGE_BUCKET, USAGE, ageColumn, bucketFor, buildRow, dirtyColumn, formatSize, isRecent, lastChatColumn, lastSession, main, mergedColumn, normalizeGh, normalizeOrigin, parseArgs, prColumn, readForgePrs, readSessionsFile, remoteColumn, renderTable, resolveBase, sizeColumn, sortRows, usageNote, worktreePaths };
+export { AuditError, HEADER, PINNED, RECENT_DAYS, UNKNOWN_USAGE_BUCKET, USAGE, ageColumn, bucketFor, buildRow, dirtyColumn, formatSize, isRecent, lastChatColumn, lastSession, main, mergedColumn, normalizeGh, normalizeOrigin, parseArgs, prColumn, readForgePrs, readSessionsFile, remoteColumn, renderTable, resolveBase, sameOrInside, sizeColumn, sortRows, usageNote, worktreePaths };

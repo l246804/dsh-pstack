@@ -10,7 +10,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
@@ -32,8 +32,10 @@ import {
   renderTable,
   sortRows,
   usageNote,
+  sameOrInside,
 } from "../scripts/runtime/worktree-audit.ts";
 import type { AuditRow, SessionInput } from "../scripts/runtime/worktree-audit.ts";
+import { ROOT } from "../scripts/build-assets.ts";
 
 const fixtures: string[] = [];
 
@@ -425,5 +427,111 @@ describe("buildRow's usage decision", () => {
     } finally {
       rmSync(worktree, { recursive: true, force: true });
     }
+  });
+});
+
+describe("session matching is separator-agnostic", () => {
+  it("matches the same checkout written with either separator", () => {
+    // F20: the comparison hardcoded `/`, so on Windows — where `git worktree list`
+    // reports `\` — nothing matched, every LAST_CHAT was `-`, and every bucket
+    // degraded. `resolve` normalises both sides on the running platform.
+    const unified = "/repo/.agents/worktrees/wt-1";
+    expect(sameOrInside(unified, unified)).toBe(true);
+    expect(sameOrInside(`${unified}/pkg`, unified)).toBe(true);
+  });
+
+  it("normalises trailing separators and dot segments", () => {
+    const worktree = "/repo/wt";
+    expect(sameOrInside("/repo/wt/", worktree)).toBe(true);
+    expect(sameOrInside("/repo/wt/./pkg/../pkg", worktree)).toBe(true);
+  });
+
+  it("does not match a sibling or a parent directory", () => {
+    const worktree = "/repo/wt";
+    expect(sameOrInside("/repo/wt-2", worktree)).toBe(false);
+    expect(sameOrInside("/repo", worktree)).toBe(false);
+    expect(sameOrInside("/repo/wt/../other", worktree)).toBe(false);
+    expect(sameOrInside("/other/project", worktree)).toBe(false);
+  });
+});
+
+describe("background start failures are not guessed", () => {
+  it("does not wait a fixed interval before reporting started", () => {
+    // F21: a fixed 250 ms window found failures earlier than that and missed later
+    // ones, reporting "started" for a job that had already failed at 300 ms. The tool
+    // now yields one microtask, so the only failure it claims is one `run` threw
+    // synchronously. This asserts the *absence* of the old constant and the presence of
+    // the fast path, since a timing test here would be flaky by construction.
+    const source = readFileSync(
+      join(ROOT, "src", "script.ts"),
+      "utf8",
+    );
+    expect(source).not.toContain("BACKGROUND_CONFIRM_MS");
+    expect(source).toContain("await Promise.resolve();");
+  });
+
+  it("does not put a host path into the start-failure message", async () => {
+    // `child_process`'s error message embeds the artefact's absolute path.
+    const { ScriptMissingError } = await import("../src/script.ts");
+    const { createPstackScriptTool } = await import("../src/script.ts");
+
+    const jobs = {
+      start(spec: { run: (job: unknown) => unknown }) {
+        // Run the producer so the spawn error path is exercised, then report failure.
+        spec.run({ append() {}, updateProgress() {} });
+        return "bash-1";
+      },
+      get() {
+        return {
+          id: "bash-1",
+          kind: "bash",
+          label: "x",
+          status: "failed" as const,
+          startedAt: 0,
+          output: { total: 0, earliest: 0 },
+        };
+      },
+    };
+    const tool = createPstackScriptTool({
+      tools: { register: () => () => {} },
+      workingDirectory: { ensure: async () => ROOT },
+      getJobs: () => jobs as never,
+    });
+
+    await expect(
+      tool.execute(
+        { id: "log", args: [], background: true },
+        { name: "pstack_script", callId: "c1", arguments: {}, signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toBeInstanceOf(ScriptMissingError);
+    // The message must point at the foreground run, not at a host path.
+    await expect(
+      tool.execute(
+        { id: "log", args: [], background: true },
+        { name: "pstack_script", callId: "c2", arguments: {}, signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/the foreground to see its error/);
+  });
+});
+
+describe("sameOrInside normalises before it decides", () => {
+  it("rejects a path that escapes the worktree through dot-dot", () => {
+    // The old comparison was a raw string prefix test, so `/repo/wt/../other` started
+    // with `/repo/wt/` and was counted as *inside* the worktree when it actually names
+    // a sibling. `resolve` collapses the segment first, so the answer is correct.
+    expect(sameOrInside("/repo/wt/../other", "/repo/wt")).toBe(false);
+    expect(sameOrInside("/repo/wt/../wt/pkg", "/repo/wt")).toBe(true);
+  });
+
+  it("treats a trailing separator as the same directory", () => {
+    expect(sameOrInside("/repo/wt/", "/repo/wt")).toBe(true);
+    expect(sameOrInside("/repo/wt", "/repo/wt/")).toBe(true);
+  });
+
+  it("is not fooled by a shared name prefix", () => {
+    // `startsWith(parent + sep)` is why this is false while `startsWith(parent)` would
+    // be true.
+    expect(sameOrInside("/repo/wt-2/pkg", "/repo/wt")).toBe(false);
+    expect(sameOrInside("/repo/wtx", "/repo/wt")).toBe(false);
   });
 });

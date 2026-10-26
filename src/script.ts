@@ -50,9 +50,6 @@ export const MAX_TIMEOUT_MS = 600_000;
 /** Default cap on captured bytes per stream. */
 export const DEFAULT_OUTPUT_LIMIT_BYTES = 64 * 1024;
 
-/** How long a background job waits for a spawn error before reporting started. */
-const BACKGROUND_CONFIRM_MS = 250;
-
 /** Raised for an argument problem, before anything is spawned. */
 export class ScriptInputError extends Error {
   constructor(message: string) {
@@ -366,12 +363,20 @@ export async function runBackground(
       child.stderr?.on("data", (chunk: Buffer) => job.append(chunk.toString("utf8"), { channel: "stderr" }));
 
       const done = new Promise<{ status: "completed" | "killed" | "failed"; detail?: string }>(
-        (resolve) => {
-          child.once("error", (error) => resolve({ status: "failed", detail: error.message }));
+        (settle) => {
+          child.once("error", (error) => {
+            // Only the error code. `child_process`'s `error.message` embeds the host's
+            // absolute path to the artefact, and the model has no business seeing the
+            // host layout.
+            settle({
+              status: "failed",
+              detail: (error as NodeJS.ErrnoException).code ?? "spawn-failed",
+            });
+          });
           child.once("close", (code, signal) => {
-            if (signal !== null) resolve({ status: "killed", detail: `signal ${signal}` });
-            else if (code === 0) resolve({ status: "completed" });
-            else resolve({ status: "failed", detail: `exit code ${code ?? "unknown"}` });
+            if (signal !== null) settle({ status: "killed", detail: `signal ${signal}` });
+            else if (code === 0) settle({ status: "completed" });
+            else settle({ status: "failed", detail: `exit code ${code ?? "unknown"}` });
           });
         },
       );
@@ -386,17 +391,50 @@ export async function runBackground(
     },
   });
 
-  // Give an immediate spawn failure a chance to surface. `jobs.start` cannot reject
-  // after registering a job, so a missing artefact would otherwise look started.
-  await new Promise<void>((resolve) => setTimeout(resolve, BACKGROUND_CONFIRM_MS));
+  // Do not guess. `jobs.start` cannot reject after registering a job, so a fixed wait
+  // was the only way to notice an immediate spawn failure — and 250 ms answered the
+  // question wrongly in both directions: a job that failed at 400 ms was reported to
+  // the model as "started" and never corrected, while a slow start paid the wait for
+  // nothing.
+  //
+  // One microtask is the honest boundary: it catches a throw from `run` itself, which
+  // is the only failure that is *this* call's. Anything later is the job's own
+  // settlement, which the Host's job tools report — the same place this package already
+  // tells the model to read.
+  await Promise.resolve();
   const view = jobs.get(jobId, options.caller);
   if (view.status === "failed") {
     throw new ScriptMissingError(
-      `background job ${jobId} failed to start: ${view.detail ?? "no detail"}`,
+      `background job ${jobId} failed to start. Run the same script in the foreground to see its error.`,
     );
   }
 
   return { kind: "background", id: args.id, jobId, status: view.status };
+}
+
+/**
+ * Render one captured stream as a fenced block, byte for byte.
+ *
+ * `trimEnd` used to run here, which is wrong for two reasons:
+ *
+ * - A stream of only whitespace passed the `!== ""` test and then rendered as an
+ *   empty-looking `stdout:` line, so a reader concluded the script printed nothing.
+ * - `check-plan`'s contract includes exact line counts and blank-line separators, so
+ *   a trimmed block is a different document — and the model reads this text as the
+ *   script's output.
+ *
+ * A fence keeps every byte visible, including trailing blank lines. The fence is
+ * lengthened past the longest backtick run in the content so it can never be closed
+ * early by the content itself. Nothing inside is escaped or reinterpreted.
+ */
+export function renderCapturedStream(text: string): readonly string[] {
+  if (text === "") return [];
+  const longestRun = Math.max(0, ...(text.match(/`+/g) ?? []).map((run) => run.length));
+  const fence = "`".repeat(Math.max(3, longestRun + 1));
+  // Strip exactly one final newline: `join("\n")` puts it back, and keeping it would
+  // add a visible blank line that the script did not print.
+  const body = text.endsWith("\n") ? text.slice(0, -1) : text;
+  return [fence, body, fence];
 }
 
 /** Render one outcome for the model. */
@@ -413,8 +451,10 @@ export function renderScriptOutcome(outcome: ScriptOutcome): string {
       `${outcome.signal === null ? "" : ` (signal ${outcome.signal})`}` +
       `${outcome.timedOut ? ` after the timeout` : ""} in ${outcome.durationMs}ms`,
   ];
-  if (outcome.stdout !== "") lines.push("", "stdout:", outcome.stdout.trimEnd());
-  if (outcome.stderr !== "") lines.push("", "stderr:", outcome.stderr.trimEnd());
+  // Omitted only when the stream is genuinely empty; a stream of blank lines is
+  // shown, so "printed nothing" and "printed newlines" stay distinguishable.
+  if (outcome.stdout !== "") lines.push("", "stdout (exact bytes):", ...renderCapturedStream(outcome.stdout));
+  if (outcome.stderr !== "") lines.push("", "stderr (exact bytes):", ...renderCapturedStream(outcome.stderr));
   if (outcome.stdoutTruncated) lines.push("", "stdout was truncated at the output limit.");
   if (outcome.stderrTruncated) lines.push("", "stderr was truncated at the output limit.");
   if (outcome.exitCode !== 0 || outcome.signal !== null || outcome.timedOut) {

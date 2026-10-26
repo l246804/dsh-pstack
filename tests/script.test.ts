@@ -17,6 +17,7 @@ import {
   inject,
   name as rowName,
   parseScriptArgs,
+  renderCapturedStream,
   renderScriptOutcome,
   resolveWorkingDirectory,
   runBackground,
@@ -272,9 +273,86 @@ describe("rendering", () => {
       durationMs: 5,
     });
     expect(text).toContain("log exited with code 1");
-    expect(text).toContain("stdout:");
+    // The streams are fenced and labelled, so a reader knows the bytes are verbatim.
+    expect(text).toContain("stdout (exact bytes):");
+    expect(text).toContain("stderr (exact bytes):");
+    expect(text).toContain("out");
     expect(text).toContain("err");
     expect(text).toContain("do not report success");
+  });
+
+  it("keeps trailing blank lines and whitespace-only output visible", () => {
+    // F22: `trimEnd` turned a stream of "\n\n" into an empty `stdout:` line, so the
+    // model read "printed nothing" when the script printed two blank lines. `check-plan`
+    // also has an exact-line-count contract that trimming breaks.
+    const blank = renderScriptOutcome({
+      kind: "foreground",
+      id: "check-plan",
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      stdout: "\n\n",
+      stderr: "",
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      durationMs: 1,
+    });
+    // Two blank lines inside the fence: the label line, then the fence, then blanks.
+    const fenced = blank.split("stdout (exact bytes):\n")[1] as string;
+    expect(fenced.startsWith("```\n")).toBe(true);
+    expect(fenced.slice(4, 6)).toBe("\n\n");
+
+    // A single trailing newline is preserved as content, not silently dropped.
+    const trailing = renderScriptOutcome({
+      kind: "foreground",
+      id: "log",
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      stdout: "line\n",
+      stderr: "",
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      durationMs: 1,
+    });
+    expect(trailing).toContain("```\nline\n```");
+  });
+
+  it("omits a stream that is genuinely empty but not one that is only blank lines", () => {
+    const empty = renderScriptOutcome({
+      kind: "foreground",
+      id: "log",
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      stdout: "",
+      stderr: "",
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      durationMs: 1,
+    });
+    expect(empty).not.toContain("stdout");
+
+    const blankOnly = renderScriptOutcome({
+      kind: "foreground",
+      id: "log",
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      stdout: "\n",
+      stderr: "",
+      stdoutTruncated: false,
+      stderrTruncated: false,
+      durationMs: 1,
+    });
+    expect(blankOnly).toContain("stdout (exact bytes):");
+  });
+
+  it("lengthens the fence when the output contains backticks", () => {
+    const text = renderCapturedStream("a ``` b\n").join("\n");
+    // A three-backtick fence would be closed early by the content.
+    expect(text.startsWith("````\n")).toBe(true);
+    expect(text).toContain("a ``` b");
   });
 
   it("does not claim failure for a clean run", () => {

@@ -33,7 +33,7 @@
 
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { isAbsolute, resolve } from "node:path";
+import { isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /** One row of the audit, in column order. */
@@ -285,6 +285,24 @@ export function prColumn(branch: string | undefined, prs: readonly ForgePr[]): s
   return hit === undefined ? "-" : `#${hit.number}/${hit.state}`;
 }
 
+/**
+ * Whether a session's recorded cwd is this worktree or a directory below it.
+ *
+ * Both sides go through `resolve` before comparing. `git worktree list` returns
+ * platform separators while a session's `cwd` may have been written by a different
+ * source, so on Windows `C:\repo\wt` and `C:/repo/wt` name the same checkout but are
+ * different strings. The old comparison hardcoded `/`, so it matched nothing there:
+ * every `LAST_CHAT` was `-` and every bucket silently degraded to `unknown-usage`.
+ *
+ * `resolve` also normalises trailing separators and `..` segments, so neither can
+ * make one path look like an ancestor of the other by accident.
+ */
+export function sameOrInside(cwd: string, worktree: string): boolean {
+  const child = resolve(cwd);
+  const parent = resolve(worktree);
+  return child === parent || child.startsWith(`${parent}${sep}`);
+}
+
 /** The newest supplied session whose cwd is this worktree or below it. */
 export function lastSession(
   worktree: string,
@@ -292,10 +310,7 @@ export function lastSession(
 ): SessionInput | undefined {
   if (sessions === undefined || sessions.length === 0) return undefined;
 
-  const matches = sessions.filter((session) => {
-    const cwd = session.cwd ?? "";
-    return cwd === worktree || cwd.startsWith(`${worktree}/`);
-  });
+  const matches = sessions.filter((session) => sameOrInside(session.cwd ?? "", worktree));
   if (matches.length === 0) return undefined;
 
   // `sort_by(.lastEventTime // 0) | last` in the shell version: the newest wins,
