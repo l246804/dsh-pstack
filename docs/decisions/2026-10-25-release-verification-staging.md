@@ -3,6 +3,8 @@
 Status: accepted
 Date: 2026-10-25
 
+> **部分被取代（2026-10-26）。** 本文提到的 `docs/pstack-dsh-port-development-design.md` 与 `docs/release-verification-checklist.md` 已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除，因此"未验证清单只有一处"（第 6 条）的载体不存在了，未验证项改由各条决策记录的"后果"一节分别声明。第 1 条里的 `check:upstream`、`sync:check`、`check:pack` 也已删除。本文其余判断（静态门先行、真实 profile 验收另行批准、静态检查不得充当行为证据）继续有效，正文按原样保留。
+
 ## 背景
 
 单元 7 是发布审查。`docs/pstack-dsh-port-development-design.md` §12.3 与 §12.4 定义了十步真实 profile 验收和 40 个行为级用例，§16 要求用 Inspect 复核宿主契约。这些步骤都需要一台机器上的真实 profile、真实模型 route、真实 child、真实 watcher 和一次性仓库；其中若干项还会改动操作方的 profile，或用真实 PR 做外部写操作。

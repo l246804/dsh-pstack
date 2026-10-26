@@ -3,7 +3,7 @@
 Status: accepted
 Date: 2026-10-26
 
-取代 [2026-10-25-restricted-history.md](2026-10-25-restricted-history.md) 第 1 条关于 `inject` 的判断，以及[开发设计](../pstack-dsh-port-development-design.md) §3.3 的注入清单。
+取代 [2026-10-25-restricted-history.md](2026-10-25-restricted-history.md) 第 1 条关于 `inject` 的判断，以及开发设计 §3.3 的注入清单（该文档已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除，注入清单的权威定义现在只在 `src/history.ts` 的 `export const inject`）。
 
 ## 背景
 

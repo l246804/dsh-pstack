@@ -3,6 +3,8 @@
 Status: accepted
 Date: 2026-10-26
 
+> **一处引用失效（2026-10-26）。** 下面"后果"一节提到的 `docs/release-verification-checklist.md` 已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除。它原本记着"审批链实际未触发"这条待人工确认项，现在没有载体承接，因此仍属未验证：静态门只能证明 description 说了什么，证明不了宿主行为。
+
 ## 背景
 
 [Node 原生脚本运行时决定](2026-10-25-node-native-script-runtime.md)把随包 CLI 定为 Node 产物，用 `process.execPath` 启动，理由之一是 Desktop 上 `PATH` 里没有 `node`（Electron 进程自身就是那个二进制）。这决定了 `pstack_script` 不能走"让模型写 `node <path> ...` 到 shell"的路线。

@@ -3,6 +3,8 @@
 Status: accepted
 Date: 2026-10-26
 
+> **一处引用失效（2026-10-26）。** 文末提到的 `docs/release-verification-checklist.md`（E01–E03）已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除。三项仍未验证，这一事实不变。
+
 ## 背景
 
 `pstack_subagent` 现在只能静态使用角色行里写死的 `[effort]`：调用方无法为单次派发换档，child 也无法在运行中改变自己的档位。而 pstack 原设计里，角色行的 effort 只是**起始值**，实际档位按任务难度双向浮动（上游："Raise it one step… Lower it one step for judgment and two or more steps for routine work"）。

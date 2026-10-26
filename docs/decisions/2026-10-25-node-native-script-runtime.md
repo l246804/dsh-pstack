@@ -3,6 +3,8 @@
 Status: accepted
 Date: 2026-10-25
 
+> **一处引用失效（2026-10-26）。** 下面"后果"一节提到的 `docs/release-verification-checklist.md` 已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除。它记的两项（真实 Desktop 内验收、Windows 实机验证）仍属未验证，这一事实不变。
+
 ## 背景
 
 随包的六个脚本（`check-plan`、`orch`、`watch-pr`、`worktree-audit`、`log`，以及它们的测试）此前是上游的原始形态：TypeScript 直接用 Bun 跑，两个 shell 脚本用 bash 跑，`commander` 靠 `bootstrap.ts` 在启动时 `bun install`。

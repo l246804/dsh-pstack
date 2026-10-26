@@ -3,6 +3,8 @@
 Status: proposed
 Date: 2026-10-24
 
+> 本文提到的 `docs/pstack-dsh-port-development-design.md` 已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除。本记录的决定本身已经落地在 `scripts/build-assets.ts`、`scripts/patches.ts` 与 `assets/`，不再依赖那份文档。
+
 ## 背景
 
 `refactor/plugin-v2` 需要重建 dsh-pstack。上游 `cursor/plugins` 在 `d1453c11d1dde9714d4c313c97d3a68432265c7f` 的 pstack 有 56 个技能。Claude Code 版本通过生成器复制原始技能，给 23 个 `SKILL.md` 插入统一适配导读，其余技能资源保持原样。真正的语义适配由人工维护的映射文档承担。

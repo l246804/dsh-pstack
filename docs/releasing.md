@@ -40,10 +40,7 @@ pnpm run release
 
 ## 为什么 build 步骤不是空的
 
-`runtime/` 和 `dist/` 都在 `.gitignore` 里，全新 clone 没有它们。而发布门里有两处需要它们已经存在：
-
-- `check:assets` 的第一个前置是 `check:runtime`，它比较"仓库里的 `runtime/`"与"从源码重建的结果"，缺目录时报告每个产物 `missing`；
-- `check-pack` 的单元测试读取 `dist/`，缺目录时 `expectedTarball()` 推不出应有的条目。
+`runtime/` 和 `dist/` 都在 `.gitignore` 里，全新 clone 没有它们。而发布门需要它们已经存在：`check:assets` 的第一个前置是 `check:runtime`，它比较"仓库里的 `runtime/`"与"从源码重建的结果"，缺目录时报告每个产物 `missing`。
 
 `pnpm run build` 能一次补上两者，但**不要用它**：它先跑 `build:assets`，会重写 tracked 的 `assets/`。之后 `check:assets` 的字节比对拿刚写出的树当基准，等于自己校验自己，`assets/` 与源码不一致这类问题就再也报不出来。所以 build 步骤固定为 `build:runtime` 加 `build:bundle`，只写两个 gitignored 目录。
 
@@ -84,5 +81,5 @@ pnpm publish --dry-run --no-git-checks   # 走 prepublishOnly 全门，不上传
 
 自动化只覆盖静态门。以下仍然要人来看：
 
-- `docs/release-verification-checklist.md` 里的 36 条行为级用例，一条都没执行。发布 announcement 不得把静态门写成"已验证"。
-- README 的"支持的 DSH 版本"要与 `engines.dsh` 一致，`tests/release.test.ts` 断言了这一致性，但版本号本身要不要升是人决定的。
+- 行为级验收一条都没执行。发布 announcement 不得把静态门写成"已验证"。
+- README 的"支持的 DSH 版本"要与 `engines.dsh` 保持一致。`check:assets` 只断言 `engines.dsh` 存在，两边是否同一版本要人看，版本号本身要不要升也是人决定的。

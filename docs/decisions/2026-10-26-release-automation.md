@@ -3,6 +3,8 @@
 Status: accepted
 Date: 2026-10-26
 
+> **部分被取代（2026-10-26）。** 下面的 `prepublishOnly` 现为 `pnpm run check && pnpm run build:bundle`，`check:pack` 已删除，workflow 的 `build` 输入仍为 `git submodule update --init --recursive` 加 `build:runtime` 与 `build:bundle`。关于"`check-pack` 的单元测试读 `dist/`"的那条背景不再成立，但同一个 `build` 步骤仍然必要：`check:runtime` 在干净 clone 上缺 `runtime/` 会报 `missing`。见 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)。
+
 ## 背景
 
 `main` 分支的发包方式是 15 行：一个 `v*` tag 触发器，加 `sxzz/workflows` 的 reusable release workflow，`build` 输入只有 `git submodule update --init --recursive`。版本号由 `bumpp` 推进。当前分支重写后没有搬过来，于是 tag 推上去没有任何自动化。
