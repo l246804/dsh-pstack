@@ -717,7 +717,7 @@ export function planDelegation(
       diagnostics.push(
         `reasoningEffort "${args.reasoningEffort}" overrides the effort this call's role line names (${overwritten
           .map((route) => routeLabel(route))
-          .join(", ")}). The role line is a starting baseline, so this is allowed; pass no reasoningEffort to keep it.`,
+          .join(", ")}). The role line is a starting level, so this is allowed; pass no reasoningEffort to keep it.`,
       );
     }
   }
@@ -1027,10 +1027,12 @@ const TOOL_DESCRIPTION = [
   "Omit `role` to inherit the parent route. Panel roles start one child per configured entry.",
   "",
   "`reasoningEffort` raises or lowers the effort for this delegation alone. The role line is a",
-  "starting baseline, not a verdict: start from it, raise it for hard work and lower it for",
-  "routine work. The value must be one the target model advertises, and this package does not",
-  "assume a ladder, so read the effort list the role's model reports rather than guessing. An",
-  "unsupported value fails the call before any child starts, including every entry of a panel.",
+  "starting level, not a verdict: start from it, raise it one step for the hardest or subtlest",
+  "work, and lower it one step for judgment or two or more steps for routine work. One step is",
+  "the adjacent entry in the model's own effort list, which the adapter reports from least to",
+  "greatest. Read that list instead of guessing a token, and never infer an effort from a model",
+  "id. An unsupported value fails the call before any child starts, including every entry of a",
+  "panel.",
   "",
   "A running child can also change its own effort with `set_reasoning_effort`, which applies",
   "from its next step. You do not have to predict the level up front.",
@@ -1080,8 +1082,9 @@ function buildParameters(config: PstackSubagentConfig): Record<string, unknown> 
       type: "string",
       description: [
         "Reasoning effort for every child this call starts, overriding the role line's value for this delegation.",
-        "Start from the role's level, raise it for hard work, lower it for routine work.",
-        "The value must be one the target model advertises: this package assumes no ladder and rejects an unknown token with that model's real effort list.",
+        "Start from the role's level, raise it one step for hard work, and lower it one step for judgment or two or more steps for routine work.",
+        "One step is the adjacent entry in the model's own effort list, which the adapter reports from least to greatest; never infer an effort from a model id.",
+        "The value must be one the target model advertises, and an unknown token is rejected with that model's real effort list.",
         "It is validated for every panel entry before any child starts, so one incompatible entry fails the whole call instead of half-starting it.",
         "Omit it to use the role line's effort.",
       ].join(" "),

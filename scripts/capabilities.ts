@@ -157,7 +157,7 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "model slug, reasoning effort, `fast`",
     dsh: "`role` resolved from `$DSH_HOME/pstack-models.md`, plus `reasoningEffort` per delegation",
     coverage: "mapped",
-    note: "A role value is `inherit-parent`, `auto`, `<provider>/<model>`, or `<provider>/<model> [effort]`. The value splits at its first `/`, so a model id may keep its own vendor prefix (`gateway/vendor-a/model-x`); no segment may be empty. The role's effort is the level that role starts at, not a ceiling: `pstack_subagent` takes `reasoningEffort` to raise or lower it for one delegation, and a child can change its own with `set_reasoning_effort`, which applies from its next step. Both are validated against the live adapter metadata, per panel entry, before a child starts, and a refusal lists that model's real efforts. No model id is hardcoded in the assets, and no effort ladder is either.",
+    note: "A role value is `inherit-parent`, `auto`, `<provider>/<model>`, or `<provider>/<model> [effort]`. The value splits at its first `/`, so a model id may keep its own vendor prefix (`gateway/vendor-a/model-x`); no segment may be empty. The role's effort is the level that role starts at, not a ceiling or a floor: `pstack_subagent` takes `reasoningEffort` to raise or lower it for one delegation, and a child can change its own with `set_reasoning_effort`, which applies from its next step. Both are validated against the live adapter metadata, per panel entry, before a child starts, and a refusal lists that model's real efforts. No model id is hardcoded in the assets, and no effort token is either: the adapter's own list, ordered from least to greatest, supplies both the vocabulary and what one step is.",
   },
   {
     id: "models-rule",
@@ -195,6 +195,17 @@ export const CAPABILITIES: readonly Capability[] = [
     coverage: "degraded",
     reason:
       "The tool pages one fixed observation of the calling session or a reviewable direct child, inside the caller's workspace; there is no transcript directory to read, no arbitrary session id, and no descendant traversal. A cold read from persistence cannot separate the stored log from the read-time interrupted-turn closers rc.3 appends, so per-event provenance is reported undeterminable and a full transcript audit stays unfinished for those sessions. The live/prepared split, pagination, and lease release are unit-tested; no real profile read has run yet.",
+    unit: "5",
+  },
+  {
+    id: "cross-session-search",
+    kind: "host",
+    cursor: "search across other sessions in the workspace, which `recall` and `automate-me` both do",
+    dsh: "`session_search` and its four sibling tools, mounted only by the official session-search bundle",
+    detect: "session_search",
+    coverage: "degraded",
+    reason:
+      "Cross-session search lives in the optional `@deepseek-ai/dsh-experimental-session-search` bundle, which the official bundles ship switched off, so a profile has it only when the operator enables it in Plugins. `pstack_history` does not substitute for it: that tool reads the calling session and its reviewable direct children, and refuses any other id. Without the bundle, `recall` and `automate-me` still work inside the current session and its direct children and must report the cross-session half as unavailable instead of presenting it as done. The bundle mounts its own isolated `sessionQuery` provider with a lazy in-memory index, so enabling it does not change what `pstack_history` reads. This package does not mount it on the operator's behalf: it adds five global tools to every Agent, invalidates each live Session's cached request prefix once, and keeps an in-memory index after the first search.",
     unit: "5",
   },
   {

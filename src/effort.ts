@@ -1,7 +1,7 @@
 /**
  * Reasoning-effort control, at both ends of one delegation.
  *
- * A role line names the effort a child *starts* at. That value is a baseline, not a
+ * A role line names the effort a child *starts* at. That value is a starting level, not a
  * verdict:
  *
  * 1. the caller may override it for one delegation with `reasoningEffort`
@@ -13,13 +13,21 @@
  * person: only the caller knows the job, and only the child knows what it found once
  * it started reading the code.
  *
+ * Neither end clamps. A value below the role line's is applied as given, because the
+ * role line is where the child starts and not a floor.
+ *
  * **The effort vocabulary belongs to the adapter.** This module never carries a
  * ladder of its own. A token is accepted only when the model the child will actually
  * request advertises it in `reasoning.efforts`, and a rejection lists that model's
  * real values. A hardcoded list (`max`/`xhigh`/…) would both invent a universal
- * ladder and reject a deployment that names its efforts differently, which is why
+ * vocabulary and reject a deployment that names its efforts differently, which is why
  * `docs/decisions/2026-10-26-dynamic-reasoning-effort.md` records that shape as the
  * rejected alternative.
+ *
+ * Ordering is the adapter's, not ours. DSH documents `reasoning.efforts` as ordered
+ * from least to greatest selectable effort, so "one step up" is the next entry in that
+ * list. That is what makes the upstream instruction portable: the step is relative to
+ * the model's own list, and no token name is assumed.
  *
  * @module
  */

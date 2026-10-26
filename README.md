@@ -89,6 +89,7 @@ dsh plugin --profile <profile> add dsh-pstack
 - Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。相关技能会在需要它们的步骤说明不支持，不伪造替代。
 - `/loop` 没有同名命令，也没有事件订阅，属于降级映射。能覆盖的是目标与定时输入：`create_goal` 记录目标和相位，`schedule_create` 只能作定时心跳，它把一条消息投回创建它的会话，不能盯着 PR 或 CI，子代理也无法自己布置。不能覆盖的是事件唤醒和云端存活：goal 不会自己感知外部事件，自动续跑还取决于 profile 是否挂载 goal round driver，未挂载时长时间任务只是同一个会话里被监督的运行。
 - `typescript-best-practices` 的 `paths` 自动触发不支持，需要时显式调用 `/typescript-best-practices`。
+- 跨会话检索需要手动启用官方的 Session search bundle。`recall` 和 `automate-me` 都要跨多个既往会话工作，而 `pstack_history` 只能读调用者自己与直接子会话。未启用时这两个技能仍在当前会话范围内工作，并应把跨会话那一半报为不可用。本包不代你启用它，因为它会给每个 agent 增加五个全局工具，并让已存在会话缓存的请求前缀失效一次。
 - worktree 只隔离工作目录，不是 VM。schedule 是定时提醒，不是事件订阅。
 - 多模型评审需要配置真实不同的 route。只有同一 route 时，评审会标为同模型复核。
 - 子代理和 panel 会增加 token 消耗，只在需要严谨流程的任务上使用 `/poteto-mode`。

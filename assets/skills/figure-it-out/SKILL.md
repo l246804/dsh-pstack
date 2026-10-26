@@ -45,7 +45,7 @@ Each unit is an experiment. State the hypothesis, make the smallest change, meas
 
 ## Phase D: Keep the audit trail
 
-Log the run as the `show-me-your-work` skill prescribes; read its `SKILL.md` at its absolute resource path. Its session-audit step needs the restricted history tool, which this package does not ship yet, so keep the decision trail inside the repository and report that part of the audit as unverified. figure-it-out's work is usually ambitious enough to commit the trail so the reviewer can read it in the PR. The trail plus the diff is what lets the human come back and trust the work.
+Log the run as the `show-me-your-work` skill prescribes; read its `SKILL.md` at its absolute resource path. Its session-audit step reads this run's raw events through `pstack_history`, which covers the calling session and its reviewable direct children; when a cold read cannot attribute events to the stored log, report that part of the audit as unverified instead of treating the summary as proof. Keep the decision trail inside the repository as well. figure-it-out's work is usually ambitious enough to commit the trail so the reviewer can read it in the PR. The trail plus the diff is what lets the human come back and trust the work.
 
 ## Phase E: Verify and hand back
 

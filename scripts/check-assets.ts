@@ -20,6 +20,7 @@ import {
 import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
+import { checkDivergenceLedger } from "./divergence-ledger.ts";
 import {
   ALL_FORBIDDEN_FIELDS,
   STARTING_LEVEL,
@@ -132,6 +133,7 @@ export function checkAssets(): AssetsReport {
   for (const problem of checkScriptReferences()) problems.push(problem);
   for (const problem of checkScriptIdReferences()) problems.push(problem);
   for (const problem of checkEffortCapabilityCopy()) problems.push(problem);
+  for (const problem of checkDivergenceLedger()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
   // The expected count is "upstream skill files, minus the ones a built artifact
@@ -1466,6 +1468,15 @@ function checkEffortCapabilityCopy(): readonly string[] {
       // say the role line is where the level stays, which is the inversion this check
       // exists for. This fragment is the half that states the level does not hold.
       "it names where the role starts and not where it stays",
+      // The step instruction, and the fact that makes it portable. An earlier revision
+      // kept `reasoningEffort` and `STARTING_LEVEL` but said the package "assumes no
+      // universal ladder", which reads as "the size of a step is unknowable" and drops
+      // upstream's "raise it one step ... lower it one step". DSH's own contract orders
+      // `reasoning.efforts` from least to greatest, so a step is relative to the model's
+      // list and needs no token vocabulary. Both halves are asserted: the instruction,
+      // and the ordering claim that justifies it.
+      "Raise it one step",
+      "adjacent entry in the model's own effort list",
     ]) {
       if (!text.includes(required)) {
         problems.push(
