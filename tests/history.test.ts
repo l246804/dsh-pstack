@@ -1240,7 +1240,53 @@ describe("row wiring", () => {
     expect(registered).toHaveLength(1);
     expect(registered[0]?.name).toBe(TOOL_NAME);
     expect(name).toBe("pstack-history");
-    expect(inject).toEqual(["tools", "subagents", "sessionQuery"]);
+    // `sessionQuery` must stay out of `inject`. As a hard dependency it kept the row
+    // inactive in a profile without it — the tool never registered — and disposed the
+    // row when the service went away, instead of returning `unavailable`.
+    expect(inject).toEqual(["tools", "subagents"]);
+    expect(inject).not.toContain("sessionQuery");
+  });
+
+  it("registers even with no query service, and reports unavailable when called", async () => {
+    // The behaviour `inject` used to make unreachable outside a hand-built runtime.
+    const registered: ToolDefinition[] = [];
+    apply({
+      tools: {
+        register(definition) {
+          registered.push(definition);
+          return () => {};
+        },
+      },
+      subagents: { listChildren: async () => [] },
+      // No `get`, which is what a composition without `sessionQuery` looks like.
+    });
+
+    expect(registered).toHaveLength(1);
+    const value = await (registered[0] as ToolDefinition).execute({}, exec(CALLER_ID));
+    expect((value as { kind: string }).kind).toBe("unavailable");
+    expect((value as { code: string }).code).toBe(MISSING_SESSION_QUERY.code);
+  });
+
+  it("still answers unavailable when the service is disposed after registration", async () => {
+    // A dispose is observable through `ctx.get` but not through an injected field, so
+    // the tool has to read it per call.
+    let mounted: SessionQueryHost | undefined = harness().runtime
+      .getSessionQuery() as SessionQueryHost;
+    const registered: ToolDefinition[] = [];
+    apply({
+      tools: {
+        register(definition) {
+          registered.push(definition);
+          return () => {};
+        },
+      },
+      subagents: { listChildren: async () => [] },
+      get: (service: string) => (service === "sessionQuery" ? mounted : undefined),
+    });
+
+    mounted = undefined;
+    const value = await (registered[0] as ToolDefinition).execute({}, exec(CALLER_ID));
+    expect((value as { kind: string }).kind).toBe("unavailable");
   });
 
   it("declares the documented parameters and no extra field", () => {

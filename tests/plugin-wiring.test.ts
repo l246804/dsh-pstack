@@ -97,7 +97,10 @@ interface Assembly {
  * `profileRows` stands in for the rows a user's own profile already has; the
  * shipped patch is applied after them, exactly as a bundle layer is.
  */
-async function assemble(profileRows: readonly unknown[]): Promise<Assembly> {
+async function assemble(
+  profileRows: readonly unknown[],
+  options: { readonly sessionQuery?: boolean } = {},
+): Promise<Assembly> {
   const directory = temporaryDirectory();
   const profileFile = join(directory, "profile.json");
   writeFileSync(profileFile, JSON.stringify(profileRows, null, 2));
@@ -163,14 +166,18 @@ async function assemble(profileRows: readonly unknown[]): Promise<Assembly> {
   // `pstack-script` injects `workingDirectory` to resolve the Session's current
   // directory before spawning; without it the fiber stays inactive.
   ctx.plugin(providerPlugin("workingDirectory", { ensure: async () => directory }));
-  ctx.plugin(
-    providerPlugin("sessionQuery", {
-      observeSession: async () => {
-        throw new Error("unused in a wiring test");
-      },
-      filterSessions: async () => [],
-    }),
-  );
+  // `sessionQuery` is optional on purpose: `pstack-history` must not inject it, so a
+  // profile without it still has to register the tool.
+  if (options.sessionQuery !== false) {
+    ctx.plugin(
+      providerPlugin("sessionQuery", {
+        observeSession: async () => {
+          throw new Error("unused in a wiring test");
+        },
+        filterSessions: async () => [],
+      }),
+    );
+  }
   await new Promise((resolve) => setTimeout(resolve, 80));
 
   ctx.plugin(Loader, { baseUrl: `${pathToFileURL(directory).href}/` });
@@ -263,5 +270,35 @@ describe("the worktree guard reads the row it is judging", () => {
     const runtimeRow = WORKTREE_ROWS.find((row) => row.plugin === OFFICIAL_WORKTREE);
     expect(assembly.rows).not.toContain(`${runtimeRow?.id} [DISABLED]`);
     expect(conflicts(assembly.logs)).toEqual([]);
+  });
+});
+
+describe("pstack_history survives a profile without sessionQuery", () => {
+  it("registers the tool and answers unavailable instead of disappearing", async () => {
+    // F19: with `sessionQuery` in `inject`, Cordis keeps the fiber inactive when the
+    // service is missing, so the tool never registered and the model saw "no such
+    // tool". The `unavailable` branch this module is built around was unreachable
+    // outside a hand-built runtime. Now the row registers and the call is honest.
+    const assembly = await assemble([], { sessionQuery: false });
+
+    expect(assembly.tools).toContain("pstack_history");
+    expect(conflicts(assembly.logs)).toEqual([]);
+
+    const tool = assembly.definitions.get("pstack_history");
+    expect(tool).toBeDefined();
+    const value = await (tool as { execute(args: unknown, exec: unknown): Promise<unknown> }).execute(
+      {},
+      {
+        name: "pstack_history",
+        callId: "c-1",
+        arguments: {},
+        agent: { id: "s-caller" },
+        signal: new AbortController().signal,
+        deferContext: () => {},
+        concludeTurn: () => {},
+      },
+    );
+    expect((value as { kind: string }).kind).toBe("unavailable");
+    expect((value as { code: string }).code).toBe("service-unavailable");
   });
 });

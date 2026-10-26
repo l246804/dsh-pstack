@@ -48,8 +48,22 @@ import type {
 /** Cordis row name, used by Loader diagnostics. */
 export const name = "pstack-history";
 
-/** The row needs the tool registry and the subagent catalog for authorization. */
-export const inject = ["tools", "subagents", "sessionQuery"];
+/**
+ * The row needs the tool registry and the subagent catalog; `sessionQuery` does not.
+ *
+ * Declaring `sessionQuery` here made it a *hard* dependency, and Cordis's semantics
+ * are that a missing injected service keeps the fiber inactive and a removed one
+ * disposes it. So in a profile without `sessionQuery` the tool never registered at
+ * all, and disposing the service unregistered it — the model saw "no such tool"
+ * instead of the `unavailable` result this module is built to return, and the
+ * `MISSING_SESSION_QUERY` branch was reachable only from tests with a hand-built
+ * runtime.
+ *
+ * Reading it through `ctx.get("sessionQuery")` instead — rc.3's optional-service
+ * form, which returns `undefined` rather than throwing — keeps the tool registered
+ * and lets the call answer honestly.
+ */
+export const inject = ["tools", "subagents"];
 
 /** Model-facing tool name. */
 export const TOOL_NAME = "pstack_history";
@@ -1298,11 +1312,16 @@ export const TOOL_DESCRIPTION = [
 // Host
 // ---------------------------------------------------------------------------
 
-/** The service slices this row reads. `sessionQuery` is optional at runtime. */
+/**
+ * The service slices this row reads.
+ *
+ * `sessionQuery` is deliberately absent: it is not injected, so a typed field for it
+ * would tell callers they may pass it while `apply` never reads it. It is fetched by
+ * name on each call instead.
+ */
 export interface PstackHistoryHost {
   readonly tools: ToolsHost;
   readonly subagents: SubagentCatalogHost;
-  readonly sessionQuery?: SessionQueryHost;
 }
 
 /** What one execute reads. Injected so tests can drive each layer apart. */
@@ -1597,16 +1616,21 @@ export function createHistoryTool(runtime: HistoryRuntime): ToolDefinition {
 /**
  * Register `pstack_history` for this row.
  *
- * The row declares `sessionQuery` in `inject`, and this function still tolerates
- * a missing service: a composition can dispose it while the tool stays
- * registered, and that has to read as `unavailable`, not as an empty log.
+ * `sessionQuery` is read through `ctx.get(...)` on every call rather than injected, so
+ * a profile without it still gets the tool and a call returns `unavailable` instead of
+ * the tool vanishing. That also makes a later `dispose()` of the service observable:
+ * the next call reports the missing layer rather than an empty log.
  *
- * @param ctx - context providing the tool registry, the child catalog, and the query service.
+ * @param ctx - context providing the tool registry, the child catalog, and optionally
+ *   the query service.
  */
-export function apply(ctx: PstackHistoryHost): void {
+export function apply(
+  ctx: PstackHistoryHost & { get?: (name: string) => SessionQueryHost | undefined },
+): void {
   const runtime: HistoryRuntime = {
     subagents: ctx.subagents,
-    getSessionQuery: () => ctx.sessionQuery,
+    // Optional-service read: returns `undefined` instead of throwing when absent.
+    getSessionQuery: () => ctx.get?.("sessionQuery"),
   };
   ctx.tools.register(createHistoryTool(runtime));
 }
