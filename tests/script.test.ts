@@ -10,7 +10,10 @@ import {
   ScriptInputError,
   TOOL_NAME,
   buildScriptParameters,
+  apply,
   createPstackScriptTool,
+  inject,
+  name as rowName,
   parseScriptArgs,
   renderScriptOutcome,
   runBackground,
@@ -298,6 +301,16 @@ describe("rendering", () => {
 });
 
 describe("tool registration", () => {
+  it("declares the row name and the inject list Cordis needs", () => {
+    expect(rowName).toBe("pstack-script");
+    // Without this list Cordis runs `apply` immediately and `ctx.tools` throws
+    // `cannot get property "tools" without inject`, so the row registers nothing.
+    expect(inject).toEqual(["tools"]);
+    // `jobs` must stay out: a profile with no job controller still gets the tool,
+    // and only `background: true` is refused.
+    expect(inject).not.toContain("jobs");
+  });
+
   it("registers one tool with a closed id enum", () => {
     const registered: string[] = [];
     const tool = createPstackScriptTool({
@@ -332,5 +345,53 @@ describe("tool registration", () => {
         { name: TOOL_NAME, callId: "c1", arguments: {}, signal: new AbortController().signal } as never,
       ),
     ).rejects.toThrow(/needs the Host jobs service/);
+  });
+
+  it("reads the job controller per call, so one mounted later is seen", async () => {
+    const { jobs, specs } = fakeJobs();
+    let mounted: JobsHost | undefined;
+    const tool = createPstackScriptTool({
+      tools: { register: () => () => {} },
+      getJobs: () => mounted,
+    });
+
+    // Before the controller exists, the background path is refused...
+    await expect(
+      tool.execute(
+        { id: "log", args: [], background: true },
+        { name: TOOL_NAME, callId: "c1", arguments: {}, signal: new AbortController().signal } as never,
+      ),
+    ).rejects.toThrow(/needs the Host jobs service/);
+
+    // ...and it is not a snapshot: the same tool sees a controller mounted after
+    // construction, which a value read once in `apply` could never do.
+    mounted = jobs;
+    const value = (await tool.execute(
+      { id: "log", args: [], background: true },
+      { name: TOOL_NAME, callId: "c2", arguments: {}, signal: new AbortController().signal } as never,
+    )) as { kind: string };
+    expect(value.kind).toBe("background");
+    expect(specs).toHaveLength(1);
+  });
+
+  it("reads jobs through ctx.get in apply, not a captured field", () => {
+    const registered: string[] = [];
+    const reads: string[] = [];
+    const ctx = {
+      tools: {
+        register(definition: { name: string }) {
+          registered.push(definition.name);
+          return () => {};
+        },
+      },
+      get(service: string) {
+        reads.push(service);
+        return undefined;
+      },
+    };
+    apply(ctx as never);
+    expect(registered).toEqual([TOOL_NAME]);
+    // `apply` itself does not read the optional service; each call does.
+    expect(reads).toEqual([]);
   });
 });

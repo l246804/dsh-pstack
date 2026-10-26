@@ -479,8 +479,15 @@ const OUTPUT_SCHEMA: JsonSchemaNode = {
 /** The slices of the Cordis context this tool needs. */
 export interface PstackScriptHost {
   readonly tools: ToolsHost;
-  /** Optional: a composition without a job controller still gets the tool. */
-  readonly jobs?: JobsHost;
+  /**
+   * Optional, and read per call rather than snapshotted.
+   *
+   * A profile may mount a job controller after this row, so a value read once in
+   * `apply` would stay `undefined` forever. `ctx.get("jobs")` is rc.3's
+   * optional-service read: it returns `undefined` instead of throwing when the
+   * service is absent, which is why `jobs` is not declared in `inject`.
+   */
+  readonly getJobs?: () => JobsHost | undefined;
 }
 
 /** Build the tool for one row. */
@@ -500,7 +507,7 @@ export function createPstackScriptTool(host: PstackScriptHost): ToolDefinition {
       const args = parseScriptArgs(rawArgs);
       if (args.background) {
         return await runBackground(args, {
-          jobs: host.jobs,
+          jobs: host.getJobs?.(),
           ...(exec.agent === undefined ? {} : { caller: exec.agent.id }),
         });
       }
@@ -509,13 +516,33 @@ export function createPstackScriptTool(host: PstackScriptHost): ToolDefinition {
   };
 }
 
+/** Cordis row name, used by Loader diagnostics. */
+export const name = "pstack-script";
+
+/**
+ * The tool registry is the only hard dependency.
+ *
+ * `jobs` is deliberately absent: a composition without a job controller still
+ * registers the tool, and only `background: true` is refused. Declaring `jobs`
+ * here would keep the whole fiber inactive in every profile that has no job
+ * controller, which is most of them.
+ */
+export const inject = ["tools"];
+
 /**
  * Register `pstack_script` for this row.
  *
- * `jobs` is read from the composed context rather than injected, so a profile without
- * a job controller still registers the tool and only the `background` path is refused.
- * The row declares the tool registry in `inject`; nothing else is required.
+ * `inject` is what makes `ctx.tools` readable at all: without it Cordis runs
+ * `apply` immediately and the service proxy throws
+ * `cannot get property "tools" without inject`, so the row would register nothing
+ * in any profile.
  */
-export function apply(ctx: PstackScriptHost): void {
-  ctx.tools.register(createPstackScriptTool(ctx));
+export function apply(ctx: PstackScriptHost & { get?: (name: string) => JobsHost | undefined }): void {
+  ctx.tools.register(
+    createPstackScriptTool({
+      tools: ctx.tools,
+      // Optional-service read, so a controller mounted later is still seen.
+      getJobs: () => ctx.get?.("jobs"),
+    }),
+  );
 }
