@@ -57,6 +57,9 @@ export interface SessionInput {
   readonly lastEventTime?: number;
 }
 
+/** The shape `--sessions` takes, repeated in every message about it. */
+const SESSIONS_SHAPE = 'a JSON array of {"sessionId","cwd","lastEventTime"} objects';
+
 /** Everything the table is built from. */
 export interface AuditInput {
   readonly base: string;
@@ -572,6 +575,12 @@ export function renderTable(rows: readonly AuditRow[], base: string): string {
  * any `git -C`, and a non-array is an error rather than an empty list, because a
  * silently ignored usage signal would quietly turn every bucket into
  * `unknown-usage`.
+ *
+ * Every element is checked, not filtered. The array is a projection the caller
+ * builds from `pstack_history` results, so a malformed entry is a real mistake; the
+ * previous `filter` dropped such entries and let the row fall through to
+ * `unknown-usage`, which is exactly the silent data loss the paragraph above says
+ * this function refuses to do.
  */
 export function readSessionsFile(path: string): readonly SessionInput[] {
   const absolute = isAbsolute(path) ? path : resolve(process.cwd(), path);
@@ -586,15 +595,40 @@ export function readSessionsFile(path: string): readonly SessionInput[] {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new AuditError(`sessions file is not a JSON array: ${path}`);
+    throw new AuditError(`sessions file must be ${SESSIONS_SHAPE}: ${path}`);
   }
   if (!Array.isArray(parsed)) {
-    throw new AuditError(`sessions file is not a JSON array: ${path}`);
+    // The most likely mistake is passing a `pstack_history` result straight in:
+    // that tool returns one object, never an array, so say so rather than only
+    // "not an array".
+    throw new AuditError(
+      `sessions file must be ${SESSIONS_SHAPE}: ${path}. ` +
+        "Build it from pstack_history results; the history page itself is not an array.",
+    );
   }
-  return parsed.filter(
-    (entry): entry is SessionInput =>
-      entry !== null && typeof entry === "object" && !Array.isArray(entry),
-  );
+
+  return parsed.map((entry, index) => {
+    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new AuditError(
+        `sessions[${index}] must be an object, got ${JSON.stringify(entry)?.slice(0, 60) ?? "undefined"}`,
+      );
+    }
+    const { sessionId, cwd, lastEventTime } = entry as Record<string, unknown>;
+    if (typeof sessionId !== "string" || sessionId === "") {
+      throw new AuditError(`sessions[${index}].sessionId must be a non-empty string`);
+    }
+    if (cwd !== undefined && cwd !== null && typeof cwd !== "string") {
+      throw new AuditError(`sessions[${index}].cwd must be a string or null`);
+    }
+    if (lastEventTime !== undefined && typeof lastEventTime !== "number") {
+      throw new AuditError(`sessions[${index}].lastEventTime must be a number`);
+    }
+    return {
+      sessionId,
+      ...(cwd === undefined ? {} : { cwd: cwd as string | null }),
+      ...(lastEventTime === undefined ? {} : { lastEventTime }),
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

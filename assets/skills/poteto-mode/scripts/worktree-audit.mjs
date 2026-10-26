@@ -36,6 +36,8 @@ import { fileURLToPath } from "node:url";
 * - The session store is never scanned. `--sessions` is the only usage input, and
 *   without it the LAST_CHAT column is `-` and the bucket is `unknown-usage`.
 */
+/** The shape `--sessions` takes, repeated in every message about it. */
+const SESSIONS_SHAPE = "a JSON array of {\"sessionId\",\"cwd\",\"lastEventTime\"} objects";
 const PINNED = "unknown";
 const HEADER = [
 	"SIZE",
@@ -482,6 +484,12 @@ function renderTable(rows, base) {
 * any `git -C`, and a non-array is an error rather than an empty list, because a
 * silently ignored usage signal would quietly turn every bucket into
 * `unknown-usage`.
+*
+* Every element is checked, not filtered. The array is a projection the caller
+* builds from `pstack_history` results, so a malformed entry is a real mistake; the
+* previous `filter` dropped such entries and let the row fall through to
+* `unknown-usage`, which is exactly the silent data loss the paragraph above says
+* this function refuses to do.
 */
 function readSessionsFile(path) {
 	const absolute = isAbsolute(path) ? path : resolve(process.cwd(), path);
@@ -495,10 +503,21 @@ function readSessionsFile(path) {
 	try {
 		parsed = JSON.parse(text);
 	} catch {
-		throw new AuditError(`sessions file is not a JSON array: ${path}`);
+		throw new AuditError(`sessions file must be ${SESSIONS_SHAPE}: ${path}`);
 	}
-	if (!Array.isArray(parsed)) throw new AuditError(`sessions file is not a JSON array: ${path}`);
-	return parsed.filter((entry) => entry !== null && typeof entry === "object" && !Array.isArray(entry));
+	if (!Array.isArray(parsed)) throw new AuditError(`sessions file must be ${SESSIONS_SHAPE}: ${path}. Build it from pstack_history results; the history page itself is not an array.`);
+	return parsed.map((entry, index) => {
+		if (entry === null || typeof entry !== "object" || Array.isArray(entry)) throw new AuditError(`sessions[${index}] must be an object, got ${JSON.stringify(entry)?.slice(0, 60) ?? "undefined"}`);
+		const { sessionId, cwd, lastEventTime } = entry;
+		if (typeof sessionId !== "string" || sessionId === "") throw new AuditError(`sessions[${index}].sessionId must be a non-empty string`);
+		if (cwd !== void 0 && cwd !== null && typeof cwd !== "string") throw new AuditError(`sessions[${index}].cwd must be a string or null`);
+		if (lastEventTime !== void 0 && typeof lastEventTime !== "number") throw new AuditError(`sessions[${index}].lastEventTime must be a number`);
+		return {
+			sessionId,
+			...cwd === void 0 ? {} : { cwd },
+			...lastEventTime === void 0 ? {} : { lastEventTime }
+		};
+	});
 }
 /** Usage text, kept close to the shell script's help. */
 const USAGE = [
