@@ -366,6 +366,28 @@ export interface ToolDefinition {
   readonly output: ToolOutputDefinition;
   execute(args: unknown, exec: ToolRunContext): Promise<unknown>;
   isConcurrencySafe?(args: unknown): boolean;
+  /**
+   * Cooperative tool-call timeout budget in milliseconds; omitted means no deadline.
+   *
+   * Enforced by `@deepseek-ai/dsh-tool-call-timeout-policy`, which wraps
+   * `tools/execute`: it replaces `exec.signal` with a deadline-combined signal for the
+   * duration of the call, and converts the outcome to a timeout when its own timer won.
+   *
+   * The budget covers **only the tool call**, not work the call starts. The wrapper
+   * disposes its timer as soon as `execute` settles, so a background job started by the
+   * call keeps running past the budget — the deadline cannot be used to bound a long
+   * task, and it does not break one either.
+   *
+   * Never sent to the model: `schemas()` whitelists name/description/parameters only.
+   *
+   * Declaring it asserts that the tool forwards `exec.signal` into an implementation
+   * that can reach quiescence when that signal aborts. `pstack_script` does: the
+   * foreground run hands the signal to `spawn`, so an abort kills the child.
+   *
+   * Source: `dsh-tools/lib/types/index.d.ts` (`ToolDefinition.timeoutMs`) in the
+   * installed 0.2.1-rc.3 tree; the npm copy of that file is byte-identical.
+   */
+  timeoutMs?: number;
 }
 
 /** The slice of `ctx.tools` this tool needs. */

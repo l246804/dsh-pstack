@@ -715,6 +715,23 @@ export function createPstackScriptTool(host: PstackScriptHost): ToolDefinition {
     // Two runs of the same script may write the same store, so this is not marked
     // concurrency-safe; the Host then serializes them the way it serializes any tool.
     isConcurrencySafe: () => false,
+    /**
+     * The Host's last-resort budget for one call.
+     *
+     * `DEFAULT_TIMEOUT_MS` is the tool's own timer for a foreground run, and it fires
+     * first in every normal case: it kills the child and returns a `timedOut` result the
+     * model can read. This budget is larger on purpose, so it only ever wins when the
+     * tool's own machinery failed to return at all — a hung `await`, a timer that never
+     * ran — and the alternative would be a session blocked with no answer.
+     *
+     * `MAX_TIMEOUT_MS` rather than a new number: it is already the ceiling the tool
+     * accepts for a caller-supplied `timeoutMs`, so the Host budget can never be the
+     * thing that cuts short a run the caller was allowed to request.
+     *
+     * It does not bound a background job. The wrapper disposes its timer when `execute`
+     * settles, which is milliseconds after `jobs.start` returns.
+     */
+    timeoutMs: MAX_TIMEOUT_MS,
     async execute(rawArgs, exec: ToolRunContext) {
       const args = parseScriptArgs(rawArgs);
       // Ask the Host where this Session currently is, rather than inheriting the

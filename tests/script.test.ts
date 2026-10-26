@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import {
   DEFAULT_OUTPUT_LIMIT_BYTES,
+  DEFAULT_TIMEOUT_MS,
   MAX_TIMEOUT_MS,
   SCRIPT_IDS,
   ScriptInputError,
@@ -661,5 +662,55 @@ describe("the declared output schema accepts every outcome the tool produces", (
     expect(result.exitCode).toBe(1);
     expect(result.signal).toBeNull();
     expect(violations(OUTPUT_SCHEMA, result)).toEqual([]);
+  });
+});
+
+describe("the Host's timeout budget is declared", () => {
+  it("declares a budget at the tool's own ceiling, not its default", () => {
+    // The tool's own `DEFAULT_TIMEOUT_MS` timer fires first in every normal case. The
+    // Host budget exists only for the case where the tool itself fails to return, so it
+    // must be strictly larger — otherwise the two race and the Host can pre-empt a run
+    // the caller was allowed to request.
+    const tool = createPstackScriptTool(host());
+    expect(tool.timeoutMs).toBe(MAX_TIMEOUT_MS);
+    expect(tool.timeoutMs).toBeGreaterThan(DEFAULT_TIMEOUT_MS);
+  });
+
+  it("stays within what a caller may already request", () => {
+    // A caller can pass `timeoutMs` up to `MAX_TIMEOUT_MS`. The Host budget must not be
+    // smaller than that ceiling, or a legal call would be cut short by the wrapper.
+    expect(() => parseScriptArgs({ id: "log", timeoutMs: MAX_TIMEOUT_MS })).not.toThrow();
+    const tool = createPstackScriptTool(host());
+    expect(tool.timeoutMs).toBeGreaterThanOrEqual(MAX_TIMEOUT_MS);
+  });
+
+  it("keeps the Host budget out of the model-facing schema", () => {
+    // Two different `timeoutMs` names exist on purpose:
+    //
+    // - `parameters.properties.timeoutMs` is a *model-facing argument*: the caller's
+    //   foreground limit, defaulting to DEFAULT_TIMEOUT_MS.
+    // - `tool.timeoutMs` is the *Host budget* declared on the definition, which
+    //   `schemas()` never emits because it whitelists name/description/parameters.
+    //
+    // So the argument must be present, and the budget must not leak into the schema as
+    // anything else (a required entry, say).
+    const tool = createPstackScriptTool(host());
+    const parameters = tool.parameters as {
+      properties?: Record<string, { description?: string }>;
+      required?: readonly string[];
+    };
+    expect(Object.keys(parameters.properties ?? {})).toContain("timeoutMs");
+    expect(parameters.required ?? []).not.toContain("timeoutMs");
+    // The argument's own default is the tool timeout, not the Host budget.
+    expect(parameters.properties?.timeoutMs?.description).toContain(String(DEFAULT_TIMEOUT_MS));
+    expect(parameters.properties?.timeoutMs?.description).toContain(String(MAX_TIMEOUT_MS));
+  });
+
+  it("is the only tool that declares one", () => {
+    // A budget is an assertion that the tool forwards `exec.signal` into something that
+    // can reach quiescence. `pstack_script` does (the foreground run hands the signal to
+    // `spawn`); the other rows do not have that property, so they must not claim it.
+    const script = createPstackScriptTool(host());
+    expect(script.timeoutMs).toBeDefined();
   });
 });
