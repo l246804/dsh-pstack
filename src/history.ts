@@ -1050,12 +1050,14 @@ export const OUTPUT_SCHEMA: JsonSchemaNode = {
         "`events` is a page of raw log events. `children` is the direct-child catalog. `denied` and `unavailable` name the failing layer and never mean the session is empty.",
     },
     callerSessionId: {
-      type: "string",
-      description: "The calling Agent's session id, taken from exec.agent.id.",
+      oneOf: [{ type: "string" }, { type: "null" }],
+      description:
+        "The calling Agent's session id from exec.agent.id; null when the call had no Agent.",
     },
     requestedSessionId: {
-      type: "string",
-      description: "The session whose log this result describes.",
+      oneOf: [{ type: "string" }, { type: "null" }],
+      description:
+        "The session whose log this result describes; null for the child catalog and for the missing-Agent denial.",
     },
     scope: { type: "string", enum: ["current", "children"] },
     snapshotSource: {

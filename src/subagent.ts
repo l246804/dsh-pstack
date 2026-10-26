@@ -966,7 +966,7 @@ function buildParameters(config: PstackSubagentConfig): Record<string, unknown> 
   };
 }
 
-const OUTPUT_SCHEMA: JsonSchemaNode = {
+export const OUTPUT_SCHEMA: JsonSchemaNode = {
   type: "object",
   additionalProperties: false,
   properties: {

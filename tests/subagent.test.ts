@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
+import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
+
 import { PSTACK_MODELS_FILENAME } from "../scripts/role-manifest.ts";
 import type {
   LlmCallConfig,
@@ -17,6 +19,7 @@ import {
   DelegationError,
   PartialDelegationError,
   PreambleError,
+  OUTPUT_SCHEMA,
   TOOL_NAME,
   agentOptionsFor,
   composeChildPrompt,
@@ -816,5 +819,26 @@ describe("tool wiring", () => {
     expect(run.starts[0]?.delivery).toBe("parent");
     expect(run.starts[0]?.provider).toBe("spawn");
     expect(run.starts[0]?.label).toBe("demo");
+  });
+});
+
+describe("the declared output schema is inside the Host's subset", () => {
+  it("passes the Host's own schema check", () => {
+    // `pstack_subagent`'s fields are all required and non-nullable, so every real
+    // result already validated. This pins it: a later nullable field would
+    // otherwise reach the model as a tool error, exactly like F2 and F3 did.
+    expect(() => assertSupportedJsonSchema(OUTPUT_SCHEMA)).not.toThrow();
+    expect(jsonSchemaToTs(OUTPUT_SCHEMA as never)).not.toBe("unknown");
+  });
+
+  it("accepts a start result with the fields the model reads", () => {
+    const value = {
+      kind: "activation",
+      children: [
+        { childId: "c-1", label: "demo", agent: "poteto-agent", role: "(none)", route: "inherit-parent" },
+      ],
+      diagnostics: [],
+    };
+    expect(violations(OUTPUT_SCHEMA, value)).toEqual([]);
   });
 });

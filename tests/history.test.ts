@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
+
 import {
   DEFAULT_LIMIT,
   HistoryInputError,
@@ -24,10 +26,12 @@ import {
   renderHistoryResult,
   sliceEvents,
   unavailableResult,
+  OUTPUT_SCHEMA,
 } from "../src/history.ts";
 import type {
   HistoryArgs,
   HistoryRuntime,
+  HistoryResult,
   ObservationFacts,
   TargetAuthorization,
 } from "../src/history.ts";
@@ -1126,5 +1130,106 @@ describe("row wiring", () => {
     });
     const value = await tool.execute({}, exec(CALLER_ID));
     expect((value as { kind: string }).kind).toBe("unavailable");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Output contract
+// ---------------------------------------------------------------------------
+
+/**
+ * Every DTO variant must survive the Host's validator.
+ *
+ * `OUTPUT_SCHEMA` was declared at `src/history.ts` and referenced only by the
+ * tool's `output.schema`; no test ever fed a result to it. That is how two
+ * `string` fields that three variants write as `null` shipped: the registry
+ * validates before rendering, so a `children` or `denied` result would have
+ * reached the model as `tool "pstack_history" returned invalid output`.
+ */
+describe("every result variant satisfies the declared output schema", () => {
+  const relations = describeRelations(CALLER_ID, []);
+
+  it("is inside the Host's supported schema subset", () => {
+    expect(() => assertSupportedJsonSchema(OUTPUT_SCHEMA)).not.toThrow();
+    expect(jsonSchemaToTs(OUTPUT_SCHEMA as never)).not.toBe("unknown");
+  });
+
+  const cases: readonly [string, () => HistoryResult][] = [
+    ["children", () => childrenResult({ callerSessionId: CALLER_ID, relations })],
+    [
+      "denied with null ids",
+      () =>
+        deniedResult({
+          callerSessionId: null,
+          requestedSessionId: null,
+          scope: "current",
+          code: "missing-agent",
+          message: "This call had no Agent, so there is no session to read.",
+        }),
+    ],
+    [
+      "denied with a caller only",
+      () =>
+        deniedResult({
+          callerSessionId: CALLER_ID,
+          requestedSessionId: null,
+          scope: "current",
+          code: "cross-workspace",
+          message: "m",
+        }),
+    ],
+    [
+      "unavailable with null ids",
+      () =>
+        unavailableResult({
+          callerSessionId: null,
+          requestedSessionId: null,
+          scope: "current",
+          failure: MISSING_SESSION_QUERY,
+        }),
+    ],
+    [
+      "unavailable with a caller only",
+      () =>
+        unavailableResult({
+          callerSessionId: CALLER_ID,
+          requestedSessionId: CHILD_ID,
+          scope: "children",
+          failure: MISSING_SESSION_QUERY,
+        }),
+    ],
+  ];
+
+  for (const [label, build] of cases) {
+    it(label, () => {
+      expect(violations(OUTPUT_SCHEMA, build())).toEqual([]);
+    });
+  }
+
+  it("events page built from a real read", async () => {
+    const { runtime } = harness({ events: events(3) });
+    const value = await readHistory(parseHistoryArgs({}), exec(CALLER_ID), runtime);
+    expect(value.kind).toBe("events");
+    expect(violations(OUTPUT_SCHEMA, value)).toEqual([]);
+  });
+
+  it("unavailable from the real execute path, with no query service", async () => {
+    const tool = createHistoryTool({
+      subagents: { listChildren: async () => [] },
+      getSessionQuery: () => undefined,
+    });
+    // A caller must be present here: the missing-Agent denial is checked first,
+    // so passing no Agent would exercise that branch instead of this one.
+    const value = await tool.execute({}, exec(CALLER_ID));
+    expect((value as { kind: string }).kind).toBe("unavailable");
+    expect((value as { code: string }).code).toBe(MISSING_SESSION_QUERY.code);
+    expect(violations(OUTPUT_SCHEMA, value)).toEqual([]);
+  });
+
+  it("denied from the real execute path, with no Agent", async () => {
+    const tool = createHistoryTool(harness().runtime);
+    const value = await tool.execute({}, exec(undefined));
+    expect((value as { kind: string }).kind).toBe("denied");
+    expect(violations(OUTPUT_SCHEMA, value)).toEqual([]);
   });
 });
