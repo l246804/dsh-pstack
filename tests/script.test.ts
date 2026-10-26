@@ -1,6 +1,7 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import {
@@ -17,12 +18,14 @@ import {
   name as rowName,
   parseScriptArgs,
   renderScriptOutcome,
+  resolveWorkingDirectory,
   runBackground,
   runForeground,
   scriptEnvironment,
   scriptPath,
 } from "../src/script.ts";
 import type { JobId, JobSpec, JobsHost, JobView } from "../src/host-contract.ts";
+import type { PstackScriptHost } from "../src/script.ts";
 import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
 import { ROOT } from "../scripts/build-assets.ts";
 
@@ -32,6 +35,24 @@ function temporaryDirectory(): string {
   const directory = mkdtempSync(join(tmpdir(), "dsh-pstack-script-"));
   fixtures.push(directory);
   return directory;
+}
+
+/**
+ * A `PstackScriptHost` whose Session directory the test controls.
+ *
+ * `ensure` is the seam the real row calls before spawning, so returning a fixture
+ * directory is what makes "where did the child actually run" observable.
+ */
+function host(
+  options: { readonly cwd?: string; readonly getJobs?: () => JobsHost | undefined } = {},
+): PstackScriptHost {
+  return {
+    tools: { register: () => () => {} },
+    workingDirectory: {
+      ensure: async () => options.cwd ?? temporaryDirectory(),
+    },
+    ...(options.getJobs === undefined ? {} : { getJobs: options.getJobs }),
+  };
 }
 
 /** A fake registry that records specs and reports a fixed view. */
@@ -307,7 +328,8 @@ describe("tool registration", () => {
     expect(rowName).toBe("pstack-script");
     // Without this list Cordis runs `apply` immediately and `ctx.tools` throws
     // `cannot get property "tools" without inject`, so the row registers nothing.
-    expect(inject).toEqual(["tools"]);
+    // `workingDirectory` resolves the session directory each run starts in (§5).
+    expect(inject).toEqual(["tools", "workingDirectory"]);
     // `jobs` must stay out: a profile with no job controller still gets the tool,
     // and only `background: true` is refused.
     expect(inject).not.toContain("jobs");
@@ -322,6 +344,7 @@ describe("tool registration", () => {
           return () => {};
         },
       },
+      workingDirectory: { ensure: async () => temporaryDirectory() },
     });
     expect(tool.name).toBe(TOOL_NAME);
     expect(registered).toEqual([]);
@@ -330,7 +353,7 @@ describe("tool registration", () => {
   });
 
   it("reaches a real process through execute", async () => {
-    const tool = createPstackScriptTool({ tools: { register: () => () => {} } });
+    const tool = createPstackScriptTool(host());
     const value = (await tool.execute(
       { id: "log", args: [] },
       { name: TOOL_NAME, callId: "c1", arguments: {}, signal: new AbortController().signal } as never,
@@ -340,7 +363,7 @@ describe("tool registration", () => {
   });
 
   it("refuses a background call through execute when jobs is absent", async () => {
-    const tool = createPstackScriptTool({ tools: { register: () => () => {} } });
+    const tool = createPstackScriptTool(host());
     await expect(
       tool.execute(
         { id: "log", args: [], background: true },
@@ -352,10 +375,9 @@ describe("tool registration", () => {
   it("reads the job controller per call, so one mounted later is seen", async () => {
     const { jobs, specs } = fakeJobs();
     let mounted: JobsHost | undefined;
-    const tool = createPstackScriptTool({
-      tools: { register: () => () => {} },
-      getJobs: () => mounted,
-    });
+    const tool = createPstackScriptTool(
+      host({ getJobs: () => mounted }),
+    );
 
     // Before the controller exists, the background path is refused...
     await expect(
@@ -386,6 +408,7 @@ describe("tool registration", () => {
           return () => {};
         },
       },
+      workingDirectory: { ensure: async () => temporaryDirectory() },
       get(service: string) {
         reads.push(service);
         return undefined;
@@ -395,6 +418,107 @@ describe("tool registration", () => {
     expect(registered).toEqual([TOOL_NAME]);
     // `apply` itself does not read the optional service; each call does.
     expect(reads).toEqual([]);
+  });
+});
+
+describe("the child runs in the session's directory", () => {
+  /** A directory with one script that prints its own working directory. */
+  function cwdReporter(): string {
+    const directory = temporaryDirectory();
+    const file = join(directory, "print-cwd.mjs");
+    writeFileSync(file, 'process.stdout.write(process.cwd());\n');
+    return file;
+  }
+
+  it("resolves an omitted cwd to the session directory, not the Host's", async () => {
+    const session = temporaryDirectory();
+    const reporter = cwdReporter();
+    // Drive the resolver through the same seam `execute` uses. Running a shipped
+    // artefact is not possible here because none of them print their cwd, and
+    // adding one to the package to satisfy a test would ship dead code.
+    const args = parseScriptArgs({ id: "log", args: [] });
+    const cwd = resolveWorkingDirectory(args.cwd, session);
+    expect(cwd).toBe(resolve(session));
+    expect(cwd).not.toBe(resolve(process.cwd()));
+    // And the child really lands there.
+    const child = spawnSync(process.execPath, [reporter], { cwd, encoding: "utf8" });
+    expect(child.stdout).toBe(resolve(session));
+  });
+
+  it("resolves a relative cwd against the session directory", () => {
+    const session = temporaryDirectory();
+    const nested = join(session, "sub");
+    mkdirSync(nested);
+    const args = parseScriptArgs({ id: "log", args: [], cwd: "sub" });
+    expect(resolveWorkingDirectory(args.cwd, session)).toBe(resolve(nested));
+  });
+
+  it("uses an absolute cwd as given", () => {
+    const session = temporaryDirectory();
+    const other = temporaryDirectory();
+    const args = parseScriptArgs({ id: "log", args: [], cwd: other });
+    expect(resolveWorkingDirectory(args.cwd, session)).toBe(resolve(other));
+  });
+
+  it("puts relative paths inside the session directory during a real run", async () => {
+    // The end-to-end shape of the defect: `log` writes a TSV relative to its cwd,
+    // so with the fix the file lands in the session directory.
+    const session = temporaryDirectory();
+    const tool = createPstackScriptTool(host({ cwd: session }));
+    const value = (await tool.execute(
+      { id: "log", args: ["decisions.tsv", "phase", "decision", "why", "ev", "result"] },
+      {
+        name: TOOL_NAME,
+        callId: "c-cwd",
+        arguments: {},
+        agent: { id: "s-1" },
+        signal: new AbortController().signal,
+      } as never,
+    )) as { exitCode: number };
+    expect(value.exitCode).toBe(0);
+    expect(readFileSync(join(session, "decisions.tsv"), "utf8")).toContain("phase\tdecision");
+  });
+
+  it("asks the Host for the session directory on every call", async () => {
+    const calls: string[] = [];
+    const tool = createPstackScriptTool({
+      tools: { register: () => () => {} },
+      workingDirectory: {
+        ensure: async (agent) => {
+          calls.push(agent.id);
+          return temporaryDirectory();
+        },
+      },
+    });
+    await tool.execute(
+      { id: "log", args: [] },
+      {
+        name: TOOL_NAME,
+        callId: "c1",
+        arguments: {},
+        agent: { id: "s-1" },
+        signal: new AbortController().signal,
+      } as never,
+    );
+    expect(calls).toEqual(["s-1"]);
+  });
+
+  it("does not ask for a session directory when there is no Agent", async () => {
+    let asked = 0;
+    const tool = createPstackScriptTool({
+      tools: { register: () => () => {} },
+      workingDirectory: {
+        ensure: async () => {
+          asked += 1;
+          return temporaryDirectory();
+        },
+      },
+    });
+    await tool.execute(
+      { id: "log", args: [] },
+      { name: TOOL_NAME, callId: "c1", arguments: {}, signal: new AbortController().signal } as never,
+    );
+    expect(asked).toBe(0);
   });
 });
 

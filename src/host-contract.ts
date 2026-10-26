@@ -363,6 +363,24 @@ export interface ToolsHost {
 }
 
 // ---------------------------------------------------------------------------
+// workingDirectory
+// ---------------------------------------------------------------------------
+
+/**
+ * The slice of `ctx.workingDirectory` a script run needs.
+ *
+ * `ensure` is the same seam `dsh-tool-bash` uses before it spawns anything
+ * (`dsh-tool-bash/lib/index.js:663`): it returns the Session's current directory,
+ * creating or restoring it as the Host requires. Reading `process.cwd()` instead
+ * would run the script in the Host process's directory — wrong for every Session
+ * whose workspace is a checkout or a worktree.
+ */
+export interface WorkingDirectoryHost {
+  /** The Session's current directory, validated/created as the Host requires. */
+  ensure(agent: Agent, signal?: AbortSignal): Promise<string>;
+}
+
+// ---------------------------------------------------------------------------
 // jobs
 // ---------------------------------------------------------------------------
 

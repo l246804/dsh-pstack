@@ -160,6 +160,9 @@ async function assemble(profileRows: readonly unknown[]): Promise<Assembly> {
   ctx.plugin(providerPlugin("skills", { register: () => () => {} }));
   ctx.plugin(providerPlugin("subagents", {}));
   ctx.plugin(providerPlugin("llm", {}));
+  // `pstack-script` injects `workingDirectory` to resolve the Session's current
+  // directory before spawning; without it the fiber stays inactive.
+  ctx.plugin(providerPlugin("workingDirectory", { ensure: async () => directory }));
   ctx.plugin(
     providerPlugin("sessionQuery", {
       observeSession: async () => {

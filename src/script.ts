@@ -27,10 +27,11 @@ import type {
   ToolDefinition,
   ToolRunContext,
   ToolsHost,
+  WorkingDirectoryHost,
 } from "./host-contract.ts";
 import { RUNTIME_CLIS } from "../scripts/runtime-manifest.ts";
 import { ASSETS_ROOT } from "./paths.ts";
-import { join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 /** Model-facing tool name. */
 export const TOOL_NAME = "pstack_script";
@@ -208,6 +209,30 @@ export function parseScriptArgs(raw: unknown): ScriptArgs {
 }
 
 /**
+ * Resolve the directory the child runs in.
+ *
+ * The tool's `cwd` argument is documented as resolving against "this session's
+ * directory", so `sessionCwd` — the value `ctx.workingDirectory.ensure()` returns —
+ * is the base, not the Host process's working directory.
+ *
+ * - omitted           -> the session directory
+ * - relative          -> joined onto the session directory
+ * - absolute          -> used as-is
+ *
+ * With no Session (a call outside an Agent) there is no session directory to
+ * anchor to; the argument is then passed through and `resolve` normalises it
+ * against the Host process, which is the only directory that exists.
+ */
+export function resolveWorkingDirectory(
+  requested: string | undefined,
+  sessionCwd: string | undefined,
+): string | undefined {
+  if (requested === undefined) return sessionCwd;
+  if (isAbsolute(requested)) return resolve(requested);
+  return sessionCwd === undefined ? resolve(requested) : resolve(join(sessionCwd, requested));
+}
+
+/**
  * Run one script in the foreground.
  *
  * A nonzero exit, a signal, a timeout, and truncated output are all returned rather
@@ -219,6 +244,7 @@ export async function runForeground(
   options: {
     readonly execPath?: string;
     readonly environment?: NodeJS.ProcessEnv;
+    /** Already resolved by the caller; see `resolveWorkingDirectory`. */
     readonly cwd?: string;
     readonly signal?: AbortSignal;
   } = {},
@@ -321,7 +347,8 @@ export async function runBackground(
   const path = scriptPath(args.id);
   const execPath = options.execPath ?? process.execPath;
   const environment = options.environment ?? scriptEnvironment();
-  const cwd = args.cwd ?? options.cwd;
+  // Already resolved by the caller; see `resolveWorkingDirectory`.
+  const cwd = options.cwd;
 
   const jobId = jobs.start({
     kind: "bash",
@@ -405,6 +432,16 @@ const TOOL_DESCRIPTION = [
   "`id` selects a bundled script by name; only those names are accepted, so this is not a general",
   "shell and takes no path or command string. `args` are passed to the script verbatim.",
   "",
+  "The run starts in this session's directory, so a relative path in `args` lands inside the",
+  "workspace or worktree the session is using.",
+  "",
+  "**This tool does not go through command approval, and the Host's sandbox policy does not apply**",
+  "to it. It spawns a Node process directly instead of asking `ctx.shell` to run a command, which is",
+  "what keeps it working where no `node` is on PATH. The scripts are this package's own audited",
+  "artefacts and `id` cannot name anything else, but the consequence is real: unlike a bash call, no",
+  "approval prompt is shown and no filesystem policy is enforced on what the script writes. Say so",
+  "when a task depends on that difference.",
+  "",
   "A nonzero exit, a signal, a timeout, and truncated output all come back in the result with the",
   "captured output, so a failed run is visible rather than silent.",
   "",
@@ -429,7 +466,7 @@ export function buildScriptParameters(): Record<string, unknown> {
     cwd: {
       type: "string",
       description:
-        "Working directory for the script. Relative paths resolve against this session's directory. Omitted inherits it.",
+        "Working directory for the script. Relative paths resolve against this session's directory; an absolute path is used as-is. Omitted runs in this session's directory.",
     },
     background: {
       type: "boolean",
@@ -522,6 +559,8 @@ export const OUTPUT_SCHEMA: JsonSchemaNode = {
 /** The slices of the Cordis context this tool needs. */
 export interface PstackScriptHost {
   readonly tools: ToolsHost;
+  /** Resolves the Session's current directory; see `WorkingDirectoryHost`. */
+  readonly workingDirectory: WorkingDirectoryHost;
   /**
    * Optional, and read per call rather than snapshotted.
    *
@@ -548,13 +587,24 @@ export function createPstackScriptTool(host: PstackScriptHost): ToolDefinition {
     isConcurrencySafe: () => false,
     async execute(rawArgs, exec: ToolRunContext) {
       const args = parseScriptArgs(rawArgs);
+      // Ask the Host where this Session currently is, rather than inheriting the
+      // Host process's directory. `ensure` is the same seam `dsh-tool-bash` uses.
+      const sessionCwd =
+        exec.agent === undefined
+          ? undefined
+          : await host.workingDirectory.ensure(exec.agent, exec.signal);
+      const cwd = resolveWorkingDirectory(args.cwd, sessionCwd);
       if (args.background) {
         return await runBackground(args, {
           jobs: host.getJobs?.(),
+          ...(cwd === undefined ? {} : { cwd }),
           ...(exec.agent === undefined ? {} : { caller: exec.agent.id }),
         });
       }
-      return await runForeground(args, { signal: exec.signal });
+      return await runForeground(args, {
+        signal: exec.signal,
+        ...(cwd === undefined ? {} : { cwd }),
+      });
     },
   };
 }
@@ -563,14 +613,18 @@ export function createPstackScriptTool(host: PstackScriptHost): ToolDefinition {
 export const name = "pstack-script";
 
 /**
- * The tool registry is the only hard dependency.
+ * The hard dependencies.
+ *
+ * `tools` is the registry this row registers into; `workingDirectory` is what
+ * turns the tool's `cwd` argument and its omitted case into the Session's
+ * directory. Both are always present in a profile that has an Agent at all.
  *
  * `jobs` is deliberately absent: a composition without a job controller still
  * registers the tool, and only `background: true` is refused. Declaring `jobs`
  * here would keep the whole fiber inactive in every profile that has no job
  * controller, which is most of them.
  */
-export const inject = ["tools"];
+export const inject = ["tools", "workingDirectory"];
 
 /**
  * Register `pstack_script` for this row.
@@ -584,6 +638,7 @@ export function apply(ctx: PstackScriptHost & { get?: (name: string) => JobsHost
   ctx.tools.register(
     createPstackScriptTool({
       tools: ctx.tools,
+      workingDirectory: ctx.workingDirectory,
       // Optional-service read, so a controller mounted later is still seen.
       getJobs: () => ctx.get?.("jobs"),
     }),

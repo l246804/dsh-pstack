@@ -23,7 +23,9 @@ dsh-pstack 沿用这个思路。上游技能是内容源，DSH 专用资产单�
 - Node.js `>=22.19`。仅 npm CLI 部署需要它出现在 `PATH` 上；Desktop（Electron）部署走 Host 自己的运行时。
 - Git。worktree 需要 Git 仓库。
 
-随包的编排、PR watcher、计划检查、worktree 审计和决策日志脚本已构建为单文件 Node 产物，依赖全部内联。运行时通过 `pstack_script` 工具以宿主进程启动它们，因此**不需要 Bun，也不需要 bash，更不需要安装任何依赖**。Desktop 用户不在 `PATH` 上放 `node` 也能用：工具用 Electron 自带的 Node 运行时执行，并在需要时自动附加 `ELECTRON_RUN_AS_NODE`。
+随包的编排、PR watcher、计划检查、worktree 审计和决策日志脚本已构建为单文件 Node 产物，依赖全部内联。运行时通过 `pstack_script` 工具以宿主进程启动它们，因此**不需要 Bun，也不需要 bash，更不需要安装任何依赖**。Desktop 用户不在 `PATH` 上放 `node` 也能用：工具用 Electron 自带的 Node 运行时执行，并在需要时自动附加 `ELECTRON_RUN_AS_NODE`。脚本从**会话目录**启动，所以参数里的相对路径落在当前工作区或 worktree 内。
+
+`pstack_script` 直接 `spawn` 子进程，因此**不经过命令审批，也不受 DSH 的 sandbox policy 约束**：它只能执行本包随附、由封闭 `id` 枚举选中的脚本，但脚本实际读了什么、写了哪里，Host 不会拦。这是为了在没有 `PATH` `node` 的部署里仍能运行为此付出的代价。需要审批与沙箱约束的命令请用 DSH 自己的 bash 工具。
 
 worktree 只隔离工作目录和分支，不提供 VM、网络、凭据或端口隔离。需要独立机器或云端执行时，worktree 不是替代品。
 
