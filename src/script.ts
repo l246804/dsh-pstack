@@ -475,13 +475,11 @@ export function buildScriptParameters(): Record<string, unknown> {
     },
     timeoutMs: {
       type: "integer",
-      minimum: 1,
-      description: `Foreground wall-clock limit. Defaults to ${DEFAULT_TIMEOUT_MS}; values above ${MAX_TIMEOUT_MS} are rejected.`,
+      description: `Foreground wall-clock limit; 1 or greater, and values below 1 are rejected. Defaults to ${DEFAULT_TIMEOUT_MS}; values above ${MAX_TIMEOUT_MS} are rejected.`,
     },
     outputLimitBytes: {
       type: "integer",
-      minimum: 1,
-      description: `Per-stream capture limit. Defaults to ${DEFAULT_OUTPUT_LIMIT_BYTES}.`,
+      description: `Per-stream capture limit; 1 or greater, and values below 1 are rejected. Defaults to ${DEFAULT_OUTPUT_LIMIT_BYTES}.`,
     },
   };
 

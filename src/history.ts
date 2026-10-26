@@ -1488,19 +1488,17 @@ export function createHistoryTool(runtime: HistoryRuntime): ToolDefinition {
         },
         fromSeq: {
           type: "integer",
-          minimum: 0,
-          description: "First event sequence number to return. Use the previous page's nextFromSeq.",
+          description:
+            "First event sequence number to return; 0 or greater, and negative values are rejected. Use the previous page's nextFromSeq.",
         },
         throughSeq: {
           type: "integer",
-          minimum: 0,
           description:
-            "Inclusive snapshot boundary to pin across pages. Omit to use this call's snapshot; a larger value is clamped to it.",
+            "Inclusive snapshot boundary to pin across pages; 0 or greater, and negative values are rejected. Omit to use this call's snapshot; a larger value is clamped to it.",
         },
         limit: {
           type: "integer",
-          minimum: 1,
-          description: `Maximum events in this page. Defaults to ${DEFAULT_LIMIT}; values above ${MAX_LIMIT} are rejected.`,
+          description: `Maximum events in this page; 1 or greater, and values below 1 are rejected. Defaults to ${DEFAULT_LIMIT}; values above ${MAX_LIMIT} are rejected.`,
         },
       },
     },

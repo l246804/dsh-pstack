@@ -39,7 +39,7 @@ Linux 和 macOS 是主要验证目标，Windows 未在实机验证。脚本本�
 >
 > 需要同时使用时，请使用两个独立 profile。
 
-决策记录见 [docs/decisions/2026-10-24-no-agent-team-coexistence.md](docs/decisions/2026-10-24-no-agent-team-coexistence.md)。
+决策记录见 [docs/decisions/2026-10-24-no-agent-team-coexistence.md](https://github.com/l246804/dsh-pstack/blob/main/docs/decisions/2026-10-24-no-agent-team-coexistence.md)：`docs/` 不在发布包的文件清单里，所以这里用绝对 URL，避免 npm 页面上的相对链接指向不存在的路径。
 
 ## 安装
 

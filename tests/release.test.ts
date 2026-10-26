@@ -14,6 +14,8 @@ import {
   ROLE_FILE_PATH,
   checkAssetsHostCopy,
   checkConceptCoverage,
+  checkLinks,
+  checkReadmeLinksReachableInTarball,
   excludesTerm,
   checkPlaybookClaims,
   collectReleaseCopy,
@@ -199,5 +201,71 @@ describe("concept coverage closes over new upstream content", () => {
     expect(problems.filter((problem) => problem.includes("patched but in no audit group"))).toEqual(
       [],
     );
+  });
+});
+
+describe("the role file has exactly one spelling", () => {
+  it("rejects a Cursor extension and accepts the two real forms", () => {
+    // The previous rule only looked for `$DSH_HOME/` before the name or
+    // `.example.md` after it, and never at the suffix, so a Cursor `.mdc` path
+    // passed. Following it creates a file `pstack_subagent` never reads.
+    expect(scan("It writes `$DSH_HOME/pstack-models.mdc`.").length).toBeGreaterThan(0);
+    expect(scan("It writes `$DSH_HOME/pstack-models.txt`.").length).toBeGreaterThan(0);
+    expect(scan("It writes `$DSH_HOME/pstack-models.md`.")).toEqual([]);
+    expect(scan("read `../../docs/pstack-models.example.md`")).toEqual([]);
+  });
+});
+
+describe("a link is a placeholder only when it is declared one", () => {
+  const exists = (path: string): boolean => path === "docs/LICENSE";
+
+  it("checks a target with no slash or dot instead of skipping it", () => {
+    // `LICENSE` is a real shipped file, and it used to be classified as a template
+    // placeholder purely because it contains neither `/` nor `.`.
+    const report = checkLinks([{ file: "docs/x.md", text: "[the license](LICENSE)" }], exists);
+    expect(report.checked).toBe(1);
+    expect(report.problems).toEqual([]);
+    expect(report.placeholders).toEqual([]);
+  });
+
+  it("reports a misspelled real file", () => {
+    const report = checkLinks([{ file: "docs/x.md", text: "[the license](LICENCE)" }], exists);
+    expect(report.problems.length).toBe(1);
+  });
+
+  it("still skips the declared template placeholder and reports an undeclared one", () => {
+    expect(
+      checkLinks([{ file: "docs/x.md", text: "[x](url)" }], exists).placeholders.length,
+    ).toBe(1);
+    expect(
+      checkLinks([{ file: "docs/x.md", text: "[x](someword)" }], exists).problems.length,
+    ).toBe(1);
+  });
+});
+
+describe("README links resolve inside the published tarball", () => {
+  it("finds no link outside `files`", () => {
+    const manifest = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
+      files: string[];
+    };
+    const problems: string[] = [];
+    checkReadmeLinksReachableInTarball(problems, manifest.files);
+    expect(problems).toEqual([]);
+  });
+
+  it("reports a relative link to a directory the package does not ship", () => {
+    // The defect this covers: `docs/` exists in the checkout, so the repository
+    // link check passed, but `files` does not include it, so the npm page 404s.
+    const problems: string[] = [];
+    // `checkReadmeLinksReachableInTarball` reads the real README, so drive the
+    // predicate directly through the same helper the check uses.
+    const shipped = ["dist", "assets", "cordis.patch.yml", "static", "README.md", "LICENSE"];
+    for (const path of ["docs/decisions/x.md", "AGENTS.md"]) {
+      expect(
+        shipped.some((entry) => path === entry || path.startsWith(`${entry.replace(/\/\*$/, "")}/`)),
+        path,
+      ).toBe(false);
+    }
+    expect(problems).toEqual([]);
   });
 });

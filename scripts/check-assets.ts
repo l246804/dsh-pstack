@@ -245,6 +245,24 @@ export function scanMarkdownLinks(text: string): readonly MarkdownLink[] {
   return links;
 }
 
+/**
+ * The links that are deliberately not paths, because they appear in a copy-paste
+ * template rather than in a sentence about a file.
+ *
+ * This is an allowlist rather than a guess about the target's shape. The old rule
+ * was "no `/` and no `.` in the target means it is a placeholder", which classified
+ * `LICENSE` — a real shipped file — as a template link and skipped it, so a typo in
+ * `[the license](LICENCE)` would never have failed. Anything not named here is
+ * resolved and must exist.
+ */
+export const TEMPLATE_PLACEHOLDERS: readonly string[] = [
+  "url",
+  "link",
+  "pr-url",
+  "<url>",
+  "#",
+];
+
 export function checkLinks(
   files: readonly { readonly file: string; readonly text: string }[],
   exists: (repositoryRelativePath: string) => boolean,
@@ -261,7 +279,9 @@ export function checkLinks(
         skipped += 1;
         continue;
       }
-      if (!target.includes("/") && !target.includes(".")) {
+      // A declared template placeholder is skipped; an undeclared one is a problem,
+      // so the list cannot silently grow by dropping a real file from the check.
+      if (TEMPLATE_PLACEHOLDERS.includes(link.target.toLowerCase())) {
         placeholders.push({ file, line: link.line, target });
         continue;
       }
@@ -682,6 +702,9 @@ function checkHarnessDoc(problems: string[]): void {
   // filed as a promise belonging to a later unit.
   for (const delivered of [
     "`pstack_subagent`, which returns a child id",
+    // `pstack_script` is the model-side entry point for every bundled CLI, so it is
+    // a delivered row like the others and may never be filed as deferred.
+    "`pstack_script`, which runs the bundled CLIs on the Host's own runtime",
     "`$DSH_HOME/pstack-models.md`",
     "the official worktree rows, mounted by this bundle when the profile lacks them",
     "the authoring playbook plus this package's frontmatter, link, and structure checks",
@@ -721,6 +744,12 @@ export const INSTALL_ADD_COMMAND = `${INSTALL_COMMAND_PREFIX}add dsh-pstack`;
 export const INSTALL_UPGRADE_COMMAND = `${INSTALL_COMMAND_PREFIX}add dsh-pstack@latest`;
 export const INSTALL_REMOVE_COMMAND = `${INSTALL_COMMAND_PREFIX}remove dsh-pstack`;
 export const ROLE_FILE_PATH = "$DSH_HOME/pstack-models.md";
+
+/** The role file's basename, without the `$DSH_HOME/` prefix. */
+export const ROLE_FILE_BASENAME = "pstack-models.md";
+
+/** The shipped example's basename, which a reader may name package-relatively. */
+export const ROLE_FILE_EXAMPLE_BASENAME = "pstack-models.example.md";
 /**
  * The one directory for hand-maintained static resources.
  *
@@ -956,17 +985,26 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
       }
     }
 
-    for (const match of text.matchAll(/pstack-models/g)) {
+    // The role file has exactly one spelling. The previous rule was "is
+    // `$DSH_HOME/` ten characters behind it, or `.example.md` eleven characters
+    // after it", which never looked at the suffix: `$DSH_HOME/pstack-models.mdc`
+    // passed, and `.mdc` is the Cursor extension this port exists to remove. A
+    // reader following that text creates a file `pstack_subagent` never reads, so
+    // every role silently falls back to `inherit-parent`.
+    for (const match of text.matchAll(/pstack-models[\w.-]*(?:\.md)?/g)) {
+      const found = match[0];
       const start = match.index ?? 0;
-      const before = text.slice(Math.max(0, start - "$DSH_HOME/".length), start);
-      const after = text.slice(
-        start + "pstack-models".length,
-        start + "pstack-models".length + ".example.md".length,
-      );
-      if (before === "$DSH_HOME/" || after === ".example.md") continue;
+      if (found === ROLE_FILE_BASENAME || found === ROLE_FILE_EXAMPLE_BASENAME) {
+        const prefix = text.slice(Math.max(0, start - "$DSH_HOME/".length), start);
+        if (found === ROLE_FILE_BASENAME && prefix === "$DSH_HOME/") continue;
+        // Any other prefix is fine only for the example file, which is a
+        // package-relative path.
+        if (found === ROLE_FILE_EXAMPLE_BASENAME) continue;
+      }
       const line = text.slice(0, start).split("\n").length;
       problems.push(
-        `${file}:${line}: the role file is ${ROLE_FILE_PATH}; found ${JSON.stringify(text.slice(Math.max(0, start - 20), start + 30))}`,
+        `${file}:${line}: the role file is ${ROLE_FILE_PATH} (or ` +
+          `${ROLE_FILE_EXAMPLE_BASENAME} for the shipped example); found ${JSON.stringify(found)}`,
       );
     }
 
@@ -1527,16 +1565,69 @@ function checkPackageManifest(problems: string[]): void {
       }
     }
   }
+
+  checkReadmeLinksReachableInTarball(problems, shipped);
+}
+
+/** Whether a `files` entry covers a repository-relative path. */
+function filesEntryCovers(entry: string, repositoryPath: string): boolean {
+  // npm treats a trailing `/*` as "the directory's contents" and a bare name or
+  // directory as the path itself; both forms are handled by prefix matching here.
+  const prefix = entry.replace(/\/\*$/, "");
+  return repositoryPath === prefix || repositoryPath.startsWith(`${prefix}/`);
+}
+
+/**
+ * Check that every relative link in the README resolves inside the npm tarball.
+ *
+ * The README is rendered on the npm page with its own relative links intact, so a
+ * link to `docs/decisions/…` is a 404 there unless `files` ships `docs/`. It was
+ * exactly that: `files` lists `dist`, `assets`, `cordis.patch.yml`, `locale/*.json`,
+ * `static`, `README.md`, and `LICENSE`, and the decision-record link pointed at
+ * `docs/decisions/2026-10-24-no-agent-team-coexistence.md`.
+ *
+ * `scanReleaseCopy` could not catch it, because it checks the *repository* path and
+ * `docs/` exists in the checkout. This check asks the narrower question the npm page
+ * asks: is the target inside the published file set? An absolute URL is always
+ * acceptable and is what the README now uses.
+ */
+export function checkReadmeLinksReachableInTarball(
+  problems: string[],
+  shipped: readonly string[],
+): void {
+  const readme = readFileSync(join(ROOT, "README.md"), "utf8");
+  for (const link of scanMarkdownLinks(readme)) {
+    const target = link.target.replace(/^<|>$/g, "").split("#")[0]?.split("?")[0] ?? "";
+    if (target === "" || /^(?:https?:|mailto:|tel:)/.test(target)) continue;
+    // A pure fragment is on the page already.
+    if (target.startsWith("#")) continue;
+
+    const resolved = posix.normalize(posix.join(posix.dirname("README.md"), target));
+    if (resolved.startsWith("../") || resolved === "..") {
+      problems.push(`README.md:${link.line}: link ${target} leaves the package`);
+      continue;
+    }
+    if (!shipped.some((entry) => filesEntryCovers(entry, resolved))) {
+      problems.push(
+        `README.md:${link.line}: link ${target} is outside "files", so it 404s on the npm page; ` +
+          `use an absolute URL or ship the target`,
+      );
+    }
+  }
 }
 
 /**
  * Check the bundle patch against the delivered rows.
  *
- * Five rows ship: the skill provider, the delegation tool, the two official
- * worktree rows whose `disabled: !!js` expressions have to stay byte identical to
- * `scripts/worktree-mount.ts`, and the restricted history tool. That module is the
- * one place the guard logic is written and tested, so a hand edit here fails
- * instead of shipping a mount decision nothing verified.
+ * Six rows ship: the skill provider, the delegation tool, the two official worktree
+ * rows whose `disabled: !!js` expressions have to stay byte identical to
+ * `scripts/worktree-mount.ts`, the restricted history tool, and `pstack_script`.
+ * That module is the one place the guard logic is written and tested, so a hand edit
+ * here fails instead of shipping a mount decision nothing verified.
+ *
+ * The row count is asserted structurally below (`expectedIds`), not by this
+ * sentence: it used to say "Five rows" while `expectedIds` listed six, and a comment
+ * cannot fail. Anyone adding a row edits `expectedIds` and this prose together.
  */
 function checkBundlePatch(
   problems: string[],

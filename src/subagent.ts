@@ -938,15 +938,13 @@ function buildParameters(config: PstackSubagentConfig): Record<string, unknown> 
     },
     maxDepth: {
       type: "integer",
-      minimum: 0,
       description:
-        "How many further delegation levels the child may use. It can only lower this row's configured cap, never raise it.",
+        "How many further delegation levels the child may use; 0 or greater, and negative values are rejected. It can only lower this row's configured cap, never raise it.",
     },
     roleIndex: {
       type: "integer",
-      minimum: 0,
       description:
-        "Selects one entry of a list-valued role that is not an automatic panel. Requires `role`.",
+        "Selects one entry of a list-valued role that is not an automatic panel; 0 or greater, and negative values are rejected. Requires `role`.",
     },
   };
 

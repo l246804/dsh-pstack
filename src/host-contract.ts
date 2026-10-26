@@ -311,6 +311,18 @@ export type JsonSchemaType =
   | "boolean"
   | "null";
 
+/**
+ * The JSON Schema subset the Host actually enforces.
+ *
+ * Exactly `type`/`oneOf`/`properties`/`required`/`additionalProperties`/`items`/
+ * `enum`/`const` plus the annotation keys. Nothing else is accepted by
+ * `assertSupportedJsonSchema`, and the subset is deliberately narrow here too:
+ * `minimum` used to be listed, three tools declared numeric bounds with it, and the
+ * Host rejected the whole schema — so `jsonSchemaToTs` and `jsonSchemaToPy` fell back
+ * to `"unknown"` and the declared bounds were never enforced. Omitting it from this
+ * type makes the same mistake a compile error. Bounds live in each tool's own
+ * argument validation and in its `description`.
+ */
 export interface JsonSchemaNode {
   type?: JsonSchemaType;
   oneOf?: JsonSchemaNode[];
@@ -323,7 +335,6 @@ export interface JsonSchemaNode {
   description?: string;
   title?: string;
   default?: unknown;
-  minimum?: number;
 }
 
 /** How one tool's result is projected for the model. */

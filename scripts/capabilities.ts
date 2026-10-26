@@ -15,7 +15,7 @@ export const HARNESS_DOC_PATH = "docs/harness/dsh.md";
  * sentence, so the disclaimer cannot drift away from the implementation.
  */
 export const HARNESS_DOC_SCOPE_LINE =
-  "> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, the official worktree integration mounted on demand, and a long-running-workflow pass that maps automatic goals, reminder heartbeats, and local watchers onto the host tools that actually exist.";
+  "> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, `pstack_script` for running the bundled CLIs on the Host's own runtime, the official worktree integration mounted on demand, and a long-running-workflow pass that maps automatic goals, reminder heartbeats, and local watchers onto the host tools that actually exist.";
 
 export type CapabilityKind = "tool" | "path" | "model" | "host";
 
@@ -311,6 +311,15 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "the official worktree rows, mounted by this bundle when the profile lacks them",
     coverage: "mapped",
     note: "Two rows mount on demand inside the composed profile and are skipped when an equivalent row is already enabled, so the `worktrees` service is provided exactly once. Isolation covers the working directory and branch only: not ports, network, credentials, caches, or services. The four profile paths are not yet verified at runtime.",
+  },
+  {
+    id: "bundled-scripts",
+    kind: "tool",
+    cursor: "`bun` + shell scripts under `poteto-mode/scripts/`",
+    dsh: "`pstack_script`, which runs the bundled CLIs on the Host's own runtime",
+    detect: "pstack_script",
+    coverage: "mapped",
+    note: "`id` is a closed enum over the shipped artefacts, so the tool takes no path and no shell string. Each artefact is one dependency-free Node module launched with `process.execPath`, which is why no `bun`, `bash`, or `node` on PATH is needed; `ELECTRON_RUN_AS_NODE=1` is added only under Electron. Each run starts in the Session's own directory. `background: true` needs the jobs service and is refused with a reason when the composition has none. The tool goes through no command approval and no sandbox policy, which its description states.",
   },
   {
     id: "make-bot-ui",

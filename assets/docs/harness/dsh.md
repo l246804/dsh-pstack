@@ -1,6 +1,6 @@
 # DSH harness mapping
 
-> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, the official worktree integration mounted on demand, and a long-running-workflow pass that maps automatic goals, reminder heartbeats, and local watchers onto the host tools that actually exist.
+> This package ships its static assets, one bundled skill provider, the `pstack_subagent` delegation tool, the ported workflow skills and playbooks, restricted read-only history through `pstack_history`, `pstack_script` for running the bundled CLIs on the Host's own runtime, the official worktree integration mounted on demand, and a long-running-workflow pass that maps automatic goals, reminder heartbeats, and local watchers onto the host tools that actually exist.
 > The tables below are the target contract, not proof that a capability is installed in a profile.
 
 Generated from `scripts/capabilities.ts` into `assets/docs/harness/dsh.md`. Edit the table, not this file.
@@ -34,6 +34,7 @@ about this tree.
 | `Grep`, `Glob`, `Read`, `Shell` | `grep`, `glob`, `read`, `bash` | mapped | - |  |
 | built-in `create-skill` | the authoring playbook plus this package's frontmatter, link, and structure checks | degraded | 4 | No Cursor drafting, evaluation, or optimization tool is claimed; the playbook points at the validators this package actually runs. |
 | `/name` or the named skill | the `skill` tool for model-invocable skills, `/name` for the rest | mapped | - | The bundled provider lists all 55 skills and loads each body from its absolute path; only `setup-pstack` stays model-invocable, exactly as upstream declares. |
+| `bun` + shell scripts under `poteto-mode/scripts/` | `pstack_script`, which runs the bundled CLIs on the Host's own runtime | mapped | - | `id` is a closed enum over the shipped artefacts, so the tool takes no path and no shell string. Each artefact is one dependency-free Node module launched with `process.execPath`, which is why no `bun`, `bash`, or `node` on PATH is needed; `ELECTRON_RUN_AS_NODE=1` is added only under Electron. Each run starts in the Session's own directory. `background: true` needs the jobs service and is refused with a reason when the composition has none. The tool goes through no command approval and no sandbox policy, which its description states. |
 
 ## Paths, models, and host features
 
