@@ -916,9 +916,11 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 
 ### 单元 7：发布审查
 
-同步 README、guide、poteto-help、决策记录和排除说明。运行 `pnpm run release`——它先跑只读的 `check`（上游镜像树、`runtime/` 与 `assets/` 的字节比对、资产规则、零安装脚本门、类型检查、单元测试），再重新打包并跑 `check:pack` 校验 tarball 形状；不启动真实 profile，不安装到任何 profile，不操作真实 PR。命令分层见 [构建与校验命令决策](decisions/2026-10-26-build-and-check-commands.md)。
+同步 README、guide、poteto-help、决策记录和排除说明。发布前的全门是 `pnpm publish` 触发的 `prepublishOnly`：先跑只读的 `check`（上游镜像树、`runtime/` 与 `assets/` 的字节比对、资产规则、零安装脚本门、类型检查、单元测试），再重新打包并跑 `check:pack` 校验 tarball 形状；不启动真实 profile，不安装到任何 profile，不操作真实 PR。命令分层见 [构建与校验命令决策](decisions/2026-10-26-build-and-check-commands.md)，发布步骤见 [发布流程](releasing.md)。
 
 验收：所有公开承诺与实际结果一致，未验证项明确保留在 `docs/release-verification-checklist.md`，不把静态同步或单元测试当作运行通过。§12.3 的实机步骤与 §12.4 的行为级用例改为发布批准后另行执行，见 [发布验收分期](decisions/2026-10-25-release-verification-staging.md)。
+
+发版是 `pnpm run release`（`bumpp`），与 main 分支同名同义：改版本号、提交、打 tag、推送。`v*` tag 触发 `.github/workflows/release.yml` 的 reusable release workflow，它在 `pnpm -r publish` 前先跑 `build:runtime` 与 `build:bundle`——这两个目录被 `.gitignore` 忽略，而发布门要读它们。认证用 OIDC，不引入长期密钥。取舍见 [发布流程决策](decisions/2026-10-26-release-automation.md)。
 
 ## 14. 风险与应对
 
@@ -933,7 +935,7 @@ includeDescendants?: boolean # 默认 false，首版可不提供
 | 把 reminder 当 webhook | PR/外部事件没有触发却宣称自动化 | 正文只把 `schedule_create` 写成定时输入，并且不给 child 布置；watcher 未实机验证 |
 | 脚本和文本脱节 | 计划检查器接受错误协议或审计脚本读错目录 | 同步 patch 和测试，独立 `check-scripts`；受控副本上通过，生产树不能跑 |
 | 生成资产手改 | 下次同步覆盖，实际内容无法复现 | 只改规则和生成器，`--check` 拒绝漂移 |
-| 升级只跑同步 | 插件能生成但安装或运行失败 | 提交前跑 `pnpm run release`（只读 `check` + 重打包 + `check:pack`）；真实 profile smoke 未执行 |
+| 升级只跑同步 | 插件能生成但安装或运行失败 | 提交前跑 `pnpm run check`；发版由 `pnpm publish` 的 `prepublishOnly` 再跑全门（只读 `check` + 重打包 + `check:pack`）；真实 profile smoke 未执行 |
 | 只跑 `build:bundle` 或只跑 `build:assets` | `dist` 指向 `assets/` 里不存在的路径，安装后才报"脚本找不到" | `build` 一条链写全；`check:pack` 断言 `dist/script.mjs` 携带每个 `assetPath`、`dist/subagent.mjs` 携带每个角色 |
 | 与 Agent Team 同启 | Team 遮蔽控制工具、共享激活容量、提示词竞争 | 禁止同 profile 启用，README 保留警告原文；无运行时检测 |
 | 隐藏缺失能力 | 质量门槛被静默降低 | 局部 unsupported、保留未验证状态，help 不写幻想功能；未验证项集中在 `docs/release-verification-checklist.md` |

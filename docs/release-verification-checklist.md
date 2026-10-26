@@ -17,8 +17,9 @@
 ```bash
 # 1. 在 checkout 内构建，确认生成树不漂移
 pnpm install
-pnpm run build                # runtime/ → assets/ → dist/，一条链写完
-pnpm run release              # check 全家 + 重新打包 + 打包清单自检（含条目数）
+pnpm run build                     # runtime/ → assets/ → dist/，一条链写完
+pnpm run check                     # 只读门：上游树、runtime/ 与 assets/ 字节比对、资产规则、脚本门、类型、单测
+pnpm publish --dry-run --no-git-checks   # 再跑 prepublishOnly 全门 + 重打包 + 打包清单自检（含条目数）
 
 # 2. 建一次性 profile，并把工作区目录链接安装进去
 dsh plugin --profile pstack-verify add <absolute path to this checkout>

@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { load as parseYaml } from "js-yaml";
 import { describe, expect, it } from "vite-plus/test";
 
 import { ROOT } from "../scripts/build-assets.ts";
@@ -27,6 +28,51 @@ const readme = readFileSync(join(ROOT, "README.md"), "utf8");
 const copy = collectReleaseCopy();
 const scan = (text: string, file = "fixture.md"): readonly string[] =>
   scanReleaseCopy([{ file, text }]);
+
+/** The fields of the release workflow this repository depends on. */
+interface ReleaseWorkflow {
+  /** The reusable workflow it delegates to. */
+  readonly uses: string;
+  /** The shell the reusable workflow runs before publishing. */
+  readonly build: string;
+  /** `with.publish`. */
+  readonly publish: boolean;
+  /** `with.permissions`, as the job declares them. */
+  readonly permissions: Record<string, string>;
+  /** The tag filters under `on.push.tags`. */
+  readonly tags: readonly string[];
+}
+
+/**
+ * Read the release workflow as data, not as text.
+ *
+ * Parsing rather than matching strings is what lets the assertions below say
+ * "`build` does not contain `build:assets`" without also matching the prose comment
+ * that explains why it must not.
+ */
+function parseWorkflow(): ReleaseWorkflow {
+  const parsed = parseYaml(
+    readFileSync(join(ROOT, ".github", "workflows", "release.yml"), "utf8"),
+  ) as {
+    readonly on?: { readonly push?: { readonly tags?: readonly string[] } };
+    readonly jobs?: {
+      readonly release?: {
+        readonly uses?: string;
+        readonly with?: { readonly build?: string; readonly publish?: boolean };
+        readonly permissions?: Record<string, string>;
+      };
+    };
+  };
+  const job = parsed.jobs?.release;
+  if (job?.uses === undefined) throw new Error("release.yml: no jobs.release.uses");
+  return {
+    uses: job.uses,
+    build: job.with?.build ?? "",
+    publish: job.with?.publish === true,
+    permissions: job.permissions ?? {},
+    tags: parsed.on?.push?.tags ?? [],
+  };
+}
 
 describe("no other host's name in the shipped tree", () => {
   it("finds zero mentions in every generated file", () => {
@@ -320,11 +366,64 @@ describe("the build and check command families", () => {
     expect(scripts["check:assets"]).toContain("sync-upstream.ts");
   });
 
-  it("runs the release gate before publishing", () => {
-    expect(scripts["prepublishOnly"]).toBe("pnpm run release");
-    const release = scripts["release"] as string;
-    expect(release).toContain("check");
-    expect(release).toContain("build:bundle");
-    expect(release).toContain("check:pack");
+  it("runs the full gate before publishing", () => {
+    // The gate lives in `prepublishOnly` rather than in its own named script, so
+    // `pnpm publish` and the tag job cannot pass different gates.
+    const gate = scripts["prepublishOnly"] as string;
+    expect(gate).toContain("check");
+    expect(gate).toContain("build:bundle");
+    expect(gate).toContain("check:pack");
+  });
+
+  it("releases with bumpp, as main does, and declares it a dev dependency", () => {
+    // `release` is the version bump, not the gate. main used the same name for the
+    // same action, and the tag it pushes is what the workflow reacts to.
+    expect(scripts["release"]).toBe("bumpp");
+    const manifest = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8")) as {
+      readonly devDependencies?: Record<string, string>;
+    };
+    expect(manifest.devDependencies?.["bumpp"]).toBeDefined();
+  });
+});
+
+describe("the release workflow builds what the gate reads", () => {
+  const workflow = parseWorkflow();
+
+  /**
+   * The two directories the gate opens that a clone does not carry.
+   *
+   * `runtime/` is what `check:runtime` compares against a fresh build, and `dist/` is
+   * what `check-pack`'s unit tests read through `expectedTarball()`. Both are
+   * gitignored, so a tag job that only checks out the tree starts with neither and
+   * `prepublishOnly` fails before it ever reaches the publish step.
+   */
+  it("rebuilds runtime and dist before publishing", () => {
+    const build = workflow.build;
+    expect(build).toContain("git submodule update --init --recursive");
+    expect(build).toContain("build:runtime");
+    expect(build).toContain("build:bundle");
+  });
+
+  it("never runs the full build in CI", () => {
+    // `build` chains `build:assets`, which rewrites the tracked `assets/` tree. The
+    // byte comparison in `check:assets` would then use the tree it just wrote as its
+    // own baseline, so a genuine drift could no longer be reported. `build:assets`
+    // stays a local regeneration command.
+    const build = workflow.build;
+    expect(build).not.toContain("build:assets");
+    expect(build).not.toMatch(/^\s*pnpm run build\s*$/m);
+  });
+
+  it("publishes through the reusable workflow with OIDC", () => {
+    expect(workflow.uses).toBe("sxzz/workflows/.github/workflows/release.yml@main");
+    expect(workflow.publish).toBe(true);
+    // `id-token: write` is what npm exchanges for a publish token. Without it the
+    // release needs a long-lived NPM_TOKEN secret instead.
+    expect(workflow.permissions["id-token"]).toBe("write");
+    expect(workflow.permissions["contents"]).toBe("write");
+  });
+
+  it("triggers on version tags only", () => {
+    expect(workflow.tags).toEqual(["v*"]);
   });
 });

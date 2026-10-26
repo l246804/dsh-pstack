@@ -3,6 +3,8 @@
 Status: accepted
 Date: 2026-10-26
 
+> **部分被取代（2026-10-26）。** 下面"聚合"一节里 `"release": "check && build:bundle && check:pack"` 与 `"prepublishOnly": "release"` 两个名字已改：`release` 现在就是 `bumpp`，发布门移到 `prepublishOnly` 里写一次。理由是 `release` 在 main 分支和多数 npm 项目里指"发一个版本"，放在只读校验命令上名不符实。见 [发布流程决策](2026-10-26-release-automation.md)。本记录其余判断（`build` 负责写、`check` 只读、`build:assets` 自带 `build:runtime`、`check:runtime` 放进 `check:assets`、`check:pack` 三件事）全部继续有效，正文保留原文不改写。
+
 本记录取代[发布验收分期](2026-10-25-release-verification-staging.md)第 1 条里那份逐条列出的静态门顺序：门的内容不变，命令名与分层按本文。旧记录不改写。
 
 ## 背景

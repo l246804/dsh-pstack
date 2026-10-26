@@ -79,8 +79,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vp test",
     "check": "pnpm run check:upstream && pnpm run check:assets && pnpm run check:scripts && pnpm run typecheck && pnpm run test",
-    "release": "pnpm run check && pnpm run build:bundle && pnpm run check:pack",
-    "prepublishOnly": "pnpm run release"
+    "release": "bumpp",
+    "prepublishOnly": "pnpm run check && pnpm run build:bundle && pnpm run check:pack"
   },
   "devDependencies": {
     "@deepseek-ai/cordis-plugin-include": "~1.0.10",
@@ -88,6 +88,7 @@
     "@deepseek-ai/dsh-tools": "0.2.1-rc.3",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^26.6.5",
+    "bumpp": "^12.3.0",
     "js-yaml": "^4.3.2",
     "typescript": "^7.0.2",
     "vite-plus": "catalog:"
