@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { extname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, join, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -110,6 +110,7 @@ export function checkAssets(): AssetsReport {
   checkLicense(problems);
   checkPackageManifest(problems);
   checkIntroScope(problems);
+  for (const problem of checkScriptReferences()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
   // The expected count is "upstream skill files, minus the ones a built artifact
@@ -906,6 +907,87 @@ export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
     inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8"), exclusions: false });
   }
   return inputs;
+}
+
+/**
+ * Check that every *shipped* script path the prose names actually exists.
+ *
+ * Four pieces of copy told a reader to run a file that was not in the tree:
+ * `scripts/log.sh` (only `log.mjs` ships), `scripts/orch/orch.ts` (only
+ * `orch/orch.mjs`), a bare `scripts/watch-pr/watch-pr`, and a `check-plan.mjs` run
+ * through a `node` the Desktop build does not have on PATH. Each was fixed by hand,
+ * and nothing stopped the next rename from reintroducing the same class of mistake.
+ *
+ * The rule: a backticked `…/scripts/<name>.mjs` path in a shipped Markdown file
+ * must resolve to a file under `assets/`. `.mjs` is the extension of every artifact
+ * that actually ships, so a reference with it is a claim the reader can act on.
+ *
+ * Two things are deliberately out of scope:
+ *
+ * - `.ts` and `.sh` references are *this repository's* build scripts
+ *   (`scripts/check-assets.ts`, `scripts/capabilities.ts`) or upstream's shell
+ *   originals. They never ship and the reader is not meant to run them, so
+ *   requiring them under `assets/` would be wrong. Their correctness is covered by
+ *   `pnpm run check` itself, which is what runs them.
+ * - A path is resolved beside the file that names it, because that is how the
+ *   reader resolves it: `scripts/log.mjs` inside `skills/show-me-your-work/SKILL.md`
+ *   means `skills/show-me-your-work/scripts/log.mjs`. The asset root is tried too,
+ *   so a guide may name a path from the package root.
+ *
+ * `SCRIPT_REFERENCE_ALLOWLIST` carries any `.mjs` reference that is intentionally
+ * not a shipped path. Each entry states a reason, so the list cannot quietly absorb
+ * a real breakage.
+ */
+export const SCRIPT_REFERENCE_ALLOWLIST: readonly {
+  readonly reference: string;
+  readonly reason: string;
+}[] = [
+  {
+    reference: "scripts/check-plan.mjs",
+    reason:
+      "The plan template names the checker by bundle-relative path as an illustration; the runtime id `check-plan` is how it is actually invoked, and that is asserted beside it.",
+  },
+];
+
+/**
+ * A `.mjs` path with a `scripts/` segment, as it appears inside a code span.
+ *
+ * `.mjs` only: that is the extension of every artifact that ships, so a reference
+ * with it is a claim a reader can act on. `.ts` and `.sh` references point at this
+ * repository's own build scripts or at upstream's shell originals, neither of which
+ * ships and neither of which the prose is telling the reader to run.
+ *
+ * The match stops at `.mjs` and does **not** require a closing backtick. A code span
+ * usually continues with the arguments — `` `scripts/log.mjs <logfile> <phase>` `` —
+ * and requiring the backtick there made the pattern match only the one shape that
+ * never occurs, so it silently reported nothing.
+ *
+ * The leading segment is optional (`(?:[\w./-]*\/)?`) rather than repeated
+ * (`(?:[\w.-]+\/)*`): the repeated form demands a directory between the path start
+ * and `scripts`, so a bare `scripts/log.mjs` would not match.
+ */
+const SCRIPT_REFERENCE = /((?:[\w./-]*\/)?scripts\/[\w./-]+\.mjs)\b/g;
+
+export function checkScriptReferences(): readonly string[] {
+  const problems: string[] = [];
+  const allowlisted = new Set(SCRIPT_REFERENCE_ALLOWLIST.map((entry) => entry.reference));
+
+  for (const file of walkFiles(ASSETS_ROOT).filter((path) => path.endsWith(".md"))) {
+    const repositoryPath = toRepositoryPath(file);
+    const text = readFileSync(file, "utf8");
+    for (const match of text.matchAll(SCRIPT_REFERENCE)) {
+      const reference = match[1] as string;
+      if (allowlisted.has(reference)) continue;
+      const beside = join(dirname(file), reference);
+      if (existsSync(beside) || existsSync(join(ASSETS_ROOT, reference))) continue;
+      const line = text.slice(0, match.index).split("\n").length;
+      problems.push(
+        `${repositoryPath}:${line}: names \`${reference}\`, which is not in the shipped tree ` +
+          `(looked for ${toRepositoryPath(beside)})`,
+      );
+    }
+  }
+  return problems;
 }
 
 /**

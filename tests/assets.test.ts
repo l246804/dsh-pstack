@@ -28,7 +28,9 @@ import {
 import {
   STATIC_FILES,
   checkAssets,
+  SCRIPT_REFERENCE_ALLOWLIST,
   checkLinks,
+  checkScriptReferences,
   readmeImageProblems,
   scanMarkdownLinks,
   staticInventoryProblems,
@@ -621,6 +623,26 @@ describe("role file example", () => {
     expect(skill).toContain("A child that already started keeps the route it started with.");
     for (const key of ROLE_KEYS) {
       expect(skill.includes(`${key}:`), key).toBe(false);
+    }
+  });
+});
+
+describe("shipped prose only names scripts that ship", () => {
+  it("resolves every .mjs reference the bundled copy makes", () => {
+    // Four separate pieces of copy once told a reader to run a file that was not in
+    // the tree (`log.sh` that never shipped, `orch/orch.ts` that became
+    // `orch.mjs`, a bare `watch-pr`, a `node` run the Desktop build cannot make).
+    // Each was fixed by hand; this is the check that stops the next rename from
+    // reintroducing the class.
+    expect(checkScriptReferences()).toEqual([]);
+  });
+
+  it("carries a reason for every allowlisted reference", () => {
+    for (const entry of SCRIPT_REFERENCE_ALLOWLIST) {
+      expect(entry.reason.trim().length, entry.reference).toBeGreaterThan(0);
+      // An allowlist entry that names a path which does exist is dead weight, and
+      // dead entries are how a whitelist quietly becomes a permanent exemption.
+      expect(entry.reference.endsWith(".mjs"), entry.reference).toBe(true);
     }
   });
 });

@@ -2888,6 +2888,18 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Before handing back, start a `pstack_subagent` on a role configured to a different provider or model family from the one that did the work. Self-review is not a substitute. Brief it with the audit trail and the raw events you paged, because it cannot read this run's log on its own. It flags what the user should pay attention to: not a redo of the work, a scan for what's suboptimal or risky. When no other family is configured, write `reviewed by <the route that actually ran>` and state that this was same-model review instead of claiming independence. Pick that subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.",
     outputIncludes: ["state that this was same-model review instead of claiming independence"],
   },
+  {
+    kind: "replace",
+    file: "skills/show-me-your-work/SKILL.md",
+    reason:
+      "The helper shipped as a Node artifact, so the shell script no longer exists and `node` need not be on PATH.",
+    anchor:
+      "Use the helper `scripts/log.sh <logfile> <phase> <decision> <why> <evidence> <result>`.",
+    expectedMatches: 1,
+    replacement:
+      "Use the helper `scripts/log.mjs <logfile> <phase> <decision> <why> <evidence> <result>`; run it through `pstack_script` with `id: \"log\"`, which needs no `node` on PATH.",
+    outputIncludes: ["`scripts/log.mjs <logfile>"],
+  },
   {    kind: "replace",
     file: "skills/typescript-best-practices/SKILL.md",
     reason: "The principle skill is read at its resource path, not named in bold.",
@@ -3631,15 +3643,16 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/orchestrate.md",
     reason:
-      "Children are started and steered through the real tools, and the role is what selects a route.",
+      "Children are started and steered through the real tools, the role is what selects a route, and bookkeeping goes through the bundled CLI.",
     anchor:
-      "The loop is agentic end to end. Agents are spawned, resumed, and drained only through the Task tool. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
+      "The loop is agentic end to end. Agents are spawned, resumed, and drained only through the Task tool. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. State reads and writes go through `scripts/orch/orch.ts` at drain points, one command in and one line out. The CLI never spawns, waits, or wakes anything.",
     expectedMatches: 1,
     replacement:
-      "The loop is agentic end to end. Children are started and briefed only through `pstack_subagent`, steered only through `send_message`, stopped only through `interrupt_agent`, and read only through `list_agents` and their own artifacts. Pick each child's role per the Subagents section of the `poteto-mode` skill, because the role is what selects its route.",
+      "The loop is agentic end to end. Children are started and briefed only through `pstack_subagent`, steered only through `send_message`, stopped only through `interrupt_agent`, and read only through `list_agents` and their own artifacts. Pick each child's role per the Subagents section of the `poteto-mode` skill, because the role is what selects its route. State reads and writes go through `pstack_script` with `id: \"orch\"` at drain points, one command in and one line out; the tool runs the bundled script on the Host's own runtime. The CLI never spawns, waits, or wakes anything.",
     outputIncludes: [
       "started and briefed only through `pstack_subagent`",
       "because the role is what selects its route",
+      "`pstack_script` with `id: \"orch\"` at drain points",
     ],
   },
   {
@@ -3811,15 +3824,15 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
     reason:
-      "The checker lives beside the bundled skill, and its two runtimes are not interchangeable.",
+      "The checker runs through `pstack_script` on the Host's own runtime, so it needs no `node` on PATH, and its own tests run under `node --test`.",
     anchor:
       "6. Run `node pstack/skills/poteto-mode/scripts/check-plan.mjs <plan.md>` and fix every line it prints (the **encode-lessons-in-structure** principle skill).",
     expectedMatches: 1,
     replacement:
-      "6. Run `node <package>/skills/poteto-mode/scripts/check-plan.mjs <plan.md>`, resolving `<package>` from the bundled skill's own resource base, and fix every line it prints (the **encode-lessons-in-structure** principle skill). The checker needs Node alone; its own test file needs Bun.",
+      "6. Run `pstack_script` with `id: \"check-plan\"` and `args: [\"<plan.md>\"]`, and fix every line it prints (the **encode-lessons-in-structure** principle skill). It runs on the Host's own runtime, so no `node` on PATH is needed, and its own test file runs under `node --test` in the same isolated copy.",
     outputIncludes: [
-      "resolving `<package>` from the bundled skill's own resource base",
-      "The checker needs Node alone; its own test file needs Bun.",
+      "`pstack_script` with `id: \"check-plan\"`",
+      "so no `node` on PATH is needed",
     ],
   },
   {
@@ -4170,6 +4183,17 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "`schedule_create` is not a PR event watcher",
       "a reminder may only act as a fallback heartbeat",
     ],
+  },
+  {
+    kind: "replace",
+    file: "skills/poteto-mode/playbooks/babysit.md",
+    reason:
+      "The watcher is reached through `pstack_script` by id, exactly like `shipping.md` and `worktree-cleanup.md`, instead of by a bare path with no extension.",
+    anchor: "On GitHub, status comes from `scripts/watch-pr/watch-pr`. Run it directly.",
+    expectedMatches: 1,
+    replacement:
+      "On GitHub, status comes from `pstack_script` with `id: \"watch-pr\"`.",
+    outputIncludes: ["`pstack_script` with `id: \"watch-pr\"`"],
   },
   // -------------------------------------------------------------------------
   // Unit 7: the last reader-facing copy. One troubleshooting line told a reader
