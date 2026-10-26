@@ -6,15 +6,22 @@
 
 发版就是 `pnpm run release`。它和 main 分支同名同义：`bumpp` 交互选版本号、写 `package.json`、提交 `chore: release vX.Y.Z`、打 tag `vX.Y.Z`、推送。推送 tag 之后由 GitHub Actions 接手。
 
-发布门不叫 `release`，它在 `prepublishOnly` 里：
+前面还有一道 `prerelease`，它只读不写，跑的是 `pnpm run check`。所以改版本号之前就已知门是否绿，不用等 bumpp 提交完才发现问题。
 
 | 命令 | 做什么 | 写不写文件 |
 |---|---|---|
-| `pnpm run release` | 改版本号、提交、打 tag、推送 | 写 `package.json`、写 git 历史 |
 | `pnpm run check` | 只读验证，不打包 | 不写 |
-| `pnpm publish` | 发布前自动跑 `prepublishOnly` 全门 | 写 `dist/`（gitignored） |
+| `pnpm run release` | 先跑 `prerelease`（即 `check`），再改版本号、提交、打 tag、推送 | 写 `package.json`、写 git 历史 |
+| `pnpm publish` | 自动跑 `prepublishOnly` 全门，含打包与 tarball 检查 | 写 `dist/`（gitignored） |
 
-门只写在 `prepublishOnly` 一处。所以本地 `pnpm publish` 和 CI 的 tag job 走的是同一套门，不存在"两边门不一样"的可能。
+两个钩子覆盖不同的入口，都不多余：
+
+- **`prerelease`** 挂在 `release` 这个自定义脚本上，靠 npm 的 pre/post 通用规则触发。只有 `pnpm run release` 会走到它。
+- **`prepublishOnly`** 是 npm 内置的发布钩子，只有 `pnpm publish` 会走到它。
+
+`prerelease` 不能替代 `prepublishOnly`：`pnpm publish` 不会运行 `release` 脚本，因此也不会触发 `prerelease`。实测在临时包上验证过——`publish` 只触发 `prepublishOnly`、`prepack`、`prepare`，`prerelease` 完全不出现。`bumpp` 内部调用的是 `preversion` / `version` / `postversion`，同样不经过 `release` 脚本。
+
+所以门的主入口是 `prepublishOnly`，`prerelease` 只是把同样的检查提前到改版本号之前，让失败早一步出现。
 
 ## 发一次版
 

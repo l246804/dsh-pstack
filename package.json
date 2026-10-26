@@ -79,6 +79,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vp test",
     "check": "pnpm run check:upstream && pnpm run check:assets && pnpm run check:scripts && pnpm run typecheck && pnpm run test",
+    "prerelease": "pnpm run check",
     "release": "bumpp",
     "prepublishOnly": "pnpm run check && pnpm run build:bundle && pnpm run check:pack"
   },

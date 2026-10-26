@@ -334,8 +334,13 @@ describe("the build and check command families", () => {
   it("names every writing command build:* and every reading one check:*", () => {
     const aggregates = new Set(["build", "check", "release", "prepublishOnly"]);
     const inherited = new Set(["dev", "test", "typecheck"]);
+    // `prerelease` is npm's pre-hook on the `release` script, not a command of its
+    // own: npm runs it before `release` and no other invocation reaches it. Its name
+    // is fixed by the script it precedes, so renaming it to `check:release` would
+    // break the hook this file asserts below.
+    const hooks = new Set(["prerelease"]);
     for (const name of Object.keys(scripts)) {
-      if (aggregates.has(name) || inherited.has(name)) continue;
+      if (aggregates.has(name) || inherited.has(name) || hooks.has(name)) continue;
       expect(name.startsWith("build:") || name.startsWith("check:"), name).toBe(true);
     }
   });
@@ -383,6 +388,15 @@ describe("the build and check command families", () => {
       readonly devDependencies?: Record<string, string>;
     };
     expect(manifest.devDependencies?.["bumpp"]).toBeDefined();
+  });
+
+  it("checks before bumping, so the version bump is not the first feedback", () => {
+    // `prerelease` is npm's pre-hook on `release`, and it is the only hook that
+    // reaches the bump. It is a custom script, so npm's pre/post rule applies: `npm
+    // run release` and `pnpm run release` both run it first. Verified: it fires for
+    // `run release` and does **not** fire for `publish`, which is why the gate above
+    // stays in `prepublishOnly` — the two hooks cover different entry points.
+    expect(scripts["prerelease"]).toBe("pnpm run check");
   });
 });
 
