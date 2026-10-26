@@ -599,7 +599,14 @@ describe("pagination", () => {
 
   it("reports an empty page past the snapshot boundary without pretending it is the end", async () => {
     const run = harness({ events: events(3) });
-    const result = await readHistory(args({ fromSeq: 40 }), exec(CALLER_ID), run.runtime);
+    // A `fromSeq` past the end is a continuation page, so it pins the boundary; the
+    // note under test is about the boundary being beyond the snapshot, not about
+    // paging.
+    const result = await readHistory(
+      args({ fromSeq: 40, throughSeq: 40 }),
+      exec(CALLER_ID),
+      run.runtime,
+    );
 
     expect(result.kind).toBe("events");
     if (result.kind !== "events") return;
@@ -610,22 +617,53 @@ describe("pagination", () => {
     expect(result.notes.join("\n")).toContain("beyond the snapshot boundary");
   });
 
+  it("requires the first page's boundary on a continuation page", async () => {
+    // F17: each call re-observes the session, so an unpinned second page would adopt
+    // a *new* cursor and quietly widen the audit window to include events appended
+    // between the two reads — including this tool's own tool/call events.
+    const run = harness({ events: events(5) });
+    const result = await readHistory(args({ fromSeq: 2 }), exec(CALLER_ID), run.runtime);
+
+    expect(result.kind).toBe("unavailable");
+    if (result.kind !== "unavailable") return;
+    expect(result.code).toBe("paging-requires-throughSeq");
+    // The refusal has to say what to do instead.
+    expect(result.message).toContain("throughSeq");
+  });
+
+  it("lets the first page omit the boundary", async () => {
+    // Only a continuation page is refused; the first page legitimately takes the
+    // snapshot it just read.
+    const run = harness({ events: events(5) });
+    const result = await readHistory(args({ limit: 2 }), exec(CALLER_ID), run.runtime);
+    expect(result.kind).toBe("events");
+    if (result.kind !== "events") return;
+    expect(result.page.pinnedThroughSeq).toBe(false);
+  });
+
   it("advances the cursor across pages of one fixed snapshot", async () => {
     const run = harness({ events: events(5) });
     const first = await readHistory(args({ limit: 2 }), exec(CALLER_ID), run.runtime);
+    expect(first.kind).toBe("events");
+    if (first.kind !== "events") return;
+    // The continuation page pins the boundary the first page reported. Omitting it is
+    // refused (see "requires the first page's boundary"), because each call takes a
+    // fresh snapshot and the window would otherwise move.
     const second = await readHistory(
-      args({ fromSeq: 2, limit: 2 }),
+      args({ fromSeq: 2, limit: 2, throughSeq: first.page.throughSeq }),
       exec(CALLER_ID),
       run.runtime,
     );
 
-    expect(first.kind).toBe("events");
     expect(second.kind).toBe("events");
-    if (first.kind !== "events" || second.kind !== "events") return;
+    if (second.kind !== "events") return;
     expect(first.events.map((event) => event.seq)).toEqual([0, 1]);
     expect(first.page.nextFromSeq).toBe(2);
     expect(second.events.map((event) => event.seq)).toEqual([2, 3]);
     expect(second.page.nextFromSeq).toBe(4);
+    // Both pages describe the same window.
+    expect(second.page.throughSeq).toBe(first.page.throughSeq);
+    expect(second.page.pinnedThroughSeq).toBe(true);
   });
 
   it("stops at the byte ceiling but still returns one event", () => {
@@ -1333,5 +1371,47 @@ describe("every result variant satisfies the declared output schema", () => {
     const value = await tool.execute({}, exec(undefined));
     expect((value as { kind: string }).kind).toBe("denied");
     expect(violations(OUTPUT_SCHEMA, value)).toEqual([]);
+  });
+});
+
+describe("coverage describes the window the caller asked for", () => {
+  it("calls a caller-truncated window partial, not full", async () => {
+    // F18: `full` used to mean "starts at 0 and has no further page". A caller who
+    // passes `throughSeq: 0` against a 5-event log satisfies both and still excluded
+    // 80% of the log, so an auditor read `coverage: full` on a page that was not.
+    const run = harness({ events: events(5) });
+    const truncated = await readHistory(args({ throughSeq: 0 }), exec(CALLER_ID), run.runtime);
+    expect(truncated.kind).toBe("events");
+    if (truncated.kind !== "events") return;
+    expect(truncated.page.returned).toBe(1);
+    expect(truncated.audit.coverage).toBe("partial");
+    expect(truncated.notes.join("\n")).toContain("partial by the caller's own boundary");
+  });
+
+  it("still reports full when the caller reads to the snapshot end", async () => {
+    const run = harness({ events: events(5) });
+    const whole = await readHistory(args({}), exec(CALLER_ID), run.runtime);
+    expect(whole.kind).toBe("events");
+    if (whole.kind !== "events") return;
+    expect(whole.audit.coverage).toBe("full");
+    expect(whole.notes.join("\n")).not.toContain("partial by the caller's own boundary");
+  });
+
+  it("reports full for an explicit boundary that reaches the end", async () => {
+    const run = harness({ events: events(5) });
+    const whole = await readHistory(args({ throughSeq: 4 }), exec(CALLER_ID), run.runtime);
+    expect(whole.kind).toBe("events");
+    if (whole.kind !== "events") return;
+    expect(whole.audit.coverage).toBe("full");
+    expect(whole.page.pinnedThroughSeq).toBe(true);
+  });
+
+  it("reports partial when an explicit boundary stops short", async () => {
+    const run = harness({ events: events(5) });
+    const short = await readHistory(args({ throughSeq: 2 }), exec(CALLER_ID), run.runtime);
+    expect(short.kind).toBe("events");
+    if (short.kind !== "events") return;
+    expect(short.audit.coverage).toBe("partial");
+    expect(short.page.returned).toBe(3);
   });
 });
