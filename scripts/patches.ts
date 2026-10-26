@@ -272,6 +272,46 @@ export const EXCLUDED_SKILLS: readonly SkillExclusion[] = [
 ];
 
 /**
+ * The upstream sentence that told each caller to choose an effort per delegation.
+ *
+ * This string is matched against patch **anchors**, which are upstream text. It is
+ * here so `check-assets` can derive the set of files that lost the instruction
+ * instead of trusting a hardcoded count: 24 upstream files carry it, and the first
+ * restoration only reached 22 because the number was written by hand.
+ */
+export const UPSTREAM_EFFORT_SENTENCE = "Pick each subagent's reasoning level";
+
+/**
+ * The DSH form of "pick each subagent's reasoning level and fast or standard speed".
+ *
+ * Upstream told each caller to choose a reasoning level per delegation, and every
+ * skill that spawns work said so in its own words. The unit-6 rewrite replaced those
+ * sentences with text that forbade choosing one at all, on the reasoning that "an
+ * effort can only come from the role file". That was a capability regression, not a
+ * correction: `pstack_subagent` takes `reasoningEffort`, and the child can change its
+ * own level with `set_reasoning_effort`. See
+ * `docs/decisions/2026-10-26-dynamic-reasoning-effort.md`.
+ *
+ * The sentence lives here once and is appended by every patch that dropped the
+ * upstream one, because 24 hand-written copies is how it went missing 24 times.
+ * `check-assets` derives the expected set from `UPSTREAM_EFFORT_SENTENCE` and asserts
+ * both directions: every file that dropped it carries this one, and no file carries
+ * this one without having dropped it.
+ *
+ * **This is not a verbatim port, and cannot be.** The upstream sentence names two
+ * knobs, `fast or standard speed` and "the `-fast` slug", and DSH has neither: speed
+ * is not a parameter of this host, and a `-fast` variant is a Cursor model-slug
+ * convention rather than an adapter capability. It also says "pick the reasoning
+ * level", which in Cursor meant editing the model slug; here the level is a separate
+ * `reasoningEffort` argument on the same call. So the DSH sentence keeps the
+ * instruction (the caller chooses, the role line is the starting point) and drops the
+ * two mechanisms that do not exist. Promising `fast` would be this same regression in
+ * the other direction.
+ */
+export const DELEGATION_EFFORT_SENTENCE =
+  " Start from the level the role line names, raise it for hard work and lower it for routine work by passing `reasoningEffort`; a child that cannot call `set_reasoning_effort` keeps the level you gave it.";
+
+/**
  * Skills that get the shared DSH pointer. The set is data, not a default for
  * every skill. Most entries carry Cursor/Claude host vocabulary; the two
  * overrides need DSH-specific routing and frontmatter handling.
@@ -699,11 +739,12 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Every spawn is a Task subagent with `subagent_type: generalPurpose` and `readonly: true`. Explorers use the `how explorer` line in the `pstack-models.mdc` rule (default `grok-4.7-xhigh-fast`), and every explainer uses the `how explainer` line (default `claude-opus-5-5-xhigh`). Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      'Every spawn is a `pstack_subagent` call with `agent: "general"` and `role: "how explorer"` or `role: "how explainer"`. Read that role\'s route from `$DSH_HOME/pstack-models.md`; the tool re-reads the file on every delegation, and a role the file does not name inherits the parent route. Never invent a model id or an effort: this package cannot know which routes a deployment serves. Explorers are read-only by instruction, not by sandbox, so state the no-write rule in each brief and check `git status` after the child reports. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before you spawn anything.',
+      'Every spawn is a `pstack_subagent` call with `agent: "general"` and `role: "how explorer"` or `role: "how explainer"`. Read that role\'s route from `$DSH_HOME/pstack-models.md`; the tool re-reads the file on every delegation, and a role the file does not name inherits the parent route. Never invent a model id: this package cannot know which routes a deployment serves. An effort is different, because the target model advertises its own list and `pstack_subagent` checks your value against it and names the real values when it refuses, so predict no ladder beyond that. Explorers are read-only by instruction, not by sandbox, so state the no-write rule in each brief and check `git status` after the child reports. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before you spawn anything.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       '`pstack_subagent` call with `agent: "general"`',
       "Read that role's route from `$DSH_HOME/pstack-models.md`",
       "Explorers are read-only by instruction, not by sandbox",
+      "Never invent a model id: this package cannot know which routes a deployment serves",
     ],
   },
   {
@@ -753,10 +794,11 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Each spawn below names a role line in the `pstack-models.mdc` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      'Each spawn below names a role key. `pstack_subagent` reads the route from `$DSH_HOME/pstack-models.md` on every delegation, and a role the file does not name inherits the parent route. Never invent a model id or an effort: this package cannot know which routes a deployment serves. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before you spawn anything.',
+      'Each spawn below names a role key. `pstack_subagent` reads the route from `$DSH_HOME/pstack-models.md` on every delegation, and a role the file does not name inherits the parent route. Never invent a model id: this package cannot know which routes a deployment serves. An effort is different, because the target model advertises its own list and `pstack_subagent` checks your value against it and names the real values when it refuses, so predict no ladder beyond that. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before you spawn anything.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       "Each spawn below names a role key.",
       "a role the file does not name inherits the parent route",
+      "Never invent a model id: this package cannot know which routes a deployment serves",
     ],
   },
   {
@@ -968,7 +1010,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "3. Pick the runners. Use the `arena runners` line in `~/.cursor/rules/pstack-models.mdc`. If the rule or that line is missing, default to one each on `claude-opus-5-5-xhigh` and `grok-4.7-xhigh-fast`. An `auto` or `inherit-parent` entry in this line or the cross-judge line means the parent model, so omit `model` for it. If the Task tool rejects a configured entry, run that seat on its family's default and say so. Families go by prefix: `claude-*`, and `grok-*` with `cursor-grok-*` and `composer-*`. A refused `composer-*` entry runs on `grok-4.7-xhigh-fast`. With no family match, use `claude-opus-5-5-xhigh`. If it rejects a default, use the closest valid slug of the same family from its error message. Spawn more runners when the arena covers multiple design directions. Use the same model N times when the work is generation-bound rather than judgment-sensitive. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      '3. Pick the runners. Use `role: "arena runners"`: that role is a panel, so one `pstack_subagent` call starts one child per entry in the role file and the result lists every child id with the route it actually got. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. An entry the file does not name inherits the parent route. An entry whose route does not resolve fails that seat and names the role file; the remaining seats still start and the result records the degradation. Two entries on the same route give you two attempts from one model, not a cross-model arena, and the result says so. Add entries when the arena covers multiple design directions, and repeat one route when the work is generation-bound rather than judgment-sensitive.',
+      '3. Pick the runners. Use `role: "arena runners"`: that role is a panel, so one `pstack_subagent` call starts one child per entry in the role file and the result lists every child id with the route it actually got. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. An entry the file does not name inherits the parent route. An entry whose route does not resolve fails that seat and names the role file; the remaining seats still start and the result records the degradation. Two entries on the same route give you two attempts from one model, not a cross-model arena, and the result says so. Add entries when the arena covers multiple design directions, and repeat one route when the work is generation-bound rather than judgment-sensitive.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       'Use `role: "arena runners"`',
       "the result lists every child id with the route it actually got",
@@ -1085,7 +1127,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "4. Pick the worker model from the `swarm workers` line in `~/.cursor/rules/pstack-models.mdc`. If the rule or that line is missing, use `grok-4.7-xhigh-fast`. For `auto` or `inherit-parent`, omit `model` so the workers run on the parent model. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. For a model race, name each arm's model up front. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      '4. Pick the worker route. Use `role: "swarm workers"` for every worker: that role is a list, not a panel, so you start each worker yourself with one `pstack_subagent` call each. A role the file does not name inherits the parent route. Never invent a model id. Without `roleIndex` the tool takes the first entry, which is the default route for every worker. For a model race, keep `role: "swarm workers"` and pass a different `roleIndex` per arm, so this call\'s result carries that arm\'s actual route instead of leaving it implied. The tool reports the entry and route this call selected; it cannot compare separate calls, so when two arms land on the same entry you must say in your synthesis that they share one route and that this is not a cross-model race. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.',
+      '4. Pick the worker route. Use `role: "swarm workers"` for every worker: that role is a list, not a panel, so you start each worker yourself with one `pstack_subagent` call each. A role the file does not name inherits the parent route. Never invent a model id. Without `roleIndex` the tool takes the first entry, which is the default route for every worker. For a model race, keep `role: "swarm workers"` and pass a different `roleIndex` per arm, so this call\'s result carries that arm\'s actual route instead of leaving it implied. The tool reports the entry and route this call selected; it cannot compare separate calls, so when two arms land on the same entry you must say in your synthesis that they share one route and that this is not a cross-model race. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       'Use `role: "swarm workers"` for every worker',
       'pass a different `roleIndex` per arm',
@@ -1211,7 +1253,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      "Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.",
+      "Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: ["Read the Subagents section of the `poteto-mode` skill at its absolute resource path"],
   },
   {
@@ -1238,7 +1280,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       '1. Spawn `Task` with `subagent_type: "comment-sicko"`. Pass the scope. Pick each subagent\'s reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill. Do not restate its rules.',
     expectedMatches: 1,
     replacement:
-      '1. Call `pstack_subagent` with `agent: "comment-sicko"` and the scope in the brief. That agent type is the only way to get Comment Sicko\'s persona, because the Host injects its preamble; a `general` child would lose it, and a missing preamble stops the call instead of degrading. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Do not restate its rules.',
+      '1. Call `pstack_subagent` with `agent: "comment-sicko"` and the scope in the brief. That agent type is the only way to get Comment Sicko\'s persona, because the Host injects its preamble; a `general` child would lose it, and a missing preamble stops the call instead of degrading. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Do not restate its rules.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       'Call `pstack_subagent` with `agent: "comment-sicko"`',
       "a missing preamble stops the call instead of degrading",
@@ -1362,7 +1404,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "- Decide what fans out. Parallelize only across seams, and give each worker its own worktree or branch (the **separate-before-serializing-shared-state** principle skill). Don't over-fan. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      "- Decide what fans out. Parallelize only across seams, and give each worker its own checkout: the worker calls `create_worktree` in its own Session, or you create the checkouts one at a time and pass each absolute `path` as that worker's `cwd`. Read `principle-separate-before-serializing-shared-state` at its absolute resource path. Don't over-fan. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before you spawn anyone.",
+      "- Decide what fans out. Parallelize only across seams, and give each worker its own checkout: the worker calls `create_worktree` in its own Session, or you create the checkouts one at a time and pass each absolute `path` as that worker's `cwd`. Read `principle-separate-before-serializing-shared-state` at its absolute resource path. Don't over-fan. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before you spawn anyone." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       "the worker calls `create_worktree` in its own Session",
       "Read the Subagents section of the `poteto-mode` skill at its absolute resource path",
@@ -1540,8 +1582,11 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Every real slug written must be in the detected set. `inherit-parent` and `auto` always pass. If a chosen real slug is not available, stop and ask again.",
     expectedMatches: 1,
     replacement:
-      "Every route written must be one this deployment serves, and every effort must appear in that exact model's advertised list. `inherit-parent` and `auto` always pass. If a chosen route does not resolve, stop and ask again rather than writing it and hoping the first delegation catches it.",
-    outputIncludes: ["every effort must appear in that exact model's advertised list"],
+      "Every route written must be one this deployment serves, and every effort must appear in that exact model's advertised list. `inherit-parent` and `auto` always pass. If a chosen route does not resolve, stop and ask again rather than writing it and hoping the first delegation catches it. Remember that the effort you write is the level that role *starts* at: a caller may raise or lower it per delegation with `reasoningEffort`, and a running child may change its own, so a role line that names a modest level is not a mistake to correct.",
+    outputIncludes: [
+      "every effort must appear in that exact model's advertised list",
+      "the effort you write is the level that role *starts* at",
+    ],
   },
   {
     kind: "replace",
@@ -1676,7 +1721,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "**You own this task. Plan, review, verify.** Delegate investigation and the fix to subagents, stay in the lead. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      "**You own this task. Plan, review, verify.** Delegate investigation and the fix to `pstack_subagent` children, stay in the lead. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before the first spawn.",
+      "**You own this task. Plan, review, verify.** Delegate investigation and the fix to `pstack_subagent` children, stay in the lead. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before the first spawn." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: ["Read the Subagents section of the `poteto-mode` skill at its absolute resource path"],
   },
   {
@@ -1789,7 +1834,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "3. Plan the fix from the trace. If it crosses a function boundary, `architect` first. Delegate implementation to a subagent using your configured perf-issue model (default `grok-4.7-xhigh-fast`). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. Review the diff. Capture a post-fix trace.",
     expectedMatches: 1,
     replacement:
-      '3. Plan the fix from the trace. If it crosses a function boundary, read the `architect` skill\'s `SKILL.md` at its absolute resource path and run it first. Delegate implementation to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "perf-issue"`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Review the diff. Capture a post-fix trace.',
+      '3. Plan the fix from the trace. If it crosses a function boundary, read the `architect` skill\'s `SKILL.md` at its absolute resource path and run it first. Delegate implementation to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "perf-issue"`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Review the diff. Capture a post-fix trace.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       '`agent: "poteto-agent"` and `role: "perf-issue"`',
       // Replaced "Review the diff. Capture a post-fix trace.", which the anchor keeps
@@ -1852,7 +1897,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "2. Reduce the artifact to the smoking gun: the function on the hot path, the retainer chain from the leaked object to a GC root, the loop firing without input. Parse large artifacts in a subagent (the **guard-the-context-window** principle skill), keep the reduced finding in the main thread. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      '2. Reduce the artifact to the smoking gun: the function on the hot path, the retainer chain from the leaked object to a GC root, the loop firing without input. Parse large artifacts in a `pstack_subagent` child with `agent: "general"` and a brief that forbids writes, as `principle-guard-the-context-window` requires; read that skill\'s `SKILL.md` at its absolute resource path. Keep the reduced finding in the main thread. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.',
+      '2. Reduce the artifact to the smoking gun: the function on the hot path, the retainer chain from the leaked object to a GC root, the loop firing without input. Parse large artifacts in a `pstack_subagent` child with `agent: "general"` and a brief that forbids writes, as `principle-guard-the-context-window` requires; read that skill\'s `SKILL.md` at its absolute resource path. Keep the reduced finding in the main thread. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       'Parse large artifacts in a `pstack_subagent` child with `agent: "general"`',
       "Keep the reduced finding in the main thread.",
@@ -1888,7 +1933,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "1. Identify the format and load it with the right tool. Parse large artifacts in a subagent (the **principle-guard-the-context-window** skill) and keep the reduced finding in the main thread. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      '1. Identify the format and load it with the right tool. Parse large artifacts in a `pstack_subagent` child with `agent: "general"` and a brief that forbids writes, as `principle-guard-the-context-window` requires; read that skill\'s `SKILL.md` at its absolute resource path. Keep the reduced finding in the main thread. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.',
+      '1. Identify the format and load it with the right tool. Parse large artifacts in a `pstack_subagent` child with `agent: "general"` and a brief that forbids writes, as `principle-guard-the-context-window` requires; read that skill\'s `SKILL.md` at its absolute resource path. Keep the reduced finding in the main thread. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       'Parse large artifacts in a `pstack_subagent` child with `agent: "general"`',
       "Keep the reduced finding in the main thread.",
@@ -1933,7 +1978,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "4. Delegate code-writing to a subagent using your configured feature model (default `grok-4.7-xhigh-fast`) with a specific scope (file paths, named data shape and its organizing structure per **principle-model-the-domain**, a state machine over scattered booleans, a table/registry over branching, a typed model over repeated shape assumptions, chosen before the delegate writes logic, and success criteria). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. When the implementation admits multiple valid shapes (error handling, abstraction layer, test structure), delegate via the **arena** skill instead so the runners surface the alternatives and the cross-judge guards the pick. Mandatory: no skip-with-reason escape, and Laziness Protocol does not override it (the gain is review separation, not lines saved). A subagent forbidden to spawn satisfies this by owning the diff directly with the same review separation.",
     expectedMatches: 1,
     replacement:
-      '4. Delegate code-writing to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "feature, refactoring"`, and a specific scope: file paths, the named data shape and its organizing structure as `principle-model-the-domain` requires (read that `SKILL.md` at its absolute resource path), a state machine over scattered booleans, a table or registry over branching, a typed model over repeated shape assumptions, chosen before the delegate writes logic, plus success criteria. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before the spawn. When the implementation admits multiple valid shapes (error handling, abstraction layer, test structure), read the `arena` skill\'s `SKILL.md` at its absolute resource path and delegate through it, so the runners surface the alternatives and the cross-judge guards the pick. Mandatory: no skip-with-reason escape, and `principle-laziness-protocol` does not override it (the gain is review separation, not lines saved). A child that cannot spawn satisfies this by owning the diff directly with the same review separation.',
+      '4. Delegate code-writing to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "feature, refactoring"`, and a specific scope: file paths, the named data shape and its organizing structure as `principle-model-the-domain` requires (read that `SKILL.md` at its absolute resource path), a state machine over scattered booleans, a table or registry over branching, a typed model over repeated shape assumptions, chosen before the delegate writes logic, plus success criteria. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before the spawn. When the implementation admits multiple valid shapes (error handling, abstraction layer, test structure), read the `arena` skill\'s `SKILL.md` at its absolute resource path and delegate through it, so the runners surface the alternatives and the cross-judge guards the pick. Mandatory: no skip-with-reason escape, and `principle-laziness-protocol` does not override it (the gain is review separation, not lines saved). A child that cannot spawn satisfies this by owning the diff directly with the same review separation.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       '`agent: "poteto-agent"` and `role: "feature, refactoring"`',
       "A child that cannot spawn satisfies this by owning the diff directly with the same review separation.",
@@ -2018,7 +2063,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "5. Move in small behavior-preserving steps, each keeping the pin green. For API reshapes, migrate every caller and delete the old API in the same wave (**principle-migrate-callers-then-delete-legacy-apis**). No compatibility shims, no parallel old-and-new paths. Spot-check every rename against the actual files. Renames silently miss usages in strings, prose, and back-references. Delegate the mechanical edits to a subagent using your configured refactoring model (default `grok-4.7-xhigh-fast`) with a specific scope (file paths, the names being moved, the behavior to hold). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      '5. Move in small behavior-preserving steps, each keeping the pin green. For API reshapes, migrate every caller and delete the old API in the same wave, as `principle-migrate-callers-then-delete-legacy-apis` requires; read its `SKILL.md` at its absolute resource path. No compatibility shims, no parallel old-and-new paths. Spot-check every rename against the actual files. Renames silently miss usages in strings, prose, and back-references. Delegate the mechanical edits to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "feature, refactoring"`, with a specific scope (file paths, the names being moved, the behavior to hold). Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.',
+      '5. Move in small behavior-preserving steps, each keeping the pin green. For API reshapes, migrate every caller and delete the old API in the same wave, as `principle-migrate-callers-then-delete-legacy-apis` requires; read its `SKILL.md` at its absolute resource path. No compatibility shims, no parallel old-and-new paths. Spot-check every rename against the actual files. Renames silently miss usages in strings, prose, and back-references. Delegate the mechanical edits to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "feature, refactoring"`, with a specific scope (file paths, the names being moved, the behavior to hold). Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       '`agent: "poteto-agent"` and `role: "feature, refactoring"`',
       "as `principle-migrate-callers-then-delete-legacy-apis` requires",
@@ -2458,7 +2503,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "3. Fan out across your chat history. Spawn parallel subagents on a fast, cheap model, each taking a slice of the corpus. Tell every subagent to order candidates by real modification time (`ls -t`) and never by UUID name, grep the topic first and then read only the matching chats and only their relevant regions, and skip the current chat plus obvious noise (subagent, eval, and test chats). Each returns the same schema, one block per chat: topic, the user's goal, decisions, open threads, struggles and corrections, and artifacts (PRs, tickets, branches), each citing the chat UUID. For one or two chats, skip the fan-out and search directly. The raw transcripts stay in the subagents. The main thread gets only their findings. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      "3. Fan out across your chat history. Start parallel children with `pstack_subagent`, each taking a slice of the window, and give each one a role that is actually configured in `$DSH_HOME/pstack-models.md`; when no cheaper route is configured, let the child inherit this run's route and say so instead of claiming a fast model. Tell every subagent to order candidates by real activity time (the `time` field of the events it reads, never the session id), scan the topic first and then read only the matching sessions and only their relevant regions, and skip the current session plus obvious noise (subagent, eval, and test sessions). Each returns the same schema, one block per session: topic, the user's goal, decisions, open threads, struggles and corrections, and artifacts (PRs, tickets, branches), each citing the session id. For one or two sessions, skip the fan-out and read directly. The raw events stay with the subagents. The main thread gets only their findings. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.",
+      "3. Fan out across your chat history. Start parallel children with `pstack_subagent`, each taking a slice of the window, and give each one a role that is actually configured in `$DSH_HOME/pstack-models.md`; when no cheaper route is configured, let the child inherit this run's route and say so instead of claiming a fast model. Tell every subagent to order candidates by real activity time (the `time` field of the events it reads, never the session id), scan the topic first and then read only the matching sessions and only their relevant regions, and skip the current session plus obvious noise (subagent, eval, and test sessions). Each returns the same schema, one block per session: topic, the user's goal, decisions, open threads, struggles and corrections, and artifacts (PRs, tickets, branches), each citing the session id. For one or two sessions, skip the fan-out and read directly. The raw events stay with the subagents. The main thread gets only their findings. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       "Start parallel children with `pstack_subagent`",
       "the `time` field of the events it reads",
@@ -2551,7 +2596,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "## 2. Spawn three reviewers in parallel\n\nOne message, three `Task` calls, `subagent_type: generalPurpose`, agent mode (`readonly: false`). Reviewers need MCP access to look up the tickets, chat threads, and observability traces the transcript references, and readonly strips MCPs.\n\nEach reviewer and the synthesizer name a role line in the `pstack-models.mdc` rule and a default. Set `model` to that line's value, or to the default if the rule or the line is missing. Leave `model` unset when the value is `auto` or `inherit-parent`. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.\n\n| Lens | Role line | Default `model` | Prompt template |\n|---|---|---|---|\n| Judgment | `reflect judgment, divergent, synthesizer` | `claude-opus-5-5-xhigh` | `references/judgment-reviewer.md` |\n| Tooling | `reflect tooling` | `grok-4.7-xhigh-fast` | `references/tooling-reviewer.md` |\n| Divergent | `reflect judgment, divergent, synthesizer` | `claude-opus-5-5-xhigh` | `references/divergent-reviewer.md` |\n\nPass each template verbatim, substituting the transcript path or digest where marked. Reviewers return findings in the `Task` response body.",
     expectedMatches: 1,
     replacement:
-      "## 2. Start three reviewers in parallel\n\nOne message, three `pstack_subagent` calls with `agent: \"general\"`. Reviewers need the MCP servers the log references, so do not brief them to avoid tool use; they must not write.\n\nEach reviewer and the synthesizer name a role line in `$DSH_HOME/pstack-models.md`. Pass that line as `role`. When the file or the line is missing, omit `role` so the child inherits this run's route, and say so in the reply. There is no per-call model slug: an unknown role fails instead of silently falling back, and `inherit-parent` or `auto` means the same as omitting `role`. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.\n\n| Lens | Role line | Prompt template |\n|---|---|---|\n| Judgment | `reflect judgment, divergent, synthesizer` | `references/judgment-reviewer.md` |\n| Tooling | `reflect tooling` | `references/tooling-reviewer.md` |\n| Divergent | `reflect judgment, divergent, synthesizer` | `references/divergent-reviewer.md` |\n\nPass each template verbatim, substituting the paged event log where marked. A reviewer cannot read this run's log on its own: inline the events you paged, or a compact summary when the log is too large, and when you inline a summary instead of the events, say so and treat the full-transcript audit as unfinished. Reviewers return findings in their completion notice.",
+      "## 2. Start three reviewers in parallel\n\nOne message, three `pstack_subagent` calls with `agent: \"general\"`. Reviewers need the MCP servers the log references, so do not brief them to avoid tool use; they must not write.\n\nEach reviewer and the synthesizer name a role line in `$DSH_HOME/pstack-models.md`. Pass that line as `role`. When the file or the line is missing, omit `role` so the child inherits this run's route, and say so in the reply. There is no per-call model slug: an unknown role fails instead of silently falling back, and `inherit-parent` or `auto` means the same as omitting `role`. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.\n\n| Lens | Role line | Prompt template |\n|---|---|---|\n| Judgment | `reflect judgment, divergent, synthesizer` | `references/judgment-reviewer.md` |\n| Tooling | `reflect tooling` | `references/tooling-reviewer.md` |\n| Divergent | `reflect judgment, divergent, synthesizer` | `references/divergent-reviewer.md` |\n\nPass each template verbatim, substituting the paged event log where marked. A reviewer cannot read this run's log on its own: inline the events you paged, or a compact summary when the log is too large, and when you inline a summary instead of the events, say so and treat the full-transcript audit as unfinished. Reviewers return findings in their completion notice." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       "three `pstack_subagent` calls with `agent: \"general\"`",
       "There is no per-call model slug",
@@ -2768,7 +2813,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel subagents across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill. Each slice mining subagent reads transcripts from the workspace-scoped path the parent provides, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers.",
     expectedMatches: 1,
     replacement:
-      "Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel `pstack_subagent` children across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path. Each slice mining subagent reads the sessions you hand it, inlined as events or opened through the same authorized search, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers.",
+      "Survey recent agent conversations within that scope for recurring patterns. Run multiple parallel `pstack_subagent` children across slices of history (e.g. last 2-4 weeks, split into 3 slices so each has enough material). Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path. Each slice mining subagent reads the sessions you hand it, inlined as events or opened through the same authorized search, looks for the signals below, and returns a short structured list of patterns it saw with evidence pointers." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: ["multiple parallel `pstack_subagent` children"],
   },
   {
@@ -2920,7 +2965,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "Before handing back, spawn a subagent on a different model family from the one that did the work. Self-review is not a substitute. The subagent reads the audit trail and the run's transcript, then flags what the user should pay attention to. Not a redo of the work, a scan for what's suboptimal or risky. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.",
     expectedMatches: 1,
     replacement:
-      "Before handing back, start a `pstack_subagent` on a role configured to a different provider or model family from the one that did the work. Self-review is not a substitute. Brief it with the audit trail and the raw events you paged, because it cannot read this run's log on its own. It flags what the user should pay attention to: not a redo of the work, a scan for what's suboptimal or risky. When no other family is configured, write `reviewed by <the route that actually ran>` and state that this was same-model review instead of claiming independence. Pick that subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.",
+      "Before handing back, start a `pstack_subagent` on a role configured to a different provider or model family from the one that did the work. Self-review is not a substitute. Brief it with the audit trail and the raw events you paged, because it cannot read this run's log on its own. It flags what the user should pay attention to: not a redo of the work, a scan for what's suboptimal or risky. When no other family is configured, write `reviewed by <the route that actually ran>` and state that this was same-model review instead of claiming independence. Pick that subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: ["state that this was same-model review instead of claiming independence"],
   },
   {
@@ -3023,7 +3068,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "4. **Spawn N parallel candidates** on different models per the **arena** skill's Phase B. Each works in its own sanitized dir. Same prompt to each. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      "4. **Start N parallel candidates** with `pstack_subagent`, one per configured model, following `arena` Phase B; read its `SKILL.md` at its absolute resource path. Each works in its own sanitized dir. Same prompt to each. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.",
+      "4. **Start N parallel candidates** with `pstack_subagent`, one per configured model, following `arena` Phase B; read its `SKILL.md` at its absolute resource path. Each works in its own sanitized dir. Same prompt to each. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: ["Start N parallel candidates** with `pstack_subagent`"],
   },
   {
@@ -3062,7 +3107,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "1. Locate the prior trail. A local transcript under the active workspace's `agent-transcripts/` directory (the system prompt names the path. Do not glob across `~/.cursor/projects/*/`, that crosses workspace boundaries and reads private chats from unrelated projects), a cloud-agent URL, or a pushed branch. Read the metadata overview and last messages first, then scan back for the decision points. Parse a long transcript in a subagent and keep the reduced timeline in the main thread (the **principle-guard-the-context-window** skill). Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      "1. Locate the prior trail: a session id the user provides, a pushed branch, or a trail file. A session id is read with `pstack_history` when it is this run or one of its reviewable direct children (`scope: \"children\"` plus that `sessionId`); any other id needs a workspace-authorized reader, and this tool refuses an arbitrary id instead of opening one. A branch is reconstructed with `git`. An agent URL hosted in the cloud is not supported: ask for the session id, the branch, or the trail file instead, and say the cloud form was refused. Read the first events and the tail first, then scan back for the decision points. Parse a long log in a `pstack_subagent` and keep the reduced timeline in the main thread, as `principle-guard-the-context-window` requires; read its `SKILL.md` at its absolute resource path. Pick that subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.",
+      "1. Locate the prior trail: a session id the user provides, a pushed branch, or a trail file. A session id is read with `pstack_history` when it is this run or one of its reviewable direct children (`scope: \"children\"` plus that `sessionId`); any other id needs a workspace-authorized reader, and this tool refuses an arbitrary id instead of opening one. A branch is reconstructed with `git`. An agent URL hosted in the cloud is not supported: ask for the session id, the branch, or the trail file instead, and say the cloud form was refused. Read the first events and the tail first, then scan back for the decision points. Parse a long log in a `pstack_subagent` and keep the reduced timeline in the main thread, as `principle-guard-the-context-window` requires; read its `SKILL.md` at its absolute resource path. Pick that subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       "An agent URL hosted in the cloud is not supported",
       "refuses an arbitrary id instead of opening one",
@@ -3105,7 +3150,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "3. Verify usage before deleting. For every `verify-recent-chat` row, or anything you doubt, fan subagents out to read the transcripts and report whether the chat is pinned or ongoing and which worktrees it touches (principle-guard-the-context-window, transcripts are bulk). A pinned chat spawns arena and repro trees into sibling worktrees via background subagents, and those are in use even when their names never hit the sidebar. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      "3. Verify usage before deleting. For every `verify-recent-chat` or `unknown-usage` row, or anything you doubt, ask the user which sessions are still live, and read the ones you may with `pstack_history` to see which worktree paths those events touch. Do not scan the session store for paths (principle-guard-the-context-window: session logs are bulk). An active session can start arena and repro trees in sibling worktrees, so a worktree can be in use even when its name never appears in the user's own summary. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path.",
+      "3. Verify usage before deleting. For every `verify-recent-chat` or `unknown-usage` row, or anything you doubt, ask the user which sessions are still live, and read the ones you may with `pstack_history` to see which worktree paths those events touch. Do not scan the session store for paths (principle-guard-the-context-window: session logs are bulk). An active session can start arena and repro trees in sibling worktrees, so a worktree can be in use even when its name never appears in the user's own summary. Pick each subagent's role per the Subagents section of `poteto-mode`; read its `SKILL.md` at its absolute resource path." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: ["Do not scan the session store for paths"],
   },
   {
@@ -3264,15 +3309,18 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/SKILL.md",
     reason:
-      "An effort can only come from the role file, so the fast/standard slug adjustment described a choice this tool does not offer.",
+      "The route still comes from the role file, because only the operator knows which providers a deployment serves. The effort becomes a per-delegation choice again: the role line is the starting baseline, and `reasoningEffort` raises or lowers it against the target model's own advertised list.",
     anchor:
       "**Match the model to the job.** Before each spawn, start from the role's line or default and pick the reasoning level and speed the job needs. The `/setup-pstack` budget sets each role's starting level, xhigh by default. Raise it one step, up to max, for the hardest or subtlest work. Lower it one step for judgment and two or more steps for routine work. Use fast mode only when the job is urgent, meaning CI or trunk is red or a person is blocked on the result right now. Otherwise use standard speed, the same slug without `-fast`. Verification is the exception and stays on the `swarm workers` model and speed (`grok-4.7-xhigh-fast` by default). Change only the effort level and whether the slug is fast, and keep the family the role names, so a diverse panel stays diverse. If the family has no slug at that level and speed, use its nearest slug. A role on `auto` or `inherit-parent` stays on the parent model. If the Task tool rejects the adjusted slug, do not try another adjusted slug. Use the role's line or default and say so.",
     expectedMatches: 1,
     replacement:
-      "**Match the model to the job.** Before each call, start from the role's line in `$DSH_HOME/pstack-models.md` and change nothing about the route the tool reports. This package cannot see which providers and models a deployment serves, so an invented slug fails the call before any child starts. What you can choose is the role, and the effort inside it belongs to that role file: `/setup-pstack` writes the effort each role starts at, and a role that names no effort inherits the parent's. When a role's effort is wrong for the job, say so and let the operator change that line instead of passing a route of your own. Verification stays on the `swarm workers` role, and a role on `auto` or `inherit-parent` stays on the parent route. Report the route each child resolved, because a panel whose entries landed on one route is not a diverse panel.",
+      "**Match the model and the effort to the job.** The route is not yours to invent: it comes from the role's line in `$DSH_HOME/pstack-models.md`, and this package cannot see which providers and models a deployment serves, so an invented slug fails the call before any child starts. A role on `auto` or `inherit-parent` stays on the parent route. Report the route each child resolved, because a panel whose entries landed on one route is not a diverse panel.\n\n**The effort is yours to choose.** The role line names the level that role *starts* at, as a baseline and a floor, not a verdict. Pass `reasoningEffort` to raise it for the hardest or subtlest work and to lower it for judgment or routine work, per delegation. The value must be one the target model advertises, because this package assumes no universal ladder: when a token does not fit, the tool refuses the call and lists that model's real efforts, so read the refusal instead of guessing a neighbour. Verification is the exception and stays on the `swarm workers` role at its configured level.\n\n**A child can change its own level.** Every child gets `set_reasoning_effort`, which applies from its next step. You do not have to predict the right level up front, and a child that finds the work harder than its brief suggested is expected to say so and raise it. A child with no live local handle keeps the level it was started with and reports that.",
     outputIncludes: [
-      "**Match the model to the job.** Before each call, start from the role's line",
-      "a panel whose entries landed on one route is not a diverse panel",
+      "**Match the model and the effort to the job.**",
+      "**The effort is yours to choose.**",
+      "as a baseline and a floor, not a verdict",
+      "**A child can change its own level.**",
+      "the tool refuses the call and lists that model's real efforts",
     ],
   },
   {
@@ -3336,7 +3384,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "2. Pick the wake mechanism using Cursor's `/loop` command (a built-in, not a pstack skill). An event to watch (CI, a merge, a ref advancing) gets a watcher subagent that wakes you on the event, with a long time-based heartbeat as fallback. No event gets a fixed-interval heartbeat sized to when the result is worth re-checking. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section.",
     expectedMatches: 1,
     replacement:
-      "2. Register that predicate as the goal before the first iteration. This host has no loop command to type, so `create_goal` is what carries a run: the goal is durable in this Session, it holds the round cap, and automatic continuation rounds proceed from it. Continuation needs the goal round driver mounted in the profile, so read `get_goal`, check whether continuation is armed and whether rounds are actually starting, and report which of the two you have instead of implying a loop. `create_goal`, `edit`, `pause`, and `resume` each need a direct request from the operator in this top-level turn, so a child cannot register or steer a run on your behalf.\n\n   Pick the wake mechanism by what this host actually has. A timed input is `schedule_create`, which delivers a reminder into this Session at a wall-clock time: use it as a heartbeat sized to when re-checking is worth a turn, never as an event subscription, because a reminder cannot watch anything, and a child cannot arm one at all. A real event needs a real watcher: a script that blocks until the condition changes and then exits, started as a background job so its settlement arrives as a notice, or a poll loop you run and read. If neither fits the event you care about, say the run is supervised and check it yourself.",
+      "2. Register that predicate as the goal before the first iteration. This host has no loop command to type, so `create_goal` is what carries a run: the goal is durable in this Session, it holds the round cap, and automatic continuation rounds proceed from it. Continuation needs the goal round driver mounted in the profile, so read `get_goal`, check whether continuation is armed and whether rounds are actually starting, and report which of the two you have instead of implying a loop. `create_goal`, `edit`, `pause`, and `resume` each need a direct request from the operator in this top-level turn, so a child cannot register or steer a run on your behalf.\n\n   Pick the wake mechanism by what this host actually has. A timed input is `schedule_create`, which delivers a reminder into this Session at a wall-clock time: use it as a heartbeat sized to when re-checking is worth a turn, never as an event subscription, because a reminder cannot watch anything, and a child cannot arm one at all. A real event needs a real watcher: a script that blocks until the condition changes and then exits, started as a background job so its settlement arrives as a notice, or a poll loop you run and read. If neither fits the event you care about, say the run is supervised and check it yourself." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       "This host has no loop command to type",
       "A real event needs a real watcher",
@@ -3506,7 +3554,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "- Hand the change to a subagent using your configured hillclimb model (default `grok-4.7-xhigh-fast`) with a tight scope. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. Supervise and review the diff rather than typing it (the **guard-the-context-window** principle skill). When several independent hypotheses are live, fan them to parallel subagents, each in its own worktree (the **separate-before-serializing-shared-state** principle skill).",
     expectedMatches: 1,
     replacement:
-      '- Hand the change to a `pstack_subagent` child with `role: "hillclimb"` and a tight scope. Its route and effort come from that role line in `$DSH_HOME/pstack-models.md`; a role the file does not name inherits the parent route, and you never pass a model id of your own. Supervise and review the diff rather than typing it (the **guard-the-context-window** principle skill). When several independent hypotheses are live, fan them to parallel children, each in its own `create_worktree` checkout, because two writers in one checkout overwrite each other (the **separate-before-serializing-shared-state** principle skill).',
+      '- Hand the change to a `pstack_subagent` child with `role: "hillclimb"` and a tight scope. Its route and effort come from that role line in `$DSH_HOME/pstack-models.md`; a role the file does not name inherits the parent route, and you never pass a model id of your own. Supervise and review the diff rather than typing it (the **guard-the-context-window** principle skill). When several independent hypotheses are live, fan them to parallel children, each in its own `create_worktree` checkout, because two writers in one checkout overwrite each other (the **separate-before-serializing-shared-state** principle skill).' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       '`pstack_subagent` child with `role: "hillclimb"`',
       "each in its own `create_worktree` checkout",
@@ -3686,7 +3734,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "The loop is agentic end to end. Agents are spawned, resumed, and drained only through the Task tool. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section. State reads and writes go through `scripts/orch/orch.ts` at drain points, one command in and one line out. The CLI never spawns, waits, or wakes anything.",
     expectedMatches: 1,
     replacement:
-      "The loop is agentic end to end. Children are started and briefed only through `pstack_subagent`, steered only through `send_message`, stopped only through `interrupt_agent`, and read only through `list_agents` and their own artifacts. Pick each child's role per the Subagents section of the `poteto-mode` skill, because the role is what selects its route. State reads and writes go through `pstack_script` with `id: \"orch\"` at drain points, one command in and one line out; the tool runs the bundled script on the Host's own runtime. The CLI never spawns, waits, or wakes anything.",
+      "The loop is agentic end to end. Children are started and briefed only through `pstack_subagent`, steered only through `send_message`, stopped only through `interrupt_agent`, and read only through `list_agents` and their own artifacts. Pick each child's role per the Subagents section of the `poteto-mode` skill, because the role is what selects its route. State reads and writes go through `pstack_script` with `id: \"orch\"` at drain points, one command in and one line out; the tool runs the bundled script on the Host's own runtime. The CLI never spawns, waits, or wakes anything." + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       "started and briefed only through `pstack_subagent`",
       "because the role is what selects its route",
@@ -3842,7 +3890,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       '3. Explore in subagents with `subagent_type: "poteto-agent"` and an explicit model per the Subagents section (the **guard-the-context-window** principle skill). Pick each subagent\'s reasoning level and fast or standard speed for the job, per the Subagents section. Each returns file pointers, conventions, test commands, and entry points. No inlined dumps.',
     expectedMatches: 1,
     replacement:
-      '3. Explore in `pstack_subagent` children with `agent: "poteto-agent"` and `role: "how explorer"`, which is read-only by instruction (the **guard-the-context-window** principle skill). The route comes from that role line in `$DSH_HOME/pstack-models.md`, and a role the file does not name inherits the parent route, so name the role in each brief rather than a model id. Each child returns file pointers, conventions, test commands, and entry points. No inlined dumps.',
+      '3. Explore in `pstack_subagent` children with `agent: "poteto-agent"` and `role: "how explorer"`, which is read-only by instruction (the **guard-the-context-window** principle skill). The route comes from that role line in `$DSH_HOME/pstack-models.md`, and a role the file does not name inherits the parent route, so name the role in each brief rather than a model id. Each child returns file pointers, conventions, test commands, and entry points. No inlined dumps.' + DELEGATION_EFFORT_SENTENCE,
     outputIncludes: [
       '`agent: "poteto-agent"` and `role: "how explorer"`',
       "name the role in each brief rather than a model id",

@@ -32,7 +32,7 @@ Each reviewer gets `agent: "general"` and a brief that forbids writes: it may re
 
 If an entry's route does not resolve, that reviewer does not start: the error names the role file and the bad line, which is the actionable fix. The remaining entries still start, and the report records each reviewer that was skipped and why. Do not substitute a route the user did not configure, and do not let one bad entry stop the review.
 
-Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first.
+Read `references/reviewer-prompt.md` and fill in the same template for every reviewer with the stated intent, the diff or file contents, the rubric from `references/rubric.md`, and the code-quality lens from `references/code-quality-review.md`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Start from the level the role line names, raise it for hard work and lower it for routine work by passing `reasoningEffort`; a child that cannot call `set_reasoning_effort` keeps the level you gave it.
 
 ## Step 4, Synthesize
 

@@ -226,7 +226,7 @@ worktree 的检测和去重机制在实现阶段选定，并用真实 profile �
 | `subagent_type: generalPurpose` | `agent: "general"` | how/why/arena/swarm/interrogate/reflect 等评审使用。 |
 | `poteto-agent` | `agent: "poteto-agent"` | playbook 内的实现和辅助 child。工具注入 preamble，不用普通 child 冒充。 |
 | `comment-sicko` | `agent: "comment-sicko"` | 保留人格与只读评审职责，通过 `/no-comments` 使用。 |
-| `model` slug、effort、`fast` | `role` 加角色文件中的 route | 不把 slug 词法当 DSH API。effort 由真实 adapter 元数据决定，`fast` 不虚构通用等价物。 |
+| `model` slug、effort、`fast` | `role` 加角色文件中的 route，外加每次派发的 `reasoningEffort` | 不把 slug 词法当 DSH API。effort 的**取值范围**由真实 adapter 元数据决定。这条只排除虚构 `fast` 变体和虚构档位名，**不排除覆盖档位**：角色行写的是起始值，调用方可以用 `reasoningEffort` 按任务难度上下浮动，child 也能用 `set_reasoning_effort` 自调。见 [动态推理档位](decisions/2026-10-26-dynamic-reasoning-effort.md)。 |
 | `run_in_background: true` | 删除字段 | `startActivation` 已经是后台 child，结果由 parent delivery 通知。 |
 | `readonly: true` | brief 禁写，必要时只读 preset | 文字约束不是沙箱。检查 `git status`。不能意外删除所需 MCP。 |
 | `readonly: false` | 删除字段，保留所需 MCP | 不把 `why`/`reflect` 改成失去证据来源的只读模式。 |
@@ -676,9 +676,12 @@ cwd?: string
 agentPreset?: string       # 仅 allowlist 非空时出现
 maxDepth?: integer         # 只能低于或等于配置上限
 roleIndex?: integer        # 选择 list-valued role 的一项
+reasoningEffort?: string   # 覆盖角色行的起始档位，本次派发有效
 ```
 
 默认 `agent` 为 `poteto-agent`。`role` 省略时继承 parent route。`roleIndex` 必须和 `role` 同时提供，且是非负安全整数。`agentPreset` 只影响 preset，不是 pstack 的 `agent` 类型。
+
+`reasoningEffort` 是**自由 token，不是枚举**。档位名属于 adapter，本包不维护通用阶梯，所以 schema 里不写 `enum`；合法值由目标模型 `llm.resolveModelInfo` 的 `reasoning.efforts` 决定，被拒时诊断列出该模型真实档位。这一条是对 §4.1 的直接落实：`effort 由真实 adapter 元数据决定` 是限制取值范围，不是禁止覆盖。角色行的 effort 是起始基线和下限，覆盖值是本次派发的实际档位。
 
 工具说明应描述返回值和语义，不重复完整角色列表。失败要返回可操作诊断，不能让错误 route 静默看似已配置。
 
@@ -689,10 +692,12 @@ roleIndex?: integer        # 选择 list-valued role 的一项
 3. 从 `$DSH_HOME/pstack-models.md` 重新读取角色文件。文件不存在或角色缺省时继承 parent。不可读和已配置但拼错要区分，不能把前者当“无配置”。
 4. 按角色 manifest 判断单项还是 panel。三个自动 panel 角色是 `arena runners`、`architect runners`、`interrogate reviewers`。其它 list role 默认选首项，`roleIndex` 选择指定项。
 5. 解析 `inherit-parent`/`auto` 为不传 `agentOptions`。真实 route 用 `ctx.llm.resolveCallConfig()` 做模型元数据和配置预检，不能只做静态字符串检查。它不证明凭证、网络、配额或真实调用成功，真实模型验收仍需观察 child 的请求和完成结果。
-6. 根据 `maxDepth` 配置和请求取较小值，传给每次 activation。
-7. 对每个 entry 调用 `ctx.subagents.startActivation()`，参数为 `provider`、`label`、`delivery: "parent"`、`signal` 和包含 `parent`、`prompt`、`cwd?`、`agentPreset?`、`agentOptions?`、`maxDepth?` 的 request。
-8. 返回所有 child id 和路由诊断。多个 panel child 在第 N 个启动失败时，不回滚已启动 child，错误中列出既有 id。
-9. 完成结果由 runtime 的 parent delivery 到达，不轮询。需要 steer/list/interrupt 时复用官方 control 和单独 list-agents 行。
+6. **校验覆盖档位**：带 `reasoningEffort` 时，对每个 panel entry 逐个解析它真正会请求的 route（显式 route、否则 `session.requestHeader()`、否则 `Agent.options`），用该 route 的 `reasoning.efforts` 校验。任一 entry 不符则整次调用失败，**一个 child 都不启动**，不能留下半应用的覆盖值。继承 parent 的 entry 用父会话的实际 route 校验。
+7. 根据 `maxDepth` 配置和请求取较小值，传给每次 activation。
+8. 对每个 entry 调用 `ctx.subagents.startActivation()`，参数为 `provider`、`label`、`delivery: "parent"`、`signal` 和包含 `parent`、`prompt`、`cwd?`、`agentPreset?`、`agentOptions?`、`maxDepth?` 的 request。覆盖值经 `agentOptions.reasoningEffort` 下发；继承 parent 而只覆盖档位时，`agentOptions` 只有 `reasoningEffort` 一项。
+9. 启动后用 `ctx.agents.get(childId)` 取 child 句柄，在该 child 的**自身作用域**上注册 `agent/request` waterfall 和 `set_reasoning_effort` 工具。注册随 child 销毁而解除，兄弟 child 互不可见。取不到句柄不算启动失败：child 保持下发档位，并在诊断里说明它无法自调。
+10. 返回所有 child id 和路由诊断。多个 panel child 在第 N 个启动失败时，不回滚已启动 child，错误中列出既有 id。
+11. 完成结果由 runtime 的 parent delivery 到达，不轮询。需要 steer/list/interrupt 时复用官方 control 和单独 list-agents 行。
 
 ### 9.3 角色策略
 
@@ -703,7 +708,7 @@ roleIndex?: integer        # 选择 list-valued role 的一项
 - `arena cross-judge pool` 不自动 fanout，由 `roleIndex` 选一个 judge entry；`swarm workers` 也不 fanout，首项是每个 worker 的默认 route，race 时用 `roleIndex` 给各 arm 换 entry，worker 仍由调用方逐个启动。并非所有 list-valued role 都展开。
 - route 无效时，单项调用失败并指出配置。panel 中可以保留其余 entry，但必须报告降级。若仍启动相同 parent route 的两个 child，不能声称多模型 panel。
 - `allowedModels` 是 pstack 行配置的独立精确 route 限制，启动任何 child 前先校验。它不等于 DSH native session allowedModels。继承 native policy 需要公开 seam，首版不读官方私有 projection。
-- effort 属于 adapter。缺省继承 parent route 时由 DSH 合并，显式换 route 而未指定 effort 时使用新模型默认。不要全局假定 effort 枚举或 fast 变体。
+- effort 属于 adapter。缺省继承 parent route 时由 DSH 合并，显式换 route 而未指定 effort 时使用新模型默认。不要全局假定 effort 枚举或 fast 变体；但这不等于不能覆盖档位：角色行的 effort 是起始基线，`reasoningEffort` 覆盖它，`set_reasoning_effort` 让 child 自调，两者的合法值都来自目标模型的真实列表。
 
 ### 9.4 生命周期和隔离
 

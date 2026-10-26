@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
+import { fakeAgent } from "./fake-agent.ts";
 
 import {
   DEFAULT_LIMIT,
@@ -197,7 +198,7 @@ function exec(agentId: string | undefined, callId = "call-current"): ToolRunCont
     name: TOOL_NAME,
     callId,
     arguments: {},
-    ...(agentId === undefined ? {} : { agent: { id: agentId } }),
+    ...(agentId === undefined ? {} : { agent: fakeAgent({ id: agentId }).agent }),
     signal: new AbortController().signal,
     deferContext: () => {},
     concludeTurn: () => {},

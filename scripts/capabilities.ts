@@ -155,9 +155,9 @@ export const CAPABILITIES: readonly Capability[] = [
     id: "model-route",
     kind: "model",
     cursor: "model slug, reasoning effort, `fast`",
-    dsh: "`role` resolved from `$DSH_HOME/pstack-models.md`",
+    dsh: "`role` resolved from `$DSH_HOME/pstack-models.md`, plus `reasoningEffort` per delegation",
     coverage: "mapped",
-    note: "A role value is `inherit-parent`, `auto`, `<provider>/<model>`, or `<provider>/<model> [effort]`. The value splits at its first `/`, so a model id may keep its own vendor prefix (`gateway/vendor-a/model-x`); no segment may be empty. The effort is validated against the live adapter metadata before a child starts; no model id is hardcoded in the assets.",
+    note: "A role value is `inherit-parent`, `auto`, `<provider>/<model>`, or `<provider>/<model> [effort]`. The value splits at its first `/`, so a model id may keep its own vendor prefix (`gateway/vendor-a/model-x`); no segment may be empty. The role's effort is the level that role starts at, not a ceiling: `pstack_subagent` takes `reasoningEffort` to raise or lower it for one delegation, and a child can change its own with `set_reasoning_effort`, which applies from its next step. Both are validated against the live adapter metadata, per panel entry, before a child starts, and a refusal lists that model's real efforts. No model id is hardcoded in the assets, and no effort ladder is either.",
   },
   {
     id: "models-rule",

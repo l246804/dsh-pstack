@@ -22,6 +22,8 @@ import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapab
 import { applyFilePatches } from "./apply-patches.ts";
 import {
   ALL_FORBIDDEN_FIELDS,
+  DELEGATION_EFFORT_SENTENCE,
+  UPSTREAM_EFFORT_SENTENCE,
   EXCLUDED_SKILLS,
   FILE_PATCHES,
   FORBIDDEN_CURSOR_FIELDS,
@@ -129,6 +131,7 @@ export function checkAssets(): AssetsReport {
   for (const problem of checkScriptReferences()) problems.push(problem);
   for (const problem of checkScriptIdReferences()) problems.push(problem);
   for (const problem of checkDesignRowList()) problems.push(problem);
+  for (const problem of checkEffortCapabilityCopy()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
   // The expected count is "upstream skill files, minus the ones a built artifact
@@ -1429,6 +1432,103 @@ function checkRewrittenTexts(problems: string[]): void {
       }
     }
   }
+}
+
+/**
+ * The per-delegation reasoning-effort capability has to be *documented as present*.
+ *
+ * Every other check in this file is negative: it fails on a token that must not
+ * appear. That shape cannot catch a capability that was quietly deleted, because a
+ * deletion removes offending text instead of adding it. It happened: `e4a14da`
+ * dropped 22 upstream sentences that told a caller to pick an effort per delegation,
+ * wrote "never invent an effort" into the skills, and every gate stayed green while
+ * the feature disappeared from the shipped instructions.
+ *
+ * So this check is positive, and it is deliberately narrow: it names the three places
+ * a model learns the capability exists, and the one sentence every patched skill that
+ * spawns work has to carry.
+ */
+function checkEffortCapabilityCopy(): readonly string[] {
+  const problems: string[] = [];
+
+  // 1. Every patched skill whose upstream carried the sentence must carry the DSH one.
+  //
+  // The expected set is read from the pinned upstream tree, not hardcoded. A hardcoded
+  // count is what let two files slip: the first restoration wrote 22 because 22 anchors
+  // matched a phrase search, and `no-comments` and `multi-phase-plan` were missing from
+  // both the patch and the count, so nothing disagreed.
+  const sentence = DELEGATION_EFFORT_SENTENCE.trim();
+  const carriers = new Set<string>();
+  for (const patch of FILE_PATCHES) {
+    if (patch.kind !== "replace") continue;
+    if (!patch.replacement.includes(DELEGATION_EFFORT_SENTENCE)) continue;
+    carriers.add(patch.file);
+  }
+
+  const upstreamCarriers = new Set<string>();
+  for (const patch of FILE_PATCHES) {
+    if (patch.kind !== "replace") continue;
+    const anchor = patch.anchor;
+    if (typeof anchor !== "string") continue;
+    if (anchor.includes(UPSTREAM_EFFORT_SENTENCE)) upstreamCarriers.add(patch.file);
+  }
+  for (const relativePath of upstreamCarriers) {
+    if (!carriers.has(relativePath)) {
+      problems.push(
+        `patches: ${relativePath} dropped the upstream reasoning-effort sentence but does not carry DELEGATION_EFFORT_SENTENCE. A file that told the caller to choose an effort must keep telling it.`,
+      );
+    }
+  }
+  for (const relativePath of carriers) {
+    if (!upstreamCarriers.has(relativePath)) {
+      problems.push(
+        `patches: ${relativePath} appends DELEGATION_EFFORT_SENTENCE but its anchor never carried the upstream sentence, so the text was added rather than restored`,
+      );
+    }
+  }
+  for (const relativePath of carriers) {
+    const path = join(ASSETS_ROOT, relativePath);
+    if (!existsSync(path)) continue; // The layout check already reports a missing asset.
+    if (!readFileSync(path, "utf8").includes(sentence)) {
+      problems.push(`assets/${relativePath}: lost the delegation-effort sentence on the way out`);
+    }
+  }
+
+  // 2. `poteto-mode` is where a model learns the rule. It must state the capability,
+  //    not forbid it.
+  const poteto = join(ASSETS_ROOT, "skills/poteto-mode/SKILL.md");
+  if (existsSync(poteto)) {
+    const text = readFileSync(poteto, "utf8");
+    for (const required of ["**The effort is yours to choose.**", "`reasoningEffort`", "`set_reasoning_effort`"]) {
+      if (!text.includes(required)) {
+        problems.push(
+          `assets/skills/poteto-mode/SKILL.md: must document the per-delegation effort control (${required} is missing)`,
+        );
+      }
+    }
+  }
+
+  // 3. No shipped skill may tell a model that effort is off limits. This is the exact
+  //    wording the regression introduced, so it is the wording that has to stay out.
+  const forbidden = [
+    "Never invent a model id or an effort",
+    "let the operator change that line",
+    "an effort can only come from the role file",
+  ];
+  for (const relativePath of carriers) {
+    const path = join(ASSETS_ROOT, relativePath);
+    if (!existsSync(path)) continue;
+    const text = readFileSync(path, "utf8");
+    for (const phrase of forbidden) {
+      if (text.includes(phrase)) {
+        problems.push(
+          `assets/${relativePath}: still says ${JSON.stringify(phrase)}, which contradicts the reasoningEffort parameter this package ships`,
+        );
+      }
+    }
+  }
+
+  return problems;
 }
 
 /**

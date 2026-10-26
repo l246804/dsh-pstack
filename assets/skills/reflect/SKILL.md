@@ -34,7 +34,7 @@ Each reviewer and the synthesizer name a role line in `$DSH_HOME/pstack-models.m
 | Tooling | `reflect tooling` | `references/tooling-reviewer.md` |
 | Divergent | `reflect judgment, divergent, synthesizer` | `references/divergent-reviewer.md` |
 
-Pass each template verbatim, substituting the paged event log where marked. A reviewer cannot read this run's log on its own: inline the events you paged, or a compact summary when the log is too large, and when you inline a summary instead of the events, say so and treat the full-transcript audit as unfinished. Reviewers return findings in their completion notice.
+Pass each template verbatim, substituting the paged event log where marked. A reviewer cannot read this run's log on its own: inline the events you paged, or a compact summary when the log is too large, and when you inline a summary instead of the events, say so and treat the full-transcript audit as unfinished. Reviewers return findings in their completion notice. Start from the level the role line names, raise it for hard work and lower it for routine work by passing `reasoningEffort`; a child that cannot call `set_reasoning_effort` keeps the level you gave it.
 
 ## 3. Synthesize
 

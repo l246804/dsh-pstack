@@ -1,6 +1,6 @@
 ### Bug fix
 
-**You own this task. Plan, review, verify.** Delegate investigation and the fix to `pstack_subagent` children, stay in the lead. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before the first spawn.
+**You own this task. Plan, review, verify.** Delegate investigation and the fix to `pstack_subagent` children, stay in the lead. Read the Subagents section of the `poteto-mode` skill at its absolute resource path before the first spawn. Start from the level the role line names, raise it for hard work and lower it for routine work by passing `reasoningEffort`; a child that cannot call `set_reasoning_effort` keeps the level you gave it.
 
 Be scientific. Every shipped line traces to runtime evidence. Belt-and-suspenders that "might help" is a hypothesis, not a fix. It does not ship. When evidence refutes a hypothesis, revert what it motivated. The smallest change the evidence justifies ships, nothing more.
 

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
+import { fakeAgent } from "./fake-agent.ts";
 
 import { PSTACK_MODELS_FILENAME } from "../scripts/role-manifest.ts";
 import type {
@@ -36,7 +37,14 @@ import {
 } from "../src/subagent.ts";
 
 const tempRoots: string[] = [];
-const PARENT = { id: "parent-session" };
+/**
+ * The calling Agent.
+ *
+ * Built through the shared fake rather than as `{ id }`, because the contract now
+ * names `options`, `session.requestHeader()`, and a scoped `ctx`. These cases only
+ * need the id, and the fake is the one place that shape is written down.
+ */
+const PARENT = fakeAgent({ id: "parent-session" }).agent;
 const SIGNAL = new AbortController().signal;
 const EFFORTS = ["max", "xhigh", "high", "medium", "low"];
 const MODELS = ["a", "b", "c"];
@@ -763,6 +771,7 @@ describe("tool wiring", () => {
       "cwd",
       "maxDepth",
       "roleIndex",
+      "reasoningEffort",
     ]);
 
     const value = await tool.execute(

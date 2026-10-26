@@ -11,7 +11,9 @@ standard preset 自己在 `preset-standard` 的插件列表里又挂了一套委
 
 这会带来三个实际问题。Lead 不能用这三个工具 steer、列出或中断普通的 pstack 子代理。Team 队友和 pstack 子代理共享 `maxActiveSubagents` 池，队友占满后 pstack 派发会因容量失败。Team 的策略鼓励 `spawn_teammate`，pstack 技能要求 `pstack_subagent`，两者在提示词层面竞争派发入口。
 
-`pstack_subagent` 的角色路由和 reasoning effort 计算本身不受影响。它每次调用读取角色文件，把 `provider`、`model`、`reasoningEffort` 放进 `agentOptions` 传给 `ctx.subagents.startActivation`。Team 不替换这个工具，也不改写这条调用。证据在当前构建产物的 `dist/subagent.mjs:267-283,709-715,794-806,945-957`。但工具面和容量的冲突仍然让这个组合不可支持。
+`pstack_subagent` 的角色路由和 reasoning effort 计算本身不受影响。它每次调用读取角色文件，把 `provider`、`model`、`reasoningEffort` 放进 `agentOptions` 传给 `ctx.subagents.startActivation`。Team 不替换这个工具，也不改写这条调用。证据在当前构建产物的 `dist/subagent.mjs`。但工具面和容量的冲突仍然让这个组合不可支持。
+
+> 2026-10-26 更正：上面这段描述的是一个当时**并不存在**的状态。`reasoningEffort` 在重写中丢失，`agentOptions` 当时只带角色行的路由。该能力已按 [动态推理档位](2026-10-26-dynamic-reasoning-effort.md) 恢复，其中包括 `reasoningEffort` 进 `agentOptions` 的路径。本条记录的决定（禁止同 profile 共存）不受影响。
 
 ## 决定
 

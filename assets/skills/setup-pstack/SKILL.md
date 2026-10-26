@@ -46,7 +46,7 @@ For the panel roles (`arena runners`, `architect runners`, `interrogate reviewer
 
 ### 4. Validate
 
-Every route written must be one this deployment serves, and every effort must appear in that exact model's advertised list. `inherit-parent` and `auto` always pass. If a chosen route does not resolve, stop and ask again rather than writing it and hoping the first delegation catches it.
+Every route written must be one this deployment serves, and every effort must appear in that exact model's advertised list. `inherit-parent` and `auto` always pass. If a chosen route does not resolve, stop and ask again rather than writing it and hoping the first delegation catches it. Remember that the effort you write is the level that role *starts* at: a caller may raise or lower it per delegation with `reasoningEffort`, and a running child may change its own, so a role line that names a modest level is not a mistake to correct.
 
 ### 5. Write the file
 

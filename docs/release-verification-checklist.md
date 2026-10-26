@@ -134,6 +134,17 @@ dsh --profile pstack-verify --dump-config-schema    # 条目的 JSON Schema，�
 | T03 `pstack_script` 落在会话目录 | 在该工具上用相对路径跑 `id: "log"`，确认 TSV 落在**会话当前目录**（含 worktree 会话） | 省略 `cwd` 时曾继承 Host 进程目录；单测覆盖了 `resolveWorkingDirectory`，但"会话目录是什么"由宿主 `workingDirectory.ensure` 决定，只能实机观察 |
 | T04 后台启动失败不谎报 | 让 `background: true` 跑一个不存在的解释器（或删掉目标产物），确认调用**抛错**而不是返回 `status: "running"` | 三次实现都错过：固定 250ms 窗口、单 microtask 都观察不到异步 ENOENT。现为 `spawn`/`error` 事件竞争，但仍需在宿主的真实 jobs 服务下确认 `jobs.start` 同步调用 `run` 这一前提成立 |
 
+### 推理档位覆盖与自调
+
+三条对应[动态推理档位决策](decisions/2026-10-26-dynamic-reasoning-effort.md)。共同点是**必须在真实 request header 上观察**：单测用 fake `LlmCallConfig` 断言 waterfall 返回了什么，但"这个值真的进了发给 provider 的请求头"只有真实 adapter 能证明。任一条未通过，就该把该能力从"已恢复"改回"未验证"，并在本文件写明失败形态。
+
+| 用例 | 复现命令 | 未验证原因 |
+|---|---|---|
+| E01 覆盖值进第一次请求头 | 角色行写 `[xhigh]`（或部署广告的任一档位），调用 `pstack_subagent` 传 `reasoningEffort` 为**另一个**该模型广告的档位；在 child 会话里读第一次 `request/header` 事件的 `config.reasoningEffort` | 期望是被覆盖的值，不是角色行的值。单测只覆盖到 `agentOptions` 与 `startActivation` 入参，未证明宿主把它原样写进请求头 |
+| E02 单个 entry 不符时整体不启动 | 配置 `arena runners` 两个 entry，第 2 个模型广告列表不含被传值；确认调用**抛错**且两个 child 都**没有**出现在 `list_agents` | 期望"整次失败，一个都不启动"。单测用 fake registry 断言 `starts` 为空，但真实 `startActivation` 之前有无其他副作用只能实机看 |
+| E03 自调改下一次而非在飞行中 | 让 child 第一步做长任务，第二步调 `set_reasoning_effort` 换档；对比第一、二步 `request/header` 的 `config.reasoningEffort`，并确认第一步已发出的请求头没被改写 | 期望第二次是新值、第一次保持原值。waterfall 在 `await next()` 之后替换，语义上不改写已构造的请求，但"已构造"与"已发出"的边界需要真实时序确认 |
+
+
 ## 单元 5：会话历史与相关技能
 
 | 用例 | 复现命令 | 未验证原因 |
@@ -176,6 +187,6 @@ dsh --profile pstack-verify --dump-config-schema    # 条目的 JSON Schema，�
 
 - 执行中出现与设计文档冲突的结果时，先记录实际观察，再新写一条决策记录取代相关约定，不改文档来迁就结果。
 - S12 与 B12 共用一次运行，但各自记录一条，因此用例表 36 行对应 36 个用例 ID（B01–B23 共 23 条，S01–S13 共 13 条），与设计 §12.4 的编号集合逐一相等（2026-10-26 核对：两侧差集均为空）。
-- 本清单共有四张记录表，各自的计数口径不同，不要相加：**B/S 用例 36 条**（§12.4 定义的验收样例）、**worktree 路径 4 条**、**T 用例 4 条**（跨工具主链路，按修复引入，不属于 §12.4）、**环境矩阵 6 项**（约束与缺口，不是用例）。
+- 本清单共有五张记录表，各自的计数口径不同，不要相加：**B/S 用例 36 条**（§12.4 定义的验收样例）、**worktree 路径 4 条**、**T 用例 4 条**（跨工具主链路，按修复引入，不属于 §12.4）、**E 用例 3 条**（推理档位覆盖与自调，按能力恢复引入，不属于 §12.4）、**环境矩阵 6 项**（约束与缺口，不是用例）。
 - 本文件此前三处数字有误，2026-10-26 一并更正：`pnpm pack` 基线 173 → 166（实测，且拆出五部分构成）；"40 条用例" → 36 条（该数字自 `f4e8cd1` 起就与表格行数不符，一路抄了下来）；"六个脚本" → 5 个 CLI + 5 个测试包。凡再改这些数字，请附上产生它的命令。此后条目数改由 `pnpm run check:pack` 现场推导，本文不再写死基线，见[构建与校验命令决策](decisions/2026-10-26-build-and-check-commands.md)。
 - 执行者第一次跑时若发现命令形式与本文不符（宿主版本演进、pnpm 参数差异等），以实际输出为准并就地更正本文，不要只在会话里口述。

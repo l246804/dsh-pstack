@@ -18,6 +18,7 @@ import { parseFrontmatter } from "./frontmatter.ts";
 import type {
   Agent,
   AgentOptions,
+  AgentsHost,
   JsonSchemaNode,
   LlmHost,
   SubagentCapabilities,
@@ -27,6 +28,13 @@ import type {
   ToolRunContext,
   ToolsHost,
 } from "./host-contract.ts";
+import {
+  SET_EFFORT_TOOL,
+  agentOptionsFor,
+  effectiveEffort,
+  installEffortControl,
+  validateEffortFor,
+} from "./effort.ts";
 import {
   modelsFilePath,
   readRoleFile,
@@ -41,7 +49,17 @@ import { requireRole, type RoleSpec } from "./roles.ts";
 /** Cordis row name, used by Loader diagnostics. */
 export const name = "pstack-subagent";
 
-/** Delegation needs the tool registry, the subagent registry, and the LLM adapters. */
+/**
+ * Delegation needs the tool registry, the subagent registry, and the LLM adapters.
+ *
+ * `agents` is deliberately **not** here. It is used only to reach a child this tool
+ * has just started, and a composition without it still delegates: the children keep
+ * the effort their request carried and cannot change it afterwards. Declaring it as
+ * a hard dependency would make the whole row inert in such a profile, so the tool
+ * would not exist at all — the failure `pstack-history` already paid for once with
+ * `sessionQuery`. It is read per call through `ctx.get("agents")` instead, which is
+ * why a controller mounted after this row is still seen.
+ */
 export const inject = ["tools", "subagents", "llm"];
 
 /** Model-facing tool name. */
@@ -99,6 +117,13 @@ export interface DelegationArgs {
   readonly agentPreset?: string;
   readonly maxDepth?: number;
   readonly roleIndex?: number;
+  /**
+   * Effort for every child this call starts, overriding each role line's value.
+   *
+   * Validated per entry against the model that entry will actually request, so a
+   * panel with one incompatible entry starts nothing rather than half its children.
+   */
+  readonly reasoningEffort?: string;
 }
 
 /** One child this call started. */
@@ -108,6 +133,8 @@ export interface ChildRecord {
   readonly agent: string;
   readonly role: string;
   readonly route: string;
+  /** The effort this child runs at, when any applies. */
+  readonly effort?: string;
   readonly maxDepth?: number;
 }
 
@@ -148,6 +175,15 @@ export class PreambleError extends DelegationError {
 export interface SubagentRuntime {
   readonly subagents: SubagentsHost;
   readonly llm: LlmHost;
+  /**
+   * The Agent registry, used to reach a child this tool just started.
+   *
+   * Optional because a row can be composed without the `agents` service and a
+   * delegation still works there: the children then keep the effort their request
+   * carried and simply cannot change it afterwards. Making it required would turn a
+   * missing service into a row that registers no tool at all.
+   */
+  readonly agents?: AgentsHost;
   /** `$DSH_HOME`, home of the role file. */
   readonly dshHome: string;
   /** Absolute package assets root, home of the agent preambles. */
@@ -373,6 +409,8 @@ export interface ChildPlan {
   readonly role: string;
   readonly route: ChildRoute;
   readonly routeLabel: string;
+  /** The effort this child will actually run at: the override when present, else the role line's. */
+  readonly effort?: string;
   readonly agentOptions?: AgentOptions;
   readonly agentPreset?: string;
   readonly cwd?: string;
@@ -388,6 +426,8 @@ export interface DelegationPlan {
   readonly mode: RouteSelection["mode"];
   readonly roleIndex?: number;
   readonly roleTotal: number;
+  /** The call-wide effort override, when it supplied one. */
+  readonly reasoningEffort?: string;
   readonly children: readonly ChildPlan[];
   readonly diagnostics: readonly string[];
 }
@@ -404,15 +444,20 @@ export function routeLabel(route: ChildRoute): string {
     : `${route.provider}/${route.model} [${route.effort}]`;
 }
 
-/** The `agentOptions` one route contributes, or undefined for parent inheritance. */
-export function agentOptionsFor(route: ChildRoute): AgentOptions | undefined {
-  if (route.kind === "inherit") return undefined;
-  return {
-    provider: route.provider,
-    model: route.model,
-    ...(route.effort === undefined ? {} : { reasoningEffort: route.effort }),
-  };
+/**
+ * The route text a caller sees when an effort override wins.
+ *
+ * `routeLabel` describes the role file, which stops being the whole truth once the
+ * caller overrode the effort. Reporting the file's value there would tell the model
+ * its override had been ignored.
+ */
+export function plannedRouteLabel(route: ChildRoute, effortOverride?: string): string {
+  const effort = effectiveEffort(route, effortOverride);
+  const base = route.kind === "inherit" ? "inherit-parent" : `${route.provider}/${route.model}`;
+  return effort === undefined ? base : `${base} [${effort}]`;
 }
+
+export { agentOptionsFor };
 
 /**
  * Take the smallest of the requested depth, this row's cap, and the Host setting.
@@ -468,6 +513,7 @@ export function parseDelegationArgs(
     ...(config.allowedAgentPresets.length > 0 ? ["agentPreset"] : []),
     "maxDepth",
     "roleIndex",
+    "reasoningEffort",
   ]);
   for (const key of Object.keys(record)) {
     if (!known.has(key)) {
@@ -540,6 +586,18 @@ export function parseDelegationArgs(
     }
   }
 
+  const requestedEffort = record["reasoningEffort"];
+  if (requestedEffort !== undefined && !isNonEmptyString(requestedEffort)) {
+    throw new DelegationError(
+      "reasoningEffort must be a non-empty string when present. It is one adapter-owned token, validated against the model this call will actually request; an empty value would silently re-enable the adapter default.",
+    );
+  }
+  if (typeof requestedEffort === "string" && /\s/.test(requestedEffort.trim())) {
+    throw new DelegationError(
+      `reasoningEffort ${JSON.stringify(requestedEffort)} contains whitespace. An effort is one token, exactly as the model advertises it.`,
+    );
+  }
+
   return {
     description,
     prompt,
@@ -549,6 +607,7 @@ export function parseDelegationArgs(
     ...(agentPreset === undefined ? {} : { agentPreset }),
     ...(maxDepth === undefined ? {} : { maxDepth }),
     ...(roleIndex === undefined ? {} : { roleIndex }),
+    ...(requestedEffort === undefined ? {} : { reasoningEffort: requestedEffort.trim() }),
   };
 }
 
@@ -631,7 +690,8 @@ export function planDelegation(
 
   const total = routes.length;
   const children: ChildPlan[] = routes.map((route, index) => {
-    const agentOptions = agentOptionsFor(route);
+    const agentOptions = agentOptionsFor(route, args.reasoningEffort);
+    const effort = effectiveEffort(route, args.reasoningEffort);
     return {
       index,
       total,
@@ -640,13 +700,27 @@ export function planDelegation(
       agent: args.agent,
       role: roleName,
       route,
-      routeLabel: routeLabel(route),
+      routeLabel: plannedRouteLabel(route, args.reasoningEffort),
+      ...(effort === undefined ? {} : { effort }),
       ...(agentOptions === undefined ? {} : { agentOptions }),
       ...(args.agentPreset === undefined ? {} : { agentPreset: args.agentPreset }),
       ...(args.cwd === undefined ? {} : { cwd: args.cwd }),
       ...(depth === undefined ? {} : { maxDepth: depth }),
     };
   });
+
+  if (args.reasoningEffort !== undefined) {
+    const overwritten = routes.filter(
+      (route) => route.kind === "route" && route.effort !== undefined && route.effort !== args.reasoningEffort,
+    );
+    if (overwritten.length > 0) {
+      diagnostics.push(
+        `reasoningEffort "${args.reasoningEffort}" overrides the effort this call's role line names (${overwritten
+          .map((route) => routeLabel(route))
+          .join(", ")}). The role line is a starting baseline, so this is allowed; pass no reasoningEffort to keep it.`,
+      );
+    }
+  }
 
   addPanelDiagnostics(children, roleName, selection, rolePath, diagnostics);
 
@@ -658,6 +732,7 @@ export function planDelegation(
     mode: selection?.mode ?? "single",
     ...(selection?.roleIndex === undefined ? {} : { roleIndex: selection.roleIndex }),
     roleTotal: selection?.total ?? 1,
+    ...(args.reasoningEffort === undefined ? {} : { reasoningEffort: args.reasoningEffort }),
     children,
     diagnostics,
   };
@@ -714,31 +789,54 @@ function addPanelDiagnostics(
 // ---------------------------------------------------------------------------
 
 /**
- * Validate every route against the live adapters before anything starts.
+ * Validate every route, and every requested effort, before anything starts.
  *
  * `resolveCallConfig` rejects an unsupported effort and any route the owning
- * adapter does not serve. This does not prove credentials, quota, or a successful
- * model call; only a real child request does.
+ * adapter does not serve. An inherit-parent entry has no provider/model of its own,
+ * so its effort is validated against the parent's live route instead. This does not
+ * prove credentials, quota, or a successful model call; only a real child request
+ * does.
+ *
+ * Every entry is checked before the first child starts. A panel whose second entry
+ * cannot take the effort therefore starts none of them, which is the only outcome
+ * that leaves no half-applied override behind.
  */
 async function preflightRoutes(
   llm: LlmHost,
+  parent: Agent,
   children: readonly ChildPlan[],
   roleName: string,
+  effortOverride: string | undefined,
   signal: AbortSignal,
 ): Promise<void> {
   for (const child of children) {
     if (child.agentOptions === undefined) continue;
-    const route = child.route as Extract<ChildRoute, { kind: "route" }>;
+
+    if (child.route.kind === "inherit") {
+      // Only reachable with an override: an inherit route with no effort carries no
+      // agentOptions at all and is skipped above.
+      const effort = effortOverride as string;
+      try {
+        await validateEffortFor(llm, undefined, effort, parent, signal);
+      } catch (error) {
+        throw new DelegationError(
+          `role ${roleName} inherits the parent route, and reasoningEffort "${effort}" failed preflight there: ${describeError(error)} Omit \`reasoningEffort\`, or name a role whose line holds an exact route.`,
+        );
+      }
+      continue;
+    }
+
+    const route = child.route;
     const callConfig = {
       provider: route.provider,
       model: route.model,
-      ...(route.effort === undefined ? {} : { reasoningEffort: route.effort }),
+      ...(child.effort === undefined ? {} : { reasoningEffort: child.effort }),
     };
     try {
       await llm.resolveCallConfig(callConfig, signal);
     } catch (error) {
       throw new DelegationError(
-        `role ${roleName} resolves to ${child.routeLabel}, which failed route preflight: ${describeError(error)}. ${await effortHint(llm, route, signal)}`,
+        `role ${roleName} resolves to ${child.routeLabel}, which failed route preflight: ${describeError(error)}. ${await effortHint(llm, route, child.effort, signal)}`,
       );
     }
   }
@@ -747,9 +845,10 @@ async function preflightRoutes(
 async function effortHint(
   llm: LlmHost,
   route: Extract<ChildRoute, { kind: "route" }>,
+  effort: string | undefined,
   signal: AbortSignal,
 ): Promise<string> {
-  if (route.effort !== undefined) {
+  if (effort !== undefined) {
     try {
       const info = await llm.resolveModelInfo(route.provider, route.model, signal);
       const efforts = info.reasoning?.efforts.map((entry) => entry.id) ?? [];
@@ -819,7 +918,7 @@ export async function startPlannedChildren(
     ...(effectiveDepth === undefined ? {} : { maxDepth: effectiveDepth }),
   }));
 
-  await preflightRoutes(runtime.llm, children, plan.role, signal);
+  await preflightRoutes(runtime.llm, parent, children, plan.role, plan.reasoningEffort, signal);
   if (runtime.subagents.getProvider(plan.provider) !== provider) {
     throw new DelegationError(
       `subagent provider "${plan.provider}" changed while the child routes were being resolved; retry the delegation`,
@@ -827,6 +926,7 @@ export async function startPlannedChildren(
   }
 
   const started: ChildRecord[] = [];
+  const diagnostics = [...plan.diagnostics];
   for (const child of children) {
     signal.throwIfAborted();
     try {
@@ -844,12 +944,33 @@ export async function startPlannedChildren(
         signal,
         delivery: "parent",
       });
+
+      // The child can raise or lower its own effort from here on. Registration is on
+      // the child's own scope, which disposes it with the child, so this call site
+      // keeps no handle: a tool call that returns is not the owner of a child that
+      // keeps running.
+      //
+      // A missing handle is not a failed delegation. The child then runs at the
+      // effort the request carried and cannot change it, which is what a backend
+      // without a live local Agent offers; saying so is better than implying a control
+      // that is not there.
+      const target =
+        runtime.agents === undefined ? undefined : runtime.agents.get(activation.childId);
+      if (target === undefined) {
+        diagnostics.push(
+          `child ${activation.childId} has no live local Agent handle, so it cannot change its own reasoning effort with \`${SET_EFFORT_TOOL}\`. It runs at ${child.effort === undefined ? "the adapter default" : `"${child.effort}"`} for its whole life.`,
+        );
+      } else {
+        installEffortControl(target, runtime.llm, child.effort);
+      }
+
       started.push({
         childId: activation.childId,
         label: child.label,
         agent: child.agent,
         role: child.role,
         route: child.routeLabel,
+        ...(child.effort === undefined ? {} : { effort: child.effort }),
         ...(child.maxDepth === undefined ? {} : { maxDepth: child.maxDepth }),
       });
     } catch (error) {
@@ -870,7 +991,7 @@ export async function startPlannedChildren(
   return {
     kind: started.length === 1 ? "activation" : "activations",
     children: started,
-    diagnostics: plan.diagnostics,
+    diagnostics,
   };
 }
 
@@ -904,6 +1025,15 @@ const TOOL_DESCRIPTION = [
   "`role` selects a configured pstack role and therefore the child's model route and reasoning",
   "effort. The role names and the meaning of each are in the pstack role manifest, not here.",
   "Omit `role` to inherit the parent route. Panel roles start one child per configured entry.",
+  "",
+  "`reasoningEffort` raises or lowers the effort for this delegation alone. The role line is a",
+  "starting baseline, not a verdict: start from it, raise it for hard work and lower it for",
+  "routine work. The value must be one the target model advertises, and this package does not",
+  "assume a ladder, so read the effort list the role's model reports rather than guessing. An",
+  "unsupported value fails the call before any child starts, including every entry of a panel.",
+  "",
+  "A running child can also change its own effort with `set_reasoning_effort`, which applies",
+  "from its next step. You do not have to predict the level up front.",
   "",
   "Every prompt is a fresh child that does not see this conversation, so include everything it",
   "needs. A child's own summary is not evidence: review its diff or artifacts yourself.",
@@ -945,6 +1075,16 @@ function buildParameters(config: PstackSubagentConfig): Record<string, unknown> 
       type: "integer",
       description:
         "Selects one entry of a list-valued role that is not an automatic panel; 0 or greater, and negative values are rejected. Requires `role`.",
+    },
+    reasoningEffort: {
+      type: "string",
+      description: [
+        "Reasoning effort for every child this call starts, overriding the role line's value for this delegation.",
+        "Start from the role's level, raise it for hard work, lower it for routine work.",
+        "The value must be one the target model advertises: this package assumes no ladder and rejects an unknown token with that model's real effort list.",
+        "It is validated for every panel entry before any child starts, so one incompatible entry fails the whole call instead of half-starting it.",
+        "Omit it to use the role line's effort.",
+      ].join(" "),
     },
   };
 
@@ -988,6 +1128,11 @@ export const OUTPUT_SCHEMA: JsonSchemaNode = {
             type: "string",
             description: "`inherit-parent` or `<provider>/<model> [effort]`.",
           },
+          effort: {
+            type: "string",
+            description:
+              "The reasoning effort this child runs at, when one applies. Equal to the call's `reasoningEffort` when that was passed.",
+          },
           maxDepth: {
             type: "integer",
             description: "The delegation-depth cap the child received.",
@@ -1014,9 +1159,10 @@ export function renderDelegationResult(result: DelegationResult): string {
       : `started ${result.children.length} children:`,
     ...result.children.map(
       (child) =>
-        `- ${child.childId} (${child.label}) agent=${child.agent} role=${child.role} route=${child.route}${child.maxDepth === undefined ? "" : ` maxDepth=${child.maxDepth}`}`,
+        `- ${child.childId} (${child.label}) agent=${child.agent} role=${child.role} route=${child.route}${child.effort === undefined ? "" : ` effort=${child.effort}`}${child.maxDepth === undefined ? "" : ` maxDepth=${child.maxDepth}`}`,
     ),
-    "Results arrive as completion notices; do not poll for them.",
+    "Results arrive as completion notices; do not poll for them. Each child can change its own",
+    "effort from its next step with `set_reasoning_effort`; you do not need to predict it up front.",
   ];
   if (result.diagnostics.length > 0) {
     lines.push(
@@ -1058,7 +1204,13 @@ export function createPstackSubagentTool(
   };
 }
 
-/** The slices of the Cordis context this row requires. */
+/**
+ * The slices of the Cordis context this row uses.
+ *
+ * `agents` is optional in both directions: it is absent from `inject` and read per
+ * call below, so a profile that mounts no agent registry still registers this tool.
+ * See the `inject` comment for why a hard dependency is the wrong shape here.
+ */
 export interface PstackSubagentHost {
   readonly tools: ToolsHost;
   readonly subagents: SubagentsHost;
@@ -1066,10 +1218,17 @@ export interface PstackSubagentHost {
 }
 
 /** Build the runtime a real Host call reads. */
-export function hostRuntime(ctx: PstackSubagentHost): SubagentRuntime {
+export function hostRuntime(
+  ctx: PstackSubagentHost,
+  getAgentRegistry: () => AgentsHost | undefined = () => undefined,
+): SubagentRuntime {
   return {
     subagents: ctx.subagents,
     llm: ctx.llm,
+    // Resolved per delegation, not snapshotted: `agents` may mount after this row.
+    get agents() {
+      return getAgentRegistry();
+    },
     dshHome: resolveDshHome(),
     assetsRoot: ASSETS_ROOT,
   };
@@ -1078,11 +1237,15 @@ export function hostRuntime(ctx: PstackSubagentHost): SubagentRuntime {
 /**
  * Register `pstack_subagent` for this row.
  *
- * @param ctx - context providing the tool registry, the subagent registry, and the LLM adapters.
+ * @param ctx - context providing the tool registry, the subagent registry, the LLM
+ *   adapters, and optionally `ctx.get` for the agent registry.
  * @param config - validated row config.
  */
-export function apply(ctx: PstackSubagentHost, config: PstackSubagentConfig = DEFAULT_CONFIG): void {
-  const runtime = hostRuntime(ctx);
+export function apply(
+  ctx: PstackSubagentHost & { get?: (name: string) => AgentsHost | undefined },
+  config: PstackSubagentConfig = DEFAULT_CONFIG,
+): void {
+  const runtime = hostRuntime(ctx, () => ctx.get?.("agents"));
   const tool = createPstackSubagentTool(runtime, config);
   ctx.tools.register(tool);
 }

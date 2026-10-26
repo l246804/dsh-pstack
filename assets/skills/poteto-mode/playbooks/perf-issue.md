@@ -14,7 +14,7 @@
    7. Do it cheaper.
 
    When an earlier mantra meets the target, stop.
-3. Plan the fix from the trace. If it crosses a function boundary, read the `architect` skill's `SKILL.md` at its absolute resource path and run it first. Delegate implementation to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "perf-issue"`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Review the diff. Capture a post-fix trace.
+3. Plan the fix from the trace. If it crosses a function boundary, read the `architect` skill's `SKILL.md` at its absolute resource path and run it first. Delegate implementation to a `pstack_subagent` child with `agent: "poteto-agent"` and `role: "perf-issue"`. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Review the diff. Capture a post-fix trace. Start from the level the role line names, raise it for hard work and lower it for routine work by passing `reasoningEffort`; a child that cannot call `set_reasoning_effort` keeps the level you gave it.
    Apply `principle-sequence-verifiable-units`, read at its absolute resource path, verifying each attempt before trying the next.
 4. Parse and compare the artifacts (JSON to sqlite, diff). "Inconclusive" or wrong-surface is not a pass. Flag it.
 5. Cite the measurement in the PR.

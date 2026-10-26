@@ -16,8 +16,15 @@
  * - `Service.listService({ service: "subagents" })`
  * - `Service.listService({ service: "llm" })`
  * - `Service.listService({ service: "tools" })`
- * - `Service.listService({ service: "agents" })`
+ * - `Service.listService({ service: "agents" })` — `Agent`, `AgentsHost`,
+ *   `AgentScope`, and the `agent/request` waterfall below
  * - `Service.listService({ service: "sessionQuery" })`
+ *
+ * `Agent` is deliberately not minimal. Its `options`, `session.requestHeader()`,
+ * and `ctx` are the three seams a child-scoped reasoning-effort control needs, and
+ * an `Agent` that stops at `{ id }` cannot express the capability at all. The cost
+ * of the wider copy is that every test now has to build a fuller fake; the cost of
+ * the narrower one was a documented capability with nowhere to live.
  *
  * Deliberate simplifications, none observable at runtime:
  * - Branded ids (`SessionId`, `MessageId`, `ReasoningEffortId`,
@@ -34,9 +41,74 @@
 // agents
 // ---------------------------------------------------------------------------
 
+/**
+ * The request header in force after the log's last header event.
+ *
+ * Only `config` is named, because only `config` is read. `config` is the call
+ * configuration the machine would use, i.e. the live route after a model switch,
+ * where `Agent.options` describes the creation-time route instead.
+ */
+export interface RequestEpochHeader {
+  readonly config: LlmCallConfig;
+}
+
+/** The slice of `Agent.session` used to resolve a live route. */
+export interface AgentSession {
+  /** The header in force after the log's last header event; undefined before the first request. */
+  requestHeader(): RequestEpochHeader | undefined;
+}
+
+/** One `agent/request` waterfall listener. */
+export type AgentRequestListener = (
+  payload: { readonly agent: Agent; readonly turn: number; readonly step: number },
+  next: () => Promise<LlmCallConfig>,
+) => Promise<LlmCallConfig>;
+
+/**
+ * The slice of an agent-scoped context a child-scoped contribution needs.
+ *
+ * Everything registered here is agent-local: it unwinds on disposal and rejects
+ * registration afterward. That is what makes one child's reasoning-effort control
+ * invisible to its siblings, and why two concurrent delegations cannot affect each
+ * other.
+ */
+export interface AgentScope {
+  /**
+   * Contribute to the agent-scoped `agent/request` waterfall.
+   *
+   * Dispatch is scope-filtered, so a listener registered on this child's own
+   * context receives only that child's requests. `next()` yields the configuration
+   * the machine would use (agent options on the first request, the logged header
+   * afterwards); returning a replacement switches it. A request already in flight
+   * is never rewritten.
+   *
+   * @returns the disposer, which unwinds with the scope.
+   */
+  on(event: "agent/request", listener: AgentRequestListener): () => void;
+  /** The tool registry, scoped to this agent. */
+  readonly tools: ToolsHost;
+}
+
 /** The live Agent the tool executes under. */
 export interface Agent {
   readonly id: string;
+  /** The provider route and model this agent's requests use at creation time. */
+  readonly options: AgentOptions;
+  /** The live session this agent drives. */
+  readonly session: AgentSession;
+  /** Agent-scoped context; contributions are agent-local and unwind on disposal. */
+  readonly ctx: AgentScope;
+}
+
+/**
+ * The slice of `ctx.agents` this tool uses to reach a child it has just started.
+ *
+ * `startActivation` returns the child id and not the child handle, and this tool
+ * needs the handle to contribute to the child's own scope.
+ */
+export interface AgentsHost {
+  /** The live agent with this shared agent/session id, or undefined when none is live. */
+  get(id: string): Agent | undefined;
 }
 
 /** Adapter-owned child model controls. Omitted fields inherit the parent route. */
