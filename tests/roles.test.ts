@@ -160,12 +160,47 @@ describe("route values", () => {
   });
 
   it("parses an exact route and an exact route with effort", () => {
-    expect(parseRouteValue("local/qwen3 [xhigh]").routes).toEqual([
-      { kind: "route", provider: "local", model: "qwen3", effort: "xhigh" },
+    expect(parseRouteValue("local/model-a [xhigh]").routes).toEqual([
+      { kind: "route", provider: "local", model: "model-a", effort: "xhigh" },
     ]);
-    expect(parseRouteValue("local/qwen3").routes).toEqual([
-      { kind: "route", provider: "local", model: "qwen3" },
+    expect(parseRouteValue("local/model-a").routes).toEqual([
+      { kind: "route", provider: "local", model: "model-a" },
     ]);
+  });
+
+  it("keeps a slash inside the model id by splitting at the first one", () => {
+    expect(parseRouteValue("gateway/vendor-a/model-x [max]").routes).toEqual([
+      { kind: "route", provider: "gateway", model: "vendor-a/model-x", effort: "max" },
+    ]);
+    expect(parseRouteValue("gateway/vendor-a/model-x").routes).toEqual([
+      { kind: "route", provider: "gateway", model: "vendor-a/model-x" },
+    ]);
+    const panel = parseRouteValue("gateway/vendor-a/model-x [high], gateway/vendor-b/model-y");
+    expect(panel.issues).toEqual([]);
+    expect(panel.routes).toEqual([
+      { kind: "route", provider: "gateway", model: "vendor-a/model-x", effort: "high" },
+      { kind: "route", provider: "gateway", model: "vendor-b/model-y" },
+    ]);
+  });
+
+  it("rejects an empty segment inside the model id", () => {
+    // Letting `/` into the model also let the old character class accept `//`, a
+    // trailing `vendor/`, and `vendor//model`. None of those is a route an adapter
+    // serves, and accepting one moves the failure off this line, which reports with
+    // a line number, and onto the first delegation's preflight.
+    for (const value of ["gateway//model-x", "gateway/vendor-a/", "gateway/vendor-a//model-x"]) {
+      const parsed = parseRouteValue(value);
+      expect(parsed.routes, value).toEqual([]);
+      expect(parsed.issues.length, value).toBeGreaterThan(0);
+    }
+  });
+
+  it("still rejects a value that names no provider or no model", () => {
+    for (const value of ["/model-a", "local/", "gateway/"]) {
+      const parsed = parseRouteValue(value);
+      expect(parsed.routes, value).toEqual([]);
+      expect(parsed.issues.length, value).toBeGreaterThan(0);
+    }
   });
 
   it("parses a panel list and keeps every entry", () => {
@@ -179,13 +214,13 @@ describe("route values", () => {
   });
 
   it("rejects an empty effort bracket with a usable message", () => {
-    const parsed = parseRouteValue("local/qwen3 []");
+    const parsed = parseRouteValue("local/model-a []");
     expect(parsed.routes).toEqual([]);
     expect(parsed.issues.join("\n")).toContain("empty brackets");
   });
 
   it("rejects a malformed value instead of inventing a route", () => {
-    for (const value of ["qwen3", "local/", "/qwen3", "local/qwen3 [two words]"]) {
+    for (const value of ["model-a", "local/", "/model-a", "local/model-a [two words]"]) {
       const parsed = parseRouteValue(value);
       expect(parsed.routes, value).toEqual([]);
       expect(parsed.issues.length, value).toBeGreaterThan(0);
@@ -206,12 +241,12 @@ describe("route values", () => {
   });
 
   it("keeps an unknown effort token so the adapter preflight can judge it", () => {
-    const parsed = parseRoute("local/qwen3 [ultra]");
+    const parsed = parseRoute("local/model-a [ultra]");
     expect(parsed.issue).toBeUndefined();
     expect(parsed.route).toEqual({
       kind: "route",
       provider: "local",
-      model: "qwen3",
+      model: "model-a",
       effort: "ultra",
     });
   });
@@ -220,13 +255,13 @@ describe("route values", () => {
 describe("role file parsing", () => {
   it("records the budget line and the configured roles", () => {
     const state = loadedFile(
-      ["# pstack model configuration", "# budget: large (xhigh)", "bug-fix: local/qwen3 [xhigh]"].join(
+      ["# pstack model configuration", "# budget: large (xhigh)", "bug-fix: local/model-a [xhigh]"].join(
         "\n",
       ),
     );
     expect(state.budget).toBe("large (xhigh)");
-    expect(roleEntry("# budget: large (xhigh)\nbug-fix: local/qwen3", "bug-fix")?.routes).toEqual([
-      { kind: "route", provider: "local", model: "qwen3" },
+    expect(roleEntry("# budget: large (xhigh)\nbug-fix: local/model-a", "bug-fix")?.routes).toEqual([
+      { kind: "route", provider: "local", model: "model-a" },
     ]);
   });
 
@@ -237,7 +272,7 @@ describe("role file parsing", () => {
   });
 
   it("reports a misspelled key with near misses and does not configure it", () => {
-    const state = loadedFile("how explore: local/qwen3");
+    const state = loadedFile("how explore: local/model-a");
     expect(state.roles.size).toBe(0);
     expect(state.issues[0]?.line).toBe(1);
     expect(state.issues[0]?.message).toContain("unknown role");
@@ -245,7 +280,7 @@ describe("role file parsing", () => {
   });
 
   it("reports a retired role instead of dropping it silently", () => {
-    const state = loadedFile("how critics: local/qwen3");
+    const state = loadedFile("how critics: local/model-a");
     expect(state.roles.size).toBe(0);
     expect(state.issues[0]?.message).toContain("retired or misspelled");
   });
@@ -282,12 +317,12 @@ describe("role file states", () => {
 
   it("reads a written file back", () => {
     const home = temporaryHome();
-    writeFileSync(modelsFilePath(home), "bug-fix: local/qwen3 [max]\n", "utf8");
+    writeFileSync(modelsFilePath(home), "bug-fix: local/model-a [max]\n", "utf8");
     const state = readRoleFile(modelsFilePath(home));
     expect(state.status).toBe("loaded");
     if (state.status === "loaded") {
       expect(state.roles.get("bug-fix")?.routes).toEqual([
-        { kind: "route", provider: "local", model: "qwen3", effort: "max" },
+        { kind: "route", provider: "local", model: "model-a", effort: "max" },
       ]);
     }
   });

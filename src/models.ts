@@ -213,7 +213,18 @@ export function parseRoute(raw: string): SingleRouteParse {
     return { route: { kind: "inherit" } };
   }
 
-  const match = /^([^\s/,[]+)\/([^\s/,[\]]+)(?:\s+\[([^[\]]*)\])?$/.exec(value);
+  // The provider is the text before the first `/`, and the model is everything
+  // after it, so a model id that carries its own vendor prefix stays one value.
+  // A deployment can name models as `gateway/vendor-a/model-x`, and a grammar
+  // that forbids `/` inside a model cannot route to any of them.
+  //
+  // The model is written as one or more non-empty `/`-separated segments rather
+  // than "anything but whitespace, comma, or bracket", because the wider class
+  // also accepts `provider//model`, `provider/vendor/`, and `provider//`. Those
+  // are not routes any adapter serves, and taking them would move the failure
+  // from this line, where it is reported with the line number, to a preflight
+  // error on the first delegation.
+  const match = /^([^\s/,[]+)\/([^\s/,[\]]+(?:\/[^\s/,[\]]+)*)(?:\s+\[([^[\]]*)\])?$/.exec(value);
   if (match === null) {
     return {
       issue: `${JSON.stringify(value)} is not a route; use \`inherit-parent\`, \`auto\`, or \`<provider>/<model> [effort]\``,

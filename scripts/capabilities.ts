@@ -157,7 +157,7 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "model slug, reasoning effort, `fast`",
     dsh: "`role` resolved from `$DSH_HOME/pstack-models.md`",
     coverage: "mapped",
-    note: "A role value is `inherit-parent`, `auto`, `<provider>/<model>`, or `<provider>/<model> [effort]`. The effort is validated against the live adapter metadata before a child starts; no model id is hardcoded in the assets.",
+    note: "A role value is `inherit-parent`, `auto`, `<provider>/<model>`, or `<provider>/<model> [effort]`. The value splits at its first `/`, so a model id may keep its own vendor prefix (`gateway/vendor-a/model-x`); no segment may be empty. The effort is validated against the live adapter metadata before a child starts; no model id is hardcoded in the assets.",
   },
   {
     id: "models-rule",
