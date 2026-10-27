@@ -1045,7 +1045,7 @@ function openStore(directory, options = {}) {
 	};
 }
 //#endregion
-//#region vendor/commander/lib/error.js
+//#region node_modules/commander/lib/error.js
 var require_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	/**
 	* CommanderError class
@@ -1084,7 +1084,7 @@ var require_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.InvalidArgumentError = InvalidArgumentError;
 }));
 //#endregion
-//#region vendor/commander/lib/argument.js
+//#region node_modules/commander/lib/argument.js
 var require_argument = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const { InvalidArgumentError } = require_error();
 	var Argument = class {
@@ -1207,7 +1207,7 @@ var require_argument = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.humanReadableArgName = humanReadableArgName;
 }));
 //#endregion
-//#region vendor/commander/lib/help.js
+//#region node_modules/commander/lib/help.js
 var require_help = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const { humanReadableArgName } = require_argument();
 	/**
@@ -1697,7 +1697,7 @@ var require_help = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.stripColor = stripColor;
 }));
 //#endregion
-//#region vendor/commander/lib/option.js
+//#region node_modules/commander/lib/option.js
 var require_option = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const { InvalidArgumentError } = require_error();
 	var Option = class {
@@ -1999,7 +1999,7 @@ var require_option = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.DualOptions = DualOptions;
 }));
 //#endregion
-//#region vendor/commander/lib/suggestSimilar.js
+//#region node_modules/commander/lib/suggestSimilar.js
 var require_suggestSimilar = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const maxDistance = 3;
 	function editDistance(a, b) {
@@ -2054,7 +2054,7 @@ var require_suggestSimilar = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.suggestSimilar = suggestSimilar;
 }));
 //#endregion
-//#region vendor/commander/lib/command.js
+//#region node_modules/commander/lib/command.js
 var require_command = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const EventEmitter = __require("node:events").EventEmitter;
 	const childProcess = __require("node:child_process");
@@ -4037,7 +4037,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 	exports.useColor = useColor;
 }));
 //#endregion
-//#region vendor/commander/index.js
+//#region node_modules/commander/index.js
 var require_commander = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const { Argument } = require_argument();
 	const { Command } = require_command();
@@ -4060,7 +4060,7 @@ var require_commander = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.InvalidOptionArgumentError = InvalidArgumentError;
 }));
 //#endregion
-//#region vendor/commander/esm.mjs
+//#region node_modules/commander/esm.mjs
 var esm_exports = /* @__PURE__ */ __exportAll({
 	Argument: () => Argument,
 	Command: () => Command,

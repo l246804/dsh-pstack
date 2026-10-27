@@ -14,7 +14,9 @@
  *    half-written.
  * 2. **One file, no resolution.** A single chunk per artifact and no
  *    `node_modules` or `require()` of a bare specifier, so an installed package
- *    needs no dependency tree beside it. `commander` comes from `vendor/`.
+ *    needs no dependency tree beside it. `commander` is a `devDependency`, resolved
+ *    from `node_modules` at build time and inlined, which is where every other build
+ *    dependency comes from too.
  * 3. **Node, not Bun.** No `bun:` specifier and no `Bun.` global survives.
  * 4. **Deterministic.** The same sources produce the same bytes, so `--check`
  *    can compare a fresh build with the committed tree.
@@ -50,9 +52,6 @@ export const RUNTIME_ROOT = join(ROOT, ".build", "runtime");
  * sources are bundled in place: they are this repository's own files.
  */
 export const SOURCE_STAGE_ROOT = join(ROOT, ".runtime-sources");
-
-/** The vendored Commander ESM entry. Pinned by `vendor/commander/package.json`. */
-export const COMMANDER_ALIAS = join(ROOT, "vendor", "commander", "esm.mjs");
 
 /** Node 22 is the floor `engines.node` promises, so the output must not exceed it. */
 export const BUILD_TARGET = "node22";
@@ -183,7 +182,6 @@ async function buildArtifact(entry: RuntimeEntry): Promise<BuiltArtifact> {
       target: BUILD_TARGET,
       platform: "node",
       outDir: join(RUNTIME_ROOT, scope),
-      alias: { commander: COMMANDER_ALIAS },
       // `codeSplitting` is an output option in this toolchain, and it is the
       // supported spelling of the deprecated `inlineDynamicImports`.
       outputOptions: { codeSplitting: false },
