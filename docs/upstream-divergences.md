@@ -205,9 +205,9 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 |  | `assets/skills/` | `skills-ext/` |
 |---|---|---|
 | 位置 | `assets/` 之内 | `assets/` 之外，作为兄弟目录 |
-| 来源 | 一个 pinned submodule | 每个来源一个仓库，各自 pin |
+| 来源 | 一个 pinned submodule | 每个来源一个仓库，各自 pin；或 `origin: local` 表示本仓库自写 |
 | 生成方式 | 由 `build:assets` 从上游加 patch 生成，整棵重写 | 从上游原样复制，不经过生成器 |
-| 校验方式 | `sync-upstream --check` 逐字节比对生成结果 | `sync-skills-ext.ts` 比对记录的内容哈希 |
+| 校验方式 | `sync-upstream --check` 逐字节比对生成结果 | `sync-skills-ext.ts` 比对记录的内容哈希；`local` 来源只比对文件清单 |
 
 **为什么在 `assets/` 之外。** `assets/` 的承诺是"一次全新构建能重现这些字节"，而 `writeAssets` 的做法是把新树 `rename` 盖上去，所以它**只能**放生成物。`skills-ext/` 要跨过这次重写存活，就不能待在里面。这条规则早先由 [静态资源决策](decisions/2026-10-26-static-resource-directory.md)为 `static/` 定下（`assets/` 保持纯生成树），本树是第二个案例。
 
@@ -218,8 +218,23 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 | 目录 | 仓库 | 许可证 | 固定提交 |
 |---|---|---|---|
 | `mattpocock-skills` | [mattpocock/skills](https://github.com/mattpocock/skills) | MIT | `5beb35b` |
+| `local` | 无上游，本仓库自写 | MIT | 无，`origin: local` |
 
 首个技能是 `writing-for-agents`，逐字节复制，零适配。它给 `authoring-a-skill` playbook 提供"怎么写技能"的判据，补上 Cursor 内置 `create-skill` 缺失、且其授权无法确认的那一块。
+
+`local` 来源与本表其余来源不同。`origin: local` 说明那些文本**就是**源，不是谁的拷贝，所以没有 revision 可 pin，内容哈希与 `--remote` 比对都不适用，因为没有上游可漂移。`files` 清单仍然适用：它是唯一能让"技能目录里多了一个文件"在评审里显形的东西。理由见 [本地技能来源记录](decisions/2026-10-27-local-skill-source.md)。
+
+它随包提供三个技能：
+
+| 技能 | 调用方式 | 作用 |
+|---|---|---|
+| `decision-write` | 模型可调用 | 起草决策记录：查重、验锚点、查 Scope 是否覆盖本次改动 |
+| `decision-audit` | 仅用户调用 | 按改动面列出需要人看的记录，只出报告，不改文件 |
+| `setup-project-docs` | 仅用户调用 | 写架构、术语表、决策记录目录，并把指针写进 `AGENTS.md` |
+
+前两个技能在仓库没有 `docs/decisions/` 时停下并说明，不创建目录。这个判断读的是项目状态而不是 profile 开关，所以"不启用"就是让它们静默失效，不需要额外配置。
+
+`decision-write` 是全包第二个模型可调用技能（另一个是 `setup-pstack`）。理由：记录必须在改动还没离手时写，而"这个选择确实有替代方案"恰恰是调用方最不会想起斜杠命令的时刻。
 
 同步：
 

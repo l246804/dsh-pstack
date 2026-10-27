@@ -21,7 +21,7 @@ import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
 import { checkDivergenceLedger } from "./divergence-ledger.ts";
-import { SKILLS_EXT_ROOT, readSources } from "./sync-skills-ext.ts";
+import { SKILLS_EXT_ROOT, isLocal, readSources } from "./sync-skills-ext.ts";
 import {
   ALL_FORBIDDEN_FIELDS,
   STARTING_LEVEL,
@@ -2279,13 +2279,29 @@ function checkSkillsExt(): readonly string[] {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(source.id)) {
       problems.push(`scripts/skills-ext/sources.yml: source id "${source.id}" is not kebab-case`);
     }
-    if (!/^https?:\/\//.test(source.repository)) {
-      problems.push(`scripts/skills-ext/sources.yml: "${source.id}" has no repository URL`);
-    }
-    if (!/^[0-9a-f]{40}$/.test(source.revision)) {
+    if (source.origin !== undefined && source.origin !== "local" && source.origin !== "vendored") {
       problems.push(
-        `scripts/skills-ext/sources.yml: "${source.id}" pins "${source.revision}", which is not a 40-character commit SHA; a branch name is not a pin`,
+        `scripts/skills-ext/sources.yml: "${source.id}" has origin "${source.origin}"; it is \`local\` or \`vendored\``,
       );
+    }
+    // A vendored source is a copy of one commit, so the pin and the URL are what make
+    // the copy checkable. A local source has neither, and demanding them would
+    // invite a placeholder revision that means nothing.
+    if (isLocal(source)) {
+      if (source.repository !== undefined) {
+        problems.push(
+          `scripts/skills-ext/sources.yml: "${source.id}" is local, so it names no repository; a URL here promises an upstream that does not exist`,
+        );
+      }
+    } else {
+      if (source.repository === undefined || !/^https?:\/\//.test(source.repository)) {
+        problems.push(`scripts/skills-ext/sources.yml: "${source.id}" has no repository URL`);
+      }
+      if (source.revision === undefined || !/^[0-9a-f]{40}$/.test(source.revision)) {
+        problems.push(
+          `scripts/skills-ext/sources.yml: "${source.id}" pins "${source.revision}", which is not a 40-character commit SHA; a branch name is not a pin`,
+        );
+      }
     }
     if (source.license.trim() === "") {
       problems.push(`scripts/skills-ext/sources.yml: "${source.id}" records no licence`);
@@ -2294,8 +2310,35 @@ function checkSkillsExt(): readonly string[] {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
         problems.push(`scripts/skills-ext/sources.yml: skill name "${skill.name}" is not kebab-case`);
       }
-      if (!skill.upstream.startsWith("skills/") && !skill.upstream.includes("/")) {
-        problems.push(`scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" has no upstream path`);
+      if (isLocal(source)) {
+        if (skill.upstream !== undefined) {
+          problems.push(
+            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is local, so it has no upstream path`,
+          );
+        }
+        if (skill.hashes !== undefined) {
+          problems.push(
+            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is local, so a content hash pins nothing it could drift from`,
+          );
+        }
+        if (skill.invocation === undefined) {
+          problems.push(
+            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is local, so it declares invocation: model or user next to the reason for that reach`,
+          );
+        } else if (skill.invocation !== "model" && skill.invocation !== "user") {
+          problems.push(
+            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" declares invocation "${skill.invocation}"; it is \`model\` or \`user\``,
+          );
+        }
+      } else {
+        if (skill.upstream === undefined) {
+          problems.push(`scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" has no upstream path`);
+        }
+        if (skill.invocation !== undefined) {
+          problems.push(
+            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is vendored, so upstream owns its invocation and the manifest does not restate it`,
+          );
+        }
       }
       if (skill.files.length === 0) {
         problems.push(`scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" lists no files`);
@@ -2344,6 +2387,19 @@ function checkSkillsExt(): readonly string[] {
             `skills-ext: "${assetRelative}" sits outside a source/skill directory pair`,
           );
         }
+      }
+
+      // The manifest's declared reach and the frontmatter agree, both ways. A local
+      // skill picks model or user reach on purpose, and this is what keeps that choice
+      // visible in review instead of living in one frontmatter line.
+      if (!isLocal(source) || skill.invocation === undefined) continue;
+      const loaded = index.get(directory);
+      if (loaded === undefined) continue;
+      const actual: string = loaded.invocation.modelInvocable ? "model" : "user";
+      if (actual !== skill.invocation) {
+        problems.push(
+          `skills-ext/${source.id}/${skill.name}: declares invocation "${skill.invocation}" but its SKILL.md is ${actual === "model" ? "model-invocable (no \`disable-model-invocation\`)" : "user-invoked (\`disable-model-invocation: true\`)"}; state the reach you mean in both places`,
+        );
       }
     }
   }

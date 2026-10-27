@@ -188,7 +188,7 @@ export const CAPABILITIES: readonly Capability[] = [
     cursor: "`/name` or the named skill",
     dsh: "the `skill` tool for model-invocable skills, `/name` for the rest",
     coverage: "mapped",
-    note: "The bundled provider lists all 55 skills and loads each body from its absolute path; only `setup-pstack` stays model-invocable, exactly as upstream declares.",
+    note: "The bundled provider lists all 55 ported skills and loads each body from its absolute path. Of the ported set only `setup-pstack` stays model-invocable, exactly as upstream declares. The package also ships skills of its own beside the ported tree, and each states its own invocation: `decision-write` is model-invocable because it fires inside a change, while `decision-audit` and `setup-project-docs` are invoked by name.",
   },
   {
     id: "model-route",

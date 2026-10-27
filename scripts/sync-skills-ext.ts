@@ -42,26 +42,57 @@ export const SKILLS_EXT_ROOT = join(ROOT, "skills-ext");
 /** One vendored skill inside a source. */
 export interface VendoredSkill {
   readonly name: string;
-  /** Path of the skill directory inside the upstream repository. */
-  readonly upstream: string;
+  /** Path of the skill directory inside the upstream repository. Absent when local. */
+  readonly upstream?: string;
   /** Upstream-relative file paths that ship. */
   readonly files: readonly string[];
   /** Lower-case hex SHA-256 of each shipped file, keyed by its relative path. */
   readonly hashes?: Readonly<Record<string, string>>;
+  /**
+   * Declared invocation for a local skill.
+   *
+   * A local skill picks its own reach, so this records the choice beside the reason and
+   * `check-assets` asserts the `SKILL.md` frontmatter agrees. Without it, turning a skill
+   * from user-invoked to model-invoked is a one-word frontmatter edit that no review sees.
+   * A vendored skill leaves it absent: upstream owns that choice.
+   */
+  readonly invocation?: SkillInvocation;
   readonly note?: string;
 }
+
+/** How far a local skill reaches: model-invocable, or only by name. */
+export type SkillInvocation = "model" | "user";
+
+/**
+ * Where a source's text comes from.
+ *
+ * `vendored` is a byte-for-byte copy of one upstream revision, so a content hash is
+ * what makes "this equals that commit" checkable. `local` is text this package
+ * wrote: there is no revision to pin and nothing to drift from, so the hash step and
+ * the remote comparison are both skipped. The file inventory applies to both — it is
+ * the record of what ships, and it is the only thing that makes an added file visible.
+ */
+export type SourceOrigin = "local" | "vendored";
 
 /** One upstream repository and the skills vendored from it. */
 export interface VendoredSource {
   readonly id: string;
-  readonly repository: string;
+  /** Defaults to `vendored` when absent, which is the older form of this file. */
+  readonly origin?: SourceOrigin;
+  /** Absent for a local source: there is no upstream to name. */
+  readonly repository?: string;
   readonly license: string;
   readonly copyright: string;
   /** Commit SHA the copy was taken from. A branch name is not a pin. */
-  readonly revision: string;
+  readonly revision?: string;
   readonly branch?: string;
   readonly fetched?: string;
   readonly skills: readonly VendoredSkill[];
+}
+
+/** Whether a source's text is this package's own. */
+export function isLocal(source: VendoredSource): boolean {
+  return source.origin === "local";
 }
 
 export interface SourcesFile {
@@ -141,6 +172,10 @@ export function checkLocalTree(sources: SourcesFile): readonly string[] {
         }
       }
 
+      // Local skill text is text is the source, so there is no pin to compare it with
+      // and no hash worth recording: `--write` would only restate whatever is on disk.
+      if (isLocal(source)) continue;
+
       for (const [file, expected] of Object.entries(skill.hashes ?? {})) {
         const actual = hashFile(join(directory, ...file.split("/")));
         if (actual === undefined) {
@@ -180,15 +215,23 @@ export async function checkRemote(
   fetchText: (url: string) => Promise<string | undefined>,
 ): Promise<readonly string[]> {
   const problems: string[] = [];
+  // Nothing to compare a local skill against: it has no upstream and no revision.
+  if (isLocal(source)) return problems;
+
+  const repository = source.repository;
+  const revision = source.revision;
+  if (repository === undefined || revision === undefined) {
+    return [`${source.id}: a vendored source needs both \`repository\` and \`revision\``];
+  }
 
   for (const skill of source.skills) {
     const directory = skillDirectory(source, skill);
     for (const file of skill.files) {
       const upstreamPath = `${skill.upstream}/${file}`;
-      const url = `${source.repository.replace(/\/$/, "")}/raw/${source.revision}/${upstreamPath}`;
+      const url = `${repository.replace(/\/$/, "")}/raw/${revision}/${upstreamPath}`;
       const remote = await fetchText(url);
       if (remote === undefined) {
-        problems.push(`${source.id}/${skill.name}/${file}: upstream ${upstreamPath} is gone at ${source.revision.slice(0, 7)}`);
+        problems.push(`${source.id}/${skill.name}/${file}: upstream ${upstreamPath} is gone at ${revision.slice(0, 7)}`);
         continue;
       }
       const local = existsSync(join(directory, ...file.split("/")))
@@ -199,7 +242,7 @@ export async function checkRemote(
         continue;
       }
       if (local !== remote) {
-        problems.push(`${source.id}/${skill.name}/${file}: differs from upstream at ${source.revision.slice(0, 7)}`);
+        problems.push(`${source.id}/${skill.name}/${file}: differs from upstream at ${revision.slice(0, 7)}`);
       }
     }
   }
@@ -207,12 +250,22 @@ export async function checkRemote(
   return problems;
 }
 
-/** Record the current tree's hashes into the manifest. */
+/**
+ * Record the current tree's hashes into the manifest.
+ *
+ * Authored skills are left without hashes rather than given ones that would only
+ * restate the working tree: a pin the author can regenerate with one command is not
+ * a pin.
+ */
 export function writeHashes(sources: SourcesFile): SourcesFile {
   return {
     sources: sources.sources.map((source) => ({
       ...source,
-      skills: source.skills.map((skill) => ({ ...skill, hashes: hashSkill(source, skill) })),
+      skills: source.skills.map((skill) =>
+        isLocal(source)
+          ? { ...skill, hashes: undefined }
+          : { ...skill, hashes: hashSkill(source, skill) },
+      ),
     })),
   };
 }
@@ -249,18 +302,25 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
 
   const problems = [...checkLocalTree(sources)];
   const skills = sources.sources.reduce((total, source) => total + source.skills.length, 0);
+  const describe = (source: VendoredSource): string =>
+    isLocal(source) ? `${source.id} (no upstream)` : `${source.id}@${(source.revision ?? "unpinned").slice(0, 7)}`;
   console.log(
-    `skills-ext: ${sources.sources.length} source(s), ${skills} skill(s) (${sources.sources.map((source) => `${source.id}@${source.revision.slice(0, 7)}`).join(", ")})`,
+    `skills-ext: ${sources.sources.length} source(s), ${skills} skill(s) (${sources.sources.map(describe).join(", ")})`,
   );
 
   if (remote) {
     for (const source of sources.sources) {
-      const drift = await checkRemote(source, fetchText);
-      if (drift.length === 0) {
-        console.log(`  ${source.id}: matches upstream at ${source.revision.slice(0, 7)}`);
+      if (isLocal(source)) {
+        console.log(`  ${source.id}: written here, so there is no upstream to compare with`);
         continue;
       }
-      console.log(`  ${source.id}: ${drift.length} file(s) differ from upstream at ${source.revision.slice(0, 7)}`);
+      const revision = (source.revision ?? "unpinned").slice(0, 7);
+      const drift = await checkRemote(source, fetchText);
+      if (drift.length === 0) {
+        console.log(`  ${source.id}: matches upstream at ${revision}`);
+        continue;
+      }
+      console.log(`  ${source.id}: ${drift.length} file(s) differ from upstream at ${revision}`);
       for (const item of drift) console.log(`    ${item}`);
       console.log(`    This is upstream moving, not a defect here. To adopt it, raise \`revision\` and run --write.`);
     }

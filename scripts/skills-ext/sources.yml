@@ -18,3 +18,47 @@ sources:
         hashes:
           SKILL.md: 551adca942227b44192edba88acd4e8db911f0121ce58ad16944ccf6a896a74a
           SKILL-MECHANICS.md: c768e6307c7c10728c401c213f2c4ba71c542127eeb7ad2956aabd15a0fa0059
+
+  # Skills the maintainer writes here, for this package's own use.
+  #
+  # `origin: local` says the text below is the source, not a copy of one. So there is
+  # no revision to pin and no upstream to re-fetch: content hashes and `--remote` do
+  # not apply, because there is nothing to drift from. The `files` inventory still
+  # applies, and it is the reason to list these here at all: a file appearing inside
+  # one of these skills shows up in review instead of shipping as text nobody chose.
+  #
+  # They live here rather than in `assets/skills/` because that tree is regenerated
+  # from the pstack submodule and asserted to hold only generated files. See
+  # docs/decisions/2026-10-27-local-skill-source.md.
+  #
+  # Each local skill declares its own `invocation`, and the check asserts the SKILL.md
+  # frontmatter agrees with it. There is no blanket rule that a package-authored skill
+  # is user-invoked: the port holds that shape because upstream declared it, while a
+  # skill written here picks whichever reach its trigger actually needs.
+  - id: local
+    origin: local
+    license: MIT
+    copyright: Copyright (c) 2026 leiwang
+    skills:
+      - name: decision-write
+        files:
+          - SKILL.md
+        invocation: model
+        note: >-
+          Model-invocable. The record has to be written while the change is still in hand, and
+          a choice that had a real alternative is the moment a caller is least likely to
+          remember a slash command.
+      - name: decision-audit
+        files:
+          - SKILL.md
+        invocation: user
+        note: >-
+          User-invoked. It reports rather than acts, so nothing in a task depends on it firing
+          on its own, and keeping it out of the model catalog costs no context.
+      - name: setup-project-docs
+        files:
+          - SKILL.md
+        invocation: user
+        note: >-
+          User-invoked. It is the one skill here that writes to the repository, so a person
+          starts it.
