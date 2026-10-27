@@ -172,9 +172,41 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 - `pstack_subagent` 的 `reasoningEffort`、`roleIndex`、`maxDepth`、`agentPreset` 参数。
 - child 作用域的 `set_reasoning_effort`。
 - `pstack_history`（受限只读历史）与 `pstack_script`（随包脚本运行）。
-- `scripts/` 整个生成链：patch 定义、资产生成、`check` 的四段（`check:assets`、`check:scripts`、`typecheck`、`test`）、运行时打包。
+- `scripts/` 整个生成链：patch 定义、资产生成、`check` 的四段（`check:assets`、`check:scripts`、`typecheck`、`test`）、运行时打包，以及第三方技能树的 `sync-skills-ext.ts`。
 - `docs/decisions/` 的决策记录。
 - 按需挂载的 worktree 行，以及它对该 profile 是否已有等价行的判断。
+- `assets/skills-ext/` 第三方技能树。上游 pstack 没有这个概念，它不来自 pstack submodule，见下一节。
+
+## 六之一、第三方技能树
+
+`assets/skills-ext/<来源>/<技能>/` 存放移植自 pstack 之外的技能。它与 `assets/skills/` 有三点不同，同步时不要混在一起处理：
+
+|  | `assets/skills/` | `assets/skills-ext/` |
+|---|---|---|
+| 来源 | 一个 pinned submodule | 每个来源一个仓库，各自 pin |
+| 生成方式 | 由 `build:assets` 从上游加 patch 生成 | 从上游原样复制，不经过生成器 |
+| 校验方式 | `sync-upstream --check` 逐字节比对生成结果 | `sync-skills-ext.ts` 比对记录的内容哈希 |
+
+现有来源：
+
+| 目录 | 仓库 | 许可证 | 固定提交 |
+|---|---|---|---|
+| `mattpocock-skills` | [mattpocock/skills](https://github.com/mattpocock/skills) | MIT | `5beb35b` |
+
+首个技能是 `writing-for-agents`，逐字节复制，零适配。它给 `authoring-a-skill` playbook 提供"怎么写技能"的判据，补上 Cursor 内置 `create-skill` 缺失、且其授权无法确认的那一块。
+
+同步：
+
+```bash
+pnpm run skills-ext:sync   # 比对固定提交的远端内容，报告上游是否已变（只读）
+pnpm run skills-ext:pin    # 重新记录哈希（改动之后）
+```
+
+`skills-ext:sync` 只报告，不自动采纳。上游改进一个技能是评审决定，不是同步步骤：看过差异、决定采纳之后，改 `sources.yml` 里的 `revision` 再跑 `skills-ext:pin`。
+
+**不许本地改 vendored 文本。** 一个字符的差异就让 `check` 失败，因为哈希对不上。要带本地改动就走 `scripts/skills-ext-patches.ts` 并把 `adapt` 加一，机制与 pstack 那棵树一致。每个技能旁边的 `SOURCE.md` 是本包自己写的说明，由 `localFiles` 声明，不是上游文本，也不参与哈希比对。
+
+**同名遮蔽。** DSH 按 rank 从小到大解析同名技能，本包是 600，项目级是 100 和 200，用户级是 400 和 500。使用者自己写的同名技能会完全盖掉本包的，且不报错。本包内部两棵树之间不允许同名：出现重复会让插件启动失败，而不是让其中一个悄悄胜出。
 
 ## 七、同步上游时怎么用这份清单
 

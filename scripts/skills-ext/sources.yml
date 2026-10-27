@@ -1,0 +1,24 @@
+sources:
+  - id: mattpocock-skills
+    repository: https://github.com/mattpocock/skills
+    license: MIT
+    copyright: Copyright (c) 2026 Matt Pocock
+    revision: 5beb35b040e3de97e54fa9e386d7e42d15c295c2
+    branch: main
+    fetched: '2026-10-27'
+    skills:
+      - name: writing-for-agents
+        upstream: skills/productivity/writing-for-agents
+        files:
+          - SKILL.md
+          - SKILL-MECHANICS.md
+        adapt: 0
+        localFiles:
+          - SOURCE.md
+        note: >-
+          Names no IDE, no tool, and no path, so it needs no adaptation and is vendored byte for
+          byte. SOURCE.md is this package's own note about provenance and shadowing, not upstream
+          text.
+        hashes:
+          SKILL.md: 551adca942227b44192edba88acd4e8db911f0121ce58ad16944ccf6a896a74a
+          SKILL-MECHANICS.md: c768e6307c7c10728c401c213f2c4ba71c542127eeb7ad2956aabd15a0fa0059

@@ -59,7 +59,14 @@ export function compareAssets(
   }
 
   for (const path of [...actual.keys()].sort()) {
-    if (!expectedPaths.has(path)) problems.push(`unexpected: assets/${path}`);
+    if (expectedPaths.has(path)) continue;
+    // The vendored third-party tree is not generated from the pstack submodule, so
+    // this comparison cannot speak for it. `scripts/sync-skills-ext.ts` owns those
+    // files and checks them against their own pinned revision instead. Reporting them
+    // here as "unexpected" would be the true statement that the generator did not
+    // produce them, which is not a problem a reader could act on.
+    if (path.startsWith("skills-ext/")) continue;
+    problems.push(`unexpected: assets/${path}`);
   }
 
   return problems;

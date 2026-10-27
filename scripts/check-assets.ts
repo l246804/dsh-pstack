@@ -21,6 +21,7 @@ import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
 import { checkDivergenceLedger } from "./divergence-ledger.ts";
+import { readSources } from "./sync-skills-ext.ts";
 import {
   ALL_FORBIDDEN_FIELDS,
   STARTING_LEVEL,
@@ -54,7 +55,7 @@ import {
   validateAgentFrontmatter,
   validateSkillFrontmatter,
 } from "../src/frontmatter.ts";
-import { loadBundledSkillIndex } from "../src/provider.ts";
+import { loadBundledSkillIndex, loadSourcedSkillIndex } from "../src/provider.ts";
 import { parseRoleFile } from "../src/models.ts";
 
 export interface MarkdownLink {
@@ -133,6 +134,7 @@ export function checkAssets(): AssetsReport {
   for (const problem of checkScriptReferences()) problems.push(problem);
   for (const problem of checkScriptIdReferences()) problems.push(problem);
   for (const problem of checkEffortCapabilityCopy()) problems.push(problem);
+  for (const problem of checkSkillsExt()) problems.push(problem);
   for (const problem of checkDivergenceLedger()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
@@ -409,7 +411,11 @@ export function readmeImageProblems(
 }
 
 function checkLayout(problems: string[]): void {
-  const allowedTopLevel = new Set(["skills", "agents", "docs"]);
+  // `skills-ext` holds the vendored third-party tree. `checkSkillsExt` audits it
+  // against its own pin in `scripts/skills-ext/sources.yml` instead of the pstack
+  // submodule, which is why it is a sibling of `skills` rather than a subtree: a
+  // source directory must never be mistaken for a pstack skill.
+  const allowedTopLevel = new Set(["skills", "skills-ext", "agents", "docs"]);
   for (const entry of readdirSync(ASSETS_ROOT, { withFileTypes: true })) {
     if (!entry.isDirectory() || !allowedTopLevel.has(entry.name)) {
       problems.push(`assets/${entry.name}: unexpected top-level entry`);
@@ -668,6 +674,11 @@ function checkGuide(problems: string[]): { readonly markdown: number; readonly i
  *
  * The two generated documents and the built scripts are the agreed exceptions.
  * Without the runtime list, nine artifacts would each read as an undeclared file.
+ *
+ * `assets/skills-ext/` is checked separately by `checkSkillsExt`, because its files
+ * have no counterpart in the pstack submodule: they are vendored from other
+ * repositories whose pins live in `scripts/skills-ext/sources.yml`. Leaving the tree
+ * out of this list is deliberate, not an oversight.
  */
 function checkUndeclaredFiles(problems: string[]): void {
   const covered = [
@@ -1028,20 +1039,26 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
 }
 
 /**
- * Every shipped file, checked for the other host's name.
+ * Every shipped file this package generates, checked for the other host's name.
  *
  * The whole generated tree is in scope, not just Markdown: a resource file or a
- * script comment is shipped copy too. `scripts/patches.ts` is out of scope on
- * purpose, because an upstream anchor has to keep the upstream wording or `sync`
- * stops matching.
+ * script comment is shipped copy too. Two trees are out of scope on purpose.
+ * `scripts/patches.ts` keeps upstream wording or `sync` stops matching.
+ * `assets/skills-ext/` is vendored third-party text: its authors write for whatever
+ * hosts they support, and rewriting their wording would break the content hash that
+ * proves the copy still matches the pinned revision. A vendored skill that gave
+ * Claude-specific instructions would be caught by review of its provenance entry,
+ * not by this name grep.
  */
 export function checkAssetsHostCopy(): readonly string[] {
   const problems: string[] = [];
   for (const file of walkFiles(ASSETS_ROOT)) {
+    const repositoryPath = toRepositoryPath(file);
+    if (repositoryPath.startsWith(`${ASSETS_PREFIX}skills-ext/`)) continue;
     const hits = otherHostMentionCount(readFileSync(file, "latin1"));
     if (hits > 0) {
       problems.push(
-        `${toRepositoryPath(file)}: names Claude ${hits} time(s); this package is the DSH build and ships no other host's install text or document pointer`,
+        `${repositoryPath}: names Claude ${hits} time(s); this package is the DSH build and ships no other host's install text or document pointer`,
       );
     }
   }
@@ -2207,6 +2224,113 @@ function describeList(names: readonly string[]): string {
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Audit the vendored third-party tree.
+ *
+ * `assets/skills-ext/<source>/<skill>/` holds text this package did not write. Three
+ * things have to stay true, and none of them is covered by the checks over
+ * `assets/skills/`, which assume a pstack upstream file for every path:
+ *
+ * 1. Every shipped file is recorded in `scripts/skills-ext/sources.yml` with the
+ *    upstream path and revision it came from. A file with no record is text of
+ *    unknown origin shipping under this package's licence.
+ * 2. The tree loads through the same provider loader the model uses, so a malformed
+ *    vendored skill fails here rather than at activation.
+ * 3. No vendored skill takes a name the pstack tree already uses, because a
+ *    collision would silently shadow one of them.
+ *
+ * Content hashes are checked by `scripts/sync-skills-ext.ts`, which owns the pin. This
+ * function owns the packaging rules.
+ */
+function checkSkillsExt(): readonly string[] {
+  const problems: string[] = [];
+  const extRoot = join(ASSETS_ROOT, "skills-ext");
+  if (!existsSync(extRoot)) return problems;
+
+  let sources;
+  try {
+    sources = readSources();
+  } catch (error) {
+    return [`scripts/skills-ext/sources.yml: ${messageOf(error)}`];
+  }
+
+  const declared = new Map<string, string>();
+  for (const source of sources.sources) {
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(source.id)) {
+      problems.push(`scripts/skills-ext/sources.yml: source id "${source.id}" is not kebab-case`);
+    }
+    if (!/^https?:\/\//.test(source.repository)) {
+      problems.push(`scripts/skills-ext/sources.yml: "${source.id}" has no repository URL`);
+    }
+    if (!/^[0-9a-f]{40}$/.test(source.revision)) {
+      problems.push(
+        `scripts/skills-ext/sources.yml: "${source.id}" pins "${source.revision}", which is not a 40-character commit SHA; a branch name is not a pin`,
+      );
+    }
+    if (source.license.trim() === "") {
+      problems.push(`scripts/skills-ext/sources.yml: "${source.id}" records no licence`);
+    }
+    for (const skill of source.skills) {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
+        problems.push(`scripts/skills-ext/sources.yml: skill name "${skill.name}" is not kebab-case`);
+      }
+      if (!skill.upstream.startsWith("skills/") && !skill.upstream.includes("/")) {
+        problems.push(`scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" has no upstream path`);
+      }
+      if (skill.files.length === 0) {
+        problems.push(`scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" lists no files`);
+      }
+      declared.set(skill.name, source.id);
+    }
+  }
+
+  // Every shipped file belongs to exactly one declared skill.
+  let index;
+  try {
+    index = loadSourcedSkillIndex(extRoot);
+  } catch (error) {
+    problems.push(`skills-ext: ${messageOf(error)}`);
+    return problems;
+  }
+
+  const pstackNames = new Set(skillDirectories().filter((skill) => !EXCLUDED_SKILLS.some((exclusion) => exclusion.skill === skill)));
+  for (const skill of index.values()) {
+    if (!declared.has(skill.name)) {
+      problems.push(
+        `assets/skills-ext: "${skill.name}" loads but is not declared in scripts/skills-ext/sources.yml`,
+      );
+    }
+    if (pstackNames.has(skill.name)) {
+      problems.push(
+        `assets/skills-ext: "${skill.name}" also exists in assets/skills, so one would shadow the other`,
+      );
+    }
+    if (!isInside(extRoot, skill.directory)) {
+      problems.push(`assets/skills-ext: "${skill.name}" resolves outside the extension tree`);
+    }
+  }
+
+  for (const source of sources.sources) {
+    for (const skill of source.skills) {
+      const directory = join(extRoot, source.id, skill.name);
+      if (!existsSync(directory)) {
+        problems.push(`assets/skills-ext/${source.id}/${skill.name}: declared but absent`);
+        continue;
+      }
+      for (const file of walkFiles(directory)) {
+        const assetRelative = toRepositoryPath(file).slice(ASSETS_PREFIX.length);
+        if (assetRelative.split("/").length < 4) {
+          problems.push(
+            `assets/skills-ext: "${assetRelative}" sits outside a source/skill directory pair`,
+          );
+        }
+      }
+    }
+  }
+
+  return problems;
 }
 
 const ASSETS_PREFIX = "assets/";

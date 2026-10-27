@@ -733,13 +733,13 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "docs/guide/09-make-it-yours.md",
     reason:
-      "There is no built-in skill drafter here; the playbook writes the file and this package's own checks validate it.",
+      "There is no built-in skill drafter here, so the page points at the authoring playbook and the shipped writing reference instead.",
     anchor:
       "Writing a skill matches the [Authoring or modifying a skill playbook](../../skills/poteto-mode/playbooks/authoring-a-skill.md), which routes through Cursor's built-in `create-skill`, validates the frontmatter and links, and ships the result through the Opening a PR playbook.",
     expectedMatches: 1,
     replacement:
-      "Writing a skill matches the [Authoring or modifying a skill playbook](../../skills/poteto-mode/playbooks/authoring-a-skill.md), which writes the `SKILL.md` by hand, validates the frontmatter, links, and structure with this package's own checks, and ships the result through the Opening a PR playbook.",
-    outputIncludes: ["with this package's own checks"],
+      "Writing a skill matches the [Authoring or modifying a skill playbook](../../skills/poteto-mode/playbooks/authoring-a-skill.md), which points at the shipped `writing-for-agents` reference for how to write it, has you validate the frontmatter and links yourself, and ships the result through the Opening a PR playbook.",
+    outputIncludes: ["which points at the shipped `writing-for-agents` reference"],
   },
   {
     kind: "replace",
@@ -2169,26 +2169,29 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/authoring-a-skill.md",
     reason:
-      "Cursor's built-in `create-skill` has no DSH counterpart, so the playbook names the validators this package actually runs.",
+      "Cursor's built-in `create-skill` has no DSH counterpart, so the step points at the authoring reference this package ships and names the validators that actually run.",
     anchor: "1. Use the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).",
     expectedMatches: 1,
     replacement:
-      "1. There is no built-in authoring tool here: Cursor's `create-skill`, its drafts, and its evaluation tooling are not part of this port. Write the `SKILL.md` yourself and validate it with this package's own checks.",
+      "1. Read the `writing-for-agents` skill's `SKILL.md` at its absolute resource path before drafting, and its `SKILL-MECHANICS.md` when the document is a skill. It is the vendored reference for writing what an agent reads: context pointers, the information hierarchy, completion criteria, leading words, and pruning. Cursor's built-in drafter and its evaluation tooling are not part of this port, so you write the file yourself.",
     outputIncludes: [
-      "Cursor's `create-skill`, its drafts, and its evaluation tooling are not part of this port",
+      "Read the `writing-for-agents` skill's `SKILL.md` at its absolute resource path",
+      "Cursor's built-in drafter and its evaluation tooling are not part of this port",
     ],
   },
   {
     kind: "replace",
     file: "skills/poteto-mode/playbooks/authoring-a-skill.md",
-    reason: "The validation step names the checks that actually run, including the frontmatter and link audit.",
+    reason:
+      "The validation step names the checks that actually run, and says plainly that they cover this package's own tree rather than a skill you are writing elsewhere.",
     anchor:
       "2. Validate the skill: frontmatter has `name` and `description`, referenced files exist, cross-skill links resolve.",
     expectedMatches: 1,
     replacement:
-      "2. Validate the skill: the frontmatter parser accepts `name` and `description` and rejects an unknown field, every referenced file exists, and every internal link resolves. `scripts/check-assets.ts` is the checker, so a broken link or an unparsable frontmatter fails the asset audit instead of shipping.",
+      "2. Validate the skill: the frontmatter parser accepts `name` and `description` and rejects an unknown field, every referenced file exists, and every internal link resolves. `scripts/check-assets.ts` runs these checks over this package's own `assets/` tree. A skill you write in a project's `.dsh/skills/` is outside that tree, so nothing validates it automatically: check those four things yourself before declaring the skill done, and do not claim a check ran on it.",
     outputIncludes: [
-      "`scripts/check-assets.ts` is the checker, so a broken link or an unparsable frontmatter fails the asset audit",
+      "A skill you write in a project's `.dsh/skills/` is outside that tree",
+      "do not claim a check ran on it",
     ],
   },
   {

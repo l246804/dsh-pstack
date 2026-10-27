@@ -11,9 +11,10 @@ import {
   createPstackSkillProvider,
   createPstackSkillProviderFromRoot,
   loadBundledSkillIndex,
+  loadSourcedSkillIndex,
 } from "../src/provider.ts";
 import type { SkillCandidate, SkillProvider, SkillProviderControl } from "../src/provider.ts";
-import { apply, name as pluginName, inject, Config, SKILLS_ROOT } from "../src/index.ts";
+import { apply, name as pluginName, inject, Config, SKILLS_EXT_ROOT, SKILLS_ROOT } from "../src/index.ts";
 import type { PstackSkillHost } from "../src/index.ts";
 
 const root = SKILLS_ROOT;
@@ -346,7 +347,12 @@ describe("host entry", () => {
 
     expect(registered).toHaveLength(1);
     const list = await (registered[0] as SkillProvider).list({});
-    expect(list).toHaveLength(55);
+    // `apply` merges the 55 pstack skills with the vendored extension tree, so the
+    // catalog size is the two counts together rather than the pstack count alone.
+    const pstack = loadBundledSkillIndex(root);
+    const ext = loadSourcedSkillIndex(SKILLS_EXT_ROOT);
+    expect(list).toHaveLength(pstack.size + ext.size);
+    expect(list.length).toBeGreaterThanOrEqual(55);
     expect(registered[0]?.name).toBe("pstack");
   });
 
@@ -357,7 +363,7 @@ describe("host entry", () => {
 
     const list = await (registered[0] as SkillProvider).list({});
     expect(registered[0]?.name).toBe("pstack-secondary");
-    expect(list).toHaveLength(55);
+    expect(list).toHaveLength(loadBundledSkillIndex(root).size + loadSourcedSkillIndex(SKILLS_EXT_ROOT).size);
     expect(list[0]?.provider).toBe("pstack-secondary");
   });
 });

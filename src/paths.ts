@@ -17,8 +17,21 @@ export const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..
 /** Absolute path of the generated, committed assets directory. */
 export const ASSETS_ROOT = join(PACKAGE_ROOT, "assets");
 
-/** Absolute path of the directory holding the 55 bundled skill directories. */
+/** Absolute path of the directory holding the 55 bundled pstack skill directories. */
 export const SKILLS_ROOT = join(ASSETS_ROOT, "skills");
+
+/**
+ * Absolute path of the third-party skill tree.
+ *
+ * One directory per upstream source, then one per skill. Kept separate from
+ * `assets/skills/` because that tree is generated from one pinned submodule while
+ * this one is vendored from several repositories, each with its own revision
+ * recorded in `scripts/skills-ext/sources.yml`.
+ *
+ * The manifest sits outside `assets/` on purpose: the provider treats every entry
+ * under a skill root as a skill directory, so a stray file there fails activation.
+ */
+export const SKILLS_EXT_ROOT = join(ASSETS_ROOT, "skills-ext");
 
 /** Absolute path of the directory holding the generated agent preambles. */
 export const AGENTS_ROOT = join(ASSETS_ROOT, "agents");

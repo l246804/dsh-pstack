@@ -10,11 +10,11 @@
  * nothing from the host packages at runtime.
  */
 
-import { SKILLS_ROOT } from "./paths.ts";
+import { SKILLS_EXT_ROOT, SKILLS_ROOT } from "./paths.ts";
 import {
   DEFAULT_PROVIDER_NAME,
   createPstackSkillProvider,
-  loadBundledSkillIndex,
+  loadBundledSkillIndexes,
 } from "./provider.ts";
 import type { SkillProvider, SkillProviderControl } from "./provider.ts";
 
@@ -101,11 +101,11 @@ export interface PstackSkillHost {
  */
 export function apply(ctx: PstackSkillHost, config: PstackConfig = {}): void {
   const providerName = config.providerName ?? DEFAULT_PROVIDER_NAME;
-  const index = loadBundledSkillIndex(SKILLS_ROOT);
+  const index = loadBundledSkillIndexes(SKILLS_ROOT, SKILLS_EXT_ROOT);
   ctx.skills.registerProvider((_control) => createPstackSkillProvider(index, providerName));
 }
 
-export { ASSETS_ROOT, HARNESS_DOC_PATH, PACKAGE_ROOT, SKILLS_ROOT } from "./paths.ts";
+export { ASSETS_ROOT, HARNESS_DOC_PATH, PACKAGE_ROOT, SKILLS_EXT_ROOT, SKILLS_ROOT } from "./paths.ts";
 export {
   BUNDLED_SKILL_RANK,
   BundledSkillError,
@@ -113,6 +113,7 @@ export {
   createPstackSkillProvider,
   createPstackSkillProviderFromRoot,
   loadBundledSkillIndex,
+  loadBundledSkillIndexes,
 } from "./provider.ts";
 export type {
   BundledSkill,
