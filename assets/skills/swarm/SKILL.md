@@ -6,11 +6,11 @@ disable-model-invocation: true
 
 # Swarm
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
+> DSH port of pstack. The skills keep upstream wording. In DeepSeek Harness, read [the DSH adapter](../../docs/harness/dsh.md) once per session and map each Cursor name with its tables. If a Cursor field has no row there, drop it and say so; never pass a field this host's schema rejects.
 
 ## Start
 
-Open a `todo_write` list with one entry per phase before launching anything.
+Open a todolist with one entry per phase before launching anything.
 
 1. Frame
 2. Fan out
@@ -21,14 +21,14 @@ Open a `todo_write` list with one entry per phase before launching anything.
 
 1. State the done predicate and the artifact or report the swarm must return.
 2. Choose the shape. Partition into slices, race N workers on identical briefs, or mix both. For a race or mixed shape, declare `first pass`, `rank all`, or `best-of` before spawning.
-4. Pick the worker route. Use `role: "swarm workers"` for every worker: that role is a list, not a panel, so you start each worker yourself with one `pstack_subagent` call each. A role the file does not name inherits the parent route. Never invent a model id. Without `roleIndex` the tool takes the first entry, which is the default route for every worker. For a model race, keep `role: "swarm workers"` and pass a different `roleIndex` per arm, so this call's result carries that arm's actual route instead of leaving it implied. The tool reports the entry and route this call selected; it cannot compare separate calls, so when two arms land on the same entry you must say in your synthesis that they share one route and that this is not a cross-model race. Read the Subagents section of the `poteto-mode` skill at its absolute resource path first. Start from the level the role line names, raise it for hard work and lower it for routine work by passing `reasoningEffort`; a child that cannot call `set_reasoning_effort` keeps the level you gave it.
-5. Give each worker its own writable output when it writes: the worker calls `create_worktree({ name })` in its own Session, or you create the checkouts one at a time and pass each absolute `path` as that worker's `cwd`. Two workers in one checkout are not isolated, and the parallel writes will collide on shared files. When workers verify or measure commits, each brief names the exact SHAs. A measurement brief also names the method (sample count, what one sample is, order). The worker records both in its result.
+4. Pick the worker model from the `swarm workers` line in `~/.cursor/rules/pstack-models.mdc`. If the rule or that line is missing, use `grok-4.7-xhigh-fast`. For `auto` or `inherit-parent`, omit `model` so the workers run on the parent model. If the Task tool rejects a slug, use the default and say so. If it rejects the default, use the closest valid slug of the same family from its error message. For a model race, name each arm's model up front. Pick each subagent's reasoning level and fast or standard speed for the job, per the Subagents section of the **poteto-mode** skill.
+5. Give each worker its own writable output when it writes. When workers verify or measure commits, each brief names the exact SHAs. A measurement brief also names the method (sample count, what one sample is, order). The worker records both in its result.
 
 ## Phase B: Fan out
 
-Start all N workers in one batch of `pstack_subagent` calls with `agent: "general"` and the step 4 role. A worker is a managed activation, so there is no background flag and nothing polls: each result arrives as a completion notice. Every worker runs locally as a child of this Session; there is no cloud environment, no VM, and no per-arm machine.
+Spawn all N workers in one message with `subagent_type: generalPurpose`, `environment: "cloud"`, `run_in_background: true`, and the step 4 model, left unset for `auto` or `inherit-parent`. Use `environment: "local"` only when the worker needs access to something on the user's computer.
 
-When a worker must start from a branch other than the current one, make that branch reachable locally and start the checkout from it: the worker calls `create_worktree({ name, from })` with a local revision, or you create the checkout yourself and pass its absolute `path` as the worker's `cwd`. Creation does not fetch, so a branch that only exists on a remote has to be fetched first; a missing local revision fails instead of silently branching off the current commit.
+When a worker must start from a non-default pushed branch, pass `cloud_base_branch`.
 
 Every brief stands alone. Include the goal, scope, exact slice or race arm, how to verify, and what to report. Reports use `PASS`, `ISSUES`, or `BLOCKED` with evidence. A worker that can prove a defect reports `ISSUES` and lists every issue it can prove, not only the first.
 

@@ -1,18 +1,38 @@
+/**
+ * Build the shipped `assets/` tree from the pinned upstream tree.
+ *
+ * The tree is upstream pstack text. Four mechanical transforms turn a source file into
+ * an asset, and nothing else does:
+ *
+ * 1. Frontmatter is narrowed to the fields this host consumes. Upstream declares
+ *    `icon`, `color`, `paths`, and `is_background`, which no DSH loader reads, so
+ *    shipping them would be a field a model could believe it had set.
+ * 2. A relative link that would leave the shipped tree is repointed. `make-bot-ui` is
+ *    not carried, and `automations/`, `README.md`, and the Claude Code adapter are not
+ *    in the tree either, so those links would dangle in an installed package.
+ * 3. The adapter pointer is inserted under the H1 of every skill whose prose uses a
+ *    Cursor name. This is upstream's own mechanism: its Claude Code tree injects one
+ *    line into 23 of 56 skills and leaves the rest alone.
+ * 4. The adapter document is copied in from `docs/harness/dsh.md`.
+ *
+ * Everything a skill says about the host is translated at read time by the reader, using
+ * `docs/harness/dsh.md`. There is deliberately no fifth step. A generator that rewrites
+ * tool names and capability sentences has to keep 322 hand-tuned patches in sync with
+ * upstream on one side and with the host on the other, and this repository did exactly
+ * that until the patches, a generated capability table, a divergence ledger, and four
+ * overlapping prose documents had all drifted from the tree they described.
+ *
+ * The tradeoff is that a shipped skill reads `Task` and `readonly: true`. That is the
+ * upstream tradeoff too, and it is why the pointer in step 3 is load-bearing rather than
+ * decorative: without it a reader follows a skill literally.
+ */
+
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import { Buffer } from "node:buffer";
 
-import { HARNESS_DOC_PATH, renderHarnessDoc } from "./capabilities.ts";
+import { ADAPTER_ASSET, ADAPTER_POINTER, ADAPTER_SOURCE, termsUsedIn } from "./adapter.ts";
 import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "./role-manifest.ts";
-import {
-  applyFilePatches,
-  assertDropLanded,
-  assertPatchOutput,
-  assertPatchOutputIsEvidence,
-  validatePatchTargets,
-} from "./apply-patches.ts";
-import { EXCLUDED_SKILLS, FILE_PATCHES, INTRO_SKILLS, patchesForFile } from "./patches.ts";
-import type { FilePatch, SkillExclusion } from "./patches.ts";
 import { RUNTIME_ROOT } from "./build-runtime.ts";
 import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
 import { ROOT } from "./root.ts";
@@ -28,8 +48,8 @@ import {
  * Re-exported so every existing `from "./build-assets.ts"` import keeps working.
  *
  * The constant itself lives in `./root.ts`, which imports nothing, because
- * `build-runtime.ts` needs the repository root and this module needs the built
- * runtime. Keeping the constant in a leaf breaks that cycle.
+ * `build-runtime.ts` needs the repository root and this module needs the built runtime.
+ * Keeping the constant in a leaf breaks that cycle.
  */
 export { ROOT };
 export const UPSTREAM_ROOT = join(ROOT, "upstream", "cursor-plugins", "pstack");
@@ -49,9 +69,6 @@ export interface Asset {
   readonly origin: "copy" | "generated";
 }
 
-export const DSH_INTRO =
-  "> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.";
-
 export interface AssetSummary {
   readonly files: number;
   readonly skills: number;
@@ -62,50 +79,49 @@ export interface AssetSummary {
   readonly generated: number;
 }
 
-export type SkillCategory = "copy" | "intro-only" | "patched";
+export type SkillCategory = "copy" | "pointer" | "stripped";
 
 export interface SkillClassification {
   readonly skill: string;
   readonly category: SkillCategory;
 }
 
-const HOST_TERMS: readonly RegExp[] = [
-  /\bCursor\b/,
-  /\bClaude Code\b/,
-  /`Task`|\bTask (tool|subagent|call)/,
-  /AskQuestion/,
-  /\btodo ?list\b/i,
-  /generalPurpose/,
-  /poteto-agent/,
-  /comment-sicko/,
-  /readonly: (true|false)/,
-  /environment: "(cloud|local)"/,
-  /cloud_base_branch/,
-  /run_in_background/,
-  /`resume`/,
-  /file_attachments/,
-  /\bclaude-[a-z]+-\d/,
-  /\bgrok-\d/,
-  /\bgpt-\d/,
-  /inherit-parent/,
-  /pstack-models\.mdc/,
-  /\.cursor\/skills/,
-  /\.cursor\/plugins|\.cursor-plugin/,
-  /\.cursor\/rules|always-applied rule/,
-  /agent-transcripts|\.cursor\/projects/,
-  /Bugbot|Cursor [Aa]utomation|[Cc]loud [Aa]gent|built-in PR tool/,
-  /`\/loop`/,
-];
+/**
+ * Upstream skills this package does not carry.
+ *
+ * A skill is excluded only when it is entirely about a host feature with no equivalent
+ * here, never because porting it is inconvenient. `make-bot-ui` builds a page that wakes
+ * a Cursor Grok Bot over a webhook and requests a sender key; there is no ingress, no
+ * routine, and no wake call on this host, so the body could only be a stub describing
+ * something a reader cannot do.
+ */
+export const EXCLUDED_SKILLS: readonly string[] = ["make-bot-ui"];
 
-export function buildAssets(
-  patches: readonly FilePatch[] = FILE_PATCHES,
-  exclusions: readonly SkillExclusion[] = EXCLUDED_SKILLS,
-  introSkills: Readonly<Record<string, string>> = INTRO_SKILLS,
-): readonly Asset[] {
-  validatePatchTargets(patches, exclusions, UPSTREAM_ROOT);
-  validateIntroScope(exclusions, introSkills);
+/**
+ * Links that would leave the shipped tree, and where each is repointed.
+ *
+ * Every entry is a link that works in an upstream checkout and breaks in an installed
+ * package, because the target is not shipped. The replacement is the upstream file on
+ * GitHub, verbatim from the pinned revision, so a reader can still follow the reference
+ * the sentence was making.
+ */
+export const RETARGETED_LINKS: Readonly<Record<string, string>> = {
+  "../../README.md": "https://github.com/cursor/plugins/blob/main/pstack/README.md",
+  "../../docs/harness/claude-code.md":
+    "https://github.com/cursor/plugins/blob/main/pstack/docs/harness/claude-code.md",
+  "../harness/claude-code.md":
+    "https://github.com/cursor/plugins/blob/main/pstack/docs/harness/claude-code.md",
+  "../make-bot-ui/SKILL.md": "https://github.com/cursor/plugins/blob/main/pstack/skills/make-bot-ui/SKILL.md",
+  "../../skills/make-bot-ui/SKILL.md":
+    "https://github.com/cursor/plugins/blob/main/pstack/skills/make-bot-ui/SKILL.md",
+  "../../automations/benny/README.md":
+    "https://github.com/cursor/plugins/blob/main/pstack/automations/benny/README.md",
+  "../../automations/benny/FOR_AGENTS.md":
+    "https://github.com/cursor/plugins/blob/main/pstack/automations/benny/FOR_AGENTS.md",
+};
 
-  const excluded = new Set(exclusions.map((exclusion) => exclusion.skill));
+export function buildAssets(): readonly Asset[] {
+  const excluded = new Set(EXCLUDED_SKILLS);
   const assets: Asset[] = [];
 
   for (const skill of skillDirectories()) {
@@ -115,22 +131,20 @@ export function buildAssets(
       throw new Error(`skills/${skill}: missing SKILL.md`);
     }
     for (const file of files) {
-      // A script directory ships as built Node artifacts, never as its upstream
-      // shell or Bun sources. The replacement set is asserted non-empty below, so a
-      // prefix here can never silently drop a whole directory.
+      // A script directory ships as built Node artifacts, never as its upstream shell
+      // or Bun sources.
       if (isReplacedUpstreamScript(file)) continue;
-      assets.push(buildAsset(file, patches, introSkills));
+      assets.push(buildAsset(file));
     }
   }
-  for (const file of walkUpstream("agents")) assets.push(buildAsset(file, patches, introSkills));
-  for (const file of walkUpstream("docs/guide"))
-    assets.push(buildAsset(file, patches, introSkills));
+  for (const file of walkUpstream("agents")) assets.push(buildAsset(file));
+  for (const file of walkUpstream("docs/guide")) assets.push(buildAsset(file));
 
   assets.push(...builtRuntimeAssets());
 
   assets.push({
-    path: HARNESS_DOC_PATH,
-    bytes: Buffer.from(renderHarnessDoc(), "utf8"),
+    path: ADAPTER_ASSET,
+    bytes: readFileSync(join(ROOT, ADAPTER_SOURCE)),
     executable: false,
     origin: "generated",
   });
@@ -141,20 +155,72 @@ export function buildAssets(
     origin: "generated",
   });
 
-  const sorted = assets.sort((left, right) =>
-    left.path < right.path ? -1 : left.path > right.path ? 1 : 0,
-  );
-  assertPatchesLanded(sorted, patches);
+  const sorted = assets.sort((left, right) => compareStrings(left.path, right.path));
   assertRuntimeAssets(sorted);
+  assertLinksResolve(sorted);
   return sorted;
+}
+
+/**
+ * Fail when a shipped link points at something the shipped tree does not contain.
+ *
+ * This is what makes `RETARGETED_LINKS` complete rather than merely plausible: a new
+ * upstream link out of the tree fails the build until it is either retargeted or added
+ * to the tree. Silent dangling links are the failure mode, and an installed package is
+ * where a reader would meet them.
+ */
+/**
+ * Link targets that are template placeholders rather than files.
+ *
+ * `[PR #123](url)` appears inside a copy-paste prompt template, where `url` is a slot a
+ * reader fills in. The list is an allowlist rather than a guess about the target shape:
+ * "no slash and no dot means it is a placeholder" also classifies a real shipped file
+ * such as LICENSE as a placeholder, so a typo there would never have failed.
+ */
+export const TEMPLATE_LINK_TARGETS: readonly string[] = ["url", "link", "pr-url", "<url>", "#"];
+
+export function danglingLinks(assets: readonly Asset[]): readonly string[] {
+  const present = new Set(assets.map((asset) => asset.path));
+  const directories = new Set<string>();
+  for (const path of present) {
+    const parts = posix.dirname(path).split("/");
+    while (parts.length > 0 && parts[0] !== "" && parts[0] !== ".") {
+      directories.add(parts.join("/"));
+      parts.pop();
+    }
+  }
+
+  const dangling: string[] = [];
+  for (const asset of assets) {
+    if (!asset.path.endsWith(".md")) continue;
+    for (const [, href] of asset.bytes.toString("utf8").matchAll(/\]\(([^)\s]+)\)/g)) {
+      const target = (href as string).replace(/[#?].*/, "");
+      if (target === "" || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue;
+      if (TEMPLATE_LINK_TARGETS.includes(target.toLowerCase())) continue;
+      const resolved = posix.normalize(posix.join(posix.dirname(asset.path), target)).replace(/\/$/, "");
+      if (present.has(resolved) || directories.has(resolved)) continue;
+      dangling.push(`${asset.path}: link ${href} resolves to ${resolved}, which the package does not ship`);
+    }
+  }
+  return dangling;
+}
+
+function assertLinksResolve(assets: readonly Asset[]): void {
+  const dangling = danglingLinks(assets);
+  if (dangling.length === 0) return;
+  throw new Error(
+    `shipped links leave the tree, so add the target to RETARGETED_LINKS:\n${dangling
+      .map((problem) => `  ${problem}`)
+      .join("\n")}`,
+  );
 }
 
 /**
  * Read the built runtime as assets.
  *
- * `runtime/` is gitignored build output; `assets/` is the committed tree. This is
- * the one place the two meet, so a build that forgot to run the bundler fails here
- * with a path-qualified message instead of shipping a stale tree.
+ * `runtime/` is gitignored build output; `assets/` is the committed tree. This is the one
+ * place the two meet, so a build that forgot to run the bundler fails here with a
+ * path-qualified message instead of shipping a stale tree.
  */
 function builtRuntimeAssets(): readonly Asset[] {
   const assets: Asset[] = [];
@@ -181,9 +247,9 @@ function builtRuntimeAssets(): readonly Asset[] {
 /**
  * Fail when the built scripts are not exactly the manifest.
  *
- * Every replaced script directory must contribute the artifacts the manifest names,
- * and no upstream script source may survive into the tree. Without this, a wrong
- * prefix would quietly ship both forms and the executable count would still pass.
+ * Every replaced script directory must contribute the artifacts the manifest names, and
+ * no upstream script source may survive into the tree. Without this, a wrong prefix would
+ * quietly ship both forms and the executable count would still pass.
  */
 function assertRuntimeAssets(assets: readonly Asset[]): void {
   const present = new Map(assets.map((asset) => [asset.path, asset]));
@@ -203,17 +269,20 @@ function assertRuntimeAssets(assets: readonly Asset[]): void {
 }
 
 export function summarizeAssets(assets: readonly Asset[]): AssetSummary {
-  const skillNames = new Set<string>();
+  const skills = new Set<string>();
   let agents = 0;
   let guideMarkdown = 0;
   let guideImages = 0;
+  let executables = 0;
+  let generated = 0;
 
   for (const asset of assets) {
-    if (asset.path.startsWith(SKILLS_PREFIX)) {
-      skillNames.add(asset.path.slice(SKILLS_PREFIX.length).split("/")[0] as string);
-    } else if (asset.path.startsWith(AGENTS_PREFIX)) {
-      agents += 1;
-    } else if (asset.path.startsWith(GUIDE_PREFIX)) {
+    if (asset.executable) executables += 1;
+    if (asset.origin === "generated") generated += 1;
+    const [top, second] = asset.path.split("/");
+    if (top === "skills" && second !== undefined) skills.add(second);
+    else if (top === "agents" && asset.path.endsWith(".md")) agents += 1;
+    else if (top === "docs" && second === "guide") {
       if (asset.path.endsWith(".md")) guideMarkdown += 1;
       else guideImages += 1;
     }
@@ -221,113 +290,81 @@ export function summarizeAssets(assets: readonly Asset[]): AssetSummary {
 
   return {
     files: assets.length,
-    skills: skillNames.size,
+    skills: skills.size,
     agents,
     guideMarkdown,
     guideImages,
-    executables: assets.filter((asset) => asset.executable).length,
-    generated: assets.filter((asset) => asset.origin === "generated").length,
+    executables,
+    generated,
   };
 }
 
-export function classifySkills(): readonly SkillClassification[] {
-  const excluded = new Set(EXCLUDED_SKILLS.map((exclusion) => exclusion.skill));
-  return skillDirectories()
-    .filter((skill) => !excluded.has(skill))
-    .map((skill) => {
-      const intro = Object.hasOwn(INTRO_SKILLS, skill);
-      const patched = patchesForFile(`${SKILLS_PREFIX}${skill}/SKILL.md`).length > 0;
-      return {
-        skill,
-        category: patched ? "patched" : intro ? "intro-only" : "copy",
-      };
-    });
-}
-
+/** Upstream skill directories, in name order. */
 export function skillDirectories(): readonly string[] {
-  return readdirSync(UPSTREAM_SKILLS, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name)
+  return readdirSync(UPSTREAM_SKILLS)
+    .filter((name) => statSync(join(UPSTREAM_SKILLS, name)).isDirectory())
     .sort(compareStrings);
 }
 
-/** Upstream-relative POSIX paths of every file below a directory, sorted. */
-export function walkUpstream(relativeDirectory: string): readonly string[] {
-  return readdirSync(join(UPSTREAM_ROOT, relativeDirectory), { withFileTypes: true })
-    .filter((entry) => entry.name !== ".DS_Store")
-    .sort((left, right) => compareStrings(left.name, right.name))
-    .flatMap((entry) =>
-      entry.isDirectory()
-        ? walkUpstream(`${relativeDirectory}/${entry.name}`)
-        : [`${relativeDirectory}/${entry.name}`],
-    );
-}
-
-export function hasHostTerms(text: string): boolean {
-  return HOST_TERMS.some((pattern) => pattern.test(text));
-}
-
-export function introCandidates(
-  exclusions: readonly SkillExclusion[] = EXCLUDED_SKILLS,
-): ReadonlySet<string> {
-  const excluded = new Set(exclusions.map((exclusion) => exclusion.skill));
-  const candidates = new Set<string>();
-  for (const skill of skillDirectories()) {
-    if (excluded.has(skill)) continue;
-    const files = walkUpstream(`${SKILLS_PREFIX}${skill}`).filter((file) => file.endsWith(".md"));
-    if (files.some((file) => hasHostTerms(readFileSync(join(UPSTREAM_ROOT, file), "utf8")))) {
-      candidates.add(skill);
-    }
-  }
-  return candidates;
+/** Classify every upstream skill, for the report and the tests. */
+export function classifySkills(): readonly SkillClassification[] {
+  return skillDirectories()
+    .filter((skill) => !EXCLUDED_SKILLS.includes(skill))
+    .map((skill) => ({ skill, category: classifySkill(skill) }));
 }
 
 /**
- * Candidates that still rely on the shared pointer.
+ * Which mechanical transform a skill's `SKILL.md` needs.
  *
- * A skill whose own `SKILL.md` this tree rewrote carries the DSH vocabulary in
- * its own words, so the generic intro would only restate the mapping in front of
- * text that no longer needs it. `poteto-mode` is the first skill in that state:
- * its body still matches the host-term scan for `poteto-agent` and
- * `inherit-parent`, which are this host's own values, not Cursor's.
+ * `stripped` means frontmatter lost a field, `pointer` means the adapter line was
+ * inserted, and `copy` means the body ships byte-for-byte. A skill in both of the first
+ * two categories is `stripped`, because that is the transform that changes what the
+ * frontmatter means to a loader.
  */
-export function introRequirement(
-  exclusions: readonly SkillExclusion[] = EXCLUDED_SKILLS,
-): ReadonlySet<string> {
-  return new Set(
-    [...introCandidates(exclusions)].filter(
-      (skill) => patchesForFile(`${SKILLS_PREFIX}${skill}/SKILL.md`).length === 0,
-    ),
-  );
+export function classifySkill(skill: string): SkillCategory {
+  const source = readFileSync(join(UPSTREAM_SKILLS, skill, "SKILL.md"), "utf8");
+  const { body } = parseFrontmatter(source);
+  if (termsUsedIn(body).length > 0) return "pointer";
+  return classifiedByFrontmatter(skill, source);
 }
 
-export function insertIntro(body: string, file: string): string {
-  if (body.includes("DSH port of pstack.")) {
-    throw new Error(`${file}: body already contains the DSH intro`);
+function classifiedByFrontmatter(skill: string, source: string): SkillCategory {
+  const rendered = renderSkill(source, `skills/${skill}/SKILL.md`);
+  const { data } = parseFrontmatter(source);
+  const original = Object.keys(data).sort();
+  const shipped = Object.keys(parseFrontmatter(rendered).data).sort();
+  return original.length === shipped.length ? "copy" : "stripped";
+}
+
+/**
+ * Insert the adapter pointer under a body's H1.
+ *
+ * Upstream's generator does exactly this, and it fails the same way: a skill that needs
+ * the pointer and has no H1 is a build error rather than a skill shipped without it,
+ * because the pointer is what tells a reader that the wording is upstream's and the
+ * translation exists.
+ */
+export function insertAdapterPointer(body: string, file: string): string {
+  if (body.includes(ADAPTER_POINTER)) {
+    throw new Error(`${file}: body already carries the adapter pointer`);
   }
   const heading = /^# .+$/m.exec(body);
   if (heading === null) {
-    throw new Error(`${file}: intro skill has no H1 heading`);
+    throw new Error(`${file}: uses a Cursor name but has no H1 for the adapter pointer`);
   }
-  if (body.slice(0, heading.index).trim() !== "") {
-    throw new Error(`${file}: H1 heading must be the first content line`);
-  }
-
   const headingEnd = heading.index + heading[0].length;
-  const rest = body.startsWith("\n", headingEnd)
-    ? body.slice(headingEnd + 1)
-    : body.slice(headingEnd);
-  const tail = rest === "" || rest.startsWith("\n") ? rest : `\n${rest}`;
-  return `${body.slice(0, heading.index)}${heading[0]}\n\n${DSH_INTRO}\n${tail}`;
+  const rest = body.slice(headingEnd);
+  const tail = rest === "" || rest.startsWith("\n\n") ? rest : rest.startsWith("\n") ? `\n${rest.slice(1)}` : `\n\n${rest}`;
+  return `${body.slice(0, headingEnd)}\n\n${ADAPTER_POINTER}${tail}`;
 }
 
-export function renderSkill(text: string, file: string, intro: boolean): string {
+export function renderSkill(text: string, file: string): string {
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const normalized = eol === "\r\n" ? text.replaceAll("\r\n", "\n") : text;
   const { data, body } = parseFrontmatter(normalized);
   const frontmatter = validateSkillFrontmatter(data, file);
-  const renderedBody = intro ? insertIntro(body, file) : body;
-  const rendered = `${serializeSkillFrontmatter(frontmatter)}${renderedBody}`;
+  const renderedBody = termsUsedIn(body).length > 0 ? insertAdapterPointer(body, file) : body;
+  const rendered = `${serializeSkillFrontmatter(frontmatter)}${retargetLinks(renderedBody)}`;
   return eol === "\r\n" ? rendered.replaceAll("\n", "\r\n") : rendered;
 }
 
@@ -336,8 +373,16 @@ export function renderAgent(text: string, file: string): string {
   const normalized = eol === "\r\n" ? text.replaceAll("\r\n", "\n") : text;
   const { data, body } = parseFrontmatter(normalized);
   const frontmatter = validateAgentFrontmatter(data, file);
-  const rendered = `${serializeAgentFrontmatter(frontmatter)}${body}`;
+  const rendered = `${serializeAgentFrontmatter(frontmatter)}${retargetLinks(body)}`;
   return eol === "\r\n" ? rendered.replaceAll("\n", "\r\n") : rendered;
+}
+
+/** Repoint every link listed in `RETARGETED_LINKS`, leaving the anchor alone. */
+export function retargetLinks(text: string): string {
+  return text.replace(/\]\(([^)\s]+)\)/g, (whole, href: string) => {
+    const replacement = RETARGETED_LINKS[href];
+    return replacement === undefined ? whole : `](${replacement})`;
+  });
 }
 
 export function decodeUtf8(bytes: Buffer, file: string): string {
@@ -348,44 +393,23 @@ export function decodeUtf8(bytes: Buffer, file: string): string {
   return text;
 }
 
-function buildAsset(
-  upstreamRelativePath: string,
-  allPatches: readonly FilePatch[],
-  introSkills: Readonly<Record<string, string>>,
-): Asset {
+function buildAsset(upstreamRelativePath: string): Asset {
   const absolutePath = join(UPSTREAM_ROOT, upstreamRelativePath);
   const source = readFileSync(absolutePath);
   const executable = (statSync(absolutePath).mode & 0o111) !== 0;
-  const patches = allPatches.filter((patch) => patch.file === upstreamRelativePath);
   const format = assetFormat(upstreamRelativePath);
 
-  if (patches.length === 0 && format === "plain") {
+  if (format === "plain" && !hasRetargetedLink(source)) {
     return { path: upstreamRelativePath, bytes: source, executable, origin: "copy" };
   }
 
   const text = decodeUtf8(source, upstreamRelativePath);
-  // Every promise is checked against the *source* first, so a fragment that is
-  // already upstream cannot vouch for a patch that did nothing.
-  for (const patch of patches) {
-    assertPatchOutputIsEvidence(upstreamRelativePath, patch, text);
-  }
-  const patched =
-    patches.length === 0 ? text : applyFilePatches(upstreamRelativePath, text, patches);
   const output =
     format === "skill"
-      ? renderSkill(
-          patched,
-          upstreamRelativePath,
-          Object.hasOwn(introSkills, skillName(upstreamRelativePath)),
-        )
+      ? renderSkill(text, upstreamRelativePath)
       : format === "agent"
-        ? renderAgent(patched, upstreamRelativePath)
-        : patched;
-
-  assertPatchOutput(upstreamRelativePath, patches, output);
-  // A `drop` is only proven by the removed span being gone: `outputIncludes` on a
-  // drop describes what survives, so on its own it cannot prove the deletion.
-  assertDropLanded(upstreamRelativePath, patches, text, output);
+        ? renderAgent(text, upstreamRelativePath)
+        : retargetLinks(text);
 
   const bytes = Buffer.from(output, "utf8");
   return {
@@ -396,58 +420,9 @@ function buildAsset(
   };
 }
 
-function validateIntroScope(
-  exclusions: readonly SkillExclusion[],
-  introSkills: Readonly<Record<string, string>>,
-): void {
-  const excluded = new Set(exclusions.map((exclusion) => exclusion.skill));
-  const skills = new Set(skillDirectories());
-
-  for (const skill of Object.keys(introSkills)) {
-    if (!skills.has(skill)) throw new Error(`intro skill "${skill}" does not exist upstream`);
-    if (excluded.has(skill)) throw new Error(`intro skill "${skill}" is excluded from the port`);
-    const body = parseFrontmatter(
-      readFileSync(join(UPSTREAM_SKILLS, skill, "SKILL.md"), "utf8"),
-    ).body;
-    if (!/^# /m.test(body)) {
-      throw new Error(
-        `intro skill "${skill}" has no H1; add a patch or remove it from INTRO_SKILLS`,
-      );
-    }
-  }
-
-  const candidates = introRequirement(exclusions);
-  for (const skill of candidates) {
-    if (!Object.hasOwn(introSkills, skill)) {
-      throw new Error(`skill "${skill}" contains host terms but is not in INTRO_SKILLS`);
-    }
-  }
-}
-
-/**
- * Assert every declared patch reached the tree.
- *
- * `FILE_PATCHES` targets are asset files, so a missing one is a build error: it
- * means a patch names a file the tree does not contain. `RUNTIME_SOURCE_PATCHES`
- * targets are script *sources*, which deliberately do not ship — a patch on
- * `orch.ts` lands in the `orch.mjs` artifact instead, and the bundler is what proves
- * it landed. Skipping the second list here is therefore not a weakening: the runtime
- * build asserts its own patches through `assertPatchOutput` before emitting, and
- * `assertRuntimeAssets` below checks that every declared artifact exists.
- */
-function assertPatchesLanded(assets: readonly Asset[], patches: readonly FilePatch[]): void {
-  const byPath = new Map(assets.map((asset) => [asset.path, asset]));
-  for (const patch of patches) {
-    const asset = byPath.get(patch.file);
-    if (asset === undefined) {
-      throw new Error(`${patch.file}: patch has no generated asset`);
-    }
-    assertPatchOutput(patch.file, [patch], asset.bytes.toString("utf8"));
-  }
-}
-
-function skillName(upstreamRelativePath: string): string {
-  return upstreamRelativePath.split("/")[1] as string;
+function hasRetargetedLink(source: Buffer): boolean {
+  const text = source.toString("utf8");
+  return Object.keys(RETARGETED_LINKS).some((href) => text.includes(`](${href})`));
 }
 
 type AssetFormat = "skill" | "agent" | "plain";
@@ -461,3 +436,23 @@ function assetFormat(upstreamRelativePath: string): AssetFormat {
 function compareStrings(left: string, right: string): number {
   return left < right ? -1 : left > right ? 1 : 0;
 }
+
+function walkUpstream(relative: string): readonly string[] {
+  const absolute = join(UPSTREAM_ROOT, relative);
+  const files: string[] = [];
+  const visit = (path: string): void => {
+    const details = statSync(path);
+    if (details.isDirectory()) {
+      for (const name of readdirSync(path).sort(compareStrings)) {
+        if (name === ".DS_Store") continue;
+        visit(join(path, name));
+      }
+      return;
+    }
+    files.push(`${relative}/${path.slice(absolute.length + 1).split("\\").join("/")}`);
+  };
+  visit(absolute);
+  return files;
+}
+
+export { walkUpstream };

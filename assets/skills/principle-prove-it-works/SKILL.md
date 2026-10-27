@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Prove It Works
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
+> DSH port of pstack. The skills keep upstream wording. In DeepSeek Harness, read [the DSH adapter](../../docs/harness/dsh.md) once per session and map each Cursor name with its tables. If a Cursor field has no row there, drop it and say so; never pass a field this host's schema rejects.
 
 Verify every task output by checking the real thing directly. Do not infer from proxies, self-reports, or "it compiles."
 

@@ -3,7 +3,7 @@ import { isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { EXCLUDED_SKILLS } from "../scripts/patches.ts";
+import { EXCLUDED_SKILLS } from "../scripts/build-assets.ts";
 import { parseFrontmatter, validateSkillFrontmatter } from "../src/frontmatter.ts";
 import {
   BUNDLED_SKILL_RANK,
@@ -64,7 +64,7 @@ function listFiles(directory: string): readonly string[] {
 
 describe("bundled skill index", () => {
   it("loads 55 skills, one for every declared upstream skill", () => {
-    const excluded = new Set(EXCLUDED_SKILLS.map((exclusion) => exclusion.skill));
+    const excluded = new Set(EXCLUDED_SKILLS);
     const directories = readdirSync(root, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)

@@ -6,9 +6,7 @@ disable-model-invocation: true
 
 # TypeScript best practices
 
-> DSH port of pstack. `pstack_subagent` replaces Cursor's Task tool, and `role` replaces Cursor model slugs. Full mapping: `../../docs/harness/dsh.md`.
-
-Apply `principle-type-system-discipline` first; read its `SKILL.md` at its absolute resource path.
+Apply the **type-system-discipline** principle skill first.
 
 | Rule | Summary |
 |------|---------|
@@ -23,12 +21,10 @@ Apply `principle-type-system-discipline` first; read its `SKILL.md` at its absol
 | Type guards | Must verify the claim. A lying guard is worse than `as` because the bug hides behind a name that says it's safe. Name them `isX` or `hasX`. |
 | Exhaustiveness | Inline `const _exhaustive: never = x;` in default arms so the compiler errors when a new variant is added. |
 | `satisfies` over `as` | Validates the value without widening literal types. |
-| Boundary validation | Parse where data crosses in, into a named domain type. `Record<string, unknown>` (however spelled) stops at that parse. Trust types inside. See `principle-boundary-discipline`; read its `SKILL.md` at its absolute resource path. |
+| Boundary validation | Parse where data crosses in, into a named domain type. `Record<string, unknown>` (however spelled) stops at that parse. Trust types inside. See the **boundary-discipline** principle skill. |
 | Schema-derived types | Reach for `Pick`/`Omit`/`Parameters`/`ReturnType`/`Awaited`/`typeof` before declaring a new interface. |
 | Object args | Pass objects, not positional, so argument order is self-documenting. Skip on hot paths (per-frame render, tokenizers, parsers). |
 | Real tests | Don't mock what you can run. Prefer the framework's real test primitives with leak/disposable checks, and verify UI in a running build. Mock only what you can't run locally. |
 | Structured telemetry | Prefer structured logger diagnostics with enough context to debug from an id. No `console.log` in shipped code. |
 
 Examples: `references/patterns.md`.
-
-This skill is explicit-invocation only. DSH does not consume a `paths` glob, so opening a `.ts` or `.tsx` file does not attach it: load it by name when you want it applied.

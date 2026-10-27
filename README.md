@@ -14,7 +14,13 @@ pstack 的 DeepSeek Harness 移植。它把 Cursor pstack 的技能、playbook�
 
 上游 pstack 对 Claude Code 的适配保留技能原文，生成独立的宿主资产，再用一份宿主适配说明处理工具、路径、模型和能力差异。
 
-dsh-pstack 沿用这个思路。上游技能是内容源，DSH 专用资产单独生成，宿主差异集中说明。上游更新可以持续同步，DSH 特有的行为不会散落在每个技能里。
+dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差异只写在 [`docs/harness/dsh.md`](https://github.com/l246804/dsh-pstack/blob/main/docs/harness/dsh.md) 一处。读者每次会话读一次，按其中的对照表把 Cursor 的说法映射成这里的工具、路径、模型和档位。
+
+生成器只做四件不需要判断语义的机械变换：收窄 frontmatter 到本宿主实际读取的字段；把指向树外文件的相对链接改指上游 GitHub 原文；在每个用到 Cursor 名字的技能标题下插入一行指向适配说明的指针；拷入适配说明本身。
+
+覆盖度由 `scripts/adapter.ts` 从随包正文反推。它扫 `assets/` 里每个 Markdown 文件，收集用到的 Cursor 概念，要求适配说明里有一条对应的表格行；缺哪条就报哪条，并说明读者少了这条要付什么代价。新加一个技能说 `/visualize`，构建会失败直到文档给出那一行。所以这里不存在一份会过期的手工差异清单。
+
+技能正文里会看到 `Task`、`readonly: true` 这类 Cursor 措辞，这是刻意保留的。上游改一句话不需要重新判断既有改写是否仍然成立，同步就是重跑生成器。
 
 ## 必要依赖
 
@@ -107,8 +113,8 @@ dsh plugin --profile <profile> add dsh-pstack
 
 本包内部的两个树不允许同名：`assets/skills/` 与 `skills-ext/` 出现同一个名字会让插件启动失败，而不是让其中一个悄悄胜出。
 
-- `make-bot-ui` 不在支持范围。它依赖 Cursor 的 webhook routine 和 secret request，DSH 没有等价闭环。
-- Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。相关技能会在需要它们的步骤说明不支持，不伪造替代。
+- `make-bot-ui` 不在支持范围。它依赖 Cursor 的 webhook routine 和 secret request，DSH 没有等价闭环。技能不随包，上游正文里指向它的链接改指 GitHub 原文。
+- Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。技能正文保留上游措辞，遇到这类步骤时按 `docs/harness/dsh.md` 里那一行处理：说明不支持，继续执行这一步本来要做的事，不伪造替代。
 - `/loop` 没有同名命令，也没有事件订阅，属于降级映射。能覆盖的是目标与定时输入：`create_goal` 记录目标和相位，`schedule_create` 只能作定时心跳，它把一条消息投回创建它的会话，不能盯着 PR 或 CI，子代理也无法自己布置。不能覆盖的是事件唤醒和云端存活：goal 不会自己感知外部事件，自动续跑还取决于 profile 是否挂载 goal round driver，未挂载时长时间任务只是同一个会话里被监督的运行。
 - `typescript-best-practices` 的 `paths` 自动触发不支持，需要时显式调用 `/typescript-best-practices`。
 - 上游的 agent store 没有完整等价物。它是一个在仓库之外、跨会话存活的每 agent 目录。这里用仓库内的 `.audit/`，并通过 prompt context 告诉每个 agent（含子代理）这个位置，所以子代理不需要被逐个交代路径。**但 `.audit/` 不会自己续跑**：跨会话恢复时仍要把 standing orders 重新交给子代理。`.audit/` 默认被 `.gitignore` 忽略；确实需要评审者据此判断结果时，再把决策流提交进仓库。

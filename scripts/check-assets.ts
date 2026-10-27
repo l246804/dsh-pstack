@@ -4,43 +4,26 @@ import { dirname, extname, isAbsolute, join, posix, relative, resolve, sep } fro
 import { fileURLToPath } from "node:url";
 
 import {
+  ADAPTER_ASSET,
+  ADAPTER_SOURCE,
+  checkAdapterDoc,
+} from "./adapter.ts";
+import {
   AGENTS_PREFIX,
   ASSETS_ROOT,
-  DSH_INTRO,
+  EXCLUDED_SKILLS,
   GUIDE_PREFIX,
   ROOT,
   SKILLS_PREFIX,
   UPSTREAM_ROOT,
   classifySkills,
-  insertIntro,
-  introRequirement,
+  renderSkill,
+  retargetLinks,
   skillDirectories,
   walkUpstream,
 } from "./build-assets.ts";
 import type { SkillCategory } from "./build-assets.ts";
-import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
-import { applyFilePatches } from "./apply-patches.ts";
-import { checkDivergenceLedger } from "./divergence-ledger.ts";
 import { SKILLS_EXT_ROOT, isLocal, readSources } from "./sync-skills-ext.ts";
-import {
-  ALL_FORBIDDEN_FIELDS,
-  STARTING_LEVEL,
-  DELEGATION_EFFORT_SENTENCE,
-  UPSTREAM_EFFORT_SENTENCE,
-  EXCLUDED_SKILLS,
-  FILE_PATCHES,
-  FORBIDDEN_CURSOR_FIELDS,
-  INTRO_SKILLS,
-  UNIT4_PATCHED_FILES,
-  UNIT5_FORBIDDEN_FIELDS,
-  UNIT5_PATCHED_FILES,
-  UNIT6_FORBIDDEN_FIELDS,
-  UNIT6_PATCHED_FILES,
-  UNIT7_FORBIDDEN_FIELDS,
-  UNIT7_PATCHED_FILES,
-  UNIT8_PATCHED_FILES,
-  patchesForFile,
-} from "./patches.ts";
 import { RUNTIME_CLIS, RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
@@ -84,12 +67,6 @@ export interface LinkReport {
   readonly problems: readonly LinkProblem[];
 }
 
-export interface CapabilityTokenHit {
-  readonly id: string;
-  readonly token: string;
-  readonly count: number;
-}
-
 export interface AssetsReport {
   readonly skills: number;
   readonly skillFiles: number;
@@ -103,7 +80,6 @@ export interface AssetsReport {
   readonly linksSkipped: number;
   readonly categories: Readonly<Record<SkillCategory, number>>;
   readonly placeholders: readonly LinkPlaceholder[];
-  readonly capabilityTokens: readonly CapabilityTokenHit[];
   readonly problems: readonly string[];
 }
 
@@ -121,29 +97,24 @@ export function checkAssets(): AssetsReport {
   const agents = checkAgents(problems);
   const guide = checkGuide(problems);
   checkUndeclaredFiles(problems);
-  checkHarnessDoc(problems);
-  checkRewrittenTexts(problems);
+  checkAdapterAsset(problems);
   for (const problem of checkAssetsHostCopy()) problems.push(problem);
   for (const problem of scanReleaseCopy(collectReleaseCopy())) problems.push(problem);
   for (const problem of checkPlaybookClaims()) problems.push(problem);
   checkRoleAssets(problems);
   checkLicense(problems);
   checkPackageManifest(problems);
-  checkIntroScope(problems);
-  for (const problem of checkConceptCoverage()) problems.push(problem);
   for (const problem of checkScriptReferences()) problems.push(problem);
   for (const problem of checkScriptIdReferences()) problems.push(problem);
-  for (const problem of checkEffortCapabilityCopy()) problems.push(problem);
   for (const problem of checkSkillsExt()) problems.push(problem);
-  for (const problem of checkDivergenceLedger()) problems.push(problem);
 
   if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
-  // The expected count is "upstream skill files, minus the ones a built artifact
-  // replaces, plus the artifacts themselves". Deriving it rather than hardcoding the
-  // number is what keeps this check honest when the runtime manifest changes.
+  // "Upstream skill files, minus the ones a built artifact replaces, plus the artifacts
+  // themselves". Derived rather than hardcoded, so it stays honest when the runtime
+  // manifest changes.
   const expectedSkillFiles =
     skillDirectories()
-      .filter((skill) => !EXCLUDED_SKILLS.some((exclusion) => exclusion.skill === skill))
+      .filter((skill) => !EXCLUDED_SKILLS.includes(skill))
       .reduce(
         (total, skill) =>
           total +
@@ -159,40 +130,19 @@ export function checkAssets(): AssetsReport {
   if (guide.markdown !== 11)
     problems.push(`assets: expected 11 guide Markdown files, found ${guide.markdown}`);
   if (guide.images !== 6) problems.push(`assets: expected 6 guide images, found ${guide.images}`);
-  if (skills.categories.copy + skills.categories["intro-only"] + skills.categories.patched !== 55) {
+  if (skills.categories.copy + skills.categories.pointer + skills.categories.stripped !== 55) {
     problems.push("assets: skill categories do not cover all 55 skills");
-  }
-  // The split is pinned so a patch that silently stops landing, or a new patch
-  // added without declaring it, fails here instead of drifting the category counts.
-  const expectedCategories = { copy: 30, "intro-only": 5, patched: 20 };
-  if (
-    skills.categories.copy !== expectedCategories.copy ||
-    skills.categories["intro-only"] !== expectedCategories["intro-only"] ||
-    skills.categories.patched !== expectedCategories.patched
-  ) {
-    problems.push(
-      `assets: expected ${expectedCategories.copy} copy / ${expectedCategories["intro-only"]} intro-only / ${expectedCategories.patched} patched skills, found ${skills.categories.copy} / ${skills.categories["intro-only"]} / ${skills.categories.patched}`,
-    );
-  }
-
-  for (const candidate of introRequirement()) {
-    if (!Object.hasOwn(INTRO_SKILLS, candidate)) {
-      problems.push(`skills/${candidate}: contains host terms but has no declared intro`);
-    }
   }
 
   const markdown = walkFiles(ASSETS_ROOT)
     .filter((file) => file.endsWith(".md"))
     .map((file) => ({ file: toRepositoryPath(file), text: readFileSync(file, "utf8") }));
 
-  for (const { file, text } of markdown) {
-    for (const link of scanMarkdownLinks(text)) {
-      if (link.target.includes("make-bot-ui")) {
-        problems.push(`${file}:${link.line}: still links to the excluded skill (${link.target})`);
-      }
-    }
-  }
-
+  // An excluded skill is still linked from upstream prose on purpose: the generator
+  // retargets those links at the upstream file on GitHub, so a reader can follow the
+  // reference and the adapter says the skill is not carried. A relative link that
+  // survives into the tree would dangle instead, and `danglingLinks` catches it during
+  // the build.
   const links = checkLinks(markdown, (repositoryRelativePath) =>
     existsSync(join(ROOT, repositoryRelativePath)),
   );
@@ -207,15 +157,6 @@ export function checkAssets(): AssetsReport {
     problems.push(`assets: expected 5 executable files, found ${executables.length}`);
   }
 
-  const corpus = markdown.map(({ text }) => text).join("\n");
-  const capabilityTokens = detectableCapabilities()
-    .map((capability) => ({
-      id: capability.id,
-      token: capability.detect,
-      count: countOccurrences(corpus, capability.detect),
-    }))
-    .filter((hit) => hit.count > 0);
-
   return {
     skills: skills.count,
     skillFiles: skills.files,
@@ -229,7 +170,6 @@ export function checkAssets(): AssetsReport {
     linksSkipped: links.skipped,
     categories: skills.categories,
     placeholders: links.placeholders,
-    capabilityTokens,
     problems,
   };
 }
@@ -310,18 +250,11 @@ export function checkLinks(
 
 export function main(): number {
   const report = checkAssets();
-  const coverage = new Map<string, number>();
-  for (const capability of CAPABILITIES) {
-    coverage.set(capability.coverage, (coverage.get(capability.coverage) ?? 0) + 1);
-  }
-  const coverageText = [...coverage.entries()]
-    .map(([name, count]) => `${count} ${name}`)
-    .join(", ");
 
   console.log(
     [
       "assets check",
-      `  skills            ${report.skills} (copy ${report.categories.copy}, intro-only ${report.categories["intro-only"]}, patched ${report.categories.patched})`,
+      `  skills            ${report.skills} (copy ${report.categories.copy}, pointer ${report.categories.pointer}, stripped ${report.categories.stripped})`,
       `  skill files       ${report.skillFiles}`,
       `  bundled skills    ${report.bundledSkills}`,
       `  agents            ${report.agents}`,
@@ -330,7 +263,6 @@ export function main(): number {
       `  markdown files    ${report.markdownFiles}`,
       `  links checked     ${report.linksChecked}`,
       `  links skipped     ${report.linksSkipped}`,
-      `  capability rows   ${CAPABILITIES.length} (${coverageText})`,
     ].join("\n"),
   );
 
@@ -338,9 +270,6 @@ export function main(): number {
     console.log(
       `  template link     ${placeholder.file}:${placeholder.line} -> ${placeholder.target}`,
     );
-  }
-  for (const hit of report.capabilityTokens) {
-    console.log(`  capability token  ${hit.id}: ${hit.count} "${hit.token}"`);
   }
 
   if (report.problems.length === 0) {
@@ -460,7 +389,7 @@ function checkSkills(problems: string[]): {
     return { count: 0, files: 0, categories: emptyCategories() };
   }
 
-  const excluded = new Set(EXCLUDED_SKILLS.map((exclusion) => exclusion.skill));
+  const excluded = new Set(EXCLUDED_SKILLS);
   const expected = skillDirectories().filter((skill) => !excluded.has(skill));
   const entries = readdirSync(assetsSkills, { withFileTypes: true });
   const actual = entries
@@ -534,16 +463,9 @@ function checkSkills(problems: string[]): {
         }
       }
 
-      const expectedBody = expectedSkillBody(skill, category, sourceText, skillFile);
+      const expectedBody = parseFrontmatter(renderSkill(sourceText, skillFile)).body;
       if (assetData.body !== expectedBody) {
-        problems.push(`assets/${skillFile}: body differs from the ${category} expectation`);
-      }
-      const expectedIntroCount = Object.hasOwn(INTRO_SKILLS, skill) ? 1 : 0;
-      const actualIntroCount = assetData.body.split(DSH_INTRO).length - 1;
-      if (actualIntroCount !== expectedIntroCount) {
-        problems.push(
-          `assets/${skillFile}: expected ${expectedIntroCount} DSH intro(s), found ${actualIntroCount}`,
-        );
+        problems.push(`assets/${skillFile}: body differs from a fresh build (${category})`);
       }
 
       for (const path of upstreamFiles) {
@@ -551,11 +473,10 @@ function checkSkills(problems: string[]): {
         const upstreamPath = `${SKILLS_PREFIX}${skill}/${path}`;
         const asset = readFileSync(join(ASSETS_ROOT, upstreamPath));
         const source = readFileSync(join(UPSTREAM_ROOT, upstreamPath));
-        const patches = patchesForFile(upstreamPath);
-        const expectedBytes =
-          patches.length === 0
-            ? source
-            : Buffer.from(applyFilePatches(upstreamPath, source.toString("utf8"), patches), "utf8");
+        const expectedBytes = Buffer.from(
+          retargetLinks(source.toString("utf8")),
+          "utf8",
+        );
         if (!asset.equals(expectedBytes)) {
           problems.push(`assets/${upstreamPath}: differs from its source`);
         }
@@ -566,25 +487,6 @@ function checkSkills(problems: string[]): {
   }
 
   return { count: actual.length, files, categories };
-}
-
-function expectedSkillBody(
-  skill: string,
-  category: SkillCategory,
-  sourceText: string,
-  file: string,
-): string {
-  const sourceBody = parseFrontmatter(sourceText).body;
-  if (category === "copy") return sourceBody;
-  if (category === "intro-only") return insertIntro(sourceBody, file);
-
-  const patched = applyFilePatches(
-    `skills/${skill}/SKILL.md`,
-    sourceText,
-    patchesForFile(`skills/${skill}/SKILL.md`),
-  );
-  const patchedBody = parseFrontmatter(patched).body;
-  return Object.hasOwn(INTRO_SKILLS, skill) ? insertIntro(patchedBody, file) : patchedBody;
 }
 
 function checkAgents(problems: string[]): number {
@@ -613,20 +515,15 @@ function checkAgents(problems: string[]): number {
     const path = `${AGENTS_PREFIX}${name}`;
     try {
       const sourceText = readFileSync(join(UPSTREAM_ROOT, path), "utf8");
-      const patches = patchesForFile(path);
-      const expectedText =
-        patches.length === 0 ? sourceText : applyFilePatches(path, sourceText, patches);
-      const source = parseFrontmatter(expectedText);
+      const source = parseFrontmatter(sourceText);
       const asset = parseFrontmatter(readFileSync(join(assetsAgents, name), "utf8"));
       const frontmatter = validateAgentFrontmatter(asset.data, `assets/${path}`);
 
       if (frontmatter.name !== name.replace(/\.md$/, "")) {
         problems.push(`assets/${path}: name "${frontmatter.name}" does not match its file name`);
       }
-      if (asset.body !== source.body) {
-        problems.push(
-          `assets/${path}: body differs from ${patches.length === 0 ? "its source" : "its patched expectation"}`,
-        );
+      if (asset.body !== retargetLinks(source.body)) {
+        problems.push(`assets/${path}: body differs from a fresh build`);
       }
       for (const field of AGENT_DROPPED_FIELDS) {
         if (Object.hasOwn(asset.data, field)) {
@@ -653,14 +550,11 @@ function checkGuide(problems: string[]): { readonly markdown: number; readonly i
     if (!actual.includes(path)) continue;
     const asset = readFileSync(join(ASSETS_ROOT, GUIDE_PREFIX, path));
     const source = readFileSync(join(UPSTREAM_ROOT, GUIDE_PREFIX, path));
-    const patches = patchesForFile(`${GUIDE_PREFIX}${path}`);
-    const expectedBytes =
-      patches.length === 0
-        ? source
-        : Buffer.from(
-            applyFilePatches(`${GUIDE_PREFIX}${path}`, source.toString("utf8"), patches),
-            "utf8",
-          );
+    // Only Markdown carries links. Decoding a binary through a string and re-encoding it
+    // corrupts the bytes, so images are compared as what they are.
+    const expectedBytes = path.endsWith(".md")
+      ? Buffer.from(retargetLinks(source.toString("utf8")), "utf8")
+      : source;
     if (!asset.equals(expectedBytes))
       problems.push(`assets/${GUIDE_PREFIX}${path}: differs from its source`);
   }
@@ -687,7 +581,7 @@ function checkUndeclaredFiles(problems: string[]): void {
     join(ASSETS_ROOT, "docs", "guide"),
   ];
   const generated = new Set([
-    HARNESS_DOC_PATH,
+    ADAPTER_ASSET,
     PSTACK_MODELS_EXAMPLE_PATH,
     ...RUNTIME_ENTRIES.map((entry) => entry.assetPath),
   ]);
@@ -702,51 +596,48 @@ function checkUndeclaredFiles(problems: string[]): void {
   }
 }
 
-function checkHarnessDoc(problems: string[]): void {
-  const path = join(ASSETS_ROOT, HARNESS_DOC_PATH);
-  if (!existsSync(path)) {
-    problems.push(`assets/${HARNESS_DOC_PATH}: missing`);
+/**
+ * The adapter document answers for every Cursor name the shipped prose uses.
+ *
+ * The requirement is derived from the tree that actually ships, so no hand-maintained
+ * list of differences can fall out of date. Two earlier shapes are worth not repeating:
+ * a generated capability table, then a hand-written divergence ledger with a count and
+ * a member check. Both stayed green while the tree drifted, because both checked what
+ * someone had written down about the tree instead of the tree.
+ *
+ * The document is a source file copied in unchanged, not a generated one. A generator
+ * can render a table; it cannot decide what a reader should do with a no-write child on
+ * a host that offers no sandbox for one, and generating the rows would put that judgement
+ * back inside the code this shape exists to keep it out of.
+ */
+function checkAdapterAsset(problems: string[]): void {
+  const assetPath = join(ASSETS_ROOT, ADAPTER_ASSET);
+  const sourcePath = join(ROOT, ADAPTER_SOURCE);
+  if (!existsSync(sourcePath)) {
+    problems.push(
+      `${ADAPTER_SOURCE}: missing; it is the only place a host difference is written down`,
+    );
     return;
   }
-  const text = readFileSync(path, "utf8");
-  if (!text.includes(HARNESS_DOC_SCOPE_LINE)) {
-    problems.push(
-      `assets/${HARNESS_DOC_PATH}: must state which rows this tree actually ships`,
-    );
+  if (!existsSync(assetPath)) {
+    problems.push(`assets/${ADAPTER_ASSET}: missing; run \`pnpm run build:assets\` first`);
+    return;
   }
 
-  // Every row the shipped units covered is delivered, including the ones that
-  // ship degraded: a degraded row states what is lost, and it may no longer be
-  // filed as a promise belonging to a later unit.
-  for (const delivered of [
-    "`pstack_subagent`, which returns a child id",
-    // `pstack_script` is the model-side entry point for every bundled CLI, so it is
-    // a delivered row like the others and may never be filed as deferred.
-    "`pstack_script`, which runs the bundled CLIs on the Host's own runtime",
-    "`$DSH_HOME/pstack-models.md`",
-    "the official worktree rows, mounted by this bundle when the profile lacks them",
-    "the authoring playbook plus this package's frontmatter, link, and structure checks",
-    "`pstack_history`, a restricted read of raw `sessionQuery` events",
-    "`create_goal` for automatic continuation, plus `schedule_create` only as a timed heartbeat",
-  ]) {
-    const row = text.split("\n").find((line) => line.includes(delivered));
-    if (row === undefined) {
-      problems.push(`assets/${HARNESS_DOC_PATH}: missing the "${delivered}" row`);
-      continue;
-    }
-    if (row.includes("| deferred |")) {
-      problems.push(`assets/${HARNESS_DOC_PATH}: "${delivered}" may not stay deferred`);
-    }
+  const source = readFileSync(sourcePath, "utf8");
+  if (readFileSync(assetPath, "utf8") !== source) {
+    problems.push(`assets/${ADAPTER_ASSET}: differs from ${ADAPTER_SOURCE}`);
+    return;
   }
 
-  // No row may still promise a later unit: every unit has shipped, so a
-  // remaining `deferred` cell would be a promise nothing delivers.
-  const deferredRows = text
-    .split("\n")
-    .filter((line) => line.startsWith("| ") && line.includes("| deferred |"));
-  for (const row of deferredRows) {
-    problems.push(`assets/${HARNESS_DOC_PATH}: no row may stay deferred, found ${row}`);
-  }
+  // Every shipped Markdown file is prose a reader may follow, so every one is in scope.
+  // Restricting this to skills would let a guide page introduce a name the adapter never
+  // answers for.
+  const texts = walkFiles(ASSETS_ROOT)
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => readFileSync(file, "utf8"));
+
+  for (const problem of checkAdapterDoc(source, texts)) problems.push(problem);
 }
 
 /**
@@ -758,7 +649,6 @@ function checkHarnessDoc(problems: string[]): void {
  * release gate checks it mechanically instead of trusting a read-through.
  */
 const INSTALL_COMMAND_PREFIX = "dsh plugin --profile <profile> ";
-const ROLE_FILE_PATH = "$DSH_HOME/pstack-models.md";
 
 /** The role file's basename, without the `$DSH_HOME/` prefix. */
 const ROLE_FILE_BASENAME = "pstack-models.md";
@@ -776,7 +666,14 @@ const ROLE_FILE_EXAMPLE_BASENAME = "pstack-models.example.md";
 const STATIC_ROOT = join(ROOT, "static");
 const STATIC_FILES: readonly string[] = ["icon.png"];
 
-/** Install commands belonging to a host this package is not. */
+/**
+ * Install commands belonging to a host this package is not.
+ *
+ * Applies to the copy this repository authors. Upstream skill bodies and guide pages
+ * name `/add-plugin pstack` because that is how pstack installs into Cursor, and the
+ * adapter document says what installation is here; rewriting them is the work this
+ * shape removed.
+ */
 const FOREIGN_INSTALL_TOKENS: readonly string[] = [
   "/add-plugin",
   "plugin marketplace",
@@ -784,27 +681,30 @@ const FOREIGN_INSTALL_TOKENS: readonly string[] = [
 ];
 
 /**
- * Terms README and the shipped bodies may carry only where the sentence excludes them.
+ * Promises in shipped prose that would be false on this host.
  *
- * The rule is about placement, not vocabulary: naming a mechanism in order to say
- * the host lacks it is required, while recommending it is the defect.
+ * Shipped skill bodies are upstream text, so they name Cursor mechanisms freely. That is
+ * expected and is the adapter document's job to translate. What is not expected is a
+ * sentence that *recommends* one of these as an action, because a reader who follows it
+ * calls something that does not exist here.
  *
- * `automation` means *Cursor Automations*, the webhook routine the capability table
- * lists as excluded. It is deliberately not a bare `/automations?/`: "browser
- * automation", "review-automation comments", and "traditional automation" are
- * ordinary technical English about testing and PR comments, and matching them made
- * three shipped sentences fail for saying something true. The forms here are the
- * ones that name the product — a capitalised `Automations`, or the plural as its own
- * noun.
+ * This is a promise rule, not a vocabulary rule. Naming `/loop` to say the host has no
+ * such command is correct and must pass; telling a reader to run `/loop 1h` is the
+ * defect. `excludesTerm` decides per clause, so both cases land where they belong.
+ *
+ * Only mechanisms that a skill would otherwise *instruct* a reader to use are listed.
+ * `automation` is not matched bare: "browser automation" and "review-automation
+ * comments" are ordinary technical English about testing and PR comments.
  */
-const EXCLUSION_TERMS: readonly { readonly label: string; readonly pattern: RegExp }[] = [
+const FALSE_PROMISES: readonly { readonly label: string; readonly pattern: RegExp }[] = [
   { label: "/loop", pattern: /\/loop\b/ },
-  { label: "cloud agent", pattern: /cloud agents?\b/i },
-  { label: "Cursor Project", pattern: /Cursor Projects?\b/ },
+  { label: "a cloud agent", pattern: /cloud agents?\b/i },
+  { label: "a Cursor Project", pattern: /Cursor Projects?\b/ },
   { label: "make-bot-ui", pattern: /make-bot-ui/ },
-  // A capitalised plural as a noun ("Automations、cloud agents"), or the definite
-  // forms that name the product. Not "browser automation".
-  { label: "Cursor Automations", pattern: /(?<![-\w])(?:\bAutomations\b|Cursor Automations?|scheduled automations?\b|nightly automations?\b)/ },
+  {
+    label: "Cursor Automations",
+    pattern: /(?<![-\w])(?:\bAutomations\b|Cursor Automations?|scheduled automations?\b|nightly automations?\b)/,
+  },
 ];
 
 /**
@@ -915,41 +815,8 @@ export function excludesTerm(line: string, term: RegExp): boolean {
   return binding !== null;
 }
 
-/** The playbooks poteto-help promises, and the gate its own body has to carry. */
+/** The number of ported playbooks, so a dropped file is visible. */
 const PLAYBOOK_COUNT = 23;
-const PLAYBOOK_CLAIM = "Every playbook in the Playbooks section";
-const PLAYBOOK_GATES: readonly {
-  readonly playbook: string;
-  readonly claim: string;
-  readonly evidence: string;
-}[] = [
-  {
-    playbook: "babysit.md",
-    claim: "Babysit needs a watcher that can wake the Session",
-    evidence: "watcher",
-  },
-  {
-    playbook: "shipping.md",
-    claim: "Shipping needs a real driver for the surface",
-    evidence: "driver",
-  },
-  {
-    playbook: "orchestrate.md",
-    claim: "Orchestrate needs `pstack_script` for scripted bookkeeping",
-    evidence:
-      "if the tool is unavailable, read and write the TSV and JSON by hand and say which commands you could not run",
-  },
-  {
-    playbook: "hillclimb.md",
-    claim: "Hillclimb accepts no win without a working measurement harness",
-    evidence: "Build the measurement harness, prove its sensitivity, then freeze it",
-  },
-  {
-    playbook: "visual-parity.md",
-    claim: "Visual parity needs an image diff actually run",
-    evidence: "Verify each component against its baseline with a real image diff on the matching surface.",
-  },
-];
 
 export interface ReleaseCopyInput {
   readonly file: string;
@@ -974,11 +841,13 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
   const problems: string[] = [];
 
   for (const { file, text, exclusions = true } of inputs) {
-    for (const token of FOREIGN_INSTALL_TOKENS) {
-      for (const found of findLines(text, token)) {
-        problems.push(
-          `${file}:${found.number}: install command from another host (${JSON.stringify(token)})`,
-        );
+    if (exclusions) {
+      for (const token of FOREIGN_INSTALL_TOKENS) {
+        for (const found of findLines(text, token)) {
+          problems.push(
+            `${file}:${found.number}: install command from another host (${JSON.stringify(token)})`,
+          );
+        }
       }
     }
 
@@ -1000,41 +869,31 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
       }
     }
 
-    // The role file has exactly one spelling. The previous rule was "is
-    // `$DSH_HOME/` ten characters behind it, or `.example.md` eleven characters
-    // after it", which never looked at the suffix: `$DSH_HOME/pstack-models.mdc`
-    // passed, and `.mdc` is the Cursor extension this port exists to remove. A
-    // reader following that text creates a file `pstack_subagent` never reads, so
-    // every role silently falls back to `inherit-parent`.
-    for (const match of text.matchAll(/pstack-models[\w.-]*(?:\.md)?/g)) {
+    // The shipped role-file example is this package's own text, so it has exactly one
+    // name. A skill body is upstream text and may name the Cursor rules file; the
+    // adapter document says what that becomes here.
+    for (const match of text.matchAll(/pstack-models[\w.-]*\.md/g)) {
       const found = match[0];
-      const start = match.index ?? 0;
-      if (found === ROLE_FILE_BASENAME || found === ROLE_FILE_EXAMPLE_BASENAME) {
-        const prefix = text.slice(Math.max(0, start - "$DSH_HOME/".length), start);
-        if (found === ROLE_FILE_BASENAME && prefix === "$DSH_HOME/") continue;
-        // Any other prefix is fine only for the example file, which is a
-        // package-relative path.
-        if (found === ROLE_FILE_EXAMPLE_BASENAME) continue;
-      }
-      const line = text.slice(0, start).split("\n").length;
+      if (found === ROLE_FILE_BASENAME || found === ROLE_FILE_EXAMPLE_BASENAME) continue;
+      const line = text.slice(0, match.index ?? 0).split("\n").length;
       problems.push(
-        `${file}:${line}: the role file is ${ROLE_FILE_PATH} (or ` +
-          `${ROLE_FILE_EXAMPLE_BASENAME} for the shipped example); found ${JSON.stringify(found)}`,
+        `${file}:${line}: a role file name must be ${ROLE_FILE_BASENAME} or ` +
+          `${ROLE_FILE_EXAMPLE_BASENAME}; found ${JSON.stringify(found)}`,
       );
     }
-
+    // The repository's own copy is held to the promise rule; a skill body is upstream
+    // text and is not. `exclusions: false` is how a caller says so.
     if (!exclusions) continue;
     for (const line of linesOf(text)) {
-      for (const term of EXCLUSION_TERMS) {
+      for (const term of FALSE_PROMISES) {
         if (!term.pattern.test(line.text)) continue;
         if (excludesTerm(line.text, term.pattern)) continue;
         problems.push(
-          `${file}:${line.number}: names ${term.label} outside a sentence that excludes it: ${JSON.stringify(line.text.slice(0, 120))}`,
+          `${file}:${line.number}: promises ${term.label}, which this host does not have: ${JSON.stringify(line.text.slice(0, 120))}`,
         );
       }
     }
   }
-
   return problems;
 }
 
@@ -1055,18 +914,36 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
  */
 export function checkAssetsHostCopy(): readonly string[] {
   const problems: string[] = [];
-  for (const file of walkFiles(ASSETS_ROOT)) {
+  for (const file of repositoryOwnedShippedFiles()) {
     const repositoryPath = toRepositoryPath(file);
-    // `scripts/patches.ts` is deliberately outside `assets/`; nothing in this walk is
-    // a vendored third-party file, so every hit here is this package's own copy.
-    const hits = otherHostMentionCount(readFileSync(file, "latin1"));
+    // The adapter document quotes upstream names in backticks and fenced blocks to say
+    // what each one becomes here. That is its purpose, so those spans are exempt.
+    const raw = readFileSync(file, "utf8");
+    const text =
+      repositoryPath === `assets/${ADAPTER_ASSET}` ? raw.replace(/`[^`]*`/g, "").replace(/```[sS]*?```/g, "") : raw;
+    const hits = otherHostMentionCount(text);
     if (hits > 0) {
       problems.push(
-        `${repositoryPath}: names Claude ${hits} time(s); this package is the DSH build and ships no other host's install text or document pointer`,
+        `${repositoryPath}: names Claude ${hits} time(s); this package's own copy is the DSH build and ships no other host's install text`,
       );
     }
   }
   return problems;
+}
+
+/**
+ * Shipped files whose text this repository authors, rather than upstream.
+ *
+ * The split matters for every rule phrased as "do not mention another host": upstream
+ * pstack says `Task`, `/loop`, and the Claude Code adapter, and the shipped tree keeps
+ * that text on purpose. Only the copy written here has to be about this host.
+ */
+function repositoryOwnedShippedFiles(): readonly string[] {
+  return [
+    join(ASSETS_ROOT, ADAPTER_ASSET),
+    join(ASSETS_ROOT, PSTACK_MODELS_EXAMPLE_PATH),
+    ...RUNTIME_CLIS.map((entry) => join(ASSETS_ROOT, entry.assetPath)),
+  ].filter((file) => existsSync(file));
 }
 
 /** Case-insensitive mention count for the other host's name in one body of text. */
@@ -1074,23 +951,25 @@ export function otherHostMentionCount(text: string): number {
   return countOccurrences(text.toLowerCase(), "claude");
 }
 
-/** README and the generated bodies a reader meets before or beside a skill. */
+/** The shipped copy this repository authors, which the release rules apply to. */
 export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
   const inputs: ReleaseCopyInput[] = [
     { file: "README.md", text: readFileSync(join(ROOT, "README.md"), "utf8") },
   ];
-  for (const file of walkFiles(join(ASSETS_ROOT, "docs", "guide"))) {
-    if (!file.endsWith(".md")) continue;
-    inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8") });
-  }
-  // Skill bodies run the exclusion rule too. `exclusions: false` used to switch it
-  // off for all 110 of them, so a skill could re-promise Custom Mode, `/loop`, or a
-  // cloud agent and every static gate stayed green — the capability table would say
-  // `degraded` while the shipped body recommended the thing. `excludesTerm` decides
-  // per clause now, so the legitimate "this host has no X" sentences still pass.
-  for (const file of walkFiles(join(ASSETS_ROOT, "skills"))) {
-    if (!file.endsWith(".md")) continue;
-    inputs.push({ file: toRepositoryPath(file), text: readFileSync(file, "utf8") });
+  // Guide pages and skill bodies are upstream prose. They name `/loop`, cloud agents, and
+  // the Cursor adapters because that is what pstack says, and the adapter document is
+  // where a reader learns what each becomes on this host. The install-command rule still
+  // applies to them, because a shipped install line a reader would follow has to be this
+  // package's; the promise rule does not.
+  for (const root of [join(ASSETS_ROOT, "docs", "guide"), join(ASSETS_ROOT, "skills")]) {
+    for (const file of walkFiles(root)) {
+      if (!file.endsWith(".md")) continue;
+      inputs.push({
+        file: toRepositoryPath(file),
+        text: readFileSync(file, "utf8"),
+        exclusions: false,
+      });
+    }
   }
   return inputs;
 }
@@ -1203,12 +1082,14 @@ export function checkScriptReferences(): readonly string[] {
   const problems: string[] = [];
   const allowlisted = new Set(SCRIPT_REFERENCE_ALLOWLIST.map((entry) => entry.reference));
 
-  for (const file of walkFiles(ASSETS_ROOT).filter((path) => path.endsWith(".md"))) {
+  for (const file of repositoryOwnedShippedFiles().filter((path) => path.endsWith(".md"))) {
     const repositoryPath = toRepositoryPath(file);
     const text = readFileSync(file, "utf8");
     for (const match of text.matchAll(SCRIPT_REFERENCE)) {
       const reference = match[1] as string;
       if (allowlisted.has(reference)) continue;
+      // The adapter document quotes upstream's own invocation beside the replacement.
+      if (repositoryPath === `assets/${ADAPTER_ASSET}`) continue;
       const beside = join(dirname(file), reference);
       if (existsSync(beside) || existsSync(join(ASSETS_ROOT, reference))) continue;
       const line = text.slice(0, match.index).split("\n").length;
@@ -1261,32 +1142,6 @@ export function checkPlaybookClaims(): readonly string[] {
     [...new Set(listed)].sort(),
   );
 
-  const helpPath = join(ASSETS_ROOT, "skills", "poteto-help", "SKILL.md");
-  const help = existsSync(helpPath) ? readFileSync(helpPath, "utf8") : "";
-  const claim = linesOf(help).find((line) => line.text.includes(PLAYBOOK_CLAIM));
-  if (claim === undefined) {
-    problems.push(`assets/skills/poteto-help/SKILL.md: missing the "${PLAYBOOK_CLAIM}" sentence`);
-    return problems;
-  }
-
-  for (const gate of PLAYBOOK_GATES) {
-    if (!claim.text.includes(gate.claim)) {
-      problems.push(
-        `assets/skills/poteto-help/SKILL.md:${claim.number}: the playbook claim no longer states ${JSON.stringify(gate.claim)}`,
-      );
-    }
-    const body = join(directory, gate.playbook);
-    if (!existsSync(body)) {
-      problems.push(`assets/skills/poteto-mode/playbooks/${gate.playbook}: claimed but missing`);
-      continue;
-    }
-    if (!readFileSync(body, "utf8").includes(gate.evidence)) {
-      problems.push(
-        `assets/skills/poteto-help/SKILL.md:${claim.number}: the claim gives ${gate.playbook} a gate on ${JSON.stringify(gate.evidence)}, but that playbook never states it`,
-      );
-    }
-  }
-
   return problems;
 }
 
@@ -1323,235 +1178,6 @@ function playbooksSection(body: string): string {
     }
   }
   return lines.slice(start + 1, end).join("\n");
-}
-
-/**
- * Audit the bodies the rewriting units produced.
- *
- * A rewritten skill may still name Cursor where the sentence is about Cursor, but
- * it may not keep a field or a path this host has no replacement for: a reader
- * would call it and the host would reject the call. The check is per file because
- * later units own the remaining Cursor vocabulary, and units 5 and 6 add tokens
- * that are still legitimate in files another unit owns.
- *
- * Unit 6 is token-only. Its files are `poteto-mode`, its playbooks, and the
- * helper text they route through, and `poteto-mode` is the skill that tells a
- * reader where the sibling skills live, so a bold skill name there points at a
- * directory the same body already resolves. The routing rule applies to the
- * skills that cannot describe themselves that way.
- */
-function checkRewrittenTexts(problems: string[]): void {
-  const groups: readonly {
-    readonly paths: readonly string[];
-    readonly forbidden: readonly string[];
-    readonly boldSkillRule: boolean;
-  }[] = [
-    { paths: UNIT4_PATCHED_FILES, forbidden: FORBIDDEN_CURSOR_FIELDS, boldSkillRule: true },
-    {
-      paths: UNIT5_PATCHED_FILES,
-      forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT5_FORBIDDEN_FIELDS],
-      boldSkillRule: true,
-    },
-    {
-      paths: UNIT6_PATCHED_FILES,
-      forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT6_FORBIDDEN_FIELDS],
-      boldSkillRule: false,
-    },
-    {
-      paths: UNIT7_PATCHED_FILES,
-      forbidden: [...FORBIDDEN_CURSOR_FIELDS, ...UNIT7_FORBIDDEN_FIELDS],
-      boldSkillRule: false,
-    },
-    {
-      paths: UNIT8_PATCHED_FILES,
-      // The union, not one segment per unit: these files were patched by several
-      // units and audited by none, so nothing may be assumed about which tokens they
-      // carried.
-      forbidden: [...ALL_FORBIDDEN_FIELDS],
-      boldSkillRule: false,
-    },
-  ];
-
-  // Every patched file must be in some group. This is the invariant that failed
-  // silently: four files carried 21 patches and no audit ever read them, and no
-  // check noticed because the groups were a hand-written list with no closure
-  // condition. A new patch now fails the gate until its file is audited.
-  const audited = new Set(groups.flatMap((group) => group.paths));
-  for (const file of new Set(FILE_PATCHES.map((patch) => patch.file))) {
-    if (!audited.has(file)) {
-      problems.push(
-        `assets/${file}: patched but in no audit group, so nothing checks it for forbidden tokens`,
-      );
-    }
-  }
-
-  for (const { paths, forbidden, boldSkillRule } of groups) {
-    for (const relativePath of paths) {
-      const path = join(ASSETS_ROOT, relativePath);
-      if (!existsSync(path)) {
-        problems.push(`assets/${relativePath}: missing a rewritten file`);
-        continue;
-      }
-      const text = readFileSync(path, "utf8");
-      for (const field of forbidden) {
-        if (text.includes(field)) {
-          problems.push(
-            `assets/${relativePath}: still carries the unmapped Cursor field ${JSON.stringify(field)}`,
-          );
-        }
-      }
-      if (boldSkillRule && /\bthe \*\*[a-z-]+\*\* (skill|principle skill)\b/.test(text)) {
-        problems.push(
-          `assets/${relativePath}: names a hidden skill in bold instead of reading it at its resource path`,
-        );
-      }
-    }
-  }
-}
-
-/**
- * The per-delegation reasoning-effort capability has to be *documented as present*.
- *
- * Every other check in this file is negative: it fails on a token that must not
- * appear. That shape cannot catch a capability that was quietly deleted, because a
- * deletion removes offending text instead of adding it. It happened: `e4a14da`
- * dropped 22 upstream sentences that told a caller to pick an effort per delegation,
- * wrote "never invent an effort" into the skills, and every gate stayed green while
- * the feature disappeared from the shipped instructions.
- *
- * So this check is positive, and it is deliberately narrow: it names the three places
- * a model learns the capability exists, and the one sentence every patched skill that
- * spawns work has to carry.
- */
-function checkEffortCapabilityCopy(): readonly string[] {
-  const problems: string[] = [];
-
-  // 1. Every patched skill whose upstream carried the sentence must carry the DSH one.
-  //
-  // The expected set is read from the pinned upstream tree, not hardcoded. A hardcoded
-  // count is what let two files slip: the first restoration wrote 22 because 22 anchors
-  // matched a phrase search, and `no-comments` and `multi-phase-plan` were missing from
-  // both the patch and the count, so nothing disagreed.
-  const sentence = DELEGATION_EFFORT_SENTENCE.trim();
-  const carriers = new Set<string>();
-  for (const patch of FILE_PATCHES) {
-    if (patch.kind !== "replace") continue;
-    if (!patch.replacement.includes(DELEGATION_EFFORT_SENTENCE)) continue;
-    carriers.add(patch.file);
-  }
-
-  const upstreamCarriers = new Set<string>();
-  for (const patch of FILE_PATCHES) {
-    if (patch.kind !== "replace") continue;
-    const anchor = patch.anchor;
-    if (typeof anchor !== "string") continue;
-    if (anchor.includes(UPSTREAM_EFFORT_SENTENCE)) upstreamCarriers.add(patch.file);
-  }
-  for (const relativePath of upstreamCarriers) {
-    if (!carriers.has(relativePath)) {
-      problems.push(
-        `patches: ${relativePath} dropped the upstream reasoning-effort sentence but does not carry DELEGATION_EFFORT_SENTENCE. A file that told the caller to choose an effort must keep telling it.`,
-      );
-    }
-  }
-  for (const relativePath of carriers) {
-    if (!upstreamCarriers.has(relativePath)) {
-      problems.push(
-        `patches: ${relativePath} appends DELEGATION_EFFORT_SENTENCE but its anchor never carried the upstream sentence, so the text was added rather than restored`,
-      );
-    }
-  }
-  for (const relativePath of carriers) {
-    const path = join(ASSETS_ROOT, relativePath);
-    if (!existsSync(path)) continue; // The layout check already reports a missing asset.
-    if (!readFileSync(path, "utf8").includes(sentence)) {
-      problems.push(`assets/${relativePath}: lost the delegation-effort sentence on the way out`);
-    }
-  }
-
-  // 2. `poteto-mode` is where a model learns the rule. It must state the capability,
-  //    not forbid it, and it must say what a role line's effort *is*.
-  //
-  //    The baseline sentence is checked by its content and not by its heading, because
-  //    the failure this guards against is not a deleted paragraph: e4a14da kept a
-  //    paragraph in this exact position and reversed its meaning. A reader who is told
-  //    the effort is a choice, in the same breath as being told the role line fixes it,
-  //    will believe the second sentence.
-  const poteto = join(ASSETS_ROOT, "skills/poteto-mode/SKILL.md");
-  if (existsSync(poteto)) {
-    const text = readFileSync(poteto, "utf8");
-    for (const required of [
-      "**The effort is yours to choose.**",
-      "`reasoningEffort`",
-      "`set_reasoning_effort`",
-      STARTING_LEVEL,
-      // `STARTING_LEVEL` alone is not enough: a paragraph can keep the phrase and still
-      // say the role line is where the level stays, which is the inversion this check
-      // exists for. This fragment is the half that states the level does not hold.
-      "it names where the role starts and not where it stays",
-      // The step instruction, and the fact that makes it portable. An earlier revision
-      // kept `reasoningEffort` and `STARTING_LEVEL` but said the package "assumes no
-      // universal ladder", which reads as "the size of a step is unknowable" and drops
-      // upstream's "raise it one step ... lower it one step". DSH's own contract orders
-      // `reasoning.efforts` from least to greatest, so a step is relative to the model's
-      // list and needs no token vocabulary. Both halves are asserted: the instruction,
-      // and the ordering claim that justifies it.
-      "Raise it one step",
-      "adjacent entry in the model's own effort list",
-    ]) {
-      if (!text.includes(required)) {
-        problems.push(
-          `assets/skills/poteto-mode/SKILL.md: must document the per-delegation effort control (${required} is missing)`,
-        );
-      }
-    }
-  }
-
-  // 3. The generated role-file example has to carry the same claim. `checkRoleAssets`
-  //    already pins the file byte-for-byte against `renderPstackModelsExample`, so the
-  //    assertion is made against the renderer's output: that is the copy a future edit
-  //    would change, and pinning it here keeps the two documents on one sentence.
-  //
-  //    The comparison collapses whitespace, because the example is wrapped prose inside
-  //    `#` comments and the sentence legitimately straddles a line break. Asserting the
-  //    raw substring would make a rewrap look like a semantic regression.
-  const example = renderPstackModelsExample().replace(/\s+/g, " ");
-  if (!example.includes(STARTING_LEVEL)) {
-    problems.push(
-      `scripts/role-manifest.ts: renderPstackModelsExample no longer states ${JSON.stringify(STARTING_LEVEL)}, so the role-file example describes a fixed effort instead of a starting one`,
-    );
-  }
-
-  // 3. No shipped skill may tell a model that effort is fixed. Two families of wording:
-  //    the literal phrases the regression introduced, and the general "the role line
-  //    decides, so leave it alone" reading that the same regression produced.
-  //
-  //    The second family is the dangerous one. `e4a14da` never wrote "effort is
-  //    forbidden"; it wrote that the effort "belongs to that role file" and that a wrong
-  //    value should be reported to the operator. Every one of those sentences is
-  //    individually defensible about routing and only wrong about effort, which is why
-  //    nothing caught them.
-  const forbidden = [
-    "Never invent a model id or an effort",
-    "let the operator change that line",
-    "an effort can only come from the role file",
-    "the effort inside it belongs to that role file",
-    "change nothing about the route the tool reports",
-  ];
-  for (const relativePath of carriers) {
-    const path = join(ASSETS_ROOT, relativePath);
-    if (!existsSync(path)) continue;
-    const text = readFileSync(path, "utf8");
-    for (const phrase of forbidden) {
-      if (text.includes(phrase)) {
-        problems.push(
-          `assets/${relativePath}: still says ${JSON.stringify(phrase)}, which contradicts the reasoningEffort parameter this package ships`,
-        );
-      }
-    }
-  }
-
-  return problems;
 }
 
 /**
@@ -1616,30 +1242,13 @@ function checkRoleAssets(problems: string[]): void {
   }
   const skill = readFileSync(skillPath, "utf8");
 
-  if (!skill.includes("../../docs/pstack-models.example.md")) {
-    problems.push(
-      "assets/skills/setup-pstack/SKILL.md: must point at ../../docs/pstack-models.example.md for the role list",
-    );
-  }
-  if (!skill.includes("$DSH_HOME/pstack-models.md")) {
-    problems.push("assets/skills/setup-pstack/SKILL.md: must name $DSH_HOME/pstack-models.md");
-  }
-  if (!skill.includes("list_subagent_models")) {
-    problems.push(
-      "assets/skills/setup-pstack/SKILL.md: must discover routes through list_subagent_models",
-    );
-  }
-  if (skill.includes("disable-model-invocation")) {
+  // `setup-pstack` is the one bundled skill the model may invoke, because its whole job
+  // is to be routable. Its wording stays upstream's; the adapter document carries the
+  // host translation, so nothing here asserts what the body says about paths or routes.
+  if (skill.includes("disable-model-invocation: true")) {
     problems.push(
       "assets/skills/setup-pstack/SKILL.md: must stay model-invocable; it is the only bundled skill the model may call",
     );
-  }
-  for (const role of ROLE_MANIFEST) {
-    if (skill.includes(`${role.key}:`)) {
-      problems.push(
-        `assets/skills/setup-pstack/SKILL.md: must not restate the role manifest (found "${role.key}:")`,
-      );
-    }
   }
 }
 
@@ -1664,7 +1273,7 @@ function checkBundledSkills(problems: string[]): number {
     return 0;
   }
 
-  const excluded = new Set(EXCLUDED_SKILLS.map((exclusion) => exclusion.skill));
+  const excluded = new Set(EXCLUDED_SKILLS);
   const expected = new Set(
     skillDirectories().filter((skill) => !excluded.has(skill)),
   );
@@ -2024,14 +1633,6 @@ function checkLicense(problems: string[]): void {
   if (!/\bMIT\b/.test(text)) problems.push("LICENSE: missing the MIT license");
 }
 
-function checkIntroScope(problems: string[]): void {
-  const existing = new Set(skillDirectories());
-  for (const [skill, reason] of Object.entries(INTRO_SKILLS)) {
-    if (!existing.has(skill)) problems.push(`INTRO_SKILLS: unknown skill "${skill}"`);
-    if (reason.trim() === "") problems.push(`INTRO_SKILLS: "${skill}" needs a reason`);
-  }
-}
-
 /**
  * One Cursor concept that a port has to dispose of somehow.
  *
@@ -2039,130 +1640,6 @@ function checkIntroScope(problems: string[]): void {
  * no unit rewrote: it says what the port decided to do about it, so the fix is
  * "apply this disposition", not "invent a policy at review time".
  */
-export interface KnownConcept {
-  readonly label: string;
-  readonly pattern: RegExp;
-  readonly disposition: string;
-}
-
-/**
- * Cursor concepts the upstream skills actually use, and how this port handles each.
- *
- * The list is deliberately wider than `HOST_TERMS` in `build-assets.ts`. That list
- * answers "does this skill need a DSH pointer" and is a build input; this one answers
- * "does an unreviewed file use a concept we have a policy for", which has to include
- * the concepts that are already handled elsewhere so a *new* use is visible.
- */
-const KNOWN_CONCEPTS: readonly KnownConcept[] = [
-  {
-    label: "`create-skill`",
-    pattern: /`create-skill`/,
-    disposition: "authoring goes through the ported create-verification-skill playbooks",
-  },
-  {
-    label: "Agents Window",
-    pattern: /Agents Window/,
-    disposition: "excluded: this host has no window surface",
-  },
-  {
-    label: "agent store",
-    pattern: /agent store/i,
-    disposition: "replaced: the operator names a path, or the repository does",
-  },
-  {
-    label: "`/visualize`",
-    pattern: /`\/visualize`/,
-    disposition: "degraded: Mermaid, or an existing artifact",
-  },
-  {
-    label: "control-ui",
-    pattern: /control-ui/,
-    disposition: "excluded: no control surface ships",
-  },
-  {
-    label: "Rules for this workspace",
-    pattern: /Rules for this workspace/,
-    disposition: "replaced: the skill text itself states the rule",
-  },
-  {
-    label: "Custom Mode",
-    pattern: /Custom Mode/,
-    disposition: "excluded: no mode survives, and the capability table says so",
-  },
-  {
-    label: "SendToUser",
-    pattern: /SendToUser/,
-    disposition: "excluded: the turn reply is the only channel",
-  },
-  {
-    label: "update_state",
-    pattern: /update_state/,
-    disposition: "excluded: no such tool exists here",
-  },
-  {
-    label: "cursor-team-kit",
-    pattern: /cursor-team-kit/,
-    disposition: "excluded: the plugin has no counterpart here",
-  },
-  {
-    label: "Task tool",
-    pattern: /`Task`|\bTask (tool|subagent|call)/,
-    disposition: "replaced by `pstack_subagent`",
-  },
-  {
-    label: "`/loop`",
-    pattern: /`\/loop`/,
-    disposition: "replaced by a goal, a reminder, and a background watcher",
-  },
-];
-
-/**
- * Fail when an upstream file uses a known concept but no unit rewrote it.
- *
- * `checkRewrittenTexts` only reads the files a unit patched, so a concept appearing
- * in an *unpatched* file is copied into the tree verbatim and no gate fails. Measured
- * before this check: adding `skills/zz-new-flow/SKILL.md` with `create-skill`,
- * `Agents Window`, `/visualize`, `control-ui`, and "agent store" made `pnpm run build:assets`
- * exit 0 and the file shipped as-is; the only complaint was the skill count, which a
- * change that also removed a skill would silence.
- *
- * Neither side is a hand-written list: the concepts come from `KNOWN_CONCEPTS` and
- * the files come from the upstream tree, so this closes over new upstream content.
- * A file is covered when some unit patched it (and therefore audits it) or when the
- * skill is excluded outright.
- */
-export function checkConceptCoverage(): readonly string[] {
-  const problems: string[] = [];
-  const audited = new Set(
-    [
-      ...UNIT4_PATCHED_FILES,
-      ...UNIT5_PATCHED_FILES,
-      ...UNIT6_PATCHED_FILES,
-      ...UNIT7_PATCHED_FILES,
-      ...UNIT8_PATCHED_FILES,
-    ],
-  );
-  const excluded = new Set(EXCLUDED_SKILLS.map((exclusion) => exclusion.skill));
-
-  const root = join(UPSTREAM_ROOT, "pstack");
-  for (const absolute of walkFiles(join(root, "skills"))) {
-    if (!absolute.endsWith(".md")) continue;
-    const relativePath = relative(root, absolute).split(sep).join("/");
-    const skill = relativePath.split("/")[1] ?? "";
-    if (excluded.has(skill)) continue;
-    if (audited.has(relativePath)) continue;
-    const text = readFileSync(absolute, "utf8");
-    for (const concept of KNOWN_CONCEPTS) {
-      if (!concept.pattern.test(text)) continue;
-      problems.push(
-        `upstream/${relativePath}: uses ${concept.label} but no unit rewrote it, so nothing ` +
-          `applies the disposition (${concept.disposition}); patch it in scripts/patches.ts`,
-      );
-    }
-  }
-  return problems;
-}
-
 function reportSetDifference(
   problems: string[],
   label: string,
@@ -2192,7 +1669,7 @@ function toRepositoryPath(absolutePath: string): string {
 }
 
 function emptyCategories(): Record<SkillCategory, number> {
-  return { copy: 0, "intro-only": 0, patched: 0 };
+  return { copy: 0, pointer: 0, stripped: 0 };
 }
 
 function emptyReport(problems: readonly string[]): AssetsReport {
@@ -2209,7 +1686,6 @@ function emptyReport(problems: readonly string[]): AssetsReport {
     linksSkipped: 0,
     categories: emptyCategories(),
     placeholders: [],
-    capabilityTokens: [],
     problems,
   };
 }
@@ -2356,7 +1832,9 @@ function checkSkillsExt(): readonly string[] {
     return problems;
   }
 
-  const pstackNames = new Set(skillDirectories().filter((skill) => !EXCLUDED_SKILLS.some((exclusion) => exclusion.skill === skill)));
+  const pstackNames = new Set(
+    skillDirectories().filter((skill) => !EXCLUDED_SKILLS.includes(skill)),
+  );
   for (const skill of index.values()) {
     if (!declared.has(skill.name)) {
       problems.push(

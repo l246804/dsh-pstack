@@ -1,6 +1,7 @@
 # 决定：从原始 pstack 生成 DSH 专用资产并显式降级宿主能力
 
-Status: accepted
+Status: superseded
+Superseded-by: [2026-10-27-upstream-text-plus-adapter.md](2026-10-27-upstream-text-plus-adapter.md) — 第一段“适配采用有精确锚点和期望命中次数的文件级 patch”被取代；四层结构与运行时映射的其余部分仍成立。
 Date: 2026-10-24
 
 > 本文提到的 `docs/pstack-dsh-port-development-design.md` 已随 [V2 后收敛决策](2026-10-26-slimming-after-v2.md)删除。本记录的决定本身已经落地在 `scripts/build-assets.ts`、`scripts/patches.ts` 与 `assets/`，不再依赖那份文档。

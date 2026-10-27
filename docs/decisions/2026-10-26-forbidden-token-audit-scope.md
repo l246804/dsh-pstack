@@ -1,6 +1,7 @@
 # 决定：禁词审计按"被 patch 过的文件"闭合，不按"Cursor 词汇"闭合
 
-Status: accepted
+Status: superseded
+Superseded-by: [2026-10-27-upstream-text-plus-adapter.md](2026-10-27-upstream-text-plus-adapter.md) — 整条被取代：checkRewrittenTexts 与 UNIT 分组已删除，没有“被 patch 过的文件”这个集合。
 Date: 2026-10-26
 
 ## 背景

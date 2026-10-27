@@ -1,6 +1,7 @@
 # 决定：把与上游的差异整理成一份受检查的清单
 
-Status: accepted
+Status: superseded
+Superseded-by: [2026-10-27-upstream-text-plus-adapter.md](2026-10-27-upstream-text-plus-adapter.md) — 整条被取代：清单、生成能力表与差异检查已删除，差异改由 docs/harness/dsh.md 一处记录，覆盖度从随包正文反推。
 Date: 2026-10-26
 
 ## 背景

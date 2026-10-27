@@ -2,7 +2,7 @@ import { statSync } from "node:fs";
 import { join, posix } from "node:path";
 
 import { PATCH_SCOPES } from "./patches.ts";
-import type { FilePatch, SkillExclusion } from "./patches.ts";
+import type { FilePatch } from "./patches.ts";
 
 export class PatchError extends Error {
   constructor(message: string) {
@@ -24,21 +24,14 @@ interface AnchorMatch {
 
 export function validatePatchTargets(
   patches: readonly FilePatch[],
-  exclusions: readonly SkillExclusion[],
   upstreamRoot: string,
 ): void {
-  const excluded = new Set(exclusions.map((exclusion) => exclusion.skill));
-
   for (const patch of patches) {
     if (patch.file !== posix.normalize(patch.file) || patch.file.includes("\\")) {
       throw new PatchError(`${patch.file}: patch target must be a normalized POSIX path`);
     }
     if (!PATCH_SCOPES.some((prefix) => patch.file.startsWith(prefix))) {
       throw new PatchError(`${patch.file}: patch target is outside ${PATCH_SCOPES.join(", ")}`);
-    }
-    const skill = patch.file.startsWith("skills/") ? patch.file.split("/")[1] : undefined;
-    if (skill !== undefined && excluded.has(skill)) {
-      throw new PatchError(`${patch.file}: patch targets an excluded skill`);
     }
     if (!isRegularFile(join(upstreamRoot, patch.file))) {
       throw new PatchError(`${patch.file}: upstream target is not a regular file`);
@@ -154,17 +147,10 @@ export function assertPatchOutputIsEvidence(
 /**
  * Assert that every deletion a patch promises really happened.
  *
- * Two shapes mean "this text is gone", and both are needed:
- *
- * - a `drop` patch, whose whole purpose is removal — the span it matched must be
- *   absent from the output;
- * - a `replace` patch that carries `removedIncludes`, for the case where the
- *   replacement keeps some of the anchor. Such a patch cannot be proven by
- *   `outputIncludes` at all, because every surviving word is already in the source.
- *
- * The check the review found missing: a `drop` whose replacement was changed to equal
- * its anchor left the section in the tree while `sync --check` and `check:assets`
- * both passed, because the only assertion was "this text still appears somewhere".
+ * A `drop` patch is the only shape, now that the prose patches are gone. The check the
+ * review found missing still stands: a drop whose replacement was changed to equal its
+ * anchor left the section in the tree while every gate passed, because the only
+ * assertion was "this text still appears somewhere".
  */
 export function assertDropLanded(
   file: string,
@@ -186,21 +172,6 @@ export function assertDropLanded(
         );
       }
       continue;
-    }
-
-    for (const fragment of match.patch.removedIncludes ?? []) {
-      if (!source.includes(fragment)) {
-        throw new PatchError(
-          `${file}: removedIncludes ${JSON.stringify(fragment)} is not in the upstream source, ` +
-            `so this patch cannot be the thing that removed it`,
-        );
-      }
-      if (output.includes(fragment)) {
-        throw new PatchError(
-          `${file}: the patch promised to remove ${JSON.stringify(fragment)}, and the output ` +
-            `still contains it`,
-        );
-      }
     }
   }
 }
