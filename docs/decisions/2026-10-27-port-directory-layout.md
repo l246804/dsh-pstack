@@ -63,7 +63,5 @@ skills/
 ## 附：验证
 
 - `node scripts/sync-upstream.ts --check` 从 `pstack/` 逐字节重建成功：55 个技能、2 个 agent、11 页 guide、142 个文件。
-- `.audit/verify-p1-move.sh` 对 HEAD 逐个比对内容哈希：142 个移植文件与 5 个技能文件全部字节相同，唯一允许的差异是适配层那两处路径字符串。
-- `.audit/probe-paths.mjs` 证明 7 个路径常量与 3 个技能根全部解析到真实位置。
-- `.audit/probe-load.mjs` 加载构建后的 `dist/index.mjs`，三个根合并出 59 个技能，无重名。
-- `pnpm run check` 的六段全绿，417 个用例通过。
+- 一次性脚本对 HEAD 逐个比对内容哈希：142 个移植文件与 5 个技能文件全部字节相同，唯一允许的差异是适配层那两处路径字符串。脚本在 `.audit/` 下，属于临时证据，不进仓库。
+- 干净 clone 中 `pnpm run check` 的六段全绿，417 个用例通过。
