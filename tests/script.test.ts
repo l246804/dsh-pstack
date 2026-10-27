@@ -144,7 +144,7 @@ describe("shipped artifact resolution", () => {
   it("resolves every id to an existing file inside assets/", () => {
     for (const id of SCRIPT_IDS) {
       const path = scriptPath(id);
-      expect(path.startsWith(join(ROOT, "assets")), path).toBe(true);
+      expect(path.startsWith(join(ROOT, "pstack")), path).toBe(true);
       expect(path.endsWith(".mjs"), path).toBe(true);
       expect(readFileSync(path, "utf8").startsWith("#!/usr/bin/env node\n"), path).toBe(true);
     }

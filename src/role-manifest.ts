@@ -33,7 +33,7 @@ export interface RoleSpec {
 /** File name the role policy lives under inside `$DSH_HOME`. */
 export const PSTACK_MODELS_FILENAME = "pstack-models.md";
 
-/** Asset path, relative to `assets/`, of the generated shape reference. */
+/** Asset path, relative to `pstack/`, of the generated shape reference. */
 export const PSTACK_MODELS_EXAMPLE_PATH = "docs/pstack-models.example.md";
 
 /** Values that resolve to "send no `agentOptions` and inherit the parent route". */

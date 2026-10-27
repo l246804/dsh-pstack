@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "pstack skills",
-    "description": "Ships the 55 pstack workflow skills inside this package: the model can load setup-pstack, and the other skills are invoked explicitly with /name."
+    "description": "Ships the pstack workflow skills inside this package: the model can load setup-pstack, and the other skills are invoked explicitly with /name."
   }
 }

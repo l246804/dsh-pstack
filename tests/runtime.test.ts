@@ -10,7 +10,7 @@ import {
   RUNTIME_TESTS,
   SHEBANG,
   isReplacedUpstreamScript,
-} from "../scripts/runtime-manifest.ts";
+} from "../src/runtime-manifest.ts";
 import { HEADER as AUDIT_HEADER } from "../scripts/runtime/worktree-audit.ts";
 
 /**
@@ -22,7 +22,7 @@ import { HEADER as AUDIT_HEADER } from "../scripts/runtime/worktree-audit.ts";
  */
 const artifacts = RUNTIME_ENTRIES.map((entry) => ({
   entry,
-  path: join(ROOT, "runtime", ...entry.out.split("/")),
+  path: join(ROOT, ".build", "runtime", ...entry.out.split("/")),
 }));
 
 function text(path: string): string {
@@ -89,7 +89,7 @@ describe("shipped script artifacts", () => {
   it("inlines commander instead of importing it", () => {
     // The watcher is the one CLI that needs it, so this is the file that proves the
     // alias worked rather than leaving a bare specifier behind.
-    const watcher = text(join(ROOT, "runtime", "watch-pr", "watch-pr.mjs"));
+    const watcher = text(join(ROOT, ".build", "runtime", "watch-pr", "watch-pr.mjs"));
     expect(watcher).toContain("commander");
     expect(watcher).not.toMatch(/from\s*["']commander["']/);
   });
@@ -111,7 +111,7 @@ describe("shipped script artifacts", () => {
 
 describe("the worktree audit keeps its documented columns", () => {
   it("advertises the shipped file name in its usage text", () => {
-    const body = text(join(ROOT, "runtime", "worktree-audit.mjs"));
+    const body = text(join(ROOT, ".build", "runtime", "worktree-audit.mjs"));
     // The usage line names the file that actually ships. A doc comment may still say
     // which upstream script this replaced, so the assertion targets the usage string.
     expect(body).toContain("Usage: worktree-audit.mjs");
@@ -126,7 +126,7 @@ describe("the worktree audit keeps its documented columns", () => {
   });
 
   it("never reads the session store", () => {
-    const body = text(join(ROOT, "runtime", "worktree-audit.mjs"));
+    const body = text(join(ROOT, ".build", "runtime", "worktree-audit.mjs"));
     // No DSH session storage path, no transcript scan; the only usage input is the
     // caller's `--sessions` file.
     expect(body).not.toContain("agent-transcripts");
@@ -136,7 +136,7 @@ describe("the worktree audit keeps its documented columns", () => {
   });
 
   it("keeps the unknown-usage and pinned guarantees", () => {
-    const body = text(join(ROOT, "runtime", "worktree-audit.mjs"));
+    const body = text(join(ROOT, ".build", "runtime", "worktree-audit.mjs"));
     expect(body).toContain("unknown-usage");
     expect(body).toContain("verify-recent-chat");
     expect(body).toContain("hold-wip");

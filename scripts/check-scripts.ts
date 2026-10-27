@@ -27,10 +27,10 @@ import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ROOT } from "./build-assets.ts";
-import { RUNTIME_CLIS, RUNTIME_TESTS } from "./runtime-manifest.ts";
+import { RUNTIME_CLIS, RUNTIME_TESTS } from "../src/runtime-manifest.ts";
 
 /** The one asset tree copied for the check. */
-export const SOURCE_RELATIVE = "assets/skills";
+export const SOURCE_RELATIVE = "pstack/skills";
 
 /** How many shipped test files must run. */
 export const EXPECTED_TEST_FILES = RUNTIME_TESTS.length;

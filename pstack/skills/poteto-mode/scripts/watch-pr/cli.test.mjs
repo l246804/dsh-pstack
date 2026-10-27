@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 import { createRequire } from "node:module";
-import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
-import { access, mkdir, open, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
-import { basename, dirname, join, resolve } from "node:path";
+import { describe, it } from "node:test";
+import { spawn } from "node:child_process";
+import { inspect } from "node:util";
+import { setTimeout } from "node:timers/promises";
 //#region \0rolldown/runtime.js
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -11,24 +11,7 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __esmMin = (fn, res, err) => () => {
-	if (err) throw err[0];
-	try {
-		return fn && (res = fn(fn = 0)), res;
-	} catch (e) {
-		throw err = [e], e;
-	}
-};
 var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod, mod.exports), cb = null), mod.exports);
-var __exportAll = (all, no_symbols) => {
-	let target = {};
-	for (var name in all) __defProp(target, name, {
-		get: all[name],
-		enumerable: true
-	});
-	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
-	return target;
-};
 var __copyProps = (to, from, except, desc) => {
 	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
 		key = keys[i];
@@ -45,1007 +28,252 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 }) : target, mod));
 var __require = /* #__PURE__ */ (() => createRequire(import.meta.url))();
 //#endregion
-//#region .runtime-sources/skills/poteto-mode/scripts/orch/store.ts
-const UNIT_HEADER = "id	track	state	branch	pr	sha	brief";
-const LEDGER_HEADER = "pr	sha	verdict	evidence	verifier	ts";
-const LOCK_FILE = ".orch.lock";
-var UserError = class extends Error {};
-var UsageError = class extends UserError {};
-var NotFoundError = class extends UserError {
-	output;
-	constructor(message, output) {
+//#region .runtime-sources/skills/poteto-mode/scripts/expect.ts
+/**
+* A small `expect` for `node:test`.
+*
+* The five upstream test files were written against `bun:test`. Their assertions
+* are ordinary value comparisons, so this module supplies exactly the matchers
+* they use rather than a general test framework. It is deliberately not a drop-in
+* replacement: a matcher that is not listed here fails to compile, which keeps the
+* port auditable against the calls that actually exist.
+*
+* Covered: `toBe`, `toEqual`, `toContain`, `toMatch`, `toThrow`, `toBeNull`,
+* `toBeInstanceOf`, `toHaveLength`, `toEndWith`, `toMatchObject`, `.not` on each,
+* and `rejects` / `resolves` for promises.
+*
+* Two differences from `bun:test`, stated so a failure is not misread:
+*
+* - `toEqual` is structural for arrays and plain objects, `Object.is` otherwise.
+*   A class instance only equals itself; `toBeInstanceOf` is the matcher for type
+*   identity. The ported tests compare plain data, which is why this is enough.
+* - A failure throws `AssertionError` with the two values rendered, not Bun's
+*   coloured diff.
+*/
+/** Raised by every failing assertion. */
+var AssertionError = class extends Error {
+	constructor(message) {
 		super(message);
-		this.output = output;
+		this.name = "AssertionError";
 	}
 };
-function errorCode(error) {
-	if (error !== null && typeof error === "object" && "code" in error && typeof error.code === "string") return error.code;
-	return null;
-}
-function errorMessage(error) {
-	return error instanceof Error ? error.message : String(error);
-}
-function isRecord(value) {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-function isUnknownArray(value) {
-	return Array.isArray(value);
-}
-function verdictOrNull(value) {
-	switch (value) {
-		case "live-ui-verified":
-		case "unit-test-verified":
-		case "type-check-only":
-		case "verifier-blocked":
-		case "verifier-failed": return value;
-		default: return null;
-	}
-}
-function frontierPrStateOrNull(value) {
-	switch (value) {
-		case "OPEN":
-		case "MERGED":
-		case "CLOSED": return value;
-		default: return null;
-	}
-}
-function parseVerdict(value) {
-	const verdict = verdictOrNull(value);
-	if (verdict === null) throw new UserError("verdict must be live-ui-verified, unit-test-verified, type-check-only, verifier-blocked, or verifier-failed");
-	return verdict;
-}
-function cleanCell(value) {
-	const cleaned = value.replace(/[\t\n\r]/g, " ");
-	return /^[=+\-@]/.test(cleaned) ? `'${cleaned}` : cleaned;
-}
-function requiredCell(value, label) {
-	const cleaned = cleanCell(value);
-	if (cleaned.trim().length === 0) throw new UserError(`${label} must not be empty`);
-	return cleaned;
-}
-function requiredLine(value, label) {
-	const cleaned = value.replace(/[\n\r]/g, " ").trim();
-	if (cleaned.length === 0) throw new UserError(`${label} must not be empty`);
-	return cleaned;
-}
-function positiveInteger$1(value, label) {
-	if (!Number.isSafeInteger(value) || value < 1) throw new UserError(`${label} must be a positive integer`);
-	return value;
-}
-async function exists(path) {
-	try {
-		await access(path);
-		return true;
-	} catch (error) {
-		if (errorCode(error) === "ENOENT") return false;
-		throw error;
-	}
-}
-async function atomicWrite(path, contents) {
-	const temporary = join(dirname(path), `.${basename(path)}.${process.pid}.${randomUUID()}.tmp`);
-	try {
-		await writeFile(temporary, contents, { flag: "wx" });
-		await rename(temporary, path);
-	} finally {
-		await rm(temporary, { force: true });
-	}
-}
-async function writeIfMissing(path, contents) {
-	if (!await exists(path)) await atomicWrite(path, contents);
-}
-async function requiredFile(path) {
-	try {
-		return await readFile(path, "utf8");
-	} catch (error) {
-		if (errorCode(error) === "ENOENT") throw new UserError(`store is not initialized at ${dirname(path)}; run orch init`);
-		throw error;
-	}
-}
-function holderIsDead(holder) {
-	const pid = Number.parseInt(holder, 10);
-	if (!Number.isSafeInteger(pid) || pid <= 0 || String(pid) !== holder) return false;
-	try {
-		process.kill(pid, 0);
-		return false;
-	} catch (error) {
-		return errorCode(error) === "ESRCH";
-	}
-}
-async function acquireLock(store, options) {
-	const path = join(store, LOCK_FILE);
-	const pid = String(process.pid);
-	const create = async () => {
-		const handle = await open(path, "wx");
-		await handle.writeFile(`${pid}\n`);
-		await handle.close();
-	};
-	const takeOver = async () => {
-		await unlink(path);
-		try {
-			await create();
-		} catch (retryError) {
-			if (errorCode(retryError) === "EEXIST") throw new UserError(`store lock held by pid ${(await readFile(path, "utf8")).trim() || "unknown"}`);
-			throw retryError;
-		}
-	};
-	try {
-		await create();
-	} catch (error) {
-		if (errorCode(error) !== "EEXIST") throw error;
-		let holder = "unknown";
-		try {
-			holder = (await readFile(path, "utf8")).trim() || "unknown";
-		} catch {
-			holder = "unknown";
-		}
-		if (holderIsDead(holder)) {
-			options.onStaleLock?.(holder);
-			await takeOver();
-		} else if (options.force) {
-			options.onLockStolen?.(holder);
-			await takeOver();
-		} else throw new UserError(`store lock held by pid ${holder}`);
-	}
-	return async () => {
-		try {
-			if ((await readFile(path, "utf8")).trim() === pid) await unlink(path);
-		} catch (error) {
-			if (errorCode(error) !== "ENOENT") throw error;
-		}
-	};
-}
-async function readTsv(path, header, width) {
-	const lines = (await requiredFile(path)).replace(/\r/g, "").split("\n");
-	if (lines.shift() !== header) throw new UserError(`${basename(path)} has an invalid header`);
-	return lines.filter((value) => value.length > 0).map((value) => {
-		const cells = value.split("	");
-		if (cells.length !== width) throw new UserError(`${basename(path)} has a malformed row`);
-		return cells;
+function display(value) {
+	if (typeof value === "function") return `[Function ${value.name || "anonymous"}]`;
+	return inspect(value, {
+		depth: 3,
+		breakLength: 120,
+		maxArrayLength: 20
 	});
 }
-async function writeTsv(path, header, rows) {
-	const body = rows.map((row) => row.map(cleanCell).join("	")).join("\n");
-	await atomicWrite(path, `${header}\n${body}${body.length > 0 ? "\n" : ""}`);
+function messageOf(error) {
+	if (error instanceof Error) return `${error.name}: ${error.message}`;
+	return String(error);
 }
-async function readUnits(store) {
-	return (await readTsv(join(store, "units.tsv"), UNIT_HEADER, 7)).map((row) => ({
-		id: row[0] ?? "",
-		track: row[1] ?? "",
-		state: row[2] ?? "",
-		branch: row[3] ?? "",
-		pr: row[4] ?? "",
-		sha: row[5] ?? "",
-		brief: row[6] ?? ""
-	}));
+/** Structural equality for the shapes the ported tests compare. */
+function deepEqual(left, right) {
+	if (Object.is(left, right)) return true;
+	if (left instanceof Date || right instanceof Date) return left instanceof Date && right instanceof Date && left.getTime() === right.getTime();
+	if (Array.isArray(left) || Array.isArray(right)) {
+		if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+		return left.every((item, index) => deepEqual(item, right[index]));
+	}
+	if (left === null || right === null || typeof left !== "object" || typeof right !== "object") return false;
+	const leftProto = Object.getPrototypeOf(left);
+	if (leftProto !== Object.getPrototypeOf(right)) return false;
+	if (leftProto !== Object.prototype && leftProto !== null) return false;
+	const leftKeys = Object.keys(left);
+	const rightKeys = Object.keys(right);
+	if (leftKeys.length !== rightKeys.length) return false;
+	return leftKeys.every((key) => deepEqual(left[key], right[key]));
 }
-function unitCells(unit) {
-	return [
-		unit.id,
-		unit.track,
-		unit.state,
-		unit.branch,
-		unit.pr,
-		unit.sha,
-		unit.brief
-	];
+function contains(haystack, needle) {
+	if (typeof haystack === "string") return haystack.includes(String(needle));
+	if (Array.isArray(haystack)) return haystack.some((item) => deepEqual(item, needle));
+	if (haystack instanceof Set) return [...haystack].some((item) => deepEqual(item, needle));
+	return false;
 }
-async function saveUnits(store, rows) {
-	await writeTsv(join(store, "units.tsv"), UNIT_HEADER, rows.map(unitCells));
+/**
+* Whether `expected` is a partial description of `actual`.
+*
+* `bun:test`'s `toMatchObject` is recursive: every key in `expected` must exist and
+* match, arrays match element by element with the same partial rule, and extra keys
+* in `actual` are allowed. That is what lets an assertion name only the fields it
+* cares about, which several ported cases rely on.
+*/
+function matchesObject(actual, expected) {
+	if (Array.isArray(expected)) {
+		if (!Array.isArray(actual) || actual.length !== expected.length) return false;
+		return expected.every((item, index) => matchesObject(actual[index], item));
+	}
+	if (expected instanceof Date) return deepEqual(actual, expected);
+	if (expected === null || typeof expected !== "object") return deepEqual(actual, expected);
+	if (actual === null || typeof actual !== "object") return false;
+	return Object.entries(expected).every(([key, value]) => matchesObject(actual[key], value));
 }
-async function readLedger(store) {
-	return (await readTsv(join(store, "ledger.tsv"), LEDGER_HEADER, 6)).map((row) => {
-		const rawVerdict = row[2] ?? "";
-		const verdict = verdictOrNull(rawVerdict);
-		if (verdict === null) throw new UserError(`ledger.tsv has invalid verdict ${rawVerdict}`);
+function thrownBy(call) {
+	try {
+		call();
+		return { thrown: false };
+	} catch (error) {
 		return {
-			pr: row[0] ?? "",
-			sha: row[1] ?? "",
-			verdict,
-			evidence: row[3] ?? "",
-			verifier: row[4] ?? "",
-			ts: row[5] ?? ""
+			thrown: true,
+			error
 		};
-	});
-}
-function ledgerCells(row) {
-	return [
-		row.pr,
-		row.sha,
-		row.verdict,
-		row.evidence,
-		row.verifier,
-		row.ts
-	];
-}
-async function saveLedger(store, rows) {
-	await writeTsv(join(store, "ledger.tsv"), LEDGER_HEADER, rows.map(ledgerCells));
-}
-function pointerCells(pointer) {
-	return [
-		pointer.ts,
-		pointer.agent,
-		pointer.unit,
-		pointer.status,
-		pointer.report
-	];
-}
-async function readPointers(directory) {
-	let entries;
-	try {
-		entries = await readdir(directory, { withFileTypes: true });
-	} catch (error) {
-		if (errorCode(error) === "ENOENT") throw new UserError(`store is not initialized at ${dirname(directory)}; run orch init`);
-		throw error;
 	}
-	const result = [];
-	const files = entries.filter((entry) => entry.isFile() && entry.name.endsWith(".tsv")).sort((left, right) => left.name.localeCompare(right.name));
-	for (const entry of files) {
-		const raw = (await readFile(join(directory, entry.name), "utf8")).replace(/\r?\n$/, "");
-		const row = raw.split("	");
-		if (/[\r\n]/.test(raw) || row.length !== 5) throw new UserError(`inbox pointer ${entry.name} is malformed`);
-		result.push({
-			ts: row[0] ?? "",
-			agent: row[1] ?? "",
-			unit: row[2] ?? "",
-			status: row[3] ?? "",
-			report: row[4] ?? ""
-		});
-	}
-	return result;
 }
-function renderGates(rows) {
-	if (rows.length === 0) return "";
-	return `# Gates\n\n${rows.map((gate) => {
-		const answer = gate.kind === "resolved" ? `\n- Answer: ${gate.answer}` : "";
-		return `## ${gate.id}
-
-- Status: ${gate.kind}
-- Question: ${gate.question}
-- Options: ${gate.options}
-- Default: ${gate.defaultAnswer}${answer}`;
-	}).join("\n\n")}\n`;
-}
-async function readGates(store) {
-	const raw = (await requiredFile(join(store, "gates.md"))).replace(/\r/g, "").trim();
-	if (raw.length === 0) return [];
-	if (!raw.startsWith("# Gates\n\n## ")) throw new UserError("gates.md has an invalid heading");
-	const result = [];
-	for (const block of raw.slice(12).split("\n\n## ")) {
-		const lines = block.split("\n").filter((value) => value.length > 0);
-		const id = lines.shift() ?? "";
-		const fields = /* @__PURE__ */ new Map();
-		for (const value of lines) {
-			const match = /^- ([^:]+): (.*)$/.exec(value);
-			if (match === null) throw new UserError(`gates.md has a malformed gate ${id}`);
-			fields.set(match[1] ?? "", match[2] ?? "");
-		}
-		const status = fields.get("Status");
-		const question = fields.get("Question");
-		const options = fields.get("Options");
-		const defaultAnswer = fields.get("Default");
-		if (id.length === 0 || question === void 0 || options === void 0 || defaultAnswer === void 0) throw new UserError(`gates.md has a malformed gate ${id}`);
-		if (status === "open") result.push({
-			kind: "open",
-			id,
-			question,
-			options,
-			defaultAnswer
-		});
-		else if (status === "resolved" && fields.has("Answer")) result.push({
-			kind: "resolved",
-			id,
-			question,
-			options,
-			defaultAnswer,
-			answer: fields.get("Answer") ?? ""
-		});
-		else throw new UserError(`gates.md has invalid status ${status ?? ""}`);
-	}
-	if (new Set(result.map((gate) => gate.id)).size !== result.length) throw new UserError("gates.md has duplicate gate ids");
-	return result;
-}
-function parseFrontier(raw) {
-	let value;
-	try {
-		value = JSON.parse(raw);
-	} catch {
-		throw new UserError("frontier.json is not valid JSON");
-	}
-	if (!isRecord(value)) throw new UserError("frontier.json must contain an object");
-	if (Object.keys(value).length === 0) return {
-		generation: 0,
-		prs: [],
-		lowestUnmerged: null
+function buildMatchers(actual, negate) {
+	/**
+	* Fail when `ok` is not what the matcher asked for.
+	*
+	* `negate` inverts the requirement, so `.not.toContain(x)` passes on a haystack
+	* that does not contain `x` and fails when it does.
+	*/
+	const check = (ok, matcher, expected) => {
+		if (ok === !negate) return;
+		const relation = negate ? `not to ${matcher}` : matcher;
+		throw new AssertionError(`expected ${display(actual)} ${relation} ${display(expected)}`);
 	};
-	if (typeof value.generation !== "number" || !Number.isSafeInteger(value.generation) || value.generation < 0 || !isUnknownArray(value.prs) || !(value.lowestUnmerged === null || typeof value.lowestUnmerged === "number" && Number.isSafeInteger(value.lowestUnmerged))) throw new UserError("frontier.json has an invalid shape");
-	const prs = [];
-	for (const row of value.prs) {
-		const state = isRecord(row) ? frontierPrStateOrNull(row.state) : null;
-		if (!isRecord(row) || typeof row.pr !== "number" || !Number.isSafeInteger(row.pr) || row.pr < 1 || typeof row.branches !== "string" || row.branches.length === 0 || typeof row.sha !== "string" || state === null) throw new UserError("frontier.json has an invalid PR row");
-		prs.push({
-			pr: row.pr,
-			branches: row.branches,
-			sha: row.sha,
-			state
-		});
-	}
-	return {
-		generation: value.generation,
-		prs,
-		lowestUnmerged: value.lowestUnmerged
+	const checkPlain = (ok, matcher) => {
+		if (ok === !negate) return;
+		throw new AssertionError(`expected ${display(actual)} ${negate ? `not to ${matcher}` : matcher}`);
 	};
-}
-async function readFrontier(store) {
-	return parseFrontier(await requiredFile(join(store, "frontier.json")));
-}
-async function readStanding(store) {
-	const raw = (await requiredFile(join(store, "preferences.md"))).replace(/\r/g, "");
-	if (raw.trim().length === 0) return [];
-	const result = [];
-	for (const value of raw.split("\n").filter((item) => item.length > 0)) {
-		const match = /^([1-9]\d*)\. (.+)$/.exec(value);
-		const number = Number(match?.[1] ?? 0);
-		if (match === null || number !== result.length + 1) throw new UserError("preferences.md has malformed numbering");
-		result.push({
-			number,
-			line: match[2] ?? ""
-		});
-	}
-	return result;
-}
-function countValues(values) {
-	const result = {};
-	for (const value of values) result[value] = (result[value] ?? 0) + 1;
-	return Object.fromEntries(Object.entries(result).sort(([left], [right]) => left.localeCompare(right)));
-}
-function summarize(unitRows, ledgerRows, currentFrontier, gateRows) {
-	return {
-		unitStates: countValues(unitRows.map((unit) => unit.state)),
-		ledgerVerdicts: countValues(ledgerRows.map((row) => row.verdict)),
-		frontierGeneration: currentFrontier.generation,
-		openGateIds: gateRows.filter((gate) => gate.kind === "open").map((gate) => gate.id).sort()
-	};
-}
-function countRecord(value) {
-	if (!isRecord(value)) return null;
-	const result = {};
-	for (const [name, count] of Object.entries(value)) {
-		if (typeof count !== "number" || !Number.isSafeInteger(count) || count < 0) return null;
-		result[name] = count;
-	}
-	return result;
-}
-function previousSummary(raw) {
-	const match = /<!-- orch-summary (.+) -->/.exec(raw);
-	if (match === null) return null;
-	let value;
-	try {
-		value = JSON.parse(match[1] ?? "");
-	} catch {
-		return null;
-	}
-	if (!isRecord(value) || typeof value.frontierGeneration !== "number" || !isUnknownArray(value.openGateIds)) return null;
-	const unitStates = countRecord(value.unitStates);
-	const ledgerVerdicts = countRecord(value.ledgerVerdicts);
-	const openGateIds = value.openGateIds.filter((item) => typeof item === "string");
-	if (unitStates === null || ledgerVerdicts === null || openGateIds.length !== value.openGateIds.length) return null;
-	return {
-		unitStates,
-		ledgerVerdicts,
-		frontierGeneration: value.frontierGeneration,
-		openGateIds
-	};
-}
-function changed(before, after) {
-	if (before === null) return "first render";
-	const result = [];
-	const groups = [{
-		label: "units",
-		oldCounts: before.unitStates,
-		newCounts: after.unitStates
-	}, {
-		label: "ledger",
-		oldCounts: before.ledgerVerdicts,
-		newCounts: after.ledgerVerdicts
-	}];
-	for (const { label, oldCounts, newCounts } of groups) {
-		const names = [.../* @__PURE__ */ new Set([...Object.keys(oldCounts), ...Object.keys(newCounts)])].sort();
-		for (const name of names) {
-			const oldCount = oldCounts[name] ?? 0;
-			const newCount = newCounts[name] ?? 0;
-			if (oldCount !== newCount) result.push(`${label} ${name} ${oldCount}->${newCount}`);
-		}
-	}
-	if (before.frontierGeneration !== after.frontierGeneration) result.push(`frontier generation ${before.frontierGeneration}->${after.frontierGeneration}`);
-	if (before.openGateIds.join("\0") !== after.openGateIds.join("\0")) result.push(`open gates ${before.openGateIds.length}->${after.openGateIds.length}`);
-	return result.length === 0 ? "no derived changes" : result.join("; ");
-}
-function markdown(value) {
-	return value.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
-}
-function table(headers, rows) {
-	if (rows.length === 0) return "(none)";
-	return [
-		`| ${headers.join(" | ")} |`,
-		`| ${headers.map(() => "---").join(" | ")} |`,
-		...rows.map((row) => `| ${row.map(markdown).join(" | ")} |`)
-	].join("\n");
-}
-function statusMarkdown(unitRows, ledgerRows, currentFrontier, gateRows, currentSummary) {
-	return `# Orchestrate status
-
-Generated: ${(/* @__PURE__ */ new Date()).toISOString()}
-
-## Units
-
-States: ${countLine$1(currentSummary.unitStates)}
-
-${table([
-		"ID",
-		"Track",
-		"State",
-		"Branch",
-		"PR",
-		"SHA",
-		"Brief"
-	], unitRows.map(unitCells))}
-
-## Verification ledger
-
-Verdicts: ${countLine$1(currentSummary.ledgerVerdicts)}
-
-${table([
-		"PR",
-		"SHA",
-		"Verdict",
-		"Evidence",
-		"Verifier",
-		"Timestamp"
-	], ledgerRows.map(ledgerCells))}
-
-## Frontier
-
-Generation: ${currentFrontier.generation}
-Lowest unmerged: ${currentFrontier.lowestUnmerged ?? "none"}
-
-${table([
-		"Branch",
-		"PR",
-		"SHA",
-		"State"
-	], currentFrontier.prs.map((row) => [
-		row.branches,
-		String(row.pr),
-		row.sha,
-		row.state
-	]))}
-
-## Gates
-
-${table([
-		"ID",
-		"Status",
-		"Question",
-		"Options",
-		"Default",
-		"Answer"
-	], gateRows.map((gate) => [
-		gate.id,
-		gate.kind,
-		gate.question,
-		gate.options,
-		gate.defaultAnswer,
-		gate.kind === "resolved" ? gate.answer : ""
-	]))}
-
-<!-- orch-summary ${JSON.stringify(currentSummary)} -->
-`;
-}
-function countLine$1(value) {
-	const entries = Object.entries(value);
-	return entries.length === 0 ? "none" : entries.map(([name, count]) => `${name}=${count}`).join(", ");
-}
-const FORGE_PULL_REQUEST_QUERIES = {
-	gh: {
-		stateField: "state",
-		headField: "headRefName",
-		baseField: "baseRefName",
-		states: /* @__PURE__ */ new Map([
-			["OPEN", "OPEN"],
-			["MERGED", "MERGED"],
-			["CLOSED", "CLOSED"]
-		])
-	},
-	origin: {
-		stateField: "status",
-		headField: "headRef",
-		baseField: "baseRef",
-		states: /* @__PURE__ */ new Map([
-			["open", "OPEN"],
-			["draft", "OPEN"],
-			["merged", "MERGED"],
-			["closed", "CLOSED"]
-		])
-	}
-};
-function parseForge(value) {
-	if (value === "gh" || value === "origin") return value;
-	throw new UserError("forge must be gh or origin");
-}
-function runTool({ command, args, repo }) {
-	try {
-		return execFileSync(command, args, {
-			cwd: repo,
-			encoding: "utf8",
-			env: process.env,
-			stdio: [
-				"ignore",
-				"pipe",
-				"pipe"
-			]
-		});
-	} catch (error) {
-		throw new UserError(`${command} ${args.join(" ")} failed: ${errorMessage(error)}`);
-	}
-}
-function listPullRequests({ filter, branch, forge, repo }) {
-	const query = FORGE_PULL_REQUEST_QUERIES[forge];
-	const command = `${forge} pr list ${filter} ${branch}`;
-	const raw = runTool({
-		command: forge,
-		args: [
-			"pr",
-			"list",
-			filter,
-			branch,
-			"--state",
-			"all",
-			"--json",
-			[
-				"number",
-				query.stateField,
-				query.headField,
-				query.baseField
-			].join(",")
-		],
-		repo
-	});
-	let value;
-	try {
-		value = JSON.parse(raw);
-	} catch {
-		throw new UserError(`${command} output is not valid JSON`);
-	}
-	if (!isUnknownArray(value)) throw new UserError(`${command} output is not a JSON array`);
-	return value.map((row) => {
-		const status = isRecord(row) ? row[query.stateField] : void 0;
-		const state = typeof status === "string" ? query.states.get(status) ?? null : null;
-		const head = isRecord(row) ? row[query.headField] : void 0;
-		const base = isRecord(row) ? row[query.baseField] : void 0;
-		if (!isRecord(row) || typeof row.number !== "number" || !Number.isSafeInteger(row.number) || row.number < 1 || state === null || typeof head !== "string" || head.length === 0 || typeof base !== "string" || base.length === 0) throw new UserError(`${command} output has an invalid PR row`);
-		return {
-			pr: row.number,
-			state,
-			branch: head,
-			base
-		};
-	});
-}
-function branchPullRequest({ branch, forge, repo }) {
-	const rows = listPullRequests({
-		filter: "--head",
-		branch,
-		forge,
-		repo
-	});
-	const row = rows[0];
-	if (row === void 0) throw new UserError(`branch ${branch} has no pull request; open one with ${forge} pr create, or resolve the frontier from a branch whose chain is fully submitted`);
-	if (rows.length > 1) throw new UserError(`branch ${branch} has multiple pull requests (${rows.map((item) => `#${item.pr}`).join(", ")}); close the stale ones first`);
-	return row;
-}
-function openChildren({ branch, forge, repo }) {
-	return listPullRequests({
-		filter: "--base",
-		branch,
-		forge,
-		repo
-	}).filter((row) => row.state === "OPEN");
-}
-function runGit({ args, repo }) {
-	return runTool({
-		command: "git",
-		args,
-		repo
-	}).trim();
-}
-function branchSha({ branch, repo }) {
-	const sha = runGit({
-		args: ["rev-parse", branch],
-		repo
-	});
-	if (!/^[0-9a-f]{40,64}$/i.test(sha)) throw new UserError(`git rev-parse ${branch} returned an invalid SHA`);
-	return sha;
-}
-function currentBranch(repo) {
-	return runGit({
-		args: [
-			"symbolic-ref",
-			"--short",
-			"HEAD"
-		],
-		repo
-	});
-}
-function trunkBranch(repo) {
-	try {
-		return runGit({
-			args: [
-				"symbolic-ref",
-				"--short",
-				"refs/remotes/origin/HEAD"
-			],
-			repo
-		}).replace(/^origin\//, "");
-	} catch {
-		return "main";
-	}
-}
-function resolveFrontier(repo, forge) {
-	const trunk = trunkBranch(repo);
-	const current = currentBranch(repo);
-	if (current === trunk) return [];
-	const seen = /* @__PURE__ */ new Set([current]);
-	let bottom = branchPullRequest({
-		branch: current,
-		forge,
-		repo
-	});
-	const chain = [bottom];
-	while (bottom.base !== trunk) {
-		if (seen.has(bottom.base)) throw new UserError(`pull request base chain loops at branch ${bottom.base}`);
-		seen.add(bottom.base);
-		bottom = branchPullRequest({
-			branch: bottom.base,
-			forge,
-			repo
-		});
-		chain.unshift(bottom);
-	}
-	let tip = current;
-	for (;;) {
-		const children = openChildren({
-			branch: tip,
-			forge,
-			repo
-		});
-		const child = children[0];
-		if (child === void 0) break;
-		if (children.length > 1) throw new UserError(`stack is not linear: branches ${children.map((row) => row.branch).join(", ")} all target ${tip}`);
-		if (seen.has(child.branch)) throw new UserError(`pull request base chain loops at branch ${child.branch}`);
-		seen.add(child.branch);
-		chain.push(child);
-		tip = child.branch;
-	}
-	if (new Set(chain.map((row) => row.pr)).size !== chain.length) throw new UserError("pull request base chain contains duplicate pull requests");
-	return chain.map((row) => ({
-		pr: row.pr,
-		branches: row.branch,
-		sha: branchSha({
-			branch: row.branch,
-			repo
-		}),
-		state: row.state
-	}));
-}
-function validateFrontierPin({ actual, expected }) {
-	if (actual.length === expected.length && actual.every((pr, index) => pr === expected[index])) return;
-	const actualSet = new Set(actual);
-	const expectedSet = new Set(expected);
-	const missing = expected.filter((pr) => !actualSet.has(pr));
-	const extra = actual.filter((pr) => !expectedSet.has(pr));
-	const drift = [];
-	if (missing.length > 0) drift.push(`missing from resolved chain: ${missing.join(",")}`);
-	if (extra.length > 0) drift.push(`extra in resolved chain: ${extra.join(",")}`);
-	if (missing.length === 0 && extra.length === 0) drift.push(`order differs: expected ${expected.join(",")}; resolved ${actual.join(",")}`);
-	throw new UserError(`frontier pin mismatch: ${drift.join("; ")}`);
-}
-function openStore(directory, options = {}) {
-	const store = resolve(directory);
-	let closed = false;
-	let releaseLock = null;
-	let lockRequest = null;
-	const ensureOpen = () => {
-		if (closed) throw new UserError("store is closed");
-	};
-	const ensureLock = async () => {
-		ensureOpen();
-		if (releaseLock !== null) return;
-		if (lockRequest === null) lockRequest = acquireLock(store, options).then((release) => {
-			releaseLock = release;
-		});
-		try {
-			await lockRequest;
-		} catch (error) {
-			lockRequest = null;
-			throw error;
+	const matchers = {
+		toBe(expected) {
+			check(Object.is(actual, expected), "toBe", expected);
+		},
+		toEqual(expected) {
+			check(deepEqual(actual, expected), "toEqual", expected);
+		},
+		toContain(expected) {
+			check(contains(actual, expected), "toContain", expected);
+		},
+		toMatch(expected) {
+			const text = String(actual);
+			check(typeof expected === "string" ? text.includes(expected) : expected.test(text), "toMatch", expected);
+		},
+		toThrow(expected) {
+			if (typeof actual !== "function") throw new AssertionError(`toThrow needs a function, received ${display(actual)}`);
+			const result = thrownBy(actual);
+			if (!result.thrown) {
+				checkPlain(false, "toThrow");
+				return;
+			}
+			if (expected === void 0) {
+				checkPlain(true, "toThrow");
+				return;
+			}
+			const message = messageOf(result.error);
+			const ok = typeof expected === "string" ? message.includes(expected) : expected instanceof RegExp ? expected.test(message) : result.error instanceof expected;
+			check(ok, "toThrow", expected);
+		},
+		toBeNull() {
+			checkPlain(actual === null, "toBeNull");
+		},
+		toBeInstanceOf(expected) {
+			check(actual instanceof expected, "toBeInstanceOf", expected);
+		},
+		toHaveLength(expected) {
+			const length = actual?.length;
+			check(length === expected, "toHaveLength", expected);
+		},
+		toEndWith(expected) {
+			check(String(actual).endsWith(expected), "toEndWith", expected);
+		},
+		toMatchObject(expected) {
+			check(matchesObject(actual, expected), "toMatchObject", expected);
 		}
 	};
-	const beginWrite = async () => {
-		ensureOpen();
-		if (!await exists(store)) throw new UserError(`store is not initialized at ${store}; run orch init`);
-		await ensureLock();
-	};
-	return {
-		units: {
-			add: async (params) => {
-				await beginWrite();
-				const row = {
-					id: requiredCell(params.id, "unit id"),
-					track: requiredCell(params.track, "track"),
-					state: "pending",
-					branch: "",
-					pr: "",
-					sha: "",
-					brief: params.brief === void 0 ? "" : requiredCell(params.brief, "brief")
-				};
-				const rows = [...await readUnits(store)];
-				if (rows.some((unit) => unit.id === row.id)) throw new UserError(`unit ${row.id} already exists`);
-				rows.push(row);
-				await saveUnits(store, rows);
-				return row;
-			},
-			set: async (params) => {
-				await beginWrite();
-				const id = requiredCell(params.id, "unit id");
-				const state = requiredCell(params.state, "state");
-				const rows = [...await readUnits(store)];
-				const index = rows.findIndex((unit) => unit.id === id);
-				const old = rows[index];
-				if (index < 0 || old === void 0) throw new NotFoundError(`unit ${id} not found`);
-				const row = {
-					...old,
-					state,
-					branch: params.branch === void 0 ? old.branch : requiredCell(params.branch, "branch"),
-					pr: params.pr === void 0 ? old.pr : String(positiveInteger$1(params.pr, "PR")),
-					sha: params.sha === void 0 ? old.sha : requiredCell(params.sha, "SHA")
-				};
-				rows[index] = row;
-				await saveUnits(store, rows);
-				return row;
-			},
-			get: async (id) => {
-				ensureOpen();
-				const cleanId = requiredCell(id, "unit id");
-				const row = (await readUnits(store)).find((unit) => unit.id === cleanId);
-				if (row === void 0) throw new NotFoundError(`unit ${cleanId} not found`);
-				return row;
-			},
-			list: async (params = {}) => {
-				ensureOpen();
-				const state = params.state === void 0 ? void 0 : requiredCell(params.state, "state");
-				const track = params.track === void 0 ? void 0 : requiredCell(params.track, "track");
-				return (await readUnits(store)).filter((unit) => (state === void 0 || unit.state === state) && (track === void 0 || unit.track === track));
-			},
-			counts: async () => {
-				ensureOpen();
-				return countValues((await readUnits(store)).map((unit) => unit.state));
-			}
+	Object.defineProperties(matchers, {
+		not: {
+			get: () => buildMatchers(actual, !negate),
+			enumerable: true
 		},
-		ledger: {
-			record: async (params) => {
-				await beginWrite();
-				const verdict = parseVerdict(params.verdict);
-				const row = {
-					pr: String(positiveInteger$1(params.pr, "PR")),
-					sha: requiredCell(params.sha, "SHA"),
-					verdict,
-					evidence: requiredCell(params.evidence, "evidence"),
-					verifier: params.verifier === void 0 ? "" : requiredCell(params.verifier, "verifier"),
-					ts: (/* @__PURE__ */ new Date()).toISOString()
-				};
-				const rows = [...await readLedger(store)];
-				const index = rows.findIndex((old) => old.pr === row.pr && old.sha === row.sha);
-				if (index < 0) rows.push(row);
-				else rows[index] = row;
-				await saveLedger(store, rows);
-				return row;
-			},
-			check: async (params) => {
-				ensureOpen();
-				const pr = String(positiveInteger$1(params.pr, "PR"));
-				const sha = requiredCell(params.sha, "SHA");
-				const row = (await readLedger(store)).find((value) => value.pr === pr && value.sha === sha);
-				if (row === void 0) throw new NotFoundError("NOT-VERIFIED", {
-					compact: "NOT-VERIFIED",
-					json: {
-						pr,
-						sha,
-						verdict: "NOT-VERIFIED"
-					}
-				});
-				return row;
-			},
-			summary: async () => {
-				ensureOpen();
-				return countValues((await readLedger(store)).map((row) => row.verdict));
-			}
+		rejects: {
+			get: () => buildAsyncMatchers(actual, "rejects", negate),
+			enumerable: true
 		},
-		inbox: {
-			push: async (params) => {
-				await beginWrite();
-				const pointer = {
-					ts: (/* @__PURE__ */ new Date()).toISOString(),
-					agent: requiredCell(params.agent, "agent"),
-					unit: requiredCell(params.unit, "unit"),
-					status: requiredCell(params.status, "status"),
-					report: params.report === void 0 ? "" : requiredCell(params.report, "report")
-				};
-				const inbox = join(store, "inbox");
-				if (!await exists(inbox)) throw new UserError(`store is not initialized at ${store}; run orch init`);
-				const filename = `${pointer.ts.replace(/[:.]/g, "-")}-${process.pid}-${randomUUID()}.tsv`;
-				const contents = `${pointerCells(pointer).map(cleanCell).join("	")}\n`;
-				await atomicWrite(join(inbox, filename), contents);
-				return {
-					pointer,
-					filename
-				};
-			},
-			drain: async () => {
-				await beginWrite();
-				const inbox = join(store, "inbox");
-				const rows = await readPointers(inbox);
-				const drained = join(store, `.inbox-drain-${process.pid}-${randomUUID()}`);
-				await rename(inbox, drained);
-				try {
-					await mkdir(inbox);
-				} catch (error) {
-					await rename(drained, inbox);
-					throw error;
-				}
-				await rm(drained, {
-					recursive: true,
-					force: true
-				});
-				return rows;
-			},
-			peek: async () => {
-				ensureOpen();
-				return readPointers(join(store, "inbox"));
-			},
-			count: async () => {
-				ensureOpen();
-				return (await readPointers(join(store, "inbox"))).length;
-			}
-		},
-		gates: {
-			park: async (params) => {
-				await beginWrite();
-				const gate = {
-					kind: "open",
-					id: requiredLine(params.id, "gate id"),
-					question: requiredLine(params.question, "question"),
-					options: requiredLine(params.options, "options"),
-					defaultAnswer: requiredLine(params.defaultAnswer, "default")
-				};
-				const rows = [...await readGates(store)];
-				const index = rows.findIndex((old) => old.id === gate.id);
-				if (index < 0) rows.push(gate);
-				else rows[index] = gate;
-				await atomicWrite(join(store, "gates.md"), renderGates(rows));
-				return gate;
-			},
-			list: async () => {
-				ensureOpen();
-				return (await readGates(store)).filter((gate) => gate.kind === "open");
-			},
-			resolve: async (params) => {
-				await beginWrite();
-				const id = requiredLine(params.id, "gate id");
-				const rows = [...await readGates(store)];
-				const index = rows.findIndex((gate) => gate.id === id);
-				const old = rows[index];
-				if (index < 0 || old === void 0) throw new NotFoundError(`gate ${id} not found`);
-				const gate = {
-					kind: "resolved",
-					id: old.id,
-					question: old.question,
-					options: old.options,
-					defaultAnswer: old.defaultAnswer,
-					answer: requiredLine(params.answer, "answer")
-				};
-				rows[index] = gate;
-				await atomicWrite(join(store, "gates.md"), renderGates(rows));
-				return gate;
-			}
-		},
-		frontier: {
-			set: async (params) => {
-				await beginWrite();
-				const repo = resolve(requiredLine(params.repo, "repo directory"));
-				const forge = parseForge(params.forge ?? "gh");
-				const pin = params.prs === void 0 ? void 0 : params.prs.map((pr) => positiveInteger$1(pr, "PR"));
-				if (pin !== void 0 && new Set(pin).size !== pin.length) throw new UserError("--prs must not contain duplicates");
-				const old = await readFrontier(store);
-				const prs = resolveFrontier(repo, forge);
-				if (pin !== void 0) validateFrontierPin({
-					actual: prs.map((row) => row.pr),
-					expected: pin
-				});
-				const value = {
-					generation: old.generation + 1,
-					prs,
-					lowestUnmerged: prs.find((row) => row.state === "OPEN")?.pr ?? null
-				};
-				await atomicWrite(join(store, "frontier.json"), `${JSON.stringify(value, null, 2)}\n`);
-				return value;
-			},
-			show: async () => {
-				ensureOpen();
-				return readFrontier(store);
-			}
-		},
-		standing: {
-			show: async () => {
-				ensureOpen();
-				return readStanding(store);
-			},
-			add: async (params) => {
-				await beginWrite();
-				const rows = [...await readStanding(store)];
-				const item = {
-					number: rows.length + 1,
-					line: requiredLine(params.line, "standing order")
-				};
-				rows.push(item);
-				await atomicWrite(join(store, "preferences.md"), `${rows.map((row) => `${row.number}. ${row.line}`).join("\n")}\n`);
-				return item;
-			}
-		},
-		status: { render: async () => {
-			await beginWrite();
-			const unitRows = await readUnits(store);
-			const ledgerRows = await readLedger(store);
-			const currentFrontier = await readFrontier(store);
-			const gateRows = await readGates(store);
-			const currentSummary = summarize(unitRows, ledgerRows, currentFrontier, gateRows);
-			const path = join(store, "status.md");
-			const change = changed(await exists(path) ? previousSummary(await readFile(path, "utf8")) : null, currentSummary);
-			await atomicWrite(path, statusMarkdown(unitRows, ledgerRows, currentFrontier, gateRows, currentSummary));
-			return {
-				units: unitRows,
-				ledger: ledgerRows,
-				frontier: currentFrontier,
-				gates: gateRows,
-				summary: currentSummary,
-				changed: change
-			};
-		} },
-		init: async () => {
-			ensureOpen();
-			await mkdir(store, { recursive: true });
-			await ensureLock();
-			await writeIfMissing(join(store, "units.tsv"), `${UNIT_HEADER}\n`);
-			await writeIfMissing(join(store, "ledger.tsv"), `${LEDGER_HEADER}\n`);
-			await mkdir(join(store, "inbox"), { recursive: true });
-			await writeIfMissing(join(store, "gates.md"), "");
-			await writeIfMissing(join(store, "preferences.md"), "");
-			await writeIfMissing(join(store, "frontier.json"), "{}\n");
-			return { store };
-		},
-		close: async () => {
-			if (closed) return;
-			if (lockRequest !== null) try {
-				await lockRequest;
-			} catch {}
-			const release = releaseLock;
-			releaseLock = null;
-			closed = true;
-			if (release !== null) await release();
+		resolves: {
+			get: () => buildAsyncMatchers(actual, "resolves", negate),
+			enumerable: true
 		}
-	};
+	});
+	return matchers;
 }
+/**
+* Compare against a settled promise.
+*
+* `rejects` reads the rejection reason and fails when the promise resolved;
+* `resolves` is the mirror. Each matcher awaits the settlement, which is what
+* makes `await expect(promise).rejects.toThrow(...)` wait before it compares.
+*/
+function buildAsyncMatchers(actual, mode, negate) {
+	if (typeof actual?.then !== "function") throw new AssertionError(`expected a promise, received ${display(actual)}`);
+	const wantRejection = mode === "rejects" !== negate;
+	const settle = async () => {
+		let resolved;
+		let rejected;
+		await Promise.resolve(actual).then((value) => {
+			resolved = { value };
+		}, (error) => {
+			rejected = { error };
+		});
+		if (wantRejection) {
+			if (resolved !== void 0) throw new AssertionError(`expected the promise to reject, it resolved to ${display(resolved.value)}`);
+			return rejected?.error;
+		}
+		if (rejected !== void 0) throw new AssertionError(`expected the promise to resolve, it rejected with ${messageOf(rejected.error)}`);
+		return resolved?.value;
+	};
+	/**
+	* Run one matcher against the settled value.
+	*
+	* `toThrow` and `toBeInstanceOf` both read the rejection reason, so a thrown
+	* reason is turned back into a thunk for `toThrow` rather than special-cased
+	* twice. `negate` is already folded into the settlement mode, so the inner
+	* matchers run un-negated.
+	*/
+	const wrap = async (name, expected) => {
+		const subject = await settle();
+		if (name === "toThrow") {
+			buildMatchers(() => {
+				throw subject;
+			}, false).toThrow(expected);
+			return;
+		}
+		if (name === "toBeNull") {
+			buildMatchers(subject, false).toBeNull();
+			return;
+		}
+		const matchers = buildMatchers(subject, false);
+		const matcher = matchers[name];
+		if (typeof matcher !== "function") throw new AssertionError(`unknown matcher ${name}`);
+		matcher.call(matchers, expected);
+	};
+	const matchers = {
+		toBe: (expected) => wrap("toBe", expected),
+		toEqual: (expected) => wrap("toEqual", expected),
+		toContain: (expected) => wrap("toContain", expected),
+		toMatch: (expected) => wrap("toMatch", expected),
+		toThrow: (expected) => wrap("toThrow", expected),
+		toBeNull: () => wrap("toBeNull"),
+		toBeInstanceOf: (expected) => wrap("toBeInstanceOf", expected),
+		toHaveLength: (expected) => wrap("toHaveLength", expected),
+		toEndWith: (expected) => wrap("toEndWith", expected),
+		toMatchObject: (expected) => wrap("toMatchObject", expected)
+	};
+	Object.defineProperty(matchers, "not", {
+		get: () => buildAsyncMatchers(actual, mode, !negate),
+		enumerable: true
+	});
+	return matchers;
+}
+const expect = Object.assign((actual) => buildMatchers(actual, false), {
+	not: (actual) => buildMatchers(actual, true),
+	rejects: (actual) => buildAsyncMatchers(actual, "rejects", false),
+	resolves: (actual) => buildAsyncMatchers(actual, "resolves", false)
+});
 //#endregion
-//#region vendor/commander/lib/error.js
+//#region node_modules/commander/lib/error.js
 var require_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	/**
 	* CommanderError class
@@ -1084,7 +312,7 @@ var require_error = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.InvalidArgumentError = InvalidArgumentError;
 }));
 //#endregion
-//#region vendor/commander/lib/argument.js
+//#region node_modules/commander/lib/argument.js
 var require_argument = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const { InvalidArgumentError } = require_error();
 	var Argument = class {
@@ -1207,7 +435,7 @@ var require_argument = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.humanReadableArgName = humanReadableArgName;
 }));
 //#endregion
-//#region vendor/commander/lib/help.js
+//#region node_modules/commander/lib/help.js
 var require_help = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const { humanReadableArgName } = require_argument();
 	/**
@@ -1697,7 +925,7 @@ var require_help = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.stripColor = stripColor;
 }));
 //#endregion
-//#region vendor/commander/lib/option.js
+//#region node_modules/commander/lib/option.js
 var require_option = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const { InvalidArgumentError } = require_error();
 	var Option = class {
@@ -1999,7 +1227,7 @@ var require_option = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.DualOptions = DualOptions;
 }));
 //#endregion
-//#region vendor/commander/lib/suggestSimilar.js
+//#region node_modules/commander/lib/suggestSimilar.js
 var require_suggestSimilar = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const maxDistance = 3;
 	function editDistance(a, b) {
@@ -2054,7 +1282,7 @@ var require_suggestSimilar = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.suggestSimilar = suggestSimilar;
 }));
 //#endregion
-//#region vendor/commander/lib/command.js
+//#region node_modules/commander/lib/command.js
 var require_command = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const EventEmitter = __require("node:events").EventEmitter;
 	const childProcess = __require("node:child_process");
@@ -4036,9 +3264,7 @@ Expecting one of '${allowedValues.join("', '")}'`);
 	exports.Command = Command;
 	exports.useColor = useColor;
 }));
-//#endregion
-//#region vendor/commander/index.js
-var require_commander = /* @__PURE__ */ __commonJSMin(((exports) => {
+const { program, createCommand, createArgument, createOption, CommanderError, InvalidArgumentError, InvalidOptionArgumentError, Command, Argument, Option, Help } = (/* @__PURE__ */ __toESM((/* @__PURE__ */ __commonJSMin(((exports) => {
 	const { Argument } = require_argument();
 	const { Command } = require_command();
 	const { CommanderError, InvalidArgumentError } = require_error();
@@ -4058,225 +3284,1818 @@ var require_commander = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.CommanderError = CommanderError;
 	exports.InvalidArgumentError = InvalidArgumentError;
 	exports.InvalidOptionArgumentError = InvalidArgumentError;
-}));
+})))(), 1)).default;
 //#endregion
-//#region vendor/commander/esm.mjs
-var esm_exports = /* @__PURE__ */ __exportAll({
-	Argument: () => Argument,
-	Command: () => Command,
-	CommanderError: () => CommanderError$1,
-	Help: () => Help,
-	InvalidArgumentError: () => InvalidArgumentError$1,
-	InvalidOptionArgumentError: () => InvalidOptionArgumentError,
-	Option: () => Option$1,
-	createArgument: () => createArgument,
-	createCommand: () => createCommand,
-	createOption: () => createOption,
-	program: () => program
+//#region .runtime-sources/skills/poteto-mode/scripts/watch-pr/types.ts
+function nonEmpty(items) {
+	return items.length === 0 ? null : [items[0], ...items.slice(1)];
+}
+function parsePrNumber(value, label = "PR number") {
+	if (typeof value !== "number" || !Number.isInteger(value) || value <= 0) throw new Error(`${label} must be a positive integer`);
+	return value;
+}
+//#endregion
+//#region .runtime-sources/skills/poteto-mode/scripts/watch-pr/github.ts
+const REVIEW_THREADS_QUERY = "\nquery ReviewThreads($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      reviewThreads(first: 100, after: $after) {\n        pageInfo {\n          hasNextPage\n          endCursor\n        }\n        nodes {\n          id\n          isResolved\n          comments(first: 10) {\n            nodes {\n              body\n              createdAt\n              path\n              line\n              author { login }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+const PR_COMMIT_STATUS_QUERY = "\nquery PrCommitStatuses($owner: String!, $repo: String!, $pr: Int!) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 50) {\n        nodes {\n          commit {\n            oid\n            statusCheckRollup {\n              state\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+const PR_CHECK_ROLLUP_QUERY = "\nquery PrCheckRollup($owner: String!, $repo: String!, $pr: Int!, $after: String) {\n  repository(owner: $owner, name: $repo) {\n    pullRequest(number: $pr) {\n      commits(last: 1) {\n        nodes {\n          commit {\n            statusCheckRollup {\n              contexts(first: 100, after: $after) {\n                pageInfo {\n                  hasNextPage\n                  endCursor\n                }\n                nodes {\n                  __typename\n                  ... on CheckRun {\n                    name\n                    status\n                    conclusion\n                    detailsUrl\n                  }\n                  ... on StatusContext {\n                    context\n                    state\n                    targetUrl\n                  }\n                }\n              }\n            }\n          }\n        }\n      }\n    }\n  }\n}\n";
+var WatcherQueryError = class extends Error {
+	failure;
+	constructor(failure) {
+		super(failure.detail);
+		this.name = "WatcherQueryError";
+		this.failure = failure;
+	}
+};
+var ChecksUnavailable = class extends WatcherQueryError {
+	constructor(detail) {
+		super({
+			kind: "checks-unavailable",
+			retryable: true,
+			detail
+		});
+		this.name = "ChecksUnavailable";
+	}
+};
+const firstLine = (value) => value.trim().split(/\r?\n/, 1)[0]?.slice(0, 240) ?? "";
+function run(argv) {
+	return new Promise((resolve, reject) => {
+		const child = spawn(argv[0], argv.slice(1), { stdio: [
+			"ignore",
+			"pipe",
+			"pipe"
+		] });
+		let stdout = "";
+		let stderr = "";
+		child.stdout.setEncoding("utf8");
+		child.stderr.setEncoding("utf8");
+		child.stdout.on("data", (chunk) => {
+			stdout += chunk;
+		});
+		child.stderr.on("data", (chunk) => {
+			stderr += chunk;
+		});
+		child.on("error", reject);
+		child.on("close", (code) => resolve({
+			code: code ?? -1,
+			stdout,
+			stderr
+		}));
+	});
+}
+function parseJson(text, label) {
+	try {
+		return JSON.parse(text);
+	} catch (error) {
+		throw new WatcherQueryError({
+			kind: "json-parse",
+			retryable: true,
+			detail: `${label}: ${error instanceof Error ? error.message : String(error)}`
+		});
+	}
+}
+async function runJson(argv) {
+	const result = await run(argv);
+	if (result.code !== 0) throw new WatcherQueryError({
+		kind: "command-exit",
+		retryable: true,
+		code: result.code,
+		detail: firstLine(result.stderr) || `${argv.join(" ")} exited ${result.code}`
+	});
+	return parseJson(result.stdout, argv.join(" "));
+}
+function raw(value) {
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return String(value);
+	}
+}
+function missing(path, value) {
+	throw new WatcherQueryError({
+		kind: "missing-key",
+		retryable: true,
+		detail: value === void 0 ? `missing ${path}` : `invalid ${path}: ${raw(value)}`,
+		...value === void 0 ? {} : { rawValue: raw(value) }
+	});
+}
+function isRecord(value) {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function record(value, path) {
+	if (!isRecord(value)) missing(path, value);
+	return value;
+}
+function list(value, path) {
+	if (!Array.isArray(value)) missing(path, value);
+	return value;
+}
+function at(value, path) {
+	let current = value;
+	for (const key of path) {
+		const object = record(current, path.join("."));
+		if (!(key in object)) missing(path.join("."));
+		current = object[key];
+	}
+	return current;
+}
+function string(value, path) {
+	if (typeof value !== "string") missing(path, value);
+	return value;
+}
+const optionalString = (value, path) => value === null ? null : string(value, path);
+function enumValue(value, values, path) {
+	if (typeof value === "string") {
+		for (const candidate of values) if (candidate === value) return candidate;
+	}
+	return missing(path, value);
+}
+const nullableEnum = (value, values, path) => value === null ? null : enumValue(value, values, path);
+const MERGE_STATES = [
+	"BEHIND",
+	"BLOCKED",
+	"CLEAN",
+	"CONFLICTING",
+	"DIRTY",
+	"DRAFT",
+	"HAS_HOOKS",
+	"UNKNOWN",
+	"UNSTABLE"
+];
+const ROLLUP_STATES = [
+	"ERROR",
+	"EXPECTED",
+	"FAILURE",
+	"PENDING",
+	"SUCCESS"
+];
+const REVIEW_DECISIONS = [
+	"APPROVED",
+	"CHANGES_REQUESTED",
+	"REVIEW_REQUIRED"
+];
+const reviewDecision = (value) => nullableEnum(value === "" ? null : value, REVIEW_DECISIONS, "pull request.reviewDecision");
+function parseRemote(value) {
+	let normalized = value.trim();
+	if (normalized.startsWith("git@github.com:")) normalized = `https://github.com/${normalized.slice(15)}`;
+	if (normalized.startsWith("ssh://git@github.com/")) normalized = `https://github.com/${normalized.slice(21)}`;
+	try {
+		const url = new URL(normalized);
+		const parts = url.pathname.replace(/\.git$/, "").split("/").filter(Boolean);
+		if (url.protocol !== "https:" || url.hostname !== "github.com" || url.port || url.username || url.password || url.search || url.hash || parts.length !== 2) return null;
+		return {
+			owner: parts[0],
+			repo: parts[1]
+		};
+	} catch {
+		return null;
+	}
+}
+function parsePrUrl(value) {
+	try {
+		const url = new URL(value);
+		const parts = url.pathname.split("/").filter(Boolean);
+		if (url.protocol !== "https:" || url.hostname !== "github.com" || url.port || url.username || url.password || url.search || url.hash || parts.length !== 4 || parts[2] !== "pull") throw new Error("not a canonical GitHub pull URL");
+		return {
+			owner: parts[0],
+			repo: parts[1],
+			number: parsePrNumber(Number(parts[3]))
+		};
+	} catch (error) {
+		throw new WatcherQueryError({
+			kind: "invalid-context-url",
+			retryable: false,
+			rawValue: value,
+			detail: `could not infer owner/repo from PR URL: ${value} (${error instanceof Error ? error.message : String(error)})`
+		});
+	}
+}
+function checkDetails(value, nameKey) {
+	return {
+		name: string(value[nameKey], nameKey),
+		description: typeof value.description === "string" ? value.description : "",
+		link: typeof value.link === "string" ? value.link : typeof value.detailsUrl === "string" ? value.detailsUrl : "",
+		workflow: typeof value.workflow === "string" ? value.workflow : ""
+	};
+}
+function parseFastCheck(value) {
+	const object = record(value, "check");
+	const details = checkDetails(object, "name");
+	const state = string(object.state, "check.state").toUpperCase();
+	const bucket = string(object.bucket, "check.bucket");
+	if (state === "ACTION_REQUIRED") return gateOr("failed", details, state);
+	if (bucket === "fail" || ["FAILURE", "ERROR"].includes(state)) return {
+		...details,
+		kind: "failed",
+		reportedState: state
+	};
+	if (bucket === "pending") return gateOr("pending", details, state);
+	if (bucket === "pass") return {
+		...details,
+		kind: "passed",
+		reportedState: state
+	};
+	if (bucket === "skipping") return {
+		...details,
+		kind: "skipped",
+		reportedState: state
+	};
+	return {
+		...details,
+		kind: "failed",
+		reportedState: state
+	};
+}
+function gateOr(kind, details, reportedState) {
+	return details.name === "Code Review Gate" ? {
+		...details,
+		kind: "code-review-gate",
+		name: "Code Review Gate",
+		reportedState
+	} : {
+		...details,
+		kind,
+		reportedState
+	};
+}
+function mapRollupNode(value) {
+	const object = record(value, "rollup node");
+	const typename = object.__typename;
+	if (typename !== "CheckRun" && typename !== "StatusContext") return null;
+	const details = checkDetails(object, typename === "CheckRun" ? "name" : "context");
+	const link = typeof object.targetUrl === "string" ? object.targetUrl : details.link;
+	if (typename === "CheckRun") {
+		const status = typeof object.status === "string" ? object.status.toUpperCase() : "";
+		const conclusion = typeof object.conclusion === "string" ? object.conclusion.toUpperCase() : "";
+		if (status !== "COMPLETED") return gateOr("pending", {
+			...details,
+			link
+		}, "PENDING");
+		if (conclusion === "SUCCESS") return {
+			...details,
+			link,
+			kind: "passed",
+			reportedState: "SUCCESS"
+		};
+		if (conclusion === "NEUTRAL" || conclusion === "SKIPPED") return {
+			...details,
+			link,
+			kind: "skipped",
+			reportedState: conclusion
+		};
+		if (conclusion === "ACTION_REQUIRED") return gateOr("failed", {
+			...details,
+			link
+		}, conclusion);
+		return {
+			...details,
+			link,
+			kind: "failed",
+			reportedState: "FAILURE"
+		};
+	}
+	const state = typeof object.state === "string" ? object.state.toUpperCase() : "";
+	if (state === "PENDING" || state === "EXPECTED") return gateOr("pending", {
+		...details,
+		link
+	}, "PENDING");
+	return state === "SUCCESS" ? {
+		...details,
+		link,
+		kind: "passed",
+		reportedState: state
+	} : {
+		...details,
+		link,
+		kind: "failed",
+		reportedState: state || "FAILURE"
+	};
+}
+function parseComment(value) {
+	const object = record(value, "review comment");
+	const author = object.author === null ? null : record(object.author, "review comment.author");
+	return {
+		authorLogin: author === null ? null : optionalString(author.login, "review comment.author.login"),
+		body: string(object.body, "review comment.body"),
+		path: optionalString(object.path, "review comment.path"),
+		line: object.line === null ? null : Number.isInteger(object.line) ? Number(object.line) : missing("review comment.line", object.line),
+		createdAt: string(object.createdAt, "review comment.createdAt")
+	};
+}
+function isBugbot(comment) {
+	if (comment === null) return false;
+	const author = (comment.authorLogin ?? "").toLowerCase();
+	const body = comment.body.toLowerCase();
+	return author.includes("bugbot") || author === "cursor" && [
+		"bugbot",
+		"cursor_automation_id",
+		"agentic security review",
+		"description start",
+		"severity"
+	].some((token) => body.includes(token));
+}
+function passKey(comment) {
+	if (comment === null) return null;
+	for (const pattern of [/RUN_ID:\s*([a-zA-Z0-9_.:-]+)/, /CURSOR_AUTOMATION_ID:\s*([a-zA-Z0-9_.:-]+)/]) {
+		const match = pattern.exec(comment.body);
+		if (match?.[1]) return match[1];
+	}
+	return null;
+}
+function parseReviewThreadPage(value) {
+	const reviewThreads = record(at(value, [
+		"data",
+		"repository",
+		"pullRequest",
+		"reviewThreads"
+	]), "reviewThreads");
+	const nodes = list(reviewThreads.nodes, "reviewThreads.nodes");
+	const threads = [];
+	for (const node of nodes) {
+		const thread = record(node, "review thread");
+		if (typeof thread.isResolved !== "boolean") missing("review thread.isResolved", thread.isResolved);
+		const comments = list(at(thread, ["comments", "nodes"]), "review thread.comments.nodes");
+		threads.push({
+			id: string(thread.id, "review thread.id"),
+			firstComment: comments.length === 0 ? null : parseComment(comments[0]),
+			resolved: thread.isResolved
+		});
+	}
+	const page = record(reviewThreads.pageInfo, "reviewThreads.pageInfo");
+	if (typeof page.hasNextPage !== "boolean") missing("reviewThreads.pageInfo.hasNextPage", page.hasNextPage);
+	const cursor = optionalString(page.endCursor, "reviewThreads.pageInfo.endCursor");
+	return {
+		threads,
+		endCursor: page.hasNextPage && cursor ? cursor : null
+	};
+}
+function buildReviewThreads(threads) {
+	const keys = /* @__PURE__ */ new Set();
+	let keyless = false;
+	for (const thread of threads) {
+		if (!isBugbot(thread.firstComment)) continue;
+		const key = passKey(thread.firstComment);
+		if (key === null) keyless = true;
+		else keys.add(key);
+	}
+	const passes = keys.size > 0 ? keys.size : keyless ? 1 : 0;
+	return threads.filter((thread) => !thread.resolved).map(({ id, firstComment }) => ({
+		id,
+		firstComment,
+		isBugbot: isBugbot(firstComment),
+		bugbotReviewPasses: passes
+	}));
+}
+function parsePullRequest(value, context) {
+	const object = record(value, "pull request");
+	if (typeof object.isDraft !== "boolean") missing("pull request.isDraft", object.isDraft);
+	return {
+		context,
+		mergeable: enumValue(object.mergeable, [
+			"MERGEABLE",
+			"CONFLICTING",
+			"UNKNOWN"
+		], "pull request.mergeable"),
+		mergeStateStatus: enumValue(object.mergeStateStatus, MERGE_STATES, "pull request.mergeStateStatus"),
+		reviewDecision: reviewDecision(object.reviewDecision),
+		headRefOid: optionalString(object.headRefOid, "pull request.headRefOid"),
+		headRefName: string(object.headRefName, "pull request.headRefName"),
+		baseRefName: string(object.baseRefName, "pull request.baseRefName"),
+		state: enumValue(object.state, [
+			"OPEN",
+			"CLOSED",
+			"MERGED"
+		], "pull request.state"),
+		mergedAt: optionalString(object.mergedAt, "pull request.mergedAt"),
+		isDraft: object.isDraft
+	};
+}
+function graphqlArgs(query, context) {
+	return [
+		"gh",
+		"api",
+		"graphql",
+		"-f",
+		`query=${query}`,
+		"-f",
+		`owner=${context.owner}`,
+		"-f",
+		`repo=${context.repo}`,
+		"-F",
+		`pr=${context.number}`
+	];
+}
+var GhGitHubReader = class {
+	async originRepo() {
+		const result = await run([
+			"git",
+			"remote",
+			"get-url",
+			"origin"
+		]);
+		return result.code === 0 ? parseRemote(result.stdout) : null;
+	}
+	async currentPr(pr) {
+		const argv = [
+			"gh",
+			"pr",
+			"view"
+		];
+		if (pr !== null) argv.push(String(pr));
+		argv.push("--json", "number,url");
+		const object = record(await runJson(argv), "current PR");
+		return {
+			...parsePrUrl(string(object.url, "current PR.url")),
+			number: pr ?? parsePrNumber(object.number, "current PR.number")
+		};
+	}
+	async pullRequest(context) {
+		return parsePullRequest(await runJson([
+			"gh",
+			"pr",
+			"view",
+			String(context.number),
+			"--repo",
+			`${context.owner}/${context.repo}`,
+			"--json",
+			"mergeable,mergeStateStatus,reviewDecision,headRefOid,headRefName,baseRefName,state,mergedAt,isDraft"
+		]), context);
+	}
+	async openPullRequests(repository) {
+		return list(await runJson([
+			"gh",
+			"pr",
+			"list",
+			"--repo",
+			`${repository.owner}/${repository.repo}`,
+			"--state",
+			"open",
+			"--limit",
+			"300",
+			"--json",
+			"number,headRefName,baseRefName"
+		]), "open PRs").map((item, index) => {
+			const object = record(item, `open PRs[${index}]`);
+			return {
+				number: parsePrNumber(object.number, `open PRs[${index}].number`),
+				headRefName: string(object.headRefName, `open PRs[${index}].headRefName`),
+				baseRefName: string(object.baseRefName, `open PRs[${index}].baseRefName`)
+			};
+		});
+	}
+	async checksFastPath(context) {
+		const result = await run([
+			"gh",
+			"pr",
+			"checks",
+			String(context.number),
+			"--repo",
+			`${context.owner}/${context.repo}`,
+			"--json",
+			"name,state,description,link,workflow,bucket"
+		]);
+		if ([
+			0,
+			1,
+			8
+		].includes(result.code) && result.stdout.trim()) try {
+			const value = parseJson(result.stdout, "gh pr checks");
+			if (Array.isArray(value)) return {
+				kind: "checks",
+				checks: value.map(parseFastCheck)
+			};
+		} catch (error) {
+			if (!(error instanceof WatcherQueryError)) throw error;
+		}
+		return {
+			kind: "unusable",
+			exitCode: result.code,
+			stderr: result.stderr
+		};
+	}
+	async checkRollupPage(context, after) {
+		const argv = graphqlArgs(PR_CHECK_ROLLUP_QUERY, context);
+		if (after !== null) argv.push("-f", `after=${after}`);
+		const commits = list(at(await runJson(argv), [
+			"data",
+			"repository",
+			"pullRequest",
+			"commits",
+			"nodes"
+		]), "commits.nodes");
+		if (commits.length === 0) return {
+			checks: [],
+			endCursor: null
+		};
+		const commit = record(at(commits[commits.length - 1], ["commit"]), "commit");
+		if (commit.statusCheckRollup === null) return {
+			checks: [],
+			endCursor: null
+		};
+		const contexts = record(at(commit, ["statusCheckRollup", "contexts"]), "contexts");
+		const checks = list(contexts.nodes, "contexts.nodes").map(mapRollupNode).filter((check) => check !== null);
+		const page = record(contexts.pageInfo, "contexts.pageInfo");
+		if (typeof page.hasNextPage !== "boolean") missing("contexts.pageInfo.hasNextPage", page.hasNextPage);
+		const cursor = optionalString(page.endCursor, "contexts.pageInfo.endCursor");
+		return {
+			checks,
+			endCursor: page.hasNextPage && cursor ? cursor : null
+		};
+	}
+	async reviewThreadPage(context, after) {
+		const argv = graphqlArgs(REVIEW_THREADS_QUERY, context);
+		if (after !== null) argv.push("-f", `after=${after}`);
+		return parseReviewThreadPage(await runJson(argv));
+	}
+	async commitRollups(context) {
+		return list(at(await runJson(graphqlArgs(PR_COMMIT_STATUS_QUERY, context)), [
+			"data",
+			"repository",
+			"pullRequest",
+			"commits",
+			"nodes"
+		]), "commits.nodes").map((item, index) => {
+			const commit = record(at(item, ["commit"]), `commits[${index}].commit`);
+			const rollup = commit.statusCheckRollup;
+			return {
+				oid: string(commit.oid, `commits[${index}].oid`),
+				state: rollup === null ? null : nullableEnum(at(rollup, ["state"]), ROLLUP_STATES, `commits[${index}].statusCheckRollup.state`)
+			};
+		});
+	}
+};
+async function resolveChecks(reader, context) {
+	const fast = await reader.checksFastPath(context);
+	const direct = fast.kind === "checks" ? nonEmpty(fast.checks) : null;
+	if (direct !== null) return {
+		source: "gh-pr-checks",
+		checks: direct
+	};
+	const checks = [];
+	let after = null;
+	do {
+		const page = await reader.checkRollupPage(context, after);
+		checks.push(...page.checks);
+		after = page.endCursor;
+	} while (after !== null);
+	const fallback = nonEmpty(checks);
+	if (fallback !== null) return {
+		source: "graphql-rollup",
+		checks: fallback
+	};
+	throw new ChecksUnavailable(`could not read PR checks: ${fast.kind === "unusable" ? `fast path exit=${fast.exitCode}; GraphQL rollup was empty${firstLine(fast.stderr) ? `; ${firstLine(fast.stderr)}` : ""}` : "fast path and GraphQL rollup were empty"}`);
+}
+async function resolveReviewThreads(reader, context) {
+	const threads = [];
+	let after = null;
+	do {
+		const page = await reader.reviewThreadPage(context, after);
+		threads.push(...page.threads);
+		after = page.endCursor;
+	} while (after !== null);
+	return buildReviewThreads(threads);
+}
+async function resolveContext(args) {
+	if (args.pr !== null && args.owner !== null && args.repo !== null) return {
+		owner: args.owner,
+		repo: args.repo,
+		number: args.pr
+	};
+	if (args.pr !== null) {
+		const origin = await args.reader.originRepo();
+		if (origin !== null) return {
+			owner: args.owner ?? origin.owner,
+			repo: args.repo ?? origin.repo,
+			number: args.pr
+		};
+	}
+	const inferred = await args.reader.currentPr(args.pr);
+	return {
+		owner: args.owner ?? inferred.owner,
+		repo: args.repo ?? inferred.repo,
+		number: args.pr ?? inferred.number
+	};
+}
+function orderStack(context, open) {
+	const byNumber = new Map(open.map((pr) => [pr.number, pr]));
+	const byHead = new Map(open.map((pr) => [pr.headRefName, pr]));
+	const children = /* @__PURE__ */ new Map();
+	for (const pr of open) children.set(pr.baseRefName, [...children.get(pr.baseRefName) ?? [], pr]);
+	for (const values of children.values()) values.sort((a, b) => a.number - b.number);
+	const start = byNumber.get(context.number);
+	if (start === void 0) return [context];
+	const down = [];
+	let current = start;
+	while (byHead.has(current.baseRefName)) {
+		const parent = byHead.get(current.baseRefName);
+		if (parent === void 0) break;
+		down.push(parent);
+		current = parent;
+	}
+	const seen = /* @__PURE__ */ new Set([...down.map((pr) => pr.number), start.number]);
+	const up = [];
+	const visit = (parent) => {
+		for (const child of children.get(parent.headRefName) ?? []) {
+			if (seen.has(child.number)) continue;
+			seen.add(child.number);
+			up.push(child);
+			visit(child);
+		}
+	};
+	visit(start);
+	return nonEmpty([
+		...down.reverse(),
+		start,
+		...up
+	].map((pr) => ({
+		...context,
+		number: pr.number
+	}))) ?? [context];
+}
+async function discoverStack(reader, context) {
+	return orderStack(context, await reader.openPullRequests(context));
+}
+//#endregion
+//#region .runtime-sources/skills/poteto-mode/scripts/watch-pr/policy.ts
+function assessGitHubMerge(args) {
+	if (args.mergeStateStatus === "BLOCKED") {
+		if (args.headRollupState === "ERROR" || args.headRollupState === "FAILURE") return {
+			kind: "refused",
+			mergeStateStatus: args.mergeStateStatus,
+			headRollupState: args.headRollupState
+		};
+		return {
+			kind: "allowed",
+			basis: "rollup",
+			mergeStateStatus: args.mergeStateStatus,
+			headRollupState: args.headRollupState
+		};
+	}
+	return {
+		kind: "allowed",
+		basis: "merge-state",
+		mergeStateStatus: args.mergeStateStatus,
+		headRollupState: args.headRollupState
+	};
+}
+async function mergeAssessment(reader, facts) {
+	const commits = await reader.commitRollups(facts.context);
+	const headRollupState = facts.headRefOid === null ? null : commits.find((commit) => commit.oid === facts.headRefOid)?.state ?? null;
+	return {
+		hadPreviousPassingCi: commits.some((commit) => commit.oid !== facts.headRefOid && commit.state === "SUCCESS"),
+		github: assessGitHubMerge({
+			mergeStateStatus: facts.mergeStateStatus,
+			headRollupState
+		})
+	};
+}
+const AUTOMATION_TOKENS = [
+	"bugbot",
+	"security review",
+	"pr review automation",
+	"review automation"
+];
+async function readSnapshot(args) {
+	const facts = await args.reader.pullRequest(args.context);
+	if (facts.state === "MERGED" || facts.mergedAt !== null) return {
+		kind: "merged",
+		context: args.context,
+		facts
+	};
+	if (facts.state === "CLOSED") return {
+		kind: "closed",
+		context: args.context,
+		facts
+	};
+	const threads = await resolveReviewThreads(args.reader, args.context);
+	const checks = await resolveChecks(args.reader, args.context);
+	const failed = nonEmpty(checks.checks.filter((check) => check.kind === "failed"));
+	const pending = nonEmpty(checks.checks.filter((check) => check.kind === "pending"));
+	let ci;
+	if (failed === null && pending !== null && args.pendingHistory === "omit") ci = {
+		kind: "ci-pending",
+		source: checks.source,
+		all: checks.checks,
+		failed: [],
+		pending,
+		hadPreviousPassingCi: false
+	};
+	else {
+		const merge = await mergeAssessment(args.reader, facts);
+		const base = {
+			source: checks.source,
+			all: checks.checks,
+			hadPreviousPassingCi: merge.hadPreviousPassingCi
+		};
+		if (failed !== null) ci = {
+			...base,
+			kind: "ci-failing",
+			failed,
+			pending: pending ?? [],
+			github: merge.github
+		};
+		else if (merge.github.kind === "refused") ci = {
+			...base,
+			kind: "ci-github-rejected",
+			failed: [],
+			pending: pending ?? [],
+			github: merge.github
+		};
+		else if (pending !== null) ci = {
+			...base,
+			kind: "ci-pending",
+			failed: [],
+			pending
+		};
+		else ci = {
+			...base,
+			kind: "ci-clean",
+			failed: [],
+			pending: [],
+			github: merge.github
+		};
+	}
+	return {
+		kind: "open",
+		context: args.context,
+		facts,
+		threads,
+		ci,
+		reviewAutomationRunning: checks.checks.some((check) => check.kind === "pending" && AUTOMATION_TOKENS.some((token) => check.name.toLowerCase().includes(token)))
+	};
+}
+const conflictBlocker = (row) => row.kind === "open" && (row.facts.mergeable === "CONFLICTING" || row.facts.mergeStateStatus === "DIRTY" || row.facts.mergeStateStatus === "CONFLICTING") ? {
+	kind: "merge-conflicts",
+	pr: row.context,
+	facts: row.facts
+} : null;
+function threadBlocker(row) {
+	if (row.kind !== "open") return null;
+	const threads = nonEmpty(row.threads);
+	return threads === null ? null : {
+		kind: "review-threads",
+		pr: row.context,
+		threads
+	};
+}
+const ciBlocker = (row) => row.kind === "open" && (row.ci.kind === "ci-failing" || row.ci.kind === "ci-github-rejected") ? {
+	kind: "failing-checks",
+	pr: row.context,
+	ci: row.ci
+} : null;
+function gateReason(row, allowDraft) {
+	if (row.kind === "merged") return null;
+	if (row.kind === "closed") return "closed-without-merge";
+	if (row.facts.isDraft && !allowDraft) return "draft-pr";
+	return row.facts.reviewDecision === "CHANGES_REQUESTED" ? "changes-requested" : null;
+}
+function gateBlocker(row, allowDraft) {
+	const reason = gateReason(row, allowDraft);
+	return reason === null || reason === "draft-pr" && row.kind === "open" && row.ci.kind === "ci-pending" ? null : {
+		kind: "merge-gate",
+		pr: row.context,
+		reason
+	};
+}
+function readyContribution(row, allowDraft) {
+	if (row.kind === "merged") return {
+		kind: "merged-pr",
+		context: row.context,
+		mergedAt: row.facts.mergedAt
+	};
+	if (row.kind !== "open" || row.ci.kind !== "ci-clean" || row.threads.length !== 0 || conflictBlocker(row) !== null || gateReason(row, allowDraft) !== null) return null;
+	const reviewDecision = row.facts.reviewDecision;
+	if (reviewDecision === "CHANGES_REQUESTED") return null;
+	return {
+		kind: "ready-pr",
+		context: row.context,
+		proof: {
+			mergeability: "clear",
+			threads: [],
+			ci: row.ci,
+			gate: {
+				state: "OPEN",
+				reviewDecision,
+				draft: row.facts.isDraft ? "draft-allowed" : "not-draft"
+			}
+		}
+	};
+}
+function classifyPr(row, allowDraft = false) {
+	for (const blocker of [
+		conflictBlocker(row),
+		threadBlocker(row),
+		ciBlocker(row),
+		gateBlocker(row, allowDraft)
+	]) if (blocker !== null) return {
+		kind: "blocker",
+		blocker
+	};
+	if (row.kind === "open" && row.ci.kind === "ci-pending") return {
+		kind: "waiting",
+		frontier: row.context,
+		pending: row.ci.pending
+	};
+	const ready = readyContribution(row, allowDraft);
+	if (ready === null) throw new Error("snapshot has no classified decision");
+	return ready.kind === "merged-pr" ? {
+		kind: "merged",
+		pr: ready
+	} : {
+		kind: "ready",
+		pr: ready
+	};
+}
+function selectTierMajorStackDecision(rows, allowDraft = false) {
+	for (const tier of [
+		conflictBlocker,
+		threadBlocker,
+		ciBlocker
+	]) for (const row of rows) {
+		const blocker = tier(row);
+		if (blocker !== null) return {
+			kind: "blocker",
+			blocker
+		};
+	}
+	for (const row of rows) {
+		const blocker = gateBlocker(row, allowDraft);
+		if (blocker !== null) return {
+			kind: "blocker",
+			blocker
+		};
+	}
+	for (const row of rows) if (row.kind === "open" && row.ci.kind === "ci-pending") return {
+		kind: "waiting",
+		frontier: row.context,
+		pending: row.ci.pending
+	};
+	const prs = nonEmpty(rows.map((row) => readyContribution(row, allowDraft)).filter((row) => row !== null));
+	if (prs === null || prs.length !== rows.length) throw new Error("stack has no classified decision");
+	return {
+		kind: "clear",
+		prs
+	};
+}
+const queryBackoffSeconds = (interval, failures) => Math.min(Math.max(interval, 60) * 2 ** (failures - 1), 300);
+function verdictFactory(clock, mode) {
+	let sequence = 0;
+	function stamp(payload, override) {
+		return {
+			schemaVersion: 1,
+			sequence: sequence += 1,
+			observedAt: clock.observedAt(),
+			mode: override ?? mode,
+			...payload
+		};
+	}
+	return stamp;
+}
+function blockerVerdict(stamp, blocker) {
+	switch (blocker.kind) {
+		case "merge-conflicts": return stamp({
+			kind: "BLOCKER",
+			terminal: true,
+			exitCode: 2,
+			blocker
+		});
+		case "review-threads": return stamp({
+			kind: "BLOCKER",
+			terminal: true,
+			exitCode: 3,
+			blocker
+		});
+		case "failing-checks": return stamp({
+			kind: "BLOCKER",
+			terminal: true,
+			exitCode: 4,
+			blocker
+		});
+		case "merge-gate": return stamp({
+			kind: "BLOCKER",
+			terminal: true,
+			exitCode: 6,
+			blocker
+		});
+		default: return blocker;
+	}
+}
+function statusQueryVerdict(stamp, failures, failure) {
+	return stamp({
+		kind: "BLOCKER",
+		terminal: true,
+		exitCode: 7,
+		blocker: {
+			kind: "status-query",
+			failures,
+			failure
+		}
+	});
+}
+const deadlinePassed = (started, options, now) => options.timeout > 0 && now - started >= options.timeout;
+async function pollUntilTerminal(args) {
+	let failures = 0;
+	const started = args.dependencies.clock.now();
+	while (true) {
+		let result;
+		try {
+			result = await args.step();
+			failures = 0;
+		} catch (error) {
+			if (!(error instanceof WatcherQueryError)) throw error;
+			failures += 1;
+			if (!error.failure.retryable || failures >= args.options.maxQueryErrors) return statusQueryVerdict(args.stamp, failures, error.failure);
+			const retryInSeconds = queryBackoffSeconds(args.options.interval, failures);
+			args.dependencies.emit(args.stamp({
+				kind: "RETRY",
+				terminal: false,
+				failure: error.failure,
+				consecutiveFailures: failures,
+				retryInSeconds
+			}));
+			if (deadlinePassed(started, args.options, args.dependencies.clock.now())) return args.stamp({
+				kind: "TIMEOUT",
+				terminal: true,
+				exitCode: 5,
+				reason: {
+					kind: "status-unavailable",
+					failure: error.failure
+				}
+			});
+			await args.dependencies.clock.sleep(retryInSeconds);
+			continue;
+		}
+		if (result.kind === "terminal") return result.verdict;
+		if (result.kind === "sleep") {
+			if (result.onDeadline !== void 0 && deadlinePassed(started, args.options, args.dependencies.clock.now())) return result.onDeadline();
+			await args.dependencies.clock.sleep(result.seconds);
+		}
+	}
+}
+async function runSimple(args) {
+	const stamp = verdictFactory(args.dependencies.clock, args.mode);
+	const step = async () => {
+		const rows = [];
+		for (const context of args.contexts) rows.push(await readSnapshot({
+			reader: args.dependencies.reader,
+			context,
+			pendingHistory: "include",
+			allowDraft: args.options.allowDraft
+		}));
+		const complete = nonEmpty(rows);
+		if (complete === null) throw new Error("watch context cannot be empty");
+		if (args.statusOnly) return {
+			kind: "terminal",
+			verdict: stamp({
+				kind: "STATUS",
+				terminal: true,
+				exitCode: 0,
+				reason: "status-only",
+				rows: complete
+			})
+		};
+		if (args.mode === "queued-stack") throw new Error("queued-stack requires status-only in the simple runner");
+		if (args.mode === "stack") args.dependencies.emit(stamp({
+			kind: "STATUS",
+			terminal: false,
+			reason: "poll",
+			rows: complete
+		}, args.mode));
+		const decision = args.mode === "single" ? classifyPr(complete[0], args.options.allowDraft) : selectTierMajorStackDecision(complete, args.options.allowDraft);
+		if (decision.kind === "blocker") return {
+			kind: "terminal",
+			verdict: blockerVerdict(stamp, decision.blocker)
+		};
+		if (decision.kind === "ready" || decision.kind === "merged") return {
+			kind: "terminal",
+			verdict: stamp({
+				kind: "READY",
+				terminal: true,
+				exitCode: 0,
+				scope: {
+					kind: "single",
+					pr: decision.pr
+				}
+			}, args.mode)
+		};
+		if (decision.kind === "clear") return {
+			kind: "terminal",
+			verdict: stamp({
+				kind: "READY",
+				terminal: true,
+				exitCode: 0,
+				scope: {
+					kind: "stack",
+					prs: decision.prs
+				}
+			}, args.mode)
+		};
+		args.dependencies.emit(stamp({
+			kind: "WAITING",
+			terminal: false,
+			frontier: decision.frontier,
+			reason: {
+				kind: "pending-checks",
+				pending: decision.pending
+			}
+		}));
+		return {
+			kind: "sleep",
+			seconds: args.options.interval,
+			onDeadline: () => stamp({
+				kind: "TIMEOUT",
+				terminal: true,
+				exitCode: 5,
+				reason: {
+					kind: "pending-checks",
+					pending: decision.pending
+				}
+			})
+		};
+	};
+	return pollUntilTerminal({
+		dependencies: args.dependencies,
+		options: args.options,
+		stamp,
+		step
+	});
+}
+const createQueueState = (queue, now) => ({
+	queue,
+	snapshots: /* @__PURE__ */ new Map(),
+	work: {
+		kind: "whole-stack-sweep",
+		remaining: queue
+	},
+	nextSweepAt: now,
+	frontier: null,
+	lastWaitKey: null,
+	startedAt: now
 });
-var import_commander, program, createCommand, createArgument, createOption, CommanderError$1, InvalidArgumentError$1, InvalidOptionArgumentError, Command, Argument, Option$1, Help;
-var init_esm = __esmMin((() => {
-	import_commander = /* @__PURE__ */ __toESM(require_commander(), 1);
-	({program, createCommand, createArgument, createOption, CommanderError: CommanderError$1, InvalidArgumentError: InvalidArgumentError$1, InvalidOptionArgumentError, Command, Argument, Option: Option$1, Help} = import_commander.default);
-}));
+const orderedRows = (state) => state.queue.flatMap((context) => {
+	const row = state.snapshots.get(context.number);
+	return row === void 0 ? [] : [row];
+});
+const activeRows = (state) => orderedRows(state).filter((row) => row.kind !== "merged");
+function planQueue(state, now) {
+	if (state.work !== null) return state;
+	if (state.snapshots.size === 0 || now >= state.nextSweepAt) {
+		const remaining = nonEmpty(state.queue.filter((context) => state.snapshots.get(context.number)?.kind !== "merged"));
+		if (remaining !== null) return {
+			...state,
+			work: {
+				kind: "whole-stack-sweep",
+				remaining
+			}
+		};
+	}
+	const frontier = activeRows(state)[0]?.context;
+	return frontier === void 0 ? state : {
+		...state,
+		work: {
+			kind: "frontier-poll",
+			frontier
+		}
+	};
+}
+function applyQueueSnapshot(state, snapshot, now, options) {
+	if (state.work === null) throw new Error("queue has no read in flight");
+	const snapshots = new Map(state.snapshots);
+	snapshots.set(snapshot.context.number, snapshot);
+	const base = {
+		...state,
+		snapshots
+	};
+	if (state.work.kind === "frontier-poll") return {
+		state: {
+			...base,
+			work: null
+		},
+		completedSweepRows: null
+	};
+	const [head, ...tail] = state.work.remaining;
+	if (head.number !== snapshot.context.number) throw new Error("snapshot does not match sweep head");
+	const remaining = nonEmpty(tail);
+	if (remaining !== null) return {
+		state: {
+			...base,
+			work: {
+				kind: "whole-stack-sweep",
+				remaining
+			}
+		},
+		completedSweepRows: null
+	};
+	const rows = nonEmpty(state.queue.flatMap((context) => {
+		const row = snapshots.get(context.number);
+		return row === void 0 ? [] : [row];
+	}));
+	if (rows === null || rows.length !== state.queue.length) throw new Error("sweep completed without every snapshot");
+	return {
+		state: {
+			...base,
+			work: null,
+			nextSweepAt: now + options.sweepInterval
+		},
+		completedSweepRows: rows
+	};
+}
+function evaluateQueue(state, now, options) {
+	const active = activeRows(state);
+	if (active.length === 0) {
+		const merged = nonEmpty(orderedRows(state).flatMap((row) => row.kind === "merged" ? [{
+			kind: "merged-pr",
+			context: row.context,
+			mergedAt: row.facts.mergedAt
+		}] : []));
+		if (merged === null) throw new Error("empty queue cannot complete");
+		return {
+			kind: "complete",
+			state,
+			merged
+		};
+	}
+	const rows = nonEmpty(active);
+	if (rows === null) throw new Error("active queue cannot be empty");
+	const decision = selectTierMajorStackDecision(rows, options.allowDraft);
+	if (decision.kind === "blocker") return {
+		kind: "blocker",
+		state,
+		blocker: decision.blocker
+	};
+	const frontier = rows[0].context;
+	if (state.frontier !== null && state.frontier.number !== frontier.number) return {
+		kind: "advance",
+		state: {
+			...state,
+			frontier,
+			lastWaitKey: null
+		},
+		merged: state.frontier,
+		frontier,
+		remaining: active.length
+	};
+	if (deadlinePassed(state.startedAt, options, now)) return {
+		kind: "timeout",
+		state: {
+			...state,
+			frontier
+		},
+		frontier,
+		unmergedCount: active.length
+	};
+	const row = rows[0];
+	const pending = row.kind === "open" && row.ci.kind === "ci-pending" ? row.ci.pending : null;
+	const reason = pending === null ? {
+		kind: "merge-queue",
+		unmergedCount: active.length
+	} : {
+		kind: "pending-checks",
+		pending
+	};
+	const key = reason.kind === "pending-checks" ? `pending:${frontier.number}:${reason.pending.length}` : `queue:${frontier.number}:${reason.unmergedCount}`;
+	return {
+		kind: "waiting",
+		state: {
+			...state,
+			frontier,
+			lastWaitKey: key
+		},
+		frontier,
+		reason,
+		emit: state.lastWaitKey !== key
+	};
+}
+async function runQueued(args) {
+	let state = createQueueState(args.contexts, args.dependencies.clock.now());
+	const stamp = verdictFactory(args.dependencies.clock, "queued-stack");
+	args.dependencies.emit(stamp({
+		kind: "QUEUE",
+		terminal: false,
+		queue: args.contexts
+	}));
+	const step = async () => {
+		state = planQueue(state, args.dependencies.clock.now());
+		if (state.work === null) {
+			const complete = evaluateQueue(state, args.dependencies.clock.now(), args.options);
+			if (complete.kind !== "complete") throw new Error("queue has no work while active");
+			return {
+				kind: "terminal",
+				verdict: stamp({
+					kind: "COMPLETE",
+					terminal: true,
+					exitCode: 0,
+					queue: state.queue,
+					merged: complete.merged
+				})
+			};
+		}
+		const context = state.work.kind === "whole-stack-sweep" ? state.work.remaining[0] : state.work.frontier;
+		const snapshot = await readSnapshot({
+			reader: args.dependencies.reader,
+			context,
+			pendingHistory: "omit",
+			allowDraft: args.options.allowDraft
+		});
+		const applied = applyQueueSnapshot(state, snapshot, args.dependencies.clock.now(), args.options);
+		state = applied.state;
+		if (applied.completedSweepRows !== null) args.dependencies.emit(stamp({
+			kind: "STATUS",
+			terminal: false,
+			reason: "whole-stack-sweep",
+			rows: applied.completedSweepRows
+		}));
+		if (state.work !== null) return { kind: "continue" };
+		const evaluation = evaluateQueue(state, args.dependencies.clock.now(), args.options);
+		state = evaluation.state;
+		switch (evaluation.kind) {
+			case "complete": return {
+				kind: "terminal",
+				verdict: stamp({
+					kind: "COMPLETE",
+					terminal: true,
+					exitCode: 0,
+					queue: state.queue,
+					merged: evaluation.merged
+				})
+			};
+			case "blocker": return {
+				kind: "terminal",
+				verdict: blockerVerdict(stamp, evaluation.blocker)
+			};
+			case "advance":
+				args.dependencies.emit(stamp({
+					kind: "ADVANCE",
+					terminal: false,
+					merged: evaluation.merged,
+					frontier: evaluation.frontier,
+					remaining: evaluation.remaining
+				}));
+				return { kind: "continue" };
+			case "timeout": return {
+				kind: "terminal",
+				verdict: stamp({
+					kind: "TIMEOUT",
+					terminal: true,
+					exitCode: 5,
+					reason: {
+						kind: "queued-stack",
+						frontier: evaluation.frontier,
+						unmergedCount: evaluation.unmergedCount
+					}
+				})
+			};
+			case "waiting":
+				if (evaluation.emit) args.dependencies.emit(stamp({
+					kind: "WAITING",
+					terminal: false,
+					frontier: evaluation.frontier,
+					reason: evaluation.reason
+				}));
+				return {
+					kind: "sleep",
+					seconds: args.options.interval
+				};
+			default: return evaluation;
+		}
+	};
+	return pollUntilTerminal({
+		dependencies: args.dependencies,
+		options: args.options,
+		stamp,
+		step
+	});
+}
 //#endregion
-//#region .runtime-sources/skills/poteto-mode/scripts/orch/orch.ts
-const { Command: CommanderCommand, CommanderError, InvalidArgumentError, Option } = await Promise.resolve().then(() => (init_esm(), esm_exports));
-const DISPLAY_LIMIT = 4;
-function message(error) {
-	return error instanceof Error ? error.message : String(error);
+//#region .runtime-sources/skills/poteto-mode/scripts/watch-pr/render.ts
+const renderJson = (verdict) => `${JSON.stringify(verdict)}\n`;
+function ciCell(row) {
+	if (row.kind !== "open") return "—";
+	const was = row.ci.hadPreviousPassingCi ? ", was ✅" : "";
+	switch (row.ci.kind) {
+		case "ci-clean": return "✅";
+		case "ci-pending": return `⏳ ${row.ci.pending.length} pending${was}`;
+		case "ci-failing": return `❌ ${row.ci.failed.length} failed${row.ci.pending.length ? `, ${row.ci.pending.length} pending` : ""}${was}`;
+		case "ci-github-rejected": return `❌ GitHub reports failing checks${was}`;
+		default: return row.ci;
+	}
+}
+function reviewCell(row) {
+	if (row.kind !== "open") return "—";
+	const open = row.threads.length;
+	return row.reviewAutomationRunning ? open ? `🤖 running, ${open} open` : "🤖 running" : open ? `📝 ${open} open` : "✅";
+}
+function mergeCell(row) {
+	if (row.kind === "merged") return "✅ merged";
+	if (row.kind === "closed") return "❌ closed";
+	if (row.facts.isDraft) return "⏸ draft";
+	if (row.facts.reviewDecision === "CHANGES_REQUESTED") return "⚠️ changes requested";
+	return row.facts.mergeable === "CONFLICTING" || row.facts.mergeStateStatus === "DIRTY" || row.facts.mergeStateStatus === "CONFLICTING" ? "⚠️ conflict" : "✅";
+}
+function renderStatusTable(rows) {
+	const lines = ["| PR | CI | Review | Merge |", "| --- | --- | --- | --- |"];
+	for (const row of rows) {
+		const url = `https://github.com/${row.context.owner}/${row.context.repo}/pull/${row.context.number}`;
+		lines.push(`| [#${row.context.number}](${url}) | ${ciCell(row)} | ${reviewCell(row)} | ${mergeCell(row)} |`);
+	}
+	return `${lines.join("\n")}\n`;
+}
+function threadLine(thread) {
+	const comment = thread.firstComment;
+	return [
+		thread.id,
+		comment?.path ?? "None",
+		comment?.line ?? "None",
+		comment?.authorLogin ?? "None",
+		`isBugBot=${thread.isBugbot}`,
+		`bugbotReviewPasses=${thread.bugbotReviewPasses}`,
+		(comment?.body ?? "").split(/\r?\n/, 1)[0]?.slice(0, 180) ?? ""
+	].join(" ");
+}
+function renderBlocker(blocker) {
+	switch (blocker.kind) {
+		case "merge-conflicts": return [
+			"BLOCKER: merge-conflicts",
+			`pr=${blocker.pr.number}`,
+			`mergeable=${blocker.facts.mergeable}`,
+			`mergeStateStatus=${blocker.facts.mergeStateStatus}`,
+			"action=resolve merge conflicts before waiting for CI"
+		].join("\n");
+		case "review-threads": return [
+			"BLOCKER: review-threads",
+			`pr=${blocker.pr.number}`,
+			`unresolved=${blocker.threads.length}`,
+			...blocker.threads.map(threadLine)
+		].join("\n");
+		case "failing-checks": {
+			const failed = blocker.ci.kind === "ci-failing" ? blocker.ci.failed : [];
+			const details = failed.map((check) => `${check.name} ${check.reportedState} ${check.description} ${check.link}`);
+			if (blocker.ci.kind === "ci-github-rejected") details.push(`mergeStateStatus=${blocker.ci.github.mergeStateStatus}`, `headRollupState=${blocker.ci.github.headRollupState}`);
+			return [
+				"BLOCKER: failing-checks",
+				`pr=${blocker.pr.number}`,
+				`failed=${failed.length}`,
+				...details
+			].join("\n");
+		}
+		case "merge-gate": {
+			const action = blocker.reason === "closed-without-merge" ? "restore or remove the closed PR from the queued stack" : blocker.reason === "draft-pr" ? "mark the PR ready for review before waiting for the merge queue" : "resolve the changes-requested review before waiting for the merge queue";
+			return [
+				`BLOCKER: ${blocker.reason}`,
+				`pr=${blocker.pr.number}`,
+				`action=${action}`
+			].join("\n");
+		}
+		case "status-query": return [
+			"BLOCKER: status-query",
+			`failures=${blocker.failures}`,
+			`detail=${blocker.failure.detail}`,
+			"action=verify current PR context, GitHub authentication, and API availability, then rearm"
+		].join("\n");
+		default: return blocker;
+	}
+}
+function renderPretty(verdict) {
+	switch (verdict.kind) {
+		case "QUEUE": return `QUEUE: captured ${verdict.queue.length} PR${verdict.queue.length === 1 ? "" : "s"} bottom-to-top: ${verdict.queue.map((pr) => `#${pr.number}`).join(",")}\n`;
+		case "STATUS": return renderStatusTable(verdict.rows);
+		case "WAITING": return verdict.reason.kind === "pending-checks" ? `WAITING: frontier=#${verdict.frontier.number}; ${verdict.reason.pending.length} check${verdict.reason.pending.length === 1 ? "" : "s"} pending\n` : `WAITING: frontier=#${verdict.frontier.number} is blocker-free; waiting for merge queue (${verdict.reason.unmergedCount} PR${verdict.reason.unmergedCount === 1 ? "" : "s"} unmerged)\n`;
+		case "ADVANCE": return `ADVANCE: merged #${verdict.merged.number}; next=#${verdict.frontier.number}; remaining=${verdict.remaining}\n`;
+		case "RETRY": return `RETRY: GitHub status query failed; retrying in ${verdict.retryInSeconds}s\ndetail=${verdict.failure.detail}\n`;
+		case "BLOCKER": return `${renderBlocker(verdict.blocker)}\n`;
+		case "READY": return `READY: no merge conflicts, no unresolved review threads, no failing or pending checks${verdict.scope.kind === "single" && verdict.scope.pr.kind === "ready-pr" ? `\nmergeStateStatus=${verdict.scope.pr.proof.ci.github.mergeStateStatus}\nreviewDecision=${verdict.scope.pr.proof.gate.reviewDecision}\nisDraft=${verdict.scope.pr.proof.gate.draft === "draft-allowed"}${verdict.scope.pr.proof.gate.draft === "draft-allowed" ? "\nnote=draft allowed (--allow-draft); leave draft — do not mark ready" : ""}` : ""}\n`;
+		case "COMPLETE": return `COMPLETE: queued stack merged (${verdict.queue.length} PR${verdict.queue.length === 1 ? "" : "s"})\n`;
+		case "TIMEOUT":
+			if (verdict.reason.kind === "pending-checks") return "TIMEOUT: checks still pending\n";
+			if (verdict.reason.kind === "status-unavailable") return "TIMEOUT: GitHub status remained unavailable\n";
+			return `TIMEOUT: queued stack still has ${verdict.reason.unmergedCount} PR${verdict.reason.unmergedCount === 1 ? "" : "s"} unmerged; frontier=#${verdict.reason.frontier.number}\n`;
+		default: return verdict;
+	}
+}
+//#endregion
+//#region .runtime-sources/skills/poteto-mode/scripts/watch-pr/cli.ts
+function positiveNumber(value) {
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed) || parsed <= 0) throw new InvalidArgumentError("must be greater than zero");
+	return parsed;
+}
+function nonNegativeNumber(value) {
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed) || parsed < 0) throw new InvalidArgumentError("must be zero or greater");
+	return parsed;
 }
 function positiveInteger(value) {
 	const parsed = Number(value);
-	if (!/^[1-9]\d*$/.test(value) || !Number.isSafeInteger(parsed)) throw new InvalidArgumentError("must be a positive integer");
+	if (!Number.isInteger(parsed) || parsed <= 0) throw new InvalidArgumentError("must be a positive integer");
 	return parsed;
 }
-function prList(value) {
-	const parts = value.split(",");
-	if (parts.some((part) => part.length === 0)) throw new InvalidArgumentError("requires a comma-separated PR list");
-	return parts.map(positiveInteger);
-}
-function countLine(value) {
-	const entries = Object.entries(value);
-	return entries.length === 0 ? "none" : entries.map(([name, count]) => `${name}=${count}`).join(", ");
-}
-function unitLine(unit) {
-	return [
-		unit.id,
-		unit.track,
-		unit.state,
-		unit.branch,
-		unit.pr,
-		unit.sha,
-		unit.brief
-	].join("	");
-}
-function pointerLine(pointer) {
-	return [
-		pointer.ts,
-		pointer.agent,
-		pointer.unit,
-		pointer.status,
-		pointer.report
-	].join("	");
-}
-function gateLine(gate) {
-	return [
-		gate.id,
-		gate.question,
-		gate.options,
-		gate.defaultAnswer
-	].join("	");
-}
-function compactRows(rows, format, empty, limit = DISPLAY_LIMIT) {
-	if (rows.length === 0) return empty;
-	const lines = (limit === null ? rows : rows.slice(0, limit)).map(format);
-	if (limit !== null && rows.length > limit) lines.push(`... ${rows.length - limit} more; use --json`);
-	return lines.join("\n");
-}
-function frontierLine(value) {
-	const prs = value.prs.length === 0 ? "none" : value.prs.map((row) => `${row.branches}#${row.pr}@${row.sha}:${row.state}`).join(",");
-	return `generation=${value.generation} prs=${prs} lowest-unmerged=${value.lowestUnmerged ?? "none"}`;
-}
-function statusLines(report) {
-	const visible = report.summary.openGateIds.slice(0, DISPLAY_LIMIT);
-	const more = report.summary.openGateIds.length > DISPLAY_LIMIT ? `,+${report.summary.openGateIds.length - DISPLAY_LIMIT} more` : "";
-	return [
-		`counts: units=${report.units.length}; states=${countLine(report.summary.unitStates)}; ledger=${countLine(report.summary.ledgerVerdicts)}`,
-		`changed: ${report.changed}`,
-		`gates open: ${report.summary.openGateIds.length}${visible.length > 0 ? `; ids=${visible.join(",")}${more}` : ""}`
-	].join("\n");
-}
-function emit(io, json, value, compact, jsonValue = (result) => result) {
-	const rendered = json ? JSON.stringify(jsonValue(value), null, 2) : compact(value);
-	io.stdout(rendered.endsWith("\n") ? rendered : `${rendered}\n`);
-}
-function storeDirectory(program) {
-	const value = program.opts().store;
-	if (value === void 0 || value.trim().length === 0) throw new UsageError("set --store <dir> or ORCH_STORE");
-	return value;
-}
-function frontierRepo(options) {
-	const value = options.repo;
-	if (value === void 0 || value.trim().length === 0) throw new UsageError("set --repo <dir> or ORCH_REPO");
-	return value;
-}
-async function runStore(program, io, operation, compact, jsonValue) {
-	const options = program.opts();
-	const store = openStore(storeDirectory(program), {
-		force: options.force,
-		onLockStolen: (holder) => io.stderr(`stealing store lock held by pid ${holder}\n`),
-		onStaleLock: (holder) => io.stderr(`replacing stale store lock (pid ${holder} is dead)\n`)
-	});
+function prNumber(value) {
 	try {
-		const result = await operation(store);
-		emit(io, options.json, result, compact, jsonValue);
-	} finally {
-		await store.close();
+		return parsePrNumber(Number(value.replace(/^#/, "")));
+	} catch {
+		throw new InvalidArgumentError("must be a positive integer");
 	}
 }
-function leaf(parent, name, description) {
-	return parent.command(name).description(description).allowExcessArguments(false);
+function stackPrList(value) {
+	const numbers = value.split(",").map((part) => prNumber(part.trim()));
+	if (new Set(numbers).size !== numbers.length) throw new InvalidArgumentError("contains a duplicate PR");
+	const parsed = nonEmpty(numbers);
+	if (parsed === null) throw new InvalidArgumentError("cannot be empty");
+	return parsed;
 }
-function requireSubcommand(program) {
-	storeDirectory(program);
-	throw new UsageError("a valid command is required");
-}
-function createProgram(io) {
-	const program = new CommanderCommand("orch").description("Plain-file orchestrate bookkeeping").usage("[--store <dir>] [--json] [--force] <command>").configureOutput({
+function parseArgs(argv, io) {
+	const program = new Command("watch-pr").description("Watch one pull request, a connected stack, or an immutable queued stack.\nJSON (NDJSON while polling) is the default; --pretty renders human text.").configureOutput({
 		writeOut: io.stdout,
 		writeErr: io.stderr
-	}).exitOverride().showHelpAfterError().allowExcessArguments(false).addOption(new Option("--store <dir>", "store directory (or ORCH_STORE)").env("ORCH_STORE")).option("--json", "print complete rows as JSON", false).option("--force", "steal an existing store lock", false);
-	leaf(program, "init", "initialize the store").action(() => runStore(program, io, (store) => store.init(), (result) => `initialized ${result.store}`));
-	const unit = program.command("unit").description("manage work units").action(() => requireSubcommand(program));
-	leaf(unit, "add <id>", "add a unit").requiredOption("--track <track>", "unit track").option("--brief <path>", "brief path").action((id, options) => runStore(program, io, (store) => store.units.add({
-		id,
-		track: options.track,
-		brief: options.brief
-	}), unitLine));
-	leaf(unit, "set <id>", "update a unit").requiredOption("--state <state>", "unit state").option("--branch <branch>", "branch name").option("--pr <number>", "pull request number", positiveInteger).option("--sha <sha>", "commit SHA").action((id, options) => runStore(program, io, (store) => store.units.set({
-		id,
-		state: options.state,
-		branch: options.branch,
-		pr: options.pr,
-		sha: options.sha
-	}), unitLine));
-	leaf(unit, "get <id>", "get a unit").action((id) => runStore(program, io, (store) => store.units.get(id), unitLine));
-	leaf(unit, "list", "list units").option("--state <state>", "filter by state").option("--track <track>", "filter by track").action((options) => runStore(program, io, (store) => store.units.list(options), (rows) => compactRows(rows, unitLine, "(no units)")));
-	leaf(unit, "counts", "count units by state").action(() => runStore(program, io, (store) => store.units.counts(), countLine));
-	const ledger = program.command("ledger").description("manage verification records").action(() => requireSubcommand(program));
-	leaf(ledger, "record", "record a verification verdict").argument("<pr>", "pull request number", positiveInteger).argument("<sha>", "commit SHA").argument("<verdict>", "verification verdict", parseVerdict).requiredOption("--evidence <path>", "evidence path").option("--verifier <name>", "verifier name").action((pr, sha, verdict, options) => runStore(program, io, (store) => store.ledger.record({
-		pr,
-		sha,
-		verdict,
-		evidence: options.evidence,
-		verifier: options.verifier
-	}), (row) => `${row.pr}\t${row.sha}\t${row.verdict}`));
-	leaf(ledger, "check", "check a verification verdict").argument("<pr>", "pull request number", positiveInteger).argument("<sha>", "commit SHA").action((pr, sha) => runStore(program, io, (store) => store.ledger.check({
-		pr,
-		sha
-	}), (row) => row.verdict));
-	leaf(ledger, "summary", "count verification verdicts").action(() => runStore(program, io, (store) => store.ledger.summary(), countLine));
-	const inbox = program.command("inbox").description("manage agent pointers").action(() => requireSubcommand(program));
-	leaf(inbox, "push <agent> <unit> <status>", "push an inbox pointer").option("--report <path>", "report path").action((agent, unitId, status, options) => runStore(program, io, (store) => store.inbox.push({
-		agent,
-		unit: unitId,
-		status,
-		report: options.report
-	}), (result) => `${result.pointer.unit}\t${result.pointer.status}\t${result.filename}`, (result) => result.pointer));
-	leaf(inbox, "drain", "drain inbox pointers").option("--peek", "read without draining", false).action((options) => runStore(program, io, (store) => options.peek ? store.inbox.peek() : store.inbox.drain(), (rows) => compactRows(rows, pointerLine, "(empty)", null)));
-	leaf(inbox, "count", "count inbox pointers").action(() => runStore(program, io, (store) => store.inbox.count(), String, (count) => ({ count })));
-	const gate = program.command("gate").description("manage decision gates").action(() => requireSubcommand(program));
-	leaf(gate, "park <id>", "park a decision gate").requiredOption("--question <question>", "gate question").requiredOption("--options <options>", "gate options").requiredOption("--default <answer>", "default answer").action((id, options) => runStore(program, io, (store) => store.gates.park({
-		id,
-		question: options.question,
-		options: options.options,
-		defaultAnswer: options.default
-	}), (result) => `${result.id}\topen`));
-	leaf(gate, "list", "list open decision gates").action(() => runStore(program, io, (store) => store.gates.list(), (rows) => compactRows(rows, gateLine, "(no open gates)")));
-	leaf(gate, "resolve <id>", "resolve a decision gate").requiredOption("--answer <answer>", "chosen answer").action((id, options) => runStore(program, io, (store) => store.gates.resolve({
-		id,
-		answer: options.answer
-	}), (result) => `${result.id}\tresolved\t${result.answer}`));
-	const frontier = program.command("frontier").description("manage the stack frontier").action(() => requireSubcommand(program));
-	leaf(frontier, "set", "resolve the pull request base chain and set the frontier").addOption(new Option("--repo <dir>", "repository directory (or ORCH_REPO)").env("ORCH_REPO")).addOption(new Option("--forge <forge>", "pull request forge").choices(["gh", "origin"]).default("gh")).option("--prs <n,...>", "optional expected pull request order pin", prList).action((options) => runStore(program, io, (store) => store.frontier.set({
-		repo: frontierRepo(options),
-		forge: options.forge,
-		prs: options.prs
-	}), frontierLine));
-	leaf(frontier, "show", "show the frontier").action(() => runStore(program, io, (store) => store.frontier.show(), frontierLine));
-	leaf(program, "status", "render status.md and print a summary").action(() => runStore(program, io, (store) => store.status.render(), statusLines));
-	const standing = program.command("standing").description("manage standing orders").action(() => requireSubcommand(program));
-	leaf(standing, "show", "show standing orders").action(() => runStore(program, io, (store) => store.standing.show(), (rows) => compactRows(rows, (item) => `${item.number}. ${item.line}`, "(no standing orders)")));
-	leaf(standing, "add <line>", "add a standing order").action((line) => runStore(program, io, (store) => store.standing.add({ line }), (item) => `${item.number}. ${item.line}`));
-	program.action(() => requireSubcommand(program));
-	return program;
+	}).exitOverride().option("--owner <owner>", "GitHub repository owner").option("--repo <repo>", "GitHub repository name").option("--pr <number>", "pull request number", prNumber).addOption(new Option("--stack", "watch the connected open stack").default(false).conflicts("queuedStack")).option("--queued-stack", "watch the captured stack until all PRs merge", false).option("--stack-prs <n,...>", "frozen bottom-to-top queue (queued mode only)", stackPrList).option("--interval <seconds>", "poll interval", positiveNumber, 60).option("--sweep-interval <seconds>", "whole-stack sweep interval", positiveNumber, 300).option("--timeout <seconds>", "deadline; 0 disables it", nonNegativeNumber, 0).option("--max-query-errors <count>", "consecutive query-error budget", positiveInteger, 5).option("--status-only", "print one status table and exit 0", false).option("--allow-draft", "do not treat a draft as a merge gate", false).option("--pretty", "render human text instead of JSON", false);
+	program.parse(argv, { from: "user" });
+	const raw = program.opts();
+	if (raw.stackPrs !== void 0 && !raw.queuedStack) program.error("error: --stack-prs requires --queued-stack");
+	return {
+		owner: raw.owner ?? null,
+		repo: raw.repo ?? null,
+		pr: raw.pr ?? null,
+		mode: raw.queuedStack ? "queued-stack" : raw.stack ? "stack" : "single",
+		stackPrs: raw.stackPrs ?? [],
+		statusOnly: raw.statusOnly,
+		pretty: raw.pretty,
+		polling: {
+			interval: raw.interval,
+			sweepInterval: raw.sweepInterval,
+			timeout: raw.timeout,
+			maxQueryErrors: raw.maxQueryErrors,
+			allowDraft: raw.allowDraft
+		}
+	};
 }
-function handleError(error, program, io) {
-	if (error instanceof CommanderError) return error.exitCode === 0 ? 0 : 1;
-	const json = program.opts().json;
-	if (error instanceof NotFoundError) {
-		const output = error.output;
-		if (output === void 0) io.stderr(`error: ${error.message}\n`);
-		else emit(io, json, output.json, () => output.compact);
-		return 2;
-	}
-	io.stderr(`error: ${message(error)}\n`);
-	if (error instanceof UsageError) io.stderr(program.helpInformation());
-	return 1;
+function realRuntime() {
+	return {
+		reader: new GhGitHubReader(),
+		clock: {
+			now: () => performance.now() / 1e3,
+			observedAt: () => (/* @__PURE__ */ new Date()).toISOString(),
+			sleep: async (seconds) => {
+				await setTimeout(seconds * 1e3);
+			}
+		},
+		stdout: (value) => process.stdout.write(value),
+		stderr: (value) => process.stderr.write(value)
+	};
 }
-async function main(argv, io = {
-	stdout: (value) => process.stdout.write(value),
-	stderr: (value) => process.stderr.write(value)
-}) {
-	const program = createProgram(io);
+async function main(argv, runtime = realRuntime()) {
+	let options;
 	try {
-		await program.parseAsync(argv, { from: "user" });
-		return 0;
+		options = parseArgs(argv, runtime);
 	} catch (error) {
-		return handleError(error, program, io);
+		if (!(error instanceof CommanderError)) throw error;
+		return error.exitCode === 0 ? 0 : 64;
 	}
+	const render = options.pretty ? renderPretty : renderJson;
+	const emit = (verdict) => runtime.stdout(render(verdict));
+	let contexts;
+	try {
+		const seed = await resolveContext({
+			reader: runtime.reader,
+			owner: options.owner,
+			repo: options.repo,
+			pr: options.pr ?? options.stackPrs[0] ?? null
+		});
+		contexts = nonEmpty(options.stackPrs.map((number) => ({
+			...seed,
+			number
+		}))) ?? (options.mode === "single" ? [seed] : await discoverStack(runtime.reader, seed));
+	} catch (error) {
+		if (!(error instanceof WatcherQueryError)) throw error;
+		const verdict = statusQueryVerdict(verdictFactory(runtime.clock, options.mode), 1, error.failure);
+		runtime.stdout(render(verdict));
+		return verdict.exitCode;
+	}
+	const dependencies = {
+		reader: runtime.reader,
+		clock: runtime.clock,
+		emit
+	};
+	const verdict = options.mode === "queued-stack" && !options.statusOnly ? await runQueued({
+		dependencies,
+		contexts,
+		options: options.polling
+	}) : await runSimple({
+		dependencies,
+		contexts,
+		mode: options.mode,
+		statusOnly: options.statusOnly,
+		options: options.polling
+	});
+	runtime.stdout(render(verdict));
+	return verdict.exitCode;
 }
-if (import.meta.main) process.exitCode = await main(process.argv.slice(2));
 //#endregion
-export { main };
+//#region .runtime-sources/skills/poteto-mode/scripts/watch-pr/fakes.test-helper.ts
+function toRawThread(thread) {
+	return {
+		id: thread.id,
+		firstComment: thread.firstComment,
+		resolved: false
+	};
+}
+function passingCheck(name = "ci") {
+	return {
+		kind: "passed",
+		name,
+		reportedState: "SUCCESS",
+		description: "",
+		link: "",
+		workflow: ""
+	};
+}
+function fakeReader(options = {}) {
+	const calls = [];
+	const context = options.current ?? {
+		owner: "owner",
+		repo: "repo",
+		number: parsePrNumber(1)
+	};
+	const defaults = {
+		context,
+		mergeable: "MERGEABLE",
+		mergeStateStatus: "CLEAN",
+		reviewDecision: "APPROVED",
+		headRefOid: "head",
+		headRefName: "feature",
+		baseRefName: "main",
+		state: "OPEN",
+		mergedAt: null,
+		isDraft: false
+	};
+	let page = 0;
+	let threadPage = 0;
+	return {
+		calls,
+		async originRepo() {
+			calls.push("originRepo");
+			return options.origin === void 0 ? {
+				owner: "owner",
+				repo: "repo"
+			} : options.origin;
+		},
+		async currentPr(pr) {
+			calls.push("currentPr");
+			return {
+				...context,
+				number: pr ?? context.number
+			};
+		},
+		async pullRequest(requested) {
+			calls.push("pullRequest");
+			return {
+				...defaults,
+				...options.facts,
+				context: requested
+			};
+		},
+		async openPullRequests() {
+			calls.push("openPullRequests");
+			return options.openPullRequests ?? [];
+		},
+		async checksFastPath() {
+			calls.push("checksFastPath");
+			return options.fastPath ?? {
+				kind: "checks",
+				checks: [passingCheck()]
+			};
+		},
+		async checkRollupPage(_requested, after) {
+			calls.push(`checkRollupPage:${after ?? "null"}`);
+			return options.rollupPages?.[page++] ?? {
+				checks: [],
+				endCursor: null
+			};
+		},
+		async reviewThreadPage(_requested, after) {
+			calls.push(`reviewThreadPage:${after ?? "null"}`);
+			return options.threadPages?.[threadPage++] ?? {
+				threads: (options.threads ?? []).map(toRawThread),
+				endCursor: null
+			};
+		},
+		async commitRollups() {
+			calls.push("commitRollups");
+			return options.commitRollups ?? [{
+				oid: "head",
+				state: "SUCCESS"
+			}];
+		}
+	};
+}
+//#endregion
+//#region .runtime-sources/skills/poteto-mode/scripts/watch-pr/cli.test.ts
+const silentIo = {
+	stdout: () => {},
+	stderr: () => {}
+};
+function testRuntime(reader) {
+	const stdout = [];
+	const stderr = [];
+	return {
+		stdout,
+		stderr,
+		runtime: {
+			reader,
+			clock: {
+				now: () => 0,
+				observedAt: () => "2026-07-26T00:00:00.000Z",
+				async sleep() {
+					throw new Error("test unexpectedly slept");
+				}
+			},
+			stdout: (value) => stdout.push(value),
+			stderr: (value) => stderr.push(value)
+		}
+	};
+}
+describe("parseArgs", () => {
+	it("uses the specified defaults", () => {
+		expect(parseArgs([], silentIo)).toMatchObject({
+			owner: null,
+			repo: null,
+			pr: null,
+			mode: "single",
+			stackPrs: [],
+			statusOnly: false,
+			pretty: false,
+			polling: {
+				interval: 60,
+				sweepInterval: 300,
+				timeout: 0,
+				maxQueryErrors: 5,
+				allowDraft: false
+			}
+		});
+	});
+	it("parses a frozen queued stack bottom-to-top", () => {
+		const parsed = parseArgs([
+			"--queued-stack",
+			"--stack-prs",
+			"#10, 11,#12",
+			"--interval",
+			"2.5",
+			"--sweep-interval",
+			"30",
+			"--timeout",
+			"0",
+			"--max-query-errors",
+			"3",
+			"--allow-draft",
+			"--pretty"
+		], silentIo);
+		expect(parsed.mode).toBe("queued-stack");
+		expect(parsed.stackPrs.map(Number)).toEqual([
+			10,
+			11,
+			12
+		]);
+		expect(parsed.polling).toEqual({
+			interval: 2.5,
+			sweepInterval: 30,
+			timeout: 0,
+			maxQueryErrors: 3,
+			allowDraft: true
+		});
+		expect(parsed.pretty).toBe(true);
+	});
+	it("rejects every invalid mode and numeric shape as usage", async () => {
+		for (const argv of [
+			["--unknown"],
+			["--interval", "0"],
+			["--sweep-interval", "-1"],
+			["--timeout", "-1"],
+			["--max-query-errors", "1.5"],
+			["--stack", "--queued-stack"],
+			["--stack-prs", "1,2"],
+			[
+				"--queued-stack",
+				"--stack-prs",
+				"1,1"
+			]
+		]) {
+			const harness = testRuntime(fakeReader());
+			expect(await main(argv, harness.runtime)).toBe(64);
+			expect(harness.stdout).toEqual([]);
+			expect(harness.stderr.join("")).toContain("error:");
+		}
+	});
+});
+describe("rendering", () => {
+	const context = {
+		owner: "owner",
+		repo: "repo",
+		number: parsePrNumber(1)
+	};
+	const status = {
+		schemaVersion: 1,
+		sequence: 1,
+		observedAt: "2026-07-26T00:00:00.000Z",
+		mode: "single",
+		kind: "STATUS",
+		terminal: true,
+		exitCode: 0,
+		reason: "status-only",
+		rows: [{
+			kind: "merged",
+			context,
+			facts: {
+				context,
+				mergeable: "MERGEABLE",
+				mergeStateStatus: "CLEAN",
+				reviewDecision: "APPROVED",
+				headRefOid: "head",
+				headRefName: "feature",
+				baseRefName: "main",
+				state: "MERGED",
+				mergedAt: "now",
+				isDraft: false
+			}
+		}]
+	};
+	it("emits compact valid JSON by default", () => {
+		const rendered = renderJson(status);
+		expect(rendered.endsWith("\n")).toBe(true);
+		expect(JSON.parse(rendered)).toEqual(status);
+	});
+	it("renders the Markdown table from the same verdict only", () => {
+		const rendered = renderPretty(status);
+		expect(rendered).toContain("| PR | CI | Review | Merge |");
+		expect(rendered).toContain("| [#1](https://github.com/owner/repo/pull/1) | — | — | ✅ merged |");
+	});
+});
+describe("main", () => {
+	it("returns EX_USAGE 64 and writes usage errors only to stderr", async () => {
+		const harness = testRuntime(fakeReader());
+		expect(await main(["--interval", "0"], harness.runtime)).toBe(64);
+		expect(harness.stdout).toEqual([]);
+		expect(harness.stderr.join("")).toContain("option '--interval <seconds>' argument '0' is invalid");
+	});
+	it("bypasses the queue machine for queued-stack status-only", async () => {
+		const harness = testRuntime(fakeReader());
+		const code = await main([
+			"--owner",
+			"owner",
+			"--repo",
+			"repo",
+			"--queued-stack",
+			"--stack-prs",
+			"1",
+			"--status-only"
+		], harness.runtime);
+		expect(code).toBe(0);
+		expect(harness.stdout).toHaveLength(1);
+		const verdict = JSON.parse(harness.stdout[0]);
+		expect(verdict).toMatchObject({
+			kind: "STATUS",
+			terminal: true,
+			exitCode: 0,
+			mode: "queued-stack"
+		});
+		expect(harness.stdout[0]).not.toContain("\"kind\":\"QUEUE\"");
+	});
+	it("returns exit 4 for a hidden GitHub-side CI refusal", async () => {
+		const harness = testRuntime(fakeReader({
+			facts: { mergeStateStatus: "BLOCKED" },
+			fastPath: {
+				kind: "checks",
+				checks: [passingCheck()]
+			},
+			commitRollups: [{
+				oid: "head",
+				state: "FAILURE"
+			}]
+		}));
+		const code = await main([
+			"--owner",
+			"owner",
+			"--repo",
+			"repo",
+			"--pr",
+			"1"
+		], harness.runtime);
+		expect(code).toBe(4);
+		expect(harness.stdout).toHaveLength(1);
+		expect(JSON.parse(harness.stdout[0])).toMatchObject({
+			kind: "BLOCKER",
+			exitCode: 4,
+			blocker: {
+				kind: "failing-checks",
+				ci: { kind: "ci-github-rejected" }
+			}
+		});
+	});
+	it("shows help without touching the reader", async () => {
+		const reader = fakeReader();
+		const harness = testRuntime(reader);
+		expect(await main(["--help"], harness.runtime)).toBe(0);
+		expect(harness.stdout.join("")).toContain("JSON (NDJSON while polling)");
+		expect(reader.calls).toEqual([]);
+	});
+});
+//#endregion
+export {};

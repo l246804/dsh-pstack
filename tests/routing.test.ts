@@ -12,14 +12,14 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { fakeAgent, type FakeAgent } from "./fake-agent.ts";
-import { PSTACK_MODELS_FILENAME } from "../scripts/role-manifest.ts";
+import { PSTACK_MODELS_FILENAME } from "../src/role-manifest.ts";
 import type {
   LlmCallConfig,
   LlmHost,
   SubagentActivationSpec,
   SubagentsHost,
 } from "../src/host-contract.ts";
-import { ASSETS_ROOT } from "../src/paths.ts";
+import { PSTACK_ROOT } from "../src/paths.ts";
 import { validateEffortFor } from "../src/effort.ts";
 import {
   DelegationError,
@@ -147,7 +147,7 @@ function harness(roleFile: string, options: { readonly withAgents?: boolean } = 
       llm,
       ...(options.withAgents === false ? {} : { agents }),
       dshHome: home,
-      assetsRoot: ASSETS_ROOT,
+      pstackRoot: PSTACK_ROOT,
     },
     starts,
     configCalls,

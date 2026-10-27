@@ -1,7 +1,7 @@
 /**
  * Build the shipped script runtime.
  *
- * Every CLI and test bundle in `scripts/runtime-manifest.ts` is compiled here into
+ * Every CLI and test bundle in `src/runtime-manifest.ts` is compiled here into
  * one self-contained ES module per artifact. The output is written into the
  * gitignored `runtime/` tree; `scripts/build-assets.ts` copies it into `assets/`,
  * so the generated asset tree stays the only thing that ships.
@@ -14,7 +14,9 @@
  *    half-written.
  * 2. **One file, no resolution.** A single chunk per artifact and no
  *    `node_modules` or `require()` of a bare specifier, so an installed package
- *    needs no dependency tree beside it. `commander` comes from `vendor/`.
+ *    needs no dependency tree beside it. `commander` is a `devDependency`, resolved
+ *    from `node_modules` at build time and inlined, which is where every other build
+ *    dependency comes from too.
  * 3. **Node, not Bun.** No `bun:` specifier and no `Bun.` global survives.
  * 4. **Deterministic.** The same sources produce the same bytes, so `--check`
  *    can compare a fresh build with the committed tree.
@@ -36,10 +38,10 @@ import {
   TEST_SUPPORT_STAGED_PREFIX,
   type RuntimeEntry,
   type RuntimeSource,
-} from "./runtime-manifest.ts";
+} from "../src/runtime-manifest.ts";
 
 /** Gitignored build output; `assets/` is generated from it. */
-export const RUNTIME_ROOT = join(ROOT, "runtime");
+export const RUNTIME_ROOT = join(ROOT, ".build", "runtime");
 
 /**
  * Where upstream sources are copied, with `RUNTIME_SOURCE_PATCHES` applied.
@@ -50,9 +52,6 @@ export const RUNTIME_ROOT = join(ROOT, "runtime");
  * sources are bundled in place: they are this repository's own files.
  */
 export const SOURCE_STAGE_ROOT = join(ROOT, ".runtime-sources");
-
-/** The vendored Commander ESM entry. Pinned by `vendor/commander/package.json`. */
-export const COMMANDER_ALIAS = join(ROOT, "vendor", "commander", "esm.mjs");
 
 /** Node 22 is the floor `engines.node` promises, so the output must not exceed it. */
 export const BUILD_TARGET = "node22";
@@ -183,7 +182,6 @@ async function buildArtifact(entry: RuntimeEntry): Promise<BuiltArtifact> {
       target: BUILD_TARGET,
       platform: "node",
       outDir: join(RUNTIME_ROOT, scope),
-      alias: { commander: COMMANDER_ALIAS },
       // `codeSplitting` is an output option in this toolchain, and it is the
       // supported spelling of the deprecated `inlineDynamicImports`.
       outputOptions: { codeSplitting: false },
@@ -211,9 +209,31 @@ async function buildArtifact(entry: RuntimeEntry): Promise<BuiltArtifact> {
   // Some sources already begin with a shebang (`check-plan.mjs`, and the patched
   // `orch.ts`). The bundler keeps it, so it is removed before the one shipped
   // shebang goes on: two consecutive `#!` lines are a syntax error in Node.
-  const text = `${SHEBANG}${stripShebang(code)}`;
+  const text = `${SHEBANG}${stripShebang(stabilizeRegions(code))}`;
   assertArtifact(entry, text);
   return { entry, text };
+}
+
+/**
+ * Make bundler region labels independent of where a dependency was installed.
+ *
+ * The bundler writes `//#region <path>` comments naming each module's source. Those
+ * paths are resolved, so the same source built against `./node_modules` and against a
+ * hoisted copy produce different bytes. That broke the one property the tree needs:
+ * the committed artifacts must be reproducible from the sources alone, so `--check`
+ * can compare a fresh build with the commit.
+ *
+ * Only labels change, and only the directory part. Every module that ships from a
+ * `node_modules` tree is labelled `node_modules/<package>/<file>`, which is what a
+ * fresh install of this package resolves too.
+ */
+function stabilizeRegions(code: string): string {
+  return code.replace(/^\/\/#region (.*)$/gm, (_match, region: string) => {
+    const marker = "node_modules/";
+    const at = region.lastIndexOf(marker);
+    if (at === -1) return `//#region ${region}`;
+    return `//#region ${region.slice(at)}`;
+  });
 }
 
 /** Remove every leading shebang line from a chunk. */
@@ -317,10 +337,10 @@ export async function buildRuntime(): Promise<readonly BuiltArtifact[]> {
   return artifacts;
 }
 
-/** Write the built tree, replacing `runtime/`. */
+/** Write the built tree, replacing `.build/runtime/`. */
 export async function writeRuntime(artifacts: readonly BuiltArtifact[]): Promise<void> {
-  if (dirname(RUNTIME_ROOT) !== ROOT) {
-    throw new RuntimeBuildError(`refusing to modify ${RUNTIME_ROOT}`);
+  if (dirname(RUNTIME_ROOT) !== join(ROOT, ".build")) {
+    throw new RuntimeBuildError(`refusing to modify ${RUNTIME_ROOT}; it must sit under .build/`);
   }
   await rm(RUNTIME_ROOT, { recursive: true, force: true });
   for (const { entry, text } of artifacts) {

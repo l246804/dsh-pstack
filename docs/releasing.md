@@ -40,11 +40,11 @@ pnpm run release
 
 ## 为什么 build 步骤不是空的
 
-`runtime/` 和 `dist/` 都在 `.gitignore` 里，全新 clone 没有它们。而发布门需要它们已经存在：`check:assets` 的第一个前置是 `check:runtime`，它比较"仓库里的 `runtime/`"与"从源码重建的结果"，缺目录时报告每个产物 `missing`。
+`.build/runtime/` 和 `dist/` 都在 `.gitignore` 里，全新 clone 没有它们。而发布门需要它们已经存在：`check:assets` 的第一个前置是 `check:runtime`，它比较"仓库里的 `.build/runtime/`"与"从源码重建的结果"，缺目录时报告每个产物 `missing`。
 
-`pnpm run build` 能一次补上两者，但**不要用它**：它先跑 `build:assets`，会重写 tracked 的 `assets/`。之后 `check:assets` 的字节比对拿刚写出的树当基准，等于自己校验自己，`assets/` 与源码不一致这类问题就再也报不出来。所以 build 步骤固定为 `build:runtime` 加 `build:bundle`，只写两个 gitignored 目录。
+`pnpm run build` 能一次补上两者，但**不要用它**：它先跑 `build:assets`，会重写 tracked 的 `pstack/`。之后 `check:assets` 的字节比对拿刚写出的树当基准，等于自己校验自己，`pstack/` 与源码不一致这类问题就再也报不出来。所以 build 步骤固定为 `build:runtime` 加 `build:bundle`，只写两个 gitignored 目录。
 
-`assets/` 在 CI 里始终是提交时的样子，`check:assets` 才真的在证明"提交的生成树可以由源码重建"。这条推论的完整理由见 [构建与校验命令决策](decisions/2026-10-26-build-and-check-commands.md)里"`check` 不写任何 tracked 文件"一段。
+`pstack/` 在 CI 里始终是提交时的样子，`check:assets` 才真的在证明"提交的生成树可以由源码重建"。这条推论的完整理由见 [构建与校验命令决策](decisions/2026-10-26-build-and-check-commands.md)里"`check` 不写任何 tracked 文件"一段。
 
 ## 认证：OIDC，没有长期密钥
 
@@ -73,7 +73,7 @@ pnpm run build:bundle
 pnpm publish --dry-run --no-git-checks   # 走 prepublishOnly 全门，不上传
 ```
 
-关键是**干净的 clone**：在开发目录里跑，`runtime/` 和 `dist/` 早就在了，上面两条构建步骤缺一不可这件事看不出来。
+关键是**干净的 clone**：在开发目录里跑，`.build/runtime/` 和 `dist/` 早就在了，上面两条构建步骤缺一不可这件事看不出来。
 
 不要在开发目录里用 `pnpm run release` 来验证——它真的会改版本号、提交并推送 tag。日常提交前的验证是 `pnpm run check`。
 

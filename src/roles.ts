@@ -1,5 +1,5 @@
 /**
- * Role lookup over the single manifest in `scripts/role-manifest.ts`.
+ * Role lookup over the single manifest in `src/role-manifest.ts`.
  *
  * A role name is matched exactly after normalization. A near miss is reported as
  * a hint and never guessed, because silently running a role on the wrong route is
@@ -15,7 +15,7 @@ import {
   findRoleSpec,
   type RoleSpec,
   type RoleValueShape,
-} from "../scripts/role-manifest.ts";
+} from "./role-manifest.ts";
 
 export { AUTO_PANEL_ROLE_KEYS, ROLE_MANIFEST, findRoleSpec, type RoleSpec, type RoleValueShape };
 

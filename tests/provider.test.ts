@@ -3,7 +3,7 @@ import { isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { EXCLUDED_SKILLS } from "../scripts/build-assets.ts";
+import { EXCLUDED_SKILLS, shippedSkillCount } from "../scripts/build-assets.ts";
 import { parseFrontmatter, validateSkillFrontmatter } from "../src/frontmatter.ts";
 import {
   BUNDLED_SKILL_RANK,
@@ -14,7 +14,7 @@ import {
   loadSourcedSkillIndex,
 } from "../src/provider.ts";
 import type { SkillCandidate, SkillProvider, SkillProviderControl } from "../src/provider.ts";
-import { apply, name as pluginName, inject, Config, SKILLS_EXT_ROOT, SKILLS_ROOT } from "../src/index.ts";
+import { apply, name as pluginName, inject, Config, SKILL_ROOTS, SKILLS_ROOT } from "../src/index.ts";
 import type { PstackSkillHost } from "../src/index.ts";
 
 const root = SKILLS_ROOT;
@@ -63,14 +63,14 @@ function listFiles(directory: string): readonly string[] {
 }
 
 describe("bundled skill index", () => {
-  it("loads 55 skills, one for every declared upstream skill", () => {
+  it("loads one skill for every declared upstream skill", () => {
     const excluded = new Set(EXCLUDED_SKILLS);
     const directories = readdirSync(root, { withFileTypes: true })
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .filter((skill) => !excluded.has(skill));
 
-    expect(index.size).toBe(55);
+    expect(index.size).toBe(shippedSkillCount());
     expect([...index.values()].map((skill) => skill.name).sort()).toEqual(directories.sort());
     expect(pluginName).toBe("pstack");
     expect(inject).toEqual(["skills"]);
@@ -86,9 +86,9 @@ describe("bundled skill index", () => {
 });
 
 describe("provider catalog", () => {
-  it("lists all 55 candidates with the rc.3 candidate fields", async () => {
+  it("lists every shipped candidate with the rc.3 candidate fields", async () => {
     const list = await candidates();
-    expect(list).toHaveLength(55);
+    expect(list).toHaveLength(shippedSkillCount());
 
     for (const candidate of list) {
       expect(candidate.name, candidate.name).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
@@ -125,7 +125,9 @@ describe("provider catalog", () => {
     const modelInvocable = list.filter((candidate) => candidate.invocation.modelInvocable);
 
     expect(modelInvocable.map((candidate) => candidate.name)).toEqual(["setup-pstack"]);
-    expect(list.filter((candidate) => candidate.invocation.userInvocable)).toHaveLength(55);
+    expect(list.filter((candidate) => candidate.invocation.userInvocable)).toHaveLength(
+      shippedSkillCount(),
+    );
 
     const setup = candidateNamed(list, "setup-pstack");
     expect(setup.invocation).toEqual({ modelInvocable: true, userInvocable: true });
@@ -347,12 +349,20 @@ describe("host entry", () => {
 
     expect(registered).toHaveLength(1);
     const list = await (registered[0] as SkillProvider).list({});
-    // `apply` merges the 55 pstack skills with the vendored extension tree, so the
-    // catalog size is the two counts together rather than the pstack count alone.
-    const pstack = loadBundledSkillIndex(root);
-    const ext = loadSourcedSkillIndex(SKILLS_EXT_ROOT);
-    expect(list).toHaveLength(pstack.size + ext.size);
-    expect(list.length).toBeGreaterThanOrEqual(55);
+    // `apply` merges every root in `SKILL_ROOTS`: the ported skills, the vendored
+    // tree, and the authored tree. The catalog size is their sum, and deriving it from
+    // the same roots rather than restating a number keeps a new root from silently
+    // shrinking the assertion.
+    const expected = SKILL_ROOTS.reduce(
+      (total, skillRoot) =>
+        total +
+        (skillRoot.kind === "flat"
+          ? loadBundledSkillIndex(skillRoot.path).size
+          : loadSourcedSkillIndex(skillRoot.path).size),
+      0,
+    );
+    expect(list).toHaveLength(expected);
+    expect(list.length).toBeGreaterThanOrEqual(shippedSkillCount());
     expect(registered[0]?.name).toBe("pstack");
   });
 
@@ -363,7 +373,16 @@ describe("host entry", () => {
 
     const list = await (registered[0] as SkillProvider).list({});
     expect(registered[0]?.name).toBe("pstack-secondary");
-    expect(list).toHaveLength(loadBundledSkillIndex(root).size + loadSourcedSkillIndex(SKILLS_EXT_ROOT).size);
+    expect(list).toHaveLength(
+      SKILL_ROOTS.reduce(
+        (total, skillRoot) =>
+          total +
+          (skillRoot.kind === "flat"
+            ? loadBundledSkillIndex(skillRoot.path).size
+            : loadSourcedSkillIndex(skillRoot.path).size),
+        0,
+      ),
+    );
     expect(list[0]?.provider).toBe("pstack-secondary");
   });
 });

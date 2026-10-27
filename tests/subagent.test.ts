@@ -6,13 +6,13 @@ import { afterAll, describe, expect, it } from "vite-plus/test";
 import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
 import { fakeAgent } from "./fake-agent.ts";
 
-import { PSTACK_MODELS_FILENAME } from "../scripts/role-manifest.ts";
+import { PSTACK_MODELS_FILENAME } from "../src/role-manifest.ts";
 import type {
   LlmCallConfig,
   SubagentActivationSpec,
   SubagentCapabilities,
 } from "../src/host-contract.ts";
-import { ASSETS_ROOT, POTETO_MODE_SKILL_PATH } from "../src/paths.ts";
+import { PSTACK_ROOT, POTETO_MODE_SKILL_PATH } from "../src/paths.ts";
 import {
   AGENT_KINDS,
   Config,
@@ -61,7 +61,7 @@ function temporaryHome(): string {
 
 interface HarnessOptions {
   readonly roleFile?: string;
-  readonly assetsRoot?: string;
+  readonly pstackRoot?: string;
   readonly hostMaxDepth?: number;
   readonly capabilities?: Partial<SubagentCapabilities>;
   readonly failStartAt?: number;
@@ -106,7 +106,7 @@ function harness(options: HarnessOptions = {}): Harness {
 
   const runtime: SubagentRuntime = {
     dshHome: home,
-    assetsRoot: options.assetsRoot ?? ASSETS_ROOT,
+    pstackRoot: options.pstackRoot ?? PSTACK_ROOT,
     subagents: {
       list: () => [providerName],
       getProvider: (name) => (name === providerName ? provider : undefined),
@@ -249,7 +249,7 @@ describe("preamble loading", () => {
       expect((error as Error).message).toContain('pass agent: "general"');
     }
 
-    const run = harness({ assetsRoot: bare });
+    const run = harness({ pstackRoot: bare });
     expect(() => planDelegation(args(), run.runtime)).toThrow(PreambleError);
     expect(run.starts).toHaveLength(0);
 

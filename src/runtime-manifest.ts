@@ -66,12 +66,12 @@ export const REPLACED_SCRIPT_DIRECTORIES: readonly string[] = [
 ];
 
 /** The directory holding the authored runtime sources. */
-export const AUTHORED_ROOT = "scripts/runtime/";
+export const AUTHORED_RUNTIME_ROOT = "scripts/runtime/";
 
 /** Support modules the ported tests import instead of `bun:test`. */
 export const TEST_SUPPORT: readonly RuntimeSource[] = [
-  { kind: "authored", path: `${AUTHORED_ROOT}tests/expect.ts` },
-  { kind: "authored", path: `${AUTHORED_ROOT}tests/support.ts` },
+  { kind: "authored", path: `${AUTHORED_RUNTIME_ROOT}tests/expect.ts` },
+  { kind: "authored", path: `${AUTHORED_RUNTIME_ROOT}tests/support.ts` },
 ];
 
 /**
@@ -134,21 +134,21 @@ export const RUNTIME_CLIS: readonly RuntimeEntry[] = [
   {
     id: "worktree-audit",
     kind: "cli",
-    entry: { kind: "authored", path: `${AUTHORED_ROOT}worktree-audit.ts` },
+    entry: { kind: "authored", path: `${AUTHORED_RUNTIME_ROOT}worktree-audit.ts` },
     out: "worktree-audit.mjs",
     assetPath: "skills/poteto-mode/scripts/worktree-audit.mjs",
     executable: true,
-    sources: [{ kind: "authored", path: `${AUTHORED_ROOT}worktree-audit.ts` }],
+    sources: [{ kind: "authored", path: `${AUTHORED_RUNTIME_ROOT}worktree-audit.ts` }],
     summary: "read-only worktree audit",
   },
   {
     id: "log",
     kind: "cli",
-    entry: { kind: "authored", path: `${AUTHORED_ROOT}log.ts` },
+    entry: { kind: "authored", path: `${AUTHORED_RUNTIME_ROOT}log.ts` },
     out: "log.mjs",
     assetPath: "skills/show-me-your-work/scripts/log.mjs",
     executable: true,
-    sources: [{ kind: "authored", path: `${AUTHORED_ROOT}log.ts` }],
+    sources: [{ kind: "authored", path: `${AUTHORED_RUNTIME_ROOT}log.ts` }],
     summary: "decision-log row appender",
   },
 ];

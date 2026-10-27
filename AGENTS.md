@@ -1,6 +1,14 @@
 # AGENTS.md
 
-dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。当前在 `refactor/plugin-v2` 分支整体重写实现。旧实现在 `main` 分支，需要时用 `git show main:<path>` 取回。
+dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。旧实现在 `main` 分支 2b8b2a1 之前，需要时用 `git show <ref>:<path>` 取回。
+
+## 目录分工
+
+随包内容按**来源**分两棵树，这个划分是硬规则。
+
+- `pstack/` 是上游移植，由 `build:assets` 整棵重新生成，保持上游自己的相对布局。手写内容放进去会在下一次构建时被删掉。
+- `skills/` 是所有非上游技能，从不重新生成。`vendored/<来源>/<技能>/` 必须有哈希与提交号，`authored/<技能>/` 不能有哈希。清单在 `skills/sources.yml`。
+- `docs/` 只写当前状态，不进发布包。`src/` 是插件源码，`scripts/` 是构建工具。
 
 ## 文档分工
 

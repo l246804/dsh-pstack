@@ -10,27 +10,35 @@ import {
 } from "./adapter.ts";
 import {
   AGENTS_PREFIX,
-  ASSETS_ROOT,
+  PSTACK_ROOT,
   EXCLUDED_SKILLS,
   GUIDE_PREFIX,
   ROOT,
   SKILLS_PREFIX,
   UPSTREAM_ROOT,
   classifySkills,
+  shippedSkillCount,
   renderSkill,
+
   retargetLinks,
   skillDirectories,
   walkUpstream,
 } from "./build-assets.ts";
 import type { SkillCategory } from "./build-assets.ts";
-import { SKILLS_EXT_ROOT, isLocal, readSources } from "./sync-skills-ext.ts";
-import { RUNTIME_CLIS, RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
+import {
+  AUTHORED_ROOT,
+  VENDORED_ROOT,
+  authoredSkillDirectory,
+  readSources,
+  vendoredSkillDirectory,
+} from "./sync-skills-ext.ts";
+import { RUNTIME_CLIS, RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../src/runtime-manifest.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
   ROLE_MANIFEST,
   renderPstackModelsExample,
-} from "./role-manifest.ts";
+} from "../src/role-manifest.ts";
 import {
   AGENT_DROPPED_FIELDS,
   SKILL_DROPPED_FIELDS,
@@ -86,8 +94,8 @@ export interface AssetsReport {
 export function checkAssets(): AssetsReport {
   const problems: string[] = [];
 
-  if (!existsSync(ASSETS_ROOT)) {
-    return emptyReport(["assets/: missing; run `pnpm run build:assets` first"]);
+  if (!existsSync(PSTACK_ROOT)) {
+    return emptyReport(["pstack/: missing; run `pnpm run build:assets` first"]);
   }
 
   checkLayout(problems);
@@ -108,7 +116,9 @@ export function checkAssets(): AssetsReport {
   for (const problem of checkScriptIdReferences()) problems.push(problem);
   for (const problem of checkSkillsExt()) problems.push(problem);
 
-  if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
+  if (skills.count !== shippedSkillCount()) {
+    problems.push(`assets: expected ${shippedSkillCount()} skills, found ${skills.count}`);
+  }
   // "Upstream skill files, minus the ones a built artifact replaces, plus the artifacts
   // themselves". Derived rather than hardcoded, so it stays honest when the runtime
   // manifest changes.
@@ -130,11 +140,15 @@ export function checkAssets(): AssetsReport {
   if (guide.markdown !== 11)
     problems.push(`assets: expected 11 guide Markdown files, found ${guide.markdown}`);
   if (guide.images !== 6) problems.push(`assets: expected 6 guide images, found ${guide.images}`);
-  if (skills.categories.copy + skills.categories.pointer + skills.categories.stripped !== 55) {
-    problems.push("assets: skill categories do not cover all 55 skills");
+  const categorised =
+    skills.categories.copy + skills.categories.pointer + skills.categories.stripped;
+  if (categorised !== shippedSkillCount()) {
+    problems.push(
+      `assets: skill categories cover ${categorised} of ${shippedSkillCount()} skills; every shipped skill needs exactly one category`,
+    );
   }
 
-  const markdown = walkFiles(ASSETS_ROOT)
+  const markdown = walkFiles(PSTACK_ROOT)
     .filter((file) => file.endsWith(".md"))
     .map((file) => ({ file: toRepositoryPath(file), text: readFileSync(file, "utf8") }));
 
@@ -152,7 +166,7 @@ export function checkAssets(): AssetsReport {
     );
   }
 
-  const executables = walkFiles(ASSETS_ROOT).filter((file) => (statSync(file).mode & 0o111) !== 0);
+  const executables = walkFiles(PSTACK_ROOT).filter((file) => (statSync(file).mode & 0o111) !== 0);
   if (executables.length !== 5) {
     problems.push(`assets: expected 5 executable files, found ${executables.length}`);
   }
@@ -340,41 +354,45 @@ export function readmeImageProblems(
 }
 
 function checkLayout(problems: string[]): void {
-  // Three generated top-level directories, and nothing else. The vendored
-  // third-party tree is not here: it lives in `skills-ext/` beside `assets/`,
-  // because this directory is replaced wholesale on every `build:assets` and a tree
-  // that must survive that belongs outside it.
+  // `pstack/` is the generated port and mirrors upstream's own relative layout, because
+  // 110 shipped links run between `docs/guide/`, `skills/`, and `agents/`. Regrouping
+  // inside this directory would break every one of them, so the guard here is upstream's
+  // shape, not a shape of our choosing.
   const allowedTopLevel = new Set(["skills", "agents", "docs"]);
-  for (const entry of readdirSync(ASSETS_ROOT, { withFileTypes: true })) {
+  for (const entry of readdirSync(PSTACK_ROOT, { withFileTypes: true })) {
     if (!entry.isDirectory() || !allowedTopLevel.has(entry.name)) {
-      problems.push(`assets/${entry.name}: unexpected top-level entry`);
+      problems.push(`pstack/${entry.name}: unexpected top-level entry`);
     }
   }
 
-  if (!existsSync(join(ASSETS_ROOT, "docs"))) {
-    problems.push("assets/docs: missing");
+  for (const required of allowedTopLevel) {
+    if (!existsSync(join(PSTACK_ROOT, required))) problems.push(`pstack/${required}: missing`);
+  }
+  if (problems.some((problem) => problem.startsWith("pstack/") && problem.endsWith(": missing"))) {
     return;
   }
 
+  // `pstack/docs/` holds upstream's guide, the adapter copy, and the rendered role-file
+  // example. Nothing else, for the same reason as above.
   const allowedDocs = new Set(["guide", "harness"]);
   const allowedDocFiles = new Set([PSTACK_MODELS_EXAMPLE_PATH.replace("docs/", "")]);
-  for (const entry of readdirSync(join(ASSETS_ROOT, "docs"), { withFileTypes: true })) {
+  for (const entry of readdirSync(join(PSTACK_ROOT, "docs"), { withFileTypes: true })) {
     if (entry.isDirectory()) {
       if (!allowedDocs.has(entry.name)) {
-        problems.push(`assets/docs/${entry.name}: unexpected entry`);
+        problems.push(`pstack/docs/${entry.name}: unexpected entry`);
       }
       continue;
     }
     if (!entry.isFile() || !allowedDocFiles.has(entry.name)) {
-      problems.push(`assets/docs/${entry.name}: unexpected entry`);
+      problems.push(`pstack/docs/${entry.name}: unexpected entry`);
     }
   }
 
-  const harnessFiles = walkFiles(join(ASSETS_ROOT, "docs", "harness")).map((file) =>
-    relative(join(ASSETS_ROOT, "docs"), file).split(sep).join("/"),
+  const harnessFiles = walkFiles(join(PSTACK_ROOT, "docs", "harness")).map((file) =>
+    relative(join(PSTACK_ROOT, "docs"), file).split(sep).join("/"),
   );
   if (harnessFiles.length !== 1 || harnessFiles[0] !== "harness/dsh.md") {
-    problems.push(`assets/docs/harness: expected only dsh.md, found ${describeList(harnessFiles)}`);
+    problems.push(`pstack/docs/harness: expected only dsh.md, found ${describeList(harnessFiles)}`);
   }
 }
 
@@ -383,9 +401,9 @@ function checkSkills(problems: string[]): {
   readonly files: number;
   readonly categories: Readonly<Record<SkillCategory, number>>;
 } {
-  const assetsSkills = join(ASSETS_ROOT, "skills");
+  const assetsSkills = join(PSTACK_ROOT, "skills");
   if (!existsSync(assetsSkills)) {
-    problems.push("assets/skills: missing");
+    problems.push("pstack/skills: missing");
     return { count: 0, files: 0, categories: emptyCategories() };
   }
 
@@ -398,9 +416,9 @@ function checkSkills(problems: string[]): {
     .sort();
 
   for (const entry of entries) {
-    if (!entry.isDirectory()) problems.push(`assets/skills/${entry.name}: unexpected file`);
+    if (!entry.isDirectory()) problems.push(`pstack/skills/${entry.name}: unexpected file`);
   }
-  reportSetDifference(problems, "assets/skills", expected, actual);
+  reportSetDifference(problems, "pstack/skills", expected, actual);
 
   const categories = emptyCategories();
   const classifications = new Map(classifySkills().map((item) => [item.skill, item.category]));
@@ -409,7 +427,7 @@ function checkSkills(problems: string[]): {
   for (const skill of actual) {
     const category = classifications.get(skill);
     if (category === undefined) {
-      problems.push(`assets/skills/${skill}: no declared category`);
+      problems.push(`pstack/skills/${skill}: no declared category`);
       continue;
     }
     categories[category] += 1;
@@ -432,17 +450,17 @@ function checkSkills(problems: string[]): {
     files += assetFiles.length;
 
     for (const path of expectedFiles) {
-      if (!assetFiles.includes(path)) problems.push(`assets/skills/${skill}/${path}: missing`);
+      if (!assetFiles.includes(path)) problems.push(`pstack/skills/${skill}/${path}: missing`);
     }
     for (const path of assetFiles) {
       if (!expectedFiles.includes(path))
-        problems.push(`assets/skills/${skill}/${path}: unexpected file`);
+        problems.push(`pstack/skills/${skill}/${path}: unexpected file`);
     }
 
     const skillFile = `${SKILLS_PREFIX}${skill}/SKILL.md`;
     const skillPath = join(assetsSkills, skill, "SKILL.md");
     if (!existsSync(skillPath)) {
-      problems.push(`assets/${skillFile}: missing`);
+      problems.push(`pstack/${skillFile}: missing`);
       continue;
     }
 
@@ -450,35 +468,35 @@ function checkSkills(problems: string[]): {
       const sourceText = readFileSync(join(UPSTREAM_ROOT, skillFile), "utf8");
       const assetText = readFileSync(skillPath, "utf8");
       const assetData = parseFrontmatter(assetText);
-      const frontmatter = validateSkillFrontmatter(assetData.data, `assets/${skillFile}`);
+      const frontmatter = validateSkillFrontmatter(assetData.data, `pstack/${skillFile}`);
 
       if (frontmatter.name !== skill) {
         problems.push(
-          `assets/${skillFile}: name "${frontmatter.name}" does not match its directory`,
+          `pstack/${skillFile}: name "${frontmatter.name}" does not match its directory`,
         );
       }
       for (const field of SKILL_DROPPED_FIELDS) {
         if (Object.hasOwn(assetData.data, field)) {
-          problems.push(`assets/${skillFile}: field "${field}" must be dropped`);
+          problems.push(`pstack/${skillFile}: field "${field}" must be dropped`);
         }
       }
 
       const expectedBody = parseFrontmatter(renderSkill(sourceText, skillFile)).body;
       if (assetData.body !== expectedBody) {
-        problems.push(`assets/${skillFile}: body differs from a fresh build (${category})`);
+        problems.push(`pstack/${skillFile}: body differs from a fresh build (${category})`);
       }
 
       for (const path of upstreamFiles) {
         if (path === "SKILL.md") continue;
         const upstreamPath = `${SKILLS_PREFIX}${skill}/${path}`;
-        const asset = readFileSync(join(ASSETS_ROOT, upstreamPath));
+        const asset = readFileSync(join(PSTACK_ROOT, upstreamPath));
         const source = readFileSync(join(UPSTREAM_ROOT, upstreamPath));
         const expectedBytes = Buffer.from(
           retargetLinks(source.toString("utf8")),
           "utf8",
         );
         if (!asset.equals(expectedBytes)) {
-          problems.push(`assets/${upstreamPath}: differs from its source`);
+          problems.push(`pstack/${upstreamPath}: differs from its source`);
         }
       }
     } catch (error) {
@@ -490,9 +508,9 @@ function checkSkills(problems: string[]): {
 }
 
 function checkAgents(problems: string[]): number {
-  const assetsAgents = join(ASSETS_ROOT, "agents");
+  const assetsAgents = join(PSTACK_ROOT, "agents");
   if (!existsSync(assetsAgents)) {
-    problems.push("assets/agents: missing");
+    problems.push("pstack/agents: missing");
     return 0;
   }
 
@@ -507,9 +525,9 @@ function checkAgents(problems: string[]): number {
 
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    problems.push(`assets/agents/${entry.name}: unexpected directory`);
+    problems.push(`pstack/agents/${entry.name}: unexpected directory`);
   }
-  reportSetDifference(problems, "assets/agents", expected, actual);
+  reportSetDifference(problems, "pstack/agents", expected, actual);
 
   for (const name of actual) {
     const path = `${AGENTS_PREFIX}${name}`;
@@ -517,17 +535,17 @@ function checkAgents(problems: string[]): number {
       const sourceText = readFileSync(join(UPSTREAM_ROOT, path), "utf8");
       const source = parseFrontmatter(sourceText);
       const asset = parseFrontmatter(readFileSync(join(assetsAgents, name), "utf8"));
-      const frontmatter = validateAgentFrontmatter(asset.data, `assets/${path}`);
+      const frontmatter = validateAgentFrontmatter(asset.data, `pstack/${path}`);
 
       if (frontmatter.name !== name.replace(/\.md$/, "")) {
-        problems.push(`assets/${path}: name "${frontmatter.name}" does not match its file name`);
+        problems.push(`pstack/${path}: name "${frontmatter.name}" does not match its file name`);
       }
       if (asset.body !== retargetLinks(source.body)) {
-        problems.push(`assets/${path}: body differs from a fresh build`);
+        problems.push(`pstack/${path}: body differs from a fresh build`);
       }
       for (const field of AGENT_DROPPED_FIELDS) {
         if (Object.hasOwn(asset.data, field)) {
-          problems.push(`assets/${path}: field "${field}" must be dropped`);
+          problems.push(`pstack/${path}: field "${field}" must be dropped`);
         }
       }
     } catch (error) {
@@ -539,24 +557,24 @@ function checkAgents(problems: string[]): number {
 }
 
 function checkGuide(problems: string[]): { readonly markdown: number; readonly images: number } {
-  const assetsGuide = join(ASSETS_ROOT, "docs", "guide");
-  const expected = walkUpstream("docs/guide").map((path) => path.slice(GUIDE_PREFIX.length));
+  const assetsGuide = join(PSTACK_ROOT, "docs", "guide");
+  const expected = walkUpstream("docs/guide").map((path) => path.slice("docs/guide/".length));
   const actual = walkFiles(assetsGuide)
     .map((file) => relative(assetsGuide, file).split(sep).join("/"))
     .sort();
-  reportSetDifference(problems, "assets/docs/guide", expected, actual);
+  reportSetDifference(problems, "pstack/guide", expected, actual);
 
   for (const path of expected) {
     if (!actual.includes(path)) continue;
-    const asset = readFileSync(join(ASSETS_ROOT, GUIDE_PREFIX, path));
-    const source = readFileSync(join(UPSTREAM_ROOT, GUIDE_PREFIX, path));
+    const asset = readFileSync(join(PSTACK_ROOT, GUIDE_PREFIX, path));
+    const source = readFileSync(join(UPSTREAM_ROOT, "docs/guide", path));
     // Only Markdown carries links. Decoding a binary through a string and re-encoding it
     // corrupts the bytes, so images are compared as what they are.
     const expectedBytes = path.endsWith(".md")
       ? Buffer.from(retargetLinks(source.toString("utf8")), "utf8")
       : source;
     if (!asset.equals(expectedBytes))
-      problems.push(`assets/${GUIDE_PREFIX}${path}: differs from its source`);
+      problems.push(`pstack/${GUIDE_PREFIX}${path}: differs from its source`);
   }
 
   const markdown = actual.filter((name) => name.endsWith(".md")).length;
@@ -564,21 +582,20 @@ function checkGuide(problems: string[]): { readonly markdown: number; readonly i
 }
 
 /**
- * Every asset must come from an upstream file or the runtime build.
+ * Every shipped port file must come from an upstream file or the runtime build.
  *
  * The two generated documents and the built scripts are the agreed exceptions.
  * Without the runtime list, nine artifacts would each read as an undeclared file.
  *
- * This now needs no exclusion for another origin: every directory under `assets/`
- * that holds copied upstream text is walked here, and the rest of the tree is the
- * generated set named above. The vendored third-party tree needs no exclusion because
- * it is not in `assets/` at all — it is `skills-ext/`, beside it, checked by
- * `checkSkillsExt`.
+ * `pstack/` holds only the port, so this walks the whole tree and needs no exclusion
+ * for another origin. The two `skills/` roots are outside it entirely and are checked
+ * by `checkSkillsExt`.
  */
 function checkUndeclaredFiles(problems: string[]): void {
   const covered = [
-    join(ASSETS_ROOT, "skills"),    join(ASSETS_ROOT, "agents"),
-    join(ASSETS_ROOT, "docs", "guide"),
+    join(PSTACK_ROOT, "skills"),
+    join(PSTACK_ROOT, "agents"),
+    join(PSTACK_ROOT, "docs", "guide"),
   ];
   const generated = new Set([
     ADAPTER_ASSET,
@@ -587,9 +604,9 @@ function checkUndeclaredFiles(problems: string[]): void {
   ]);
   for (const root of covered) {
     for (const file of walkFiles(root)) {
-      const assetRelative = toRepositoryPath(file).slice(ASSETS_PREFIX.length);
-      if (generated.has(assetRelative)) continue;
-      if (!existsSync(join(UPSTREAM_ROOT, assetRelative))) {
+      const shippedRelative = toRepositoryPath(file).slice(PSTACK_PREFIX.length);
+      if (generated.has(shippedRelative)) continue;
+      if (!existsSync(join(UPSTREAM_ROOT, shippedRelative))) {
         problems.push(`${toRepositoryPath(file)}: no upstream source`);
       }
     }
@@ -611,7 +628,7 @@ function checkUndeclaredFiles(problems: string[]): void {
  * back inside the code this shape exists to keep it out of.
  */
 function checkAdapterAsset(problems: string[]): void {
-  const assetPath = join(ASSETS_ROOT, ADAPTER_ASSET);
+  const assetPath = join(PSTACK_ROOT, ADAPTER_ASSET);
   const sourcePath = join(ROOT, ADAPTER_SOURCE);
   if (!existsSync(sourcePath)) {
     problems.push(
@@ -620,20 +637,20 @@ function checkAdapterAsset(problems: string[]): void {
     return;
   }
   if (!existsSync(assetPath)) {
-    problems.push(`assets/${ADAPTER_ASSET}: missing; run \`pnpm run build:assets\` first`);
+    problems.push(`pstack/${ADAPTER_ASSET}: missing; run \`pnpm run build:assets\` first`);
     return;
   }
 
   const source = readFileSync(sourcePath, "utf8");
   if (readFileSync(assetPath, "utf8") !== source) {
-    problems.push(`assets/${ADAPTER_ASSET}: differs from ${ADAPTER_SOURCE}`);
+    problems.push(`pstack/${ADAPTER_ASSET}: differs from ${ADAPTER_SOURCE}`);
     return;
   }
 
   // Every shipped Markdown file is prose a reader may follow, so every one is in scope.
   // Restricting this to skills would let a guide page introduce a name the adapter never
   // answers for.
-  const texts = walkFiles(ASSETS_ROOT)
+  const texts = walkFiles(PSTACK_ROOT)
     .filter((file) => file.endsWith(".md"))
     .map((file) => readFileSync(file, "utf8"));
 
@@ -658,7 +675,7 @@ const ROLE_FILE_EXAMPLE_BASENAME = "pstack-models.example.md";
 /**
  * The one directory for hand-maintained static resources.
  *
- * `assets/` is generated from upstream and refuses undeclared files, so artwork
+ * `pstack/` is generated from upstream and refuses undeclared files, so artwork
  * this package authors itself needs somewhere else. New static files are added
  * here and to `STATIC_FILES` in the same change; anything else under `static/`
  * is a file shipped without review.
@@ -905,7 +922,7 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
  * purpose, because it keeps upstream wording or `sync` stops matching.
  *
  * The vendored third-party tree is absent here for a different reason: it is not in
- * `assets/`. Its authors write for whatever hosts they support, and rewriting their
+ * `pstack/`. Its authors write for whatever hosts they support, and rewriting their
  * wording would break the content hash that proves the copy still matches the pinned
  * revision, so it would have needed an exclusion either way. Living outside the
  * generated tree means this walk never reaches it, and the exclusion is unnecessary
@@ -920,7 +937,7 @@ export function checkAssetsHostCopy(): readonly string[] {
     // what each one becomes here. That is its purpose, so those spans are exempt.
     const raw = readFileSync(file, "utf8");
     const text =
-      repositoryPath === `assets/${ADAPTER_ASSET}` ? raw.replace(/`[^`]*`/g, "").replace(/```[sS]*?```/g, "") : raw;
+      repositoryPath === `pstack/${ADAPTER_ASSET}` ? raw.replace(/`[^`]*`/g, "").replace(/```[sS]*?```/g, "") : raw;
     const hits = otherHostMentionCount(text);
     if (hits > 0) {
       problems.push(
@@ -940,9 +957,9 @@ export function checkAssetsHostCopy(): readonly string[] {
  */
 function repositoryOwnedShippedFiles(): readonly string[] {
   return [
-    join(ASSETS_ROOT, ADAPTER_ASSET),
-    join(ASSETS_ROOT, PSTACK_MODELS_EXAMPLE_PATH),
-    ...RUNTIME_CLIS.map((entry) => join(ASSETS_ROOT, entry.assetPath)),
+    join(PSTACK_ROOT, ADAPTER_ASSET),
+    join(PSTACK_ROOT, PSTACK_MODELS_EXAMPLE_PATH),
+    ...RUNTIME_CLIS.map((entry) => join(PSTACK_ROOT, entry.assetPath)),
   ].filter((file) => existsSync(file));
 }
 
@@ -961,7 +978,7 @@ export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
   // where a reader learns what each becomes on this host. The install-command rule still
   // applies to them, because a shipped install line a reader would follow has to be this
   // package's; the promise rule does not.
-  for (const root of [join(ASSETS_ROOT, "docs", "guide"), join(ASSETS_ROOT, "skills")]) {
+  for (const root of [join(PSTACK_ROOT, "docs", "guide"), join(PSTACK_ROOT, "skills")]) {
     for (const file of walkFiles(root)) {
       if (!file.endsWith(".md")) continue;
       inputs.push({
@@ -984,7 +1001,7 @@ export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
  * and nothing stopped the next rename from reintroducing the same class of mistake.
  *
  * The rule: a backticked `…/scripts/<name>.mjs` path in a shipped Markdown file
- * must resolve to a file under `assets/`. `.mjs` is the extension of every artifact
+ * must resolve to a file under `pstack/`. `.mjs` is the extension of every artifact
  * that actually ships, so a reference with it is a claim the reader can act on.
  *
  * Two things are deliberately out of scope:
@@ -992,7 +1009,7 @@ export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
  * - `.ts` and `.sh` references are *this repository's* build scripts
  *   (`scripts/check-assets.ts`, `scripts/capabilities.ts`) or upstream's shell
  *   originals. They never ship and the reader is not meant to run them, so
- *   requiring them under `assets/` would be wrong. Their correctness is covered by
+ *   requiring them under `pstack/` would be wrong. Their correctness is covered by
  *   `pnpm run check` itself, which is what runs them.
  * - A path is resolved beside the file that names it, because that is how the
  *   reader resolves it: `scripts/log.mjs` inside `skills/show-me-your-work/SKILL.md`
@@ -1006,7 +1023,7 @@ export function collectReleaseCopy(): readonly ReleaseCopyInput[] {
  * The list is **empty on purpose**. It previously held `scripts/check-plan.mjs`,
  * described as "the plan template names the checker by bundle-relative path as an
  * illustration" — but once §9 retargeted that line at `pstack_script` with
- * `id: "check-plan"`, no such reference existed anywhere in `assets/`. The entry
+ * `id: "check-plan"`, no such reference existed anywhere in `pstack/`. The entry
  * matched nothing and described a situation that had stopped existing, so it was
  * removed rather than left as an example of an exemption nobody needs. Every `.mjs`
  * path reference in shipped prose must now resolve.
@@ -1043,7 +1060,7 @@ export function checkScriptIdReferences(): readonly string[] {
   const problems: string[] = [];
   const known = new Set(RUNTIME_CLIS.map((entry) => entry.id));
 
-  for (const file of walkFiles(ASSETS_ROOT).filter((path) => path.endsWith(".md"))) {
+  for (const file of walkFiles(PSTACK_ROOT).filter((path) => path.endsWith(".md"))) {
     const repositoryPath = toRepositoryPath(file);
     const text = readFileSync(file, "utf8");
     for (const match of text.matchAll(SCRIPT_ID_REFERENCE)) {
@@ -1089,9 +1106,9 @@ export function checkScriptReferences(): readonly string[] {
       const reference = match[1] as string;
       if (allowlisted.has(reference)) continue;
       // The adapter document quotes upstream's own invocation beside the replacement.
-      if (repositoryPath === `assets/${ADAPTER_ASSET}`) continue;
+      if (repositoryPath === `pstack/${ADAPTER_ASSET}`) continue;
       const beside = join(dirname(file), reference);
-      if (existsSync(beside) || existsSync(join(ASSETS_ROOT, reference))) continue;
+      if (existsSync(beside) || existsSync(join(PSTACK_ROOT, reference))) continue;
       const line = text.slice(0, match.index).split("\n").length;
       problems.push(
         `${repositoryPath}:${line}: names \`${reference}\`, which is not in the shipped tree ` +
@@ -1112,9 +1129,9 @@ export function checkScriptReferences(): readonly string[] {
  */
 export function checkPlaybookClaims(): readonly string[] {
   const problems: string[] = [];
-  const directory = join(ASSETS_ROOT, "skills", "poteto-mode", "playbooks");
+  const directory = join(PSTACK_ROOT, "skills", "poteto-mode", "playbooks");
   if (!existsSync(directory)) {
-    return ["assets/skills/poteto-mode/playbooks: missing the ported playbooks"];
+    return ["pstack/skills/poteto-mode/playbooks: missing the ported playbooks"];
   }
 
   const files = readdirSync(directory)
@@ -1122,11 +1139,11 @@ export function checkPlaybookClaims(): readonly string[] {
     .sort();
   if (files.length !== PLAYBOOK_COUNT) {
     problems.push(
-      `assets/skills/poteto-mode/playbooks: expected ${PLAYBOOK_COUNT} playbooks, found ${files.length}`,
+      `pstack/skills/poteto-mode/playbooks: expected ${PLAYBOOK_COUNT} playbooks, found ${files.length}`,
     );
   }
 
-  const listingPath = join(ASSETS_ROOT, "skills", "poteto-mode", "SKILL.md");
+  const listingPath = join(PSTACK_ROOT, "skills", "poteto-mode", "SKILL.md");
   const listing = existsSync(listingPath) ? readFileSync(listingPath, "utf8") : "";
   const listed: string[] = [];
   for (const line of linesOf(playbooksSection(listing))) {
@@ -1137,7 +1154,7 @@ export function checkPlaybookClaims(): readonly string[] {
   }
   reportSetDifference(
     problems,
-    "assets/skills/poteto-mode/SKILL.md playbooks",
+    "pstack/skills/poteto-mode/SKILL.md playbooks",
     files,
     [...new Set(listed)].sort(),
   );
@@ -1188,10 +1205,10 @@ function playbooksSection(body: string): string {
  * restating the keys, so a hand-written copy cannot drift from the parser.
  */
 function checkRoleAssets(problems: string[]): void {
-  const path = join(ASSETS_ROOT, PSTACK_MODELS_EXAMPLE_PATH);
+  const path = join(PSTACK_ROOT, PSTACK_MODELS_EXAMPLE_PATH);
   if (!existsSync(path)) {
     problems.push(
-      `assets/${PSTACK_MODELS_EXAMPLE_PATH}: missing; setup-pstack reads it for the role list`,
+      `pstack/${PSTACK_MODELS_EXAMPLE_PATH}: missing; setup-pstack reads it for the role list`,
     );
     return;
   }
@@ -1199,45 +1216,45 @@ function checkRoleAssets(problems: string[]): void {
   const text = readFileSync(path, "utf8");
   if (text !== renderPstackModelsExample()) {
     problems.push(
-      `assets/${PSTACK_MODELS_EXAMPLE_PATH}: differs from the renderer in scripts/role-manifest.ts`,
+      `pstack/${PSTACK_MODELS_EXAMPLE_PATH}: differs from the renderer in src/role-manifest.ts`,
     );
   }
   for (const role of ROLE_MANIFEST) {
     const count = text.split(`\n${role.key}: `).length - 1 + (text.startsWith(`${role.key}: `) ? 1 : 0);
     if (count !== 1) {
       problems.push(
-        `assets/${PSTACK_MODELS_EXAMPLE_PATH}: expected exactly one line for role "${role.key}", found ${count}`,
+        `pstack/${PSTACK_MODELS_EXAMPLE_PATH}: expected exactly one line for role "${role.key}", found ${count}`,
       );
     }
   }
   if (text.includes("claude-") || text.includes("grok-") || text.includes("gpt-")) {
     problems.push(
-      `assets/${PSTACK_MODELS_EXAMPLE_PATH}: must not hardcode a model id; this package cannot know which routes a deployment serves`,
+      `pstack/${PSTACK_MODELS_EXAMPLE_PATH}: must not hardcode a model id; this package cannot know which routes a deployment serves`,
     );
   }
 
   // The example doubles as a convergence baseline, so it has to parse as a role
   // file: copying it must yield a working policy, not a page of diagnostics.
-  const parsed = parseRoleFile(text, `assets/${PSTACK_MODELS_EXAMPLE_PATH}`);
+  const parsed = parseRoleFile(text, `pstack/${PSTACK_MODELS_EXAMPLE_PATH}`);
   if (parsed.status !== "loaded") {
-    problems.push(`assets/${PSTACK_MODELS_EXAMPLE_PATH}: does not parse as a role file`);
+    problems.push(`pstack/${PSTACK_MODELS_EXAMPLE_PATH}: does not parse as a role file`);
   } else {
     if (parsed.issues.length > 0) {
       const first = parsed.issues[0] as { line?: number; message: string };
       problems.push(
-        `assets/${PSTACK_MODELS_EXAMPLE_PATH}:${first.line ?? 0}: the example must parse cleanly: ${first.message}`,
+        `pstack/${PSTACK_MODELS_EXAMPLE_PATH}:${first.line ?? 0}: the example must parse cleanly: ${first.message}`,
       );
     }
     if (parsed.roles.size !== ROLE_MANIFEST.length) {
       problems.push(
-        `assets/${PSTACK_MODELS_EXAMPLE_PATH}: expected ${ROLE_MANIFEST.length} roles, parsed ${parsed.roles.size}`,
+        `pstack/${PSTACK_MODELS_EXAMPLE_PATH}: expected ${ROLE_MANIFEST.length} roles, parsed ${parsed.roles.size}`,
       );
     }
   }
 
-  const skillPath = join(ASSETS_ROOT, "skills", "setup-pstack", "SKILL.md");
+  const skillPath = join(PSTACK_ROOT, "skills", "setup-pstack", "SKILL.md");
   if (!existsSync(skillPath)) {
-    problems.push("assets/skills/setup-pstack/SKILL.md: missing");
+    problems.push("pstack/skills/setup-pstack/SKILL.md: missing");
     return;
   }
   const skill = readFileSync(skillPath, "utf8");
@@ -1247,7 +1264,7 @@ function checkRoleAssets(problems: string[]): void {
   // host translation, so nothing here asserts what the body says about paths or routes.
   if (skill.includes("disable-model-invocation: true")) {
     problems.push(
-      "assets/skills/setup-pstack/SKILL.md: must stay model-invocable; it is the only bundled skill the model may call",
+      "pstack/skills/setup-pstack/SKILL.md: must stay model-invocable; it is the only bundled skill the model may call",
     );
   }
 }
@@ -1259,9 +1276,9 @@ function checkRoleAssets(problems: string[]): void {
  * `pnpm check:assets` too instead of only failing at plugin activation.
  */
 function checkBundledSkills(problems: string[]): number {
-  const root = join(ASSETS_ROOT, "skills");
+  const root = join(PSTACK_ROOT, "skills");
   if (!existsSync(root)) {
-    problems.push("assets/skills: missing; cannot audit the bundled skill provider");
+    problems.push("pstack/skills: missing; cannot audit the bundled skill provider");
     return 0;
   }
 
@@ -1277,16 +1294,16 @@ function checkBundledSkills(problems: string[]): number {
   const expected = new Set(
     skillDirectories().filter((skill) => !excluded.has(skill)),
   );
-  if (index.size !== 55) {
-    problems.push(`bundled provider: expected 55 skills, found ${index.size}`);
+  if (index.size !== shippedSkillCount()) {
+    problems.push(`bundled provider: expected ${shippedSkillCount()} skills, found ${index.size}`);
   }
 
   for (const skill of index.values()) {
     if (!expected.has(skill.name)) {
       problems.push(`bundled provider: unexpected skill "${skill.name}"`);
     }
-    if (!isInside(ASSETS_ROOT, skill.directory)) {
-      problems.push(`bundled provider: "${skill.name}" resource base is outside assets/`);
+    if (!isInside(PSTACK_ROOT, skill.directory)) {
+      problems.push(`bundled provider: "${skill.name}" resource base is outside pstack/`);
     }
     if (!isInside(skill.directory, skill.instructionFile)) {
       problems.push(`bundled provider: "${skill.name}" instruction file is outside its directory`);
@@ -1352,7 +1369,7 @@ function checkPackageManifest(problems: string[]): void {
   // and leaving it out of `files` would publish a package whose provider loads one
   // tree and silently reports no third-party skills. The two exclusions above make
   // the difference invisible at runtime, so the release gate has to state it.
-  for (const required of ["dist", "assets", "skills-ext", "cordis.patch.yml", "locale/*.json", "static"]) {
+  for (const required of ["dist", "pstack", "skills", "cordis.patch.yml", "locale/*.json", "static"]) {
     if (!shipped.includes(required)) {
       problems.push(`package.json: "files" must include "${required}"`);
     }
@@ -1709,175 +1726,160 @@ function describeList(names: readonly string[]): string {
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
-
 /**
- * Audit the vendored third-party tree.
+ * Audit the skills this package did not take from upstream pstack.
+ * Two roots, two rules, and the rules do not branch on a manifest field. That is the
+ * point of the split: a byte-pinned copy and text written here have different proofs,
+ * and `skills/vendored/` versus `skills/authored/` states which proof applies before
+ * any check runs.
  *
- * `skills-ext/<source>/<skill>/` holds text this package did not write. It sits beside
- * `assets/` rather than inside it, because `build:assets` replaces that whole
- * directory and these files must survive a regeneration. Three things have to stay
- * true, and none of them is covered by the checks over `assets/skills/`, which assume
- * a pstack upstream file for every path:
+ * - `skills/vendored/<source>/<skill>/` is a copy of one commit. The manifest records
+ *   the upstream path and revision, plus a content hash that
+ *   `scripts/sync-skills-ext.ts` verifies. A file with no record is text of unknown
+ *   origin shipping under this package's licence.
+ * - `skills/authored/<skill>/` is written here. There is no upstream and no hash,
+ *   because a hash of the only copy pins nothing. It must declare its reach, and the
+ *   frontmatter must agree.
  *
- * 1. Every shipped file is recorded in `scripts/skills-ext/sources.yml` with the
- *    upstream path and revision it came from. A file with no record is text of
- *    unknown origin shipping under this package's licence.
- * 2. The tree loads through the same provider loader the model uses, so a malformed
- *    vendored skill fails here rather than at activation.
- * 3. No vendored skill takes a name the pstack tree already uses, because a
- *    collision would silently shadow one of them.
- *
- * Content hashes are checked by `scripts/sync-skills-ext.ts`, which owns the pin. This
- * function owns the packaging rules.
+ * Both roots load through the same provider loader the model uses, so a malformed skill
+ * fails here rather than at activation. Neither root may reuse a pstack skill name,
+ * because the provider rejects a collision instead of letting one shadow the other.
  */
 function checkSkillsExt(): readonly string[] {
   const problems: string[] = [];
-  const extRoot = SKILLS_EXT_ROOT;
-  // Absent is a defect now, not an initial state. The provider returns an empty
-  // catalog for a missing source root, so a dropped tree would start clean and lose
-  // every vendored skill without an error. The directory ships with a declared source,
-  // so its absence means something removed it.
-  if (!existsSync(extRoot)) {
-    return [
-      `skills-ext/: missing, but scripts/skills-ext/sources.yml declares sources; the provider would load no vendored skill and report no error`,
-    ];
+
+  // Absent is a defect now, not an initial state. The provider returns an empty catalog
+  // for a missing root, so a dropped tree would start clean and lose every skill in it
+  // with no error.
+  for (const [root, label] of [
+    [VENDORED_ROOT, "skills/vendored"],
+    [AUTHORED_ROOT, "skills/authored"],
+  ] as const) {
+    if (!existsSync(root)) {
+      problems.push(
+        `${label}/: missing, but skills/sources.yml declares sources; the provider would load no skill from it and report no error`,
+      );
+    }
   }
+  if (problems.length > 0) return problems;
 
   let sources;
   try {
     sources = readSources();
   } catch (error) {
-    return [`scripts/skills-ext/sources.yml: ${messageOf(error)}`];
-  }
-
-  const declared = new Map<string, string>();
-  for (const source of sources.sources) {
-    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(source.id)) {
-      problems.push(`scripts/skills-ext/sources.yml: source id "${source.id}" is not kebab-case`);
-    }
-    if (source.origin !== undefined && source.origin !== "local" && source.origin !== "vendored") {
-      problems.push(
-        `scripts/skills-ext/sources.yml: "${source.id}" has origin "${source.origin}"; it is \`local\` or \`vendored\``,
-      );
-    }
-    // A vendored source is a copy of one commit, so the pin and the URL are what make
-    // the copy checkable. A local source has neither, and demanding them would
-    // invite a placeholder revision that means nothing.
-    if (isLocal(source)) {
-      if (source.repository !== undefined) {
-        problems.push(
-          `scripts/skills-ext/sources.yml: "${source.id}" is local, so it names no repository; a URL here promises an upstream that does not exist`,
-        );
-      }
-    } else {
-      if (source.repository === undefined || !/^https?:\/\//.test(source.repository)) {
-        problems.push(`scripts/skills-ext/sources.yml: "${source.id}" has no repository URL`);
-      }
-      if (source.revision === undefined || !/^[0-9a-f]{40}$/.test(source.revision)) {
-        problems.push(
-          `scripts/skills-ext/sources.yml: "${source.id}" pins "${source.revision}", which is not a 40-character commit SHA; a branch name is not a pin`,
-        );
-      }
-    }
-    if (source.license.trim() === "") {
-      problems.push(`scripts/skills-ext/sources.yml: "${source.id}" records no licence`);
-    }
-    for (const skill of source.skills) {
-      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
-        problems.push(`scripts/skills-ext/sources.yml: skill name "${skill.name}" is not kebab-case`);
-      }
-      if (isLocal(source)) {
-        if (skill.upstream !== undefined) {
-          problems.push(
-            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is local, so it has no upstream path`,
-          );
-        }
-        if (skill.hashes !== undefined) {
-          problems.push(
-            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is local, so a content hash pins nothing it could drift from`,
-          );
-        }
-        if (skill.invocation === undefined) {
-          problems.push(
-            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is local, so it declares invocation: model or user next to the reason for that reach`,
-          );
-        } else if (skill.invocation !== "model" && skill.invocation !== "user") {
-          problems.push(
-            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" declares invocation "${skill.invocation}"; it is \`model\` or \`user\``,
-          );
-        }
-      } else {
-        if (skill.upstream === undefined) {
-          problems.push(`scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" has no upstream path`);
-        }
-        if (skill.invocation !== undefined) {
-          problems.push(
-            `scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" is vendored, so upstream owns its invocation and the manifest does not restate it`,
-          );
-        }
-      }
-      if (skill.files.length === 0) {
-        problems.push(`scripts/skills-ext/sources.yml: "${source.id}/${skill.name}" lists no files`);
-      }
-      declared.set(skill.name, source.id);
-    }
-  }
-
-  // Every shipped file belongs to exactly one declared skill.
-  let index;
-  try {
-    index = loadSourcedSkillIndex(extRoot);
-  } catch (error) {
-    problems.push(`skills-ext: ${messageOf(error)}`);
-    return problems;
+    return [`skills/sources.yml: ${messageOf(error)}`];
   }
 
   const pstackNames = new Set(
     skillDirectories().filter((skill) => !EXCLUDED_SKILLS.includes(skill)),
   );
-  for (const skill of index.values()) {
-    if (!declared.has(skill.name)) {
+
+  // Vendored: the pin and the URL are what make the copy checkable, so both are
+  // required, and a skill may not carry an invocation of its own because upstream owns
+  // that choice.
+  for (const source of sources.vendored) {
+    const label = `skills/vendored/${source.id}`;
+    if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(source.id)) {
+      problems.push(`skills/sources.yml: source id "${source.id}" is not kebab-case`);
+    }
+    if (!/^https?:\/\//.test(source.repository)) {
+      problems.push(`skills/sources.yml: "${source.id}" has no repository URL`);
+    }
+    if (!/^[0-9a-f]{40}$/.test(source.revision)) {
       problems.push(
-        `skills-ext: "${skill.name}" loads but is not declared in scripts/skills-ext/sources.yml`,
+        `skills/sources.yml: "${source.id}" pins "${source.revision}", which is not a 40-character commit SHA; a branch name is not a pin`,
       );
     }
-    if (pstackNames.has(skill.name)) {
-      problems.push(
-        `skills-ext: "${skill.name}" also exists in assets/skills, so one would shadow the other`,
-      );
+    if (source.license.trim() === "") {
+      problems.push(`skills/sources.yml: "${source.id}" records no licence`);
     }
-    if (!isInside(extRoot, skill.directory)) {
-      problems.push(`skills-ext: "${skill.name}" resolves outside the extension tree`);
+    for (const skill of source.skills) {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
+        problems.push(`skills/sources.yml: skill name "${skill.name}" is not kebab-case`);
+      }
+      if (skill.upstream.trim() === "") {
+        problems.push(`skills/sources.yml: "${source.id}/${skill.name}" has no upstream path`);
+      }
+      if (skill.files.length === 0) {
+        problems.push(`skills/sources.yml: "${source.id}/${skill.name}" lists no files`);
+      }
+      const recorded = Object.keys(skill.hashes);
+      if (recorded.length !== skill.files.length) {
+        problems.push(
+          `skills/sources.yml: "${source.id}/${skill.name}" records ${recorded.length} hash(es) for ${skill.files.length} file(s); run --write`,
+        );
+      }
+      const directory = vendoredSkillDirectory(source, skill);
+      if (!existsSync(directory)) {
+        problems.push(`${label}/${skill.name}: declared but absent`);
+      }
     }
   }
 
-  for (const source of sources.sources) {
+  // Authored: no repository and no revision to record, because there is no upstream.
+  // A hash here would pin the only copy against itself, so it is refused rather than
+  // ignored, and the declared reach is what review actually needs to agree with.
+  for (const source of sources.authored) {
+    if (source.license.trim() === "") {
+      problems.push(`skills/sources.yml: "${source.id}" records no licence`);
+    }
     for (const skill of source.skills) {
-      const directory = join(extRoot, source.id, skill.name);
-      if (!existsSync(directory)) {
-        problems.push(`skills-ext/${source.id}/${skill.name}: declared but absent`);
-        continue;
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
+        problems.push(`skills/sources.yml: skill name "${skill.name}" is not kebab-case`);
       }
-      for (const file of walkFiles(directory)) {
-        const assetRelative = toRepositoryPath(file).slice(SKILLS_EXT_PREFIX.length);
-        if (assetRelative.split("/").length < 3) {
-          problems.push(
-            `skills-ext: "${assetRelative}" sits outside a source/skill directory pair`,
-          );
-        }
+      if (skill.invocation !== "model" && skill.invocation !== "user") {
+        problems.push(
+          `skills/sources.yml: "${source.id}/${skill.name}" declares invocation "${skill.invocation}"; it is \`model\` or \`user\``,
+        );
+      }
+      if (skill.files.length === 0) {
+        problems.push(`skills/sources.yml: "${source.id}/${skill.name}" lists no files`);
       }
 
-      // The manifest's declared reach and the frontmatter agree, both ways. A local
-      // skill picks model or user reach on purpose, and this is what keeps that choice
-      // visible in review instead of living in one frontmatter line.
-      if (!isLocal(source) || skill.invocation === undefined) continue;
-      const loaded = index.get(directory);
+      const directory = authoredSkillDirectory(skill);
+      if (!existsSync(directory)) {
+        problems.push(`skills/authored/${skill.name}: declared but absent`);
+        continue;
+      }
+      let loaded;
+      try {
+        loaded = loadBundledSkillIndex(AUTHORED_ROOT).get(directory);
+      } catch (error) {
+        problems.push(`skills/authored/${skill.name}: ${messageOf(error)}`);
+        continue;
+      }
       if (loaded === undefined) continue;
       const actual: string = loaded.invocation.modelInvocable ? "model" : "user";
       if (actual !== skill.invocation) {
         problems.push(
-          `skills-ext/${source.id}/${skill.name}: declares invocation "${skill.invocation}" but its SKILL.md is ${actual === "model" ? "model-invocable (no \`disable-model-invocation\`)" : "user-invoked (\`disable-model-invocation: true\`)"}; state the reach you mean in both places`,
+          `skills/authored/${skill.name}: declares invocation "${skill.invocation}" but its SKILL.md is ${actual === "model" ? "model-invocable (no \`disable-model-invocation\`)" : "user-invoked (\`disable-model-invocation: true\`)"}; state the reach you mean in both places`,
         );
+      }
+    }
+  }
+
+  // Every skill that loads is declared, sits inside a root, and collides with nothing.
+  // `vendored/` groups by source and `authored/` is flat, so each root is walked by the
+  // loader for its own layout rather than both being forced through one.
+  for (const [root, label, kind] of [
+    [VENDORED_ROOT, "skills/vendored", "sourced"],
+    [AUTHORED_ROOT, "skills/authored", "flat"],
+  ] as const) {
+    let index;
+    try {
+      index = kind === "flat" ? loadBundledSkillIndex(root) : loadSourcedSkillIndex(root);
+    } catch (error) {
+      problems.push(`${label}: ${messageOf(error)}`);
+      continue;
+    }
+    for (const skill of index.values()) {
+      if (pstackNames.has(skill.name)) {
+        problems.push(
+          `${label}: "${skill.name}" also exists in pstack/skills, so one would shadow the other`,
+        );
+      }
+      if (!isInside(root, skill.directory)) {
+        problems.push(`${label}: "${skill.name}" resolves outside its root`);
       }
     }
   }
@@ -1885,10 +1887,8 @@ function checkSkillsExt(): readonly string[] {
   return problems;
 }
 
-const ASSETS_PREFIX = "assets/";
+const PSTACK_PREFIX = "pstack/";
 const STATIC_PREFIX = "static/";
-/** Repository-relative prefix of the vendored tree, which lives beside `assets/`. */
-const SKILLS_EXT_PREFIX = "skills-ext/";
 const entryPoint = process.argv[1];
 if (entryPoint !== undefined && resolve(entryPoint) === fileURLToPath(import.meta.url)) {
   process.exitCode = main();

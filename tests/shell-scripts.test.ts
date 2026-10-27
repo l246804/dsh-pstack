@@ -17,7 +17,7 @@ import { ROOT } from "../scripts/build-assets.ts";
  * `skills/show-me-your-work/SKILL.md` tells the model to open this TSV in a
  * spreadsheet, and a changed row shape would silently corrupt that artifact.
  */
-const script = join(ROOT, "assets", "skills", "show-me-your-work", "scripts", "log.mjs");
+const script = join(ROOT, "pstack", "skills", "show-me-your-work", "scripts", "log.mjs");
 const temporaryDirectories: string[] = [];
 
 const HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n";

@@ -32,10 +32,11 @@ import { join, posix } from "node:path";
 import { Buffer } from "node:buffer";
 
 import { ADAPTER_ASSET, ADAPTER_POINTER, ADAPTER_SOURCE, termsUsedIn } from "./adapter.ts";
-import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "./role-manifest.ts";
+import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "../src/role-manifest.ts";
 import { RUNTIME_ROOT } from "./build-runtime.ts";
-import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
+import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../src/runtime-manifest.ts";
 import { ROOT } from "./root.ts";
+import { PSTACK_ROOT } from "../src/paths.ts";
 import {
   parseFrontmatter,
   serializeAgentFrontmatter,
@@ -54,15 +55,29 @@ import {
 export { ROOT };
 export const UPSTREAM_ROOT = join(ROOT, "upstream", "cursor-plugins", "pstack");
 export const UPSTREAM_SKILLS = join(UPSTREAM_ROOT, "skills");
-export const ASSETS_ROOT = join(ROOT, "assets");
-export const STAGING_ROOT = join(ROOT, ".assets-staging");
-export const BACKUP_ROOT = join(ROOT, ".assets-backup");
+
+
+/**
+ * The generated, committed port tree, re-exported from `src/paths.ts`.
+ *
+ * An `Asset.path` is relative to this directory and is also its path below the upstream
+ * root, with no exceptions. The port keeps upstream's own relative layout on purpose:
+ * 110 shipped links run between `docs/guide/`, `skills/`, and `agents/`, and moving one
+ * of those directories relative to the others breaks every one of them. Regrouping
+ * inside `pstack/` would trade a cosmetic ordering for a table of link rewrites.
+ *
+ * The constant itself lives in `src/paths.ts`, because the plugin reads the same tree
+ * at run time. One directory, one definition.
+ */
+export { PSTACK_ROOT };
+export const STAGING_ROOT = join(ROOT, ".pstack-staging");
+export const BACKUP_ROOT = join(ROOT, ".pstack-backup");
 export const SKILLS_PREFIX = "skills/";
 export const AGENTS_PREFIX = "agents/";
 export const GUIDE_PREFIX = "docs/guide/";
 
 export interface Asset {
-  /** POSIX path relative to `assets/`. */
+  /** POSIX path relative to `pstack/`. */
   readonly path: string;
   readonly bytes: Buffer;
   readonly executable: boolean;
@@ -139,7 +154,6 @@ export function buildAssets(): readonly Asset[] {
   }
   for (const file of walkUpstream("agents")) assets.push(buildAsset(file));
   for (const file of walkUpstream("docs/guide")) assets.push(buildAsset(file));
-
   assets.push(...builtRuntimeAssets());
 
   assets.push({
@@ -306,11 +320,26 @@ export function skillDirectories(): readonly string[] {
     .sort(compareStrings);
 }
 
+/**
+ * The upstream skills this package ships: every upstream directory minus the exclusions.
+ *
+ * The number that comes out of this is the shipped skill count. Checks compare against
+ * it rather than against a literal, because a literal is a second place the same fact
+ * lives: adding a skill upstream would need the generator, four checks, and two test
+ * files edited in step, and nothing would fail if one were missed.
+ */
+export function shippedSkillNames(): readonly string[] {
+  return skillDirectories().filter((skill) => !EXCLUDED_SKILLS.includes(skill));
+}
+
+/** How many upstream skills ship. Derived, never written down. */
+export function shippedSkillCount(): number {
+  return shippedSkillNames().length;
+}
+
 /** Classify every upstream skill, for the report and the tests. */
 export function classifySkills(): readonly SkillClassification[] {
-  return skillDirectories()
-    .filter((skill) => !EXCLUDED_SKILLS.includes(skill))
-    .map((skill) => ({ skill, category: classifySkill(skill) }));
+  return shippedSkillNames().map((skill) => ({ skill, category: classifySkill(skill) }));
 }
 
 /**
@@ -398,9 +427,10 @@ function buildAsset(upstreamRelativePath: string): Asset {
   const source = readFileSync(absolutePath);
   const executable = (statSync(absolutePath).mode & 0o111) !== 0;
   const format = assetFormat(upstreamRelativePath);
+  const path = upstreamRelativePath;
 
   if (format === "plain" && !hasRetargetedLink(source)) {
-    return { path: upstreamRelativePath, bytes: source, executable, origin: "copy" };
+    return { path, bytes: source, executable, origin: "copy" };
   }
 
   const text = decodeUtf8(source, upstreamRelativePath);
@@ -413,7 +443,7 @@ function buildAsset(upstreamRelativePath: string): Asset {
 
   const bytes = Buffer.from(output, "utf8");
   return {
-    path: upstreamRelativePath,
+    path,
     bytes,
     executable,
     origin: bytes.equals(source) ? "copy" : "generated",

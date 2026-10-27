@@ -105,7 +105,7 @@ describe("registerAuditContext", () => {
     // The regression this guards: Cordis gates property access on `inject`, so a
     // property read throws `cannot get property "systemPrompt" without inject` on
     // every activation. The row must not `inject` it either, because a composition
-    // without a prompt registry would then go inactive and drop all 55 skills.
+    // without a prompt registry would then go inactive and drop every bundled skill.
     const host = {
       get: (name: string) => (name === "systemPrompt" ? { context: () => () => {} } : undefined),
       get systemPrompt(): never {

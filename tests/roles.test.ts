@@ -9,7 +9,7 @@ import {
   ROLE_KEYS,
   findRoleSpec,
   renderPstackModelsExample,
-} from "../scripts/role-manifest.ts";
+} from "../src/role-manifest.ts";
 import {
   RouteSelectionError,
   modelsFilePath,
