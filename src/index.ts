@@ -17,6 +17,8 @@ import {
   loadBundledSkillIndexes,
 } from "./provider.ts";
 import type { SkillProvider, SkillProviderControl } from "./provider.ts";
+import type { SystemPromptHost } from "./host-contract.ts";
+import { registerAuditContext } from "./audit-context.ts";
 
 /** Plugin name used by Loader diagnostics for this row. */
 export const name = "pstack";
@@ -85,6 +87,13 @@ export interface PstackSkillHost {
   readonly skills: {
     registerProvider(create: (control: SkillProviderControl) => SkillProvider): () => void;
   };
+  /**
+   * Prompt registry, when the composition has one.
+   *
+   * Optional on purpose: a tool-only slice of a profile may mount no prompt service,
+   * and losing one sentence of placement guidance is not worth failing activation.
+   */
+  readonly systemPrompt?: SystemPromptHost;
 }
 
 /**
@@ -103,6 +112,7 @@ export function apply(ctx: PstackSkillHost, config: PstackConfig = {}): void {
   const providerName = config.providerName ?? DEFAULT_PROVIDER_NAME;
   const index = loadBundledSkillIndexes(SKILLS_ROOT, SKILLS_EXT_ROOT);
   ctx.skills.registerProvider((_control) => createPstackSkillProvider(index, providerName));
+  registerAuditContext(ctx);
 }
 
 export { ASSETS_ROOT, HARNESS_DOC_PATH, PACKAGE_ROOT, SKILLS_EXT_ROOT, SKILLS_ROOT } from "./paths.ts";

@@ -3935,12 +3935,13 @@ export const FILE_PATCHES: readonly FilePatch[] = [
   {
     kind: "replace",
     file: "skills/poteto-mode/playbooks/multi-phase-plan.md",
-    reason: "This host hands no agent store to the model, so the plan goes in the repository.",
+    reason:
+      "This host hands no agent store to the model, so the plan goes under the ignored `.audit/` tree. A plan is a working artifact, not a deliverable: upstream keeps the whole store out of version control, and `show-me-your-work` says the trail stays out of git by default.",
     anchor: "Unless the operator names a path, write the file under the agent store's `docs/`.",
     expectedMatches: 1,
     replacement:
-      "Unless the operator names a path, write the file under `docs/plans/` in the repository, because this host hands no store path to the model.",
-    outputIncludes: ["write the file under `docs/plans/` in the repository"],
+      "Unless the operator names a path, write the file under `.audit/plans/` in the repository, because this host hands no store path to the model and a plan is a working artifact rather than a deliverable.",
+    outputIncludes: ["write the file under `.audit/plans/` in the repository"],
   },
   {
     kind: "replace",

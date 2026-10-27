@@ -581,3 +581,40 @@ export interface JobsHost {
   start(spec: JobSpec): JobId;
   get(id: JobId, caller?: SessionId): JobView;
 }
+
+// ---------------------------------------------------------------------------
+// system prompt
+// ---------------------------------------------------------------------------
+
+/**
+ * One dynamic context contribution, as registered by `SystemPrompt.context`.
+ *
+ * Names and orders are strings and numbers so this copy does not depend on the
+ * host's `PromptContextOrderName` union: a name the host does not know is not an
+ * error here, the registry simply keeps its own ordering for it.
+ */
+export interface PromptContextContribution {
+  readonly name: string;
+  readonly order: number;
+  readonly text: string | ((context: PromptAssembleContext) => string);
+  readonly required?: boolean;
+}
+
+/** The per-assembly context the host passes to a context provider. */
+export interface PromptAssembleContext {
+  readonly signal?: AbortSignal;
+}
+
+/**
+ * The slice of `ctx.systemPrompt` this plugin registers against.
+ *
+ * Upstream's plays assume a per-agent store path the host states in the system
+ * prompt. This host has no store, but it does expose dynamic context that is
+ * materialized as a durable user-role snapshot, which is the closest thing to
+ * "the model is told where its working files go without being asked". Only
+ * `context` is named: this plugin contributes one line of placement guidance and
+ * never assembles or rewrites the prompt itself.
+ */
+export interface SystemPromptHost {
+  context(context: PromptContextContribution): () => void;
+}

@@ -258,10 +258,10 @@ export const CAPABILITIES: readonly Capability[] = [
     ledgerAnchor: "agent store",
     kind: "path",
     cursor: "agent store",
-    dsh: "a repository directory the operator names; `.audit/<task-slug>/` or `docs/plans/` when they name none",
+    dsh: "`.audit/` under the repository, stated in a prompt context; the operator may name another directory",
     coverage: "degraded",
     reason:
-      "Upstream's store is a per-agent directory the host puts in the system prompt: outside the repo, outliving the session, and shared by every agent the run spawns. This host hands the model no store path, so each playbook that used one was rewritten to name a repository directory instead. What is kept is a place to write; what is lost is the host-assigned location, survival past the session, and a single location every child already knows. The `orchestrate` playbook keeps its one-writer-per-file discipline over `.audit/orchestrate/`, and a resume has to be handed its standing orders again rather than re-reading them by store path.",
+      "Upstream's store is a per-agent directory the host states in the system prompt, outside the repository and outliving the session. This host has no store, but it does have dynamic prompt context (`SystemPrompt.context`, a durable user-role snapshot), so `pstack` registers one required contribution naming `.audit/` as the place for plans, trails, and orchestration state. That restores the part that was missing: a child knows the path without being told, which is what makes a resume cheap. What is still lost is durability across sessions — nothing resumes from `.audit/` on its own, and a resumed child is handed its standing orders again rather than told to re-read them. The operator's named directory still wins, so the placement is a default rather than an assignment.",
     unit: "4",
   },
   {

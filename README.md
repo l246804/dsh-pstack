@@ -99,7 +99,7 @@ dsh plugin --profile <profile> add dsh-pstack
 - Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。相关技能会在需要它们的步骤说明不支持，不伪造替代。
 - `/loop` 没有同名命令，也没有事件订阅，属于降级映射。能覆盖的是目标与定时输入：`create_goal` 记录目标和相位，`schedule_create` 只能作定时心跳，它把一条消息投回创建它的会话，不能盯着 PR 或 CI，子代理也无法自己布置。不能覆盖的是事件唤醒和云端存活：goal 不会自己感知外部事件，自动续跑还取决于 profile 是否挂载 goal round driver，未挂载时长时间任务只是同一个会话里被监督的运行。
 - `typescript-best-practices` 的 `paths` 自动触发不支持，需要时显式调用 `/typescript-best-practices`。
-- 上游的 agent store 没有等价物。它是一个宿主注入到 system prompt 的每 agent 目录，在仓库之外、跨会话存活，本次运行启动的每个 agent 都指向同一位置。这里没有这样的路径，需要落盘的计划和决策记录写在你指定的仓库目录，未指定时用 `.audit/<task-slug>/` 或 `docs/plans/`。代价是 resume 的 child 必须重新拿到 standing orders，不能按 store 路径重读。
+- 上游的 agent store 没有完整等价物。它是一个在仓库之外、跨会话存活的每 agent 目录。这里用仓库内的 `.audit/`，并通过 prompt context 告诉每个 agent（含子代理）这个位置，所以子代理不需要被逐个交代路径。**但 `.audit/` 不会自己续跑**：跨会话恢复时仍要把 standing orders 重新交给子代理。`.audit/` 默认被 `.gitignore` 忽略；确实需要评审者据此判断结果时，再把决策流提交进仓库。
 - 跨会话检索需要手动启用官方的 Session search bundle。`recall` 和 `automate-me` 都要跨多个既往会话工作，而 `pstack_history` 只能读调用者自己与直接子会话。未启用时这两个技能仍在当前会话范围内工作，并应把跨会话那一半报为不可用。本包不代你启用它，因为它会给每个 agent 增加五个全局工具，并让已存在会话缓存的请求前缀失效一次。
 - worktree 只隔离工作目录，不是 VM。schedule 是定时提醒，不是事件订阅。
 - 多模型评审需要配置真实不同的 route。只有同一 route 时，评审会标为同模型复核。

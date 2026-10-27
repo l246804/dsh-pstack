@@ -61,7 +61,7 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 | `agent-transcripts/` 目录 | `pstack_history` 分页读原始事件 | 无目录可读、无任意 session id、不遍历后代；冷读无法区分存储日志与读时修补事件 |
 | 跨会话检索（`recall`、`automate-me` 都要） | 官方 `session-search` bundle 提供的 `session_search` 与四个同类工具，需在 Plugins 里手动启用 | 该 bundle 官方默认关闭；`pstack_history` 不能替代它，只能读调用者自己与直接子会话。缺它时这两个技能只在当前会话内工作，跨会话那一半必须如实报为不可用 |
 | `paths:` 自动挂载 | 不消费该字段，技能改为显式调用 | `typescript-best-practices` 失去按文件自动触发 |
-| agent store | 由操作者指定的仓库目录，未指定时用 `.audit/<task-slug>/` 或 `docs/plans/` | 上游的 store 是宿主注入到 system prompt 的每 agent 目录：在仓库之外、跨会话存活、本次运行启动的每个 agent 都共享同一个位置。这里没有宿主分配的路径，只有"一个可写的地方"，而且每个 playbook 各自改指了仓库内路径。`orchestrate` 保留了每文件单写者纪律，但 resume 必须重新交出 standing orders，不能按 store 路径重读 |
+| agent store | `.audit/`（仓库内，经 prompt context 告知每个 agent），操作者指定的目录优先 | 上游的 store 在仓库之外、跨会话存活。这里用 `SystemPrompt.context`（宿主提供的持久 user-role 快照）注册了一条必需上下文，写明 `.audit/` 放计划、决策流和编排状态，**补回了「child 不用被告知就知道路径」这一半**。仍然丢的是跨会话存活：没有任何东西会自己从 `.audit/` 续跑，resume 的 child 仍要重新拿到 standing orders |
 | Custom Mode | 每个新任务显式 `/poteto-mode` | 没有持久模式，没有快捷键 |
 | `/loop` | `create_goal` 承载目标，`schedule_create` 只作定时心跳 | 没有事件订阅；goal 续跑依赖 profile 挂载 round driver |
 | cloud agent | 本地 child 加真实 `cwd`，用 worktree 隔离 | 无 VM、无跨设备恢复、无 dashboard、无云端存活检查 |
@@ -163,6 +163,9 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 | 本文第一节的降级表 | 表里有一行 `Cursor Automations`，而它在 `capabilities.ts` 里是 `excluded`；同时缺了 `image generation` 一行。因为一进一出，总数仍是 13，计数检查全绿 | 换回 `image generation` 行，把 `Cursor Automations` 留在 `excluded` 一节 |
 | 本文第一节的 `mapped` 列举 | 列了 16 个名字，`capabilities.ts` 有 17 条，缺 `agent store` | 补上（随后 `agent store` 本身改判为 `degraded`，见下一行） |
 | `scripts/capabilities.ts` 的 `agent-store` 行 | 判为 `mapped`，而本仓库自己的 patch 写着 "This host hands no agent store to the model"，`multi-phase-plan`、`autopilot-full`、`orchestrate` 三处都已改写。上游的 store 由宿主注入 system prompt，在仓库之外、跨会话存活、多个 agent 共享；移植后只剩"一个可写的地方" | 改判 `degraded`，写明丢的是宿主分配的位置、跨会话存活、以及每个 child 都已经知道的统一位置 |
+| 同上的判定理由 | 第一次改判时写"宿主没有系统提示原语"，这一条是错的：`SystemPrompt.context` 正是该原语（宿主文档原话 "durable user-role snapshot"），只是没有注册 | 补注册一条必需 prompt context（`src/audit-context.ts`），写明 `.audit/`；`degraded` 理由改为只保留真实缺口——跨会话不续跑 |
+| `skills/poteto-mode/playbooks/multi-phase-plan.md`（经 patch） | 计划默认写到 `docs/plans/`，而该路径**不在** `.gitignore` 里，会被提交；上游说 store 整体不入库，`show-me-your-work` 也写 "leave it out of git" | 改为 `.audit/plans/`，与 `autopilot-full`、`orchestrate` 的落点统一 |
+| `src/host-contract.ts` | 没有 `systemPrompt` 的结构化契约，插件无法注册 prompt context | 新增 `SystemPromptHost` 与 `PromptContextContribution`，只声明 `context` 一个方法 |
 | `scripts/capabilities.ts` 的 `subagent-general` 行 | 只写 "never a DSH agent preset id"，读起来像本包不支持宿主预设；实际是另一个参数 `agentPreset` 负责这件事 | 补明两个参数分工，以及 `agentPreset` 仅在该行配了 `allowedAgentPresets` 时出现 |
 | 本文的类别词表 | 缺 `deferred`，且说"后四类各有 `reason`"与 `capabilities.ts` 的五类对不上 | 补齐 `deferred` 并修正这句 |
 | `scripts/divergence-ledger.ts` | 只比对计数，看不出"一条换一条" | 新增成员检查：每行带 `ledgerAnchor`，本文必须逐条点名，配 `tests/divergence-ledger.test.ts` 守住 |
@@ -185,6 +188,7 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 - `pstack_subagent` 的 `reasoningEffort`、`roleIndex`、`maxDepth`、`agentPreset` 参数。`agentPreset` 与 `agent` 是两个参数，不冲突：`agent` 是 pstack 自带的三种 brief 形态之一（`poteto-agent` / `comment-sicko` / `general`），不接受 DSH 预设 id；要让 child 换一个宿主预设，用另一个参数 `agentPreset`，且只有该行配了 `allowedAgentPresets` 时它才出现在 schema 里。
 - child 作用域的 `set_reasoning_effort`。
 - `pstack_history`（受限只读历史）与 `pstack_script`（随包脚本运行）。
+- 一条必需的 prompt context（`pstack:audit-store`，见 `src/audit-context.ts`），把 `.audit/` 这个落点告诉每个 agent。上游不需要它，因为它的宿主本来就在系统提示里给 store 路径。
 - `scripts/` 整个生成链：patch 定义、资产生成、`check` 的四段（`check:assets`、`check:scripts`、`typecheck`、`test`）、运行时打包，以及第三方技能树的 `sync-skills-ext.ts`。
 - `docs/decisions/` 的决策记录。
 - 按需挂载的 worktree 行，以及它对该 profile 是否已有等价行的判断。
