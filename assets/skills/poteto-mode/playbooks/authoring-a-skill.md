@@ -3,7 +3,7 @@
 **You own the skill's voice.**
 
 1. Read the `writing-for-agents` skill's `SKILL.md` at its absolute resource path before drafting, and its `SKILL-MECHANICS.md` when the document is a skill. It is the vendored reference for writing what an agent reads: context pointers, the information hierarchy, completion criteria, leading words, and pruning.
-2. Validate the skill: the frontmatter parser accepts `name` and `description` and rejects an unknown field, every referenced file exists, and every internal link resolves. `scripts/check-assets.ts` runs these checks over this package's own `assets/` tree. A skill you write in a project's `.dsh/skills/` is outside that tree, so nothing validates it automatically: check those four things yourself before declaring the skill done, and do not claim a check ran on it.
+2. Validate the skill: frontmatter has `name` and `description`, the name is kebab-case, referenced files exist, cross-skill links resolve. The loader skips a skill whose name breaks that shape and only warns, so confirm the new skill shows up in the catalog.
 3. Test cases if structural. Skip if subjective.
 4. Run **Opening a PR**.
 

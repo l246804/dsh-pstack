@@ -140,7 +140,7 @@ export const CAPABILITIES: readonly Capability[] = [
     dsh: "the authoring playbook plus this package's frontmatter, link, and structure checks",
     coverage: "degraded",
     reason:
-      "No Cursor drafting, evaluation, or optimization tool is claimed; the playbook points at the validators this package actually runs.",
+      "No Cursor drafting, evaluation, or optimization tool is claimed. The playbook carries the checklist an author runs; the release gate also checks the frontmatter and links of what ships.",
     unit: "4",
   },
   {

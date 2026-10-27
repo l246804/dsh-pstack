@@ -2169,7 +2169,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/authoring-a-skill.md",
     reason:
-      "Cursor's built-in `create-skill` has no DSH counterpart, so the step points at the authoring reference this package ships and names the validators that actually run.",
+      "Cursor's built-in `create-skill` has no DSH counterpart, so the step points at the authoring reference this package ships.",
     anchor: "1. Use the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).",
     expectedMatches: 1,
     replacement:
@@ -2183,15 +2183,15 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     kind: "replace",
     file: "skills/poteto-mode/playbooks/authoring-a-skill.md",
     reason:
-      "The validation step names the checks that actually run, and says plainly that they cover this package's own tree rather than a skill you are writing elsewhere.",
+      "Upstream's checklist holds here, and the name shape is the one rule the loader enforces silently: a bad name drops the skill from the catalog with no error.",
     anchor:
       "2. Validate the skill: frontmatter has `name` and `description`, referenced files exist, cross-skill links resolve.",
     expectedMatches: 1,
     replacement:
-      "2. Validate the skill: the frontmatter parser accepts `name` and `description` and rejects an unknown field, every referenced file exists, and every internal link resolves. `scripts/check-assets.ts` runs these checks over this package's own `assets/` tree. A skill you write in a project's `.dsh/skills/` is outside that tree, so nothing validates it automatically: check those four things yourself before declaring the skill done, and do not claim a check ran on it.",
+      "2. Validate the skill: frontmatter has `name` and `description`, the name is kebab-case, referenced files exist, cross-skill links resolve. The loader skips a skill whose name breaks that shape and only warns, so confirm the new skill shows up in the catalog.",
     outputIncludes: [
-      "A skill you write in a project's `.dsh/skills/` is outside that tree",
-      "do not claim a check ran on it",
+      "the name is kebab-case",
+      "confirm the new skill shows up in the catalog",
     ],
   },
   {
@@ -2666,7 +2666,7 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): hand to Cursor's built-in `create-skill` skill and run its draft / test / iterate loop.\n- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): hand to `create-skill` and run its description-optimization loop.\n- `new skill via create-skill: <kebab-name>`: hand creation to `create-skill`. Do not invent the shape ad hoc.",
     expectedMatches: 1,
     replacement:
-      "- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): follow the `authoring-a-skill` playbook, which names this package's frontmatter, link, and structure checks.\n- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): rewrite its `description` against the frontmatter rules yourself and reload the catalog to confirm it is picked up. There is no description-optimization tool here.\n- `new skill via the authoring playbook: <kebab-name>`: create it with the `authoring-a-skill` playbook and run the checks it names. Do not invent the shape ad hoc.",
+      "- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): follow the `authoring-a-skill` playbook, which carries the frontmatter, link, and structure checks.\n- `tune description: <skill path>` (the skill exists but didn't trigger when it should have): rewrite its `description` against the frontmatter rules yourself and reload the catalog to confirm it is picked up. There is no description-optimization tool here.\n- `new skill via the authoring playbook: <kebab-name>`: create it with the `authoring-a-skill` playbook and run the checks it names. Do not invent the shape ad hoc.",
     outputIncludes: ["`authoring-a-skill` playbook", "no description-optimization tool here"],
   },
   {
@@ -2677,8 +2677,8 @@ export const FILE_PATCHES: readonly FilePatch[] = [
       "If your environment ships a SKILL.md validator, run it on every touched skill before declaring done.",
     expectedMatches: 1,
     replacement:
-      "Run the checks the `authoring-a-skill` playbook names on every touched skill before declaring done. This host ships no separate SKILL.md validator binary, so do not claim one ran.",
-    outputIncludes: ["do not claim one ran"],
+      "Run the checks the `authoring-a-skill` playbook names on every touched skill before declaring done.",
+    outputIncludes: ["the checks the `authoring-a-skill` playbook names"],
   },
   {
     kind: "replace",

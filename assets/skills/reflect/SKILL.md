@@ -53,11 +53,11 @@ File each Backlog item to your team's devex or backlog tracker without waiting. 
 Follow each approved row's Routing exactly:
 
 - Trivial existing-skill edit (a one-line bullet, a tightened sentence, a stale fact corrected): the parent does it directly.
-- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): follow the `authoring-a-skill` playbook, which names this package's frontmatter, link, and structure checks.
+- Substantive existing-skill edit (a new section, a new pattern table, more than ~10 lines): follow the `authoring-a-skill` playbook, which carries the frontmatter, link, and structure checks.
 - `tune description: <skill path>` (the skill exists but didn't trigger when it should have): rewrite its `description` against the frontmatter rules yourself and reload the catalog to confirm it is picked up. There is no description-optimization tool here.
 - `new skill via the authoring playbook: <kebab-name>`: create it with the `authoring-a-skill` playbook and run the checks it names. Do not invent the shape ad hoc.
 
-Run the checks the `authoring-a-skill` playbook names on every touched skill before declaring done. This host ships no separate SKILL.md validator binary, so do not claim one ran.
+Run the checks the `authoring-a-skill` playbook names on every touched skill before declaring done.
 
 ## 6. Summarize for the user
 
