@@ -43,7 +43,7 @@ import {
   type ChildRoute,
   type RouteSelection,
 } from "./models.ts";
-import { PSTACK_ROOT, POTETO_MODE_SKILL_PATH, agentPreamblePath } from "./paths.ts";
+import { PORT_ROOT, POTETO_MODE_SKILL_PATH, agentPreamblePath } from "./paths.ts";
 import { requireRole, type RoleSpec } from "./roles.ts";
 
 /** Cordis row name, used by Loader diagnostics. */
@@ -1233,7 +1233,7 @@ export function hostRuntime(
       return getAgentRegistry();
     },
     dshHome: resolveDshHome(),
-    pstackRoot: PSTACK_ROOT,
+    pstackRoot: PORT_ROOT,
   };
 }
 

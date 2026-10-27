@@ -1,6 +1,0 @@
-{
-  "meta": {
-    "title": "pstack 技能",
-    "description": "在本包内提供 pstack 工作流技能：模型可加载 setup-pstack，其余技能用 /name 显式调用。"
-  }
-}

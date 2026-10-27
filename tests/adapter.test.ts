@@ -6,7 +6,7 @@ import {
   checkAdapterDoc,
   requiredAdapterRows,
   tableRows,
-} from "../scripts/adapter.ts";
+} from "../pstack/scripts/adapter.ts";
 
 /**
  * The adapter gate's own failure modes, pinned.

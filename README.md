@@ -14,11 +14,11 @@ pstack 的 DeepSeek Harness 移植。它把 Cursor pstack 的技能、playbook�
 
 上游 pstack 对 Claude Code 的适配保留技能原文，生成独立的宿主资产，再用一份宿主适配说明处理工具、路径、模型和能力差异。
 
-dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差异只写在 [`docs/harness/dsh.md`](https://github.com/l246804/dsh-pstack/blob/main/docs/harness/dsh.md) 一处。读者每次会话读一次，按其中的对照表把 Cursor 的说法映射成这里的工具、路径、模型和档位。
+dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差异只写在 [`pstack/docs/harness/dsh.md`](https://github.com/l246804/dsh-pstack/blob/main/pstack/docs/harness/dsh.md) 一处，构建时拷进 `dist/pstack/docs/harness/dsh.md`。读者每次会话读一次，按其中的对照表把 Cursor 的说法映射成这里的工具、路径、模型和档位。
 
 生成器只做四件不需要判断语义的机械变换：收窄 frontmatter 到本宿主实际读取的字段；把指向树外文件的相对链接改指上游 GitHub 原文；在每个用到 Cursor 名字的技能标题下插入一行指向适配说明的指针；拷入适配说明本身。
 
-覆盖度由 `scripts/adapter.ts` 从随包正文反推。它扫 `pstack/` 里每个 Markdown 文件，收集用到的 Cursor 概念，要求适配说明里有一条对应的表格行；缺哪条就报哪条，并说明读者少了这条要付什么代价。新加一个技能说 `/visualize`，构建会失败直到文档给出那一行。所以这里不存在一份会过期的手工差异清单。
+覆盖度由 `pstack/scripts/adapter.ts` 从随包正文反推。它扫生成树里每个 Markdown 文件，收集用到的 Cursor 概念，要求适配说明里有一条对应的表格行；缺哪条就报哪条，并说明读者少了这条要付什么代价。新加一个技能说 `/visualize`，构建会失败直到文档给出那一行。所以这里不存在一份会过期的手工差异清单。
 
 技能正文里会看到 `Task`、`readonly: true` 这类 Cursor 措辞，这是刻意保留的。上游改一句话不需要重新判断既有改写是否仍然成立，同步就是重跑生成器。
 
@@ -29,7 +29,7 @@ dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差�
 - Node.js `>=22.19`。仅 npm CLI 部署需要它出现在 `PATH` 上；Desktop（Electron）部署走 Host 自己的运行时。
 - Git。worktree 需要 Git 仓库。
 
-随包的编排、PR watcher、计划检查、worktree 审计和决策日志脚本已构建为单文件 Node 产物，依赖全部内联。运行时通过 `pstack_script` 工具以宿主进程启动它们，因此**不需要 Bun，也不需要 bash，更不需要安装任何依赖**。Desktop 用户不在 `PATH` 上放 `node` 也能用：工具用 Electron 自带的 Node 运行时执行，并在需要时自动附加 `ELECTRON_RUN_AS_NODE`。脚本从**会话目录**启动，所以参数里的相对路径落在当前工作区或 worktree 内。
+随包的编排、PR watcher、计划检查、worktree 审计和决策日志脚本已构建为单文件 Node 产物，依赖全部内联，源码在 `pstack/runtime/`。运行时通过 `pstack_script` 工具以宿主进程启动它们，因此**不需要 Bun，也不需要 bash，更不需要安装任何依赖**。Desktop 用户不在 `PATH` 上放 `node` 也能用：工具用 Electron 自带的 Node 运行时执行，并在需要时自动附加 `ELECTRON_RUN_AS_NODE`。脚本从**会话目录**启动，所以参数里的相对路径落在当前工作区或 worktree 内。
 
 `pstack_script` 直接 `spawn` 子进程，因此**不经过命令审批，也不受 DSH 的 sandbox policy 约束**：它只能执行本包随附、由封闭 `id` 枚举选中的脚本，但脚本实际读了什么、写了哪里，Host 不会拦。这是为了在没有 `PATH` `node` 的部署里仍能运行为此付出的代价。需要审批与沙箱约束的命令请用 DSH 自己的 bash 工具。
 
@@ -93,14 +93,19 @@ dsh plugin --profile <profile> add dsh-pstack
 
 ### 目录结构
 
-随包内容分成两棵树，按**来源**划分，不按文件类型。
+随包内容只有一个输出树：`dist/`。插件运行时只读它，读不到别处。
 
-- `pstack/` 是上游 pstack 的移植产物，由 `build:assets` 从固定的 submodule 整棵重新生成。它保持上游自己的相对布局（`skills/`、`agents/`、`docs/`），因为这几层之间有 110 处相对链接，重排其中任何一层都会让这些链接一起失效。手写内容不能放进去：下一次构建会把它删掉。
-- `skills/` 存放所有非上游技能，不会被重新生成。`skills/vendored/<来源>/<技能>/` 是外部仓库某个提交的逐字节拷贝，`skills/authored/<技能>/` 是本仓库写的。两者的校验规则都写在 `skills/sources.yml`。
+- `dist/pstack/` 是上游 pstack 的移植结果，由生成器整棵重建，只含 `agents/`、`docs/`、`skills/`。
+- `dist/skills/` 是非上游技能：`vendored/<来源>/<技能>/` 是外部仓库某个提交的逐字节拷贝，`authored/<技能>/` 是本仓库写的。校验规则写在 `skills/sources.yml`。
+- `dist/*.mjs` 是插件本体，由 bundler 从 `src/` 打包。
+
+源码按**来源**分在 `pstack/` 下四个子目录里，每个的生命周期不同，见 [`pstack/README.md`](https://github.com/l246804/dsh-pstack/blob/main/pstack/README.md)。生成树不进 git：`pstack/pstack/` 每次构建重建，所以上游同步的 diff 只包含手写内容。
+
+`dist/` 在 `.gitignore` 里，因此 clone 之后跑测试或检查要先构建。`vp run check` 与 `vp run test` 已通过任务依赖保证这一点。
 
 ### 第三方技能与同名冲突
 
-`skills/vendored/<来源>/<技能>/` 存放移植自外部仓库的技能，每个来源在 `skills/sources.yml` 里记录仓库地址、许可证和固定提交号。它放在 `pstack/` 之外，因为 `pstack/` 每次 `build:assets` 都会被整棵重写，而这些文件必须在重写后还在。
+`skills/vendored/<来源>/<技能>/` 存放移植自外部仓库的技能，每个来源在 `skills/sources.yml` 里记录仓库地址、许可证和固定提交号。它放在 `pstack/` 之外，因为 `pstack/pstack/` 每次构建都会被整棵重写，而这些文件必须在重写后还在，由复制步骤带进 `dist/skills/`。
 
 来源有两种。默认是 `vendored`，即上游某个提交的逐字节拷贝，内容哈希让它可验证。`origin: local` 表示那段文本就是本包的源，没有上游可 pin，因此跳过哈希与远端比对，只保留文件清单。`local` 来源当前提供三个技能：
 
@@ -118,10 +123,10 @@ dsh plugin --profile <profile> add dsh-pstack
 
 这个顺序是有意的：项目里的决定应当压过包里的默认值。副作用是冲突很安静，所以升级后行为变了，先查技能目录里有没有同名项。要让本包版本生效，删掉或重命名你那一份。
 
-本包内部的两个树不允许同名：`pstack/skills/` 与 `skills/` 下任意一棵出现同一个名字会让插件启动失败，而不是让其中一个悄悄胜出。
+本包内部的两个树不允许同名：`dist/pstack/skills/` 与 `dist/skills/` 下任意一棵出现同一个名字会让插件启动失败，而不是让其中一个悄悄胜出。
 
 - `make-bot-ui` 不在支持范围。它依赖 Cursor 的 webhook routine 和 secret request，DSH 没有等价闭环。技能不随包，上游正文里指向它的链接改指 GitHub 原文。
-- Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。技能正文保留上游措辞，遇到这类步骤时按 `docs/harness/dsh.md` 里那一行处理：说明不支持，继续执行这一步本来要做的事，不伪造替代。
+- Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。技能正文保留上游措辞，遇到这类步骤时按适配说明里那一行处理：说明不支持，继续执行这一步本来要做的事，不伪造替代。
 - `/loop` 没有同名命令，也没有事件订阅，属于降级映射。能覆盖的是目标与定时输入：`create_goal` 记录目标和相位，`schedule_create` 只能作定时心跳，它把一条消息投回创建它的会话，不能盯着 PR 或 CI，子代理也无法自己布置。不能覆盖的是事件唤醒和云端存活：goal 不会自己感知外部事件，自动续跑还取决于 profile 是否挂载 goal round driver，未挂载时长时间任务只是同一个会话里被监督的运行。
 - `typescript-best-practices` 的 `paths` 自动触发不支持，需要时显式调用 `/typescript-best-practices`。
 - 上游的 agent store 没有完整等价物。它是一个在仓库之外、跨会话存活的每 agent 目录。这里用仓库内的 `.audit/`，并通过 prompt context 告诉每个 agent（含子代理）这个位置，所以子代理不需要被逐个交代路径。**但 `.audit/` 不会自己续跑**：跨会话恢复时仍要把 standing orders 重新交给子代理。`.audit/` 默认被 `.gitignore` 忽略；确实需要评审者据此判断结果时，再把决策流提交进仓库。

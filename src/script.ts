@@ -30,7 +30,7 @@ import type {
   WorkingDirectoryHost,
 } from "./host-contract.ts";
 import { RUNTIME_CLIS } from "./runtime-manifest.ts";
-import { PSTACK_ROOT } from "./paths.ts";
+import { PORT_ROOT } from "./paths.ts";
 import { isAbsolute, join, resolve } from "node:path";
 
 /** Model-facing tool name. */
@@ -106,10 +106,10 @@ export type ScriptOutcome = ScriptResult | ScriptJobResult;
 export function scriptPath(id: ScriptId): string {
   const entry = RUNTIME_CLIS.find((candidate) => candidate.id === id);
   if (entry === undefined) throw new ScriptInputError(`unknown script id "${String(id)}"`);
-  // `assetPath` is relative to the generated tree, e.g.
-  // `skills/poteto-mode/scripts/orch/orch.mjs`, which is exactly what `PSTACK_ROOT`
+  // `assetPath` is relative to the port tree, e.g.
+  // `skills/poteto-mode/scripts/orch/orch.mjs`, which is exactly what `PORT_ROOT`
   // is the parent of.
-  return join(PSTACK_ROOT, ...entry.assetPath.split("/"));
+  return join(PORT_ROOT, ...entry.assetPath.split("/"));
 }
 
 /**

@@ -1,0 +1,34 @@
+# Hand-written files that replace their upstream counterparts in the generated tree.
+#
+# `path` is where the file sits below `pstack/docs/`. `tree` is where it lands inside
+# `pstack/pstack/`. The two are declared separately rather than inferred, because the
+# overlay also has to reach files outside the tree's `docs/`: the `poteto-help` skill
+# carries a paragraph telling a reader how to install pstack, and that paragraph is as
+# wrong here as the same one in the guide.
+#
+# `replaces` names the upstream file the overlay rewrites, and `sha256` is that file's
+# hash at `revision`. The generator hashes the pinned upstream file and refuses to build
+# when the two disagree, so an upstream edit to an overlaid page stops the build instead
+# of shipping a page that describes the host as it was the day the overlay was written.
+#
+# `harness/dsh.md` has `replaces: none`: it is this host's own document and there is
+# nothing upstream for it to go stale against.
+overlay:
+  - path: README.md
+    tree: README.md
+    replaces: README.md
+    revision: d1453c11d1dde9714d4c313c97d3a68432265c7f
+    sha256: b928886260bd551b0c8f3e58617a5dc3ad8dfc1293d096b1ef81b84007532486
+  - path: harness/dsh.md
+    tree: docs/harness/dsh.md
+    replaces: none
+  - path: guide/01-setup.md
+    tree: docs/guide/01-setup.md
+    replaces: docs/guide/01-setup.md
+    revision: d1453c11d1dde9714d4c313c97d3a68432265c7f
+    sha256: 384655bdecc713122ca69a485723c58462002a1d512415e94e48597d0dce2fa5
+  - path: skills/poteto-help/SKILL.md
+    tree: skills/poteto-help/SKILL.md
+    replaces: skills/poteto-help/SKILL.md
+    revision: d1453c11d1dde9714d4c313c97d3a68432265c7f
+    sha256: 67c77ee5e91c19809b01d08cc73cc2870a52fb95fc64dc33328bf8ff9e49891c

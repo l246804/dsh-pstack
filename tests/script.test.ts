@@ -29,7 +29,7 @@ import {
 import type { JobId, JobSpec, JobsHost, JobView } from "../src/host-contract.ts";
 import type { PstackScriptHost } from "../src/script.ts";
 import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
-import { ROOT } from "../scripts/build-assets.ts";
+import { PORT_ROOT } from "../src/paths.ts";
 
 const fixtures: string[] = [];
 
@@ -141,10 +141,10 @@ describe("pstack_script argument validation", () => {
 });
 
 describe("shipped artifact resolution", () => {
-  it("resolves every id to an existing file inside assets/", () => {
+  it("resolves every id to a built artifact inside the shipped tree", () => {
     for (const id of SCRIPT_IDS) {
       const path = scriptPath(id);
-      expect(path.startsWith(join(ROOT, "pstack")), path).toBe(true);
+      expect(path.startsWith(PORT_ROOT), path).toBe(true);
       expect(path.endsWith(".mjs"), path).toBe(true);
       expect(readFileSync(path, "utf8").startsWith("#!/usr/bin/env node\n"), path).toBe(true);
     }

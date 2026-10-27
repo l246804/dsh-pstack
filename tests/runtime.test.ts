@@ -2,8 +2,8 @@ import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 
-import { ROOT } from "../scripts/root.ts";
-import { assertArtifact } from "../scripts/build-runtime.ts";
+import { ROOT } from "../pstack/scripts/root.ts";
+import { assertArtifact } from "../pstack/scripts/build-runtime.ts";
 import {
   RUNTIME_CLIS,
   RUNTIME_ENTRIES,
@@ -11,7 +11,7 @@ import {
   SHEBANG,
   isReplacedUpstreamScript,
 } from "../src/runtime-manifest.ts";
-import { HEADER as AUDIT_HEADER } from "../scripts/runtime/worktree-audit.ts";
+import { HEADER as AUDIT_HEADER } from "../pstack/runtime/worktree-audit.ts";
 
 /**
  * The contract every shipped script artifact has to keep.

@@ -46,44 +46,19 @@
       "default": "./dist/script.mjs"
     },
     "./cordis.patch.yml": "./cordis.patch.yml",
-    "./locale/*.json": "./locale/*.json",
     "./icon": "./static/icon.png",
     "./package.json": "./package.json"
   },
   "files": [
     "dist",
-    "pstack",
-    "skills",
     "cordis.patch.yml",
-    "locale/*.json",
-    "static",
-    "README.md",
-    "LICENSE"
+    "static"
   ],
   "dsh": {
     "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
-  },
-  "scripts": {
-    "build:runtime": "node scripts/build-runtime.ts",
-    "build:assets": "pnpm run build:runtime && node scripts/sync-upstream.ts",
-    "build:bundle": "vp pack",
-    "build": "pnpm run build:assets && pnpm run build:bundle",
-    "dev": "pnpm run build:assets && vp pack --watch",
-    "check:runtime": "node scripts/build-runtime.ts --check",
-    "check:skills-ext": "node scripts/sync-skills-ext.ts",
-    "check:assets": "pnpm run check:runtime && node scripts/sync-upstream.ts --check && pnpm run check:skills-ext && node scripts/check-assets.ts",
-    "check:scripts": "node scripts/check-scripts.ts",
-    "typecheck": "tsc --noEmit",
-    "test": "vp test",
-    "check": "pnpm run check:assets && pnpm run check:scripts && pnpm run typecheck && pnpm run test",
-    "skills-ext:sync": "node scripts/sync-skills-ext.ts --remote",
-    "skills-ext:pin": "node scripts/sync-skills-ext.ts --write",
-    "prerelease": "pnpm run check",
-    "release": "bumpp",
-    "prepublishOnly": "pnpm run check && pnpm run build:bundle"
   },
   "devDependencies": {
     "@deepseek-ai/cordis-plugin-include": "~1.0.10",

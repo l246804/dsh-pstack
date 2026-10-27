@@ -33,9 +33,9 @@ import {
   sortRows,
   usageNote,
   sameOrInside,
-} from "../scripts/runtime/worktree-audit.ts";
-import type { AuditRow, SessionInput } from "../scripts/runtime/worktree-audit.ts";
-import { ROOT } from "../scripts/build-assets.ts";
+} from "../pstack/runtime/worktree-audit.ts";
+import type { AuditRow, SessionInput } from "../pstack/runtime/worktree-audit.ts";
+import { ROOT } from "../pstack/scripts/root.ts";
 
 const fixtures: string[] = [];
 

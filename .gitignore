@@ -3,16 +3,15 @@ dist
 .audit
 *.log
 .DS_Store
-.pstack-staging
-.pstack-backup
-# Build output of scripts/build-runtime.ts; `pstack/` is the committed copy.
+# Build output of pstack/scripts/build-runtime.ts, consumed by the generator.
 #
-# The directory is `.build/runtime`, not a top-level `runtime`. The old name collided
-# with `scripts/runtime/`, which holds tracked sources, so a bare `runtime` rule would
-# have ignored those too and a fresh clone could not run the build at all. Keeping the
-# output under `.build/` removes the collision instead of warning about it.
+# It is a build directory, not a source tree. The directory sits under `.build/` rather than
+# at the top level so its name cannot collide with a source directory, which an older layout
+# got wrong once.
 /.build
-# Upstream sources staged with RUNTIME_SOURCE_PATCHES applied, then bundled.
-.runtime-sources
+# The generated port tree. Rebuilt from pstack/runtime/, pstack/docs/, and the pinned
+# submodule on every build, and shipped inside dist/. Ignoring it keeps an upstream sync's
+# diff to the files a person actually wrote.
+/pstack/pstack
 # Scratch space for local verification; never part of the package.
 .tmp

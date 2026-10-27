@@ -4,11 +4,14 @@ dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。旧实�
 
 ## 目录分工
 
-随包内容按**来源**分两棵树，这个划分是硬规则。
+随包内容只发 `dist/`。源码按生命周期分，这个划分是硬规则。
 
-- `pstack/` 是上游移植，由 `build:assets` 整棵重新生成，保持上游自己的相对布局。手写内容放进去会在下一次构建时被删掉。
-- `skills/` 是所有非上游技能，从不重新生成。`vendored/<来源>/<技能>/` 必须有哈希与提交号，`authored/<技能>/` 不能有哈希。清单在 `skills/sources.yml`。
-- `docs/` 只写当前状态，不进发布包。`src/` 是插件源码，`scripts/` 是构建工具。
+- `pstack/pstack/` 是生成树，每次构建整棵替换，不进 git。手写内容放进去会在下一次构建时被拒。
+- `pstack/docs/` 是手写覆盖层，整份替换生成树里的同名文件。每条在 `overlay.yml` 里记 base 与哈希。
+- `pstack/runtime/` 是脚本源码，`fork/` 保存从上游移植的 TypeScript。
+- `pstack/scripts/` 是生成器、检查脚本与构建脚本。
+- `skills/` 是非上游技能，从不重新生成。`vendored/<来源>/<技能>/` 必须有哈希与提交号，`authored/<技能>/` 不能有哈希。清单在 `skills/sources.yml`，构建时复制进 `dist/skills/`。
+- `docs/` 只写当前状态，不进发布包。`src/` 是插件源码。
 
 ## 文档分工
 
@@ -22,6 +25,7 @@ dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。旧实�
 非机械改动，并且存在代码和测试都解释不了的长期理由时，写一条。
 
 - 与代码改动放在同一个提交。
+- 路径与命令写在正文里时带完整前缀，构建任务统一用 `vp run <task>`。
 - 文件名用 `docs/decisions/YYYY-MM-DD-<topic>.md`。
 - 改名、格式化、文案调整、纯机械重构不写。
 - 决定被推翻时新写一条并链接旧记录，不改写旧记录来假装一直是这个决定。

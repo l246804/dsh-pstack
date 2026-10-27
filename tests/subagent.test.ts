@@ -12,7 +12,7 @@ import type {
   SubagentActivationSpec,
   SubagentCapabilities,
 } from "../src/host-contract.ts";
-import { PSTACK_ROOT, POTETO_MODE_SKILL_PATH } from "../src/paths.ts";
+import { PORT_ROOT, POTETO_MODE_SKILL_PATH } from "../src/paths.ts";
 import {
   AGENT_KINDS,
   Config,
@@ -106,7 +106,7 @@ function harness(options: HarnessOptions = {}): Harness {
 
   const runtime: SubagentRuntime = {
     dshHome: home,
-    pstackRoot: options.pstackRoot ?? PSTACK_ROOT,
+    pstackRoot: options.pstackRoot ?? PORT_ROOT,
     subagents: {
       list: () => [providerName],
       getProvider: (name) => (name === providerName ? provider : undefined),

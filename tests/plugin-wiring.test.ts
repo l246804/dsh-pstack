@@ -35,8 +35,8 @@ import Loader from "@deepseek-ai/cordis-plugin-loader";
 import { load as parseYaml } from "js-yaml";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import { ROOT } from "../scripts/build-assets.ts";
-import { WORKTREE_ROWS } from "../scripts/worktree-mount.ts";
+import { ROOT } from "../pstack/scripts/root.ts";
+import { WORKTREE_ROWS } from "../pstack/scripts/worktree-mount.ts";
 import type { ToolDefinition } from "../src/host-contract.ts";
 
 /** The two official worktree plugins, which the guard looks for by name. */

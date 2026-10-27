@@ -117,10 +117,13 @@ export function apply(ctx: PstackSkillHost, config: PstackConfig = {}): void {
 }
 
 export {
+  AGENTS_ROOT,
   AUTHORED_SKILLS_ROOT,
+  DIST_ROOT,
   HARNESS_DOC_PATH,
   PACKAGE_ROOT,
-  PSTACK_ROOT,
+  PORT_ROOT,
+  POTETO_MODE_SKILL_PATH,
   SKILLS_ROOT,
   SKILL_ROOTS,
   VENDORED_SKILLS_ROOT,

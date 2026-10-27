@@ -3,7 +3,7 @@ import { isAbsolute, join } from "node:path";
 import { tmpdir } from "node:os";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { EXCLUDED_SKILLS, shippedSkillCount } from "../scripts/build-assets.ts";
+import { EXCLUDED_SKILLS, shippedSkillCount } from "../pstack/scripts/generate-pstack-harness-tree.ts";
 import { parseFrontmatter, validateSkillFrontmatter } from "../src/frontmatter.ts";
 import {
   BUNDLED_SKILL_RANK,

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import { ROOT } from "../scripts/build-assets.ts";
+import { SKILLS_ROOT } from "../src/paths.ts";
 
 /**
  * The shipped `log` CLI.
@@ -17,7 +17,7 @@ import { ROOT } from "../scripts/build-assets.ts";
  * `skills/show-me-your-work/SKILL.md` tells the model to open this TSV in a
  * spreadsheet, and a changed row shape would silently corrupt that artifact.
  */
-const script = join(ROOT, "pstack", "skills", "show-me-your-work", "scripts", "log.mjs");
+const script = join(SKILLS_ROOT, "show-me-your-work", "scripts", "log.mjs");
 const temporaryDirectories: string[] = [];
 
 const HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n";
