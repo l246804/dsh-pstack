@@ -2173,10 +2173,10 @@ export const FILE_PATCHES: readonly FilePatch[] = [
     anchor: "1. Use the **create-skill** skill (Cursor's built-in for authoring SKILL.md files).",
     expectedMatches: 1,
     replacement:
-      "1. Read the `writing-for-agents` skill's `SKILL.md` at its absolute resource path before drafting, and its `SKILL-MECHANICS.md` when the document is a skill. It is the vendored reference for writing what an agent reads: context pointers, the information hierarchy, completion criteria, leading words, and pruning. Cursor's built-in drafter and its evaluation tooling are not part of this port, so you write the file yourself.",
+      "1. Read the `writing-for-agents` skill's `SKILL.md` at its absolute resource path before drafting, and its `SKILL-MECHANICS.md` when the document is a skill. It is the vendored reference for writing what an agent reads: context pointers, the information hierarchy, completion criteria, leading words, and pruning.",
     outputIncludes: [
       "Read the `writing-for-agents` skill's `SKILL.md` at its absolute resource path",
-      "Cursor's built-in drafter and its evaluation tooling are not part of this port",
+      "context pointers, the information hierarchy, completion criteria, leading words, and pruning",
     ],
   },
   {

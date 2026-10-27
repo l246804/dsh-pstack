@@ -46,19 +46,8 @@ export interface VendoredSkill {
   readonly upstream: string;
   /** Upstream-relative file paths that ship. */
   readonly files: readonly string[];
-  /** Number of patches applied after the copy; zero means verbatim. */
-  readonly adapt?: number;
   /** Lower-case hex SHA-256 of each shipped file, keyed by its relative path. */
   readonly hashes?: Readonly<Record<string, string>>;
-  /**
-   * Files this package adds beside the vendored ones, such as a notice saying where
-   * the skill came from and how a same-name local skill shadows it.
-   *
-   * They are declared rather than inferred so that an undeclared file still fails:
-   * the rule stays "every shipped file is accounted for", and the accounting just
-   * distinguishes upstream text from local text.
-   */
-  readonly localFiles?: readonly string[];
   readonly note?: string;
 }
 
@@ -143,11 +132,11 @@ export function checkLocalTree(sources: SourcesFile): readonly string[] {
       }
 
       const present = walk(directory);
-      const declaredFiles = new Set([...skill.files, ...(skill.localFiles ?? [])]);
+      const declaredFiles = new Set(skill.files);
       for (const file of present) {
         if (!declaredFiles.has(file)) {
           problems.push(
-            `assets/skills-ext/${source.id}/${skill.name}/${file}: ships but is in neither \`files\` nor \`localFiles\`, so nothing records where it came from`,
+            `assets/skills-ext/${source.id}/${skill.name}/${file}: ships but is not in its \`files\` list, so nothing records where it came from`,
           );
         }
       }
@@ -160,7 +149,7 @@ export function checkLocalTree(sources: SourcesFile): readonly string[] {
         }
         if (actual !== expected) {
           problems.push(
-            `assets/skills-ext/${source.id}/${skill.name}/${file}: content differs from the pin. A vendored file is upstream text; to change it, patch it in scripts/skills-ext-patches.ts and raise \`adapt\`, or refresh the pin with \`--write\``,
+            `assets/skills-ext/${source.id}/${skill.name}/${file}: content differs from the pin. A vendored file is a copy of upstream text and must not be edited in place. Decide which change you want: to adopt a newer upstream revision, raise \`revision\` in scripts/skills-ext/sources.yml and run \`--write\`; to keep a local change, it has to be a separate file beside the vendored one rather than an edit to it`,
           );
         }
       }
