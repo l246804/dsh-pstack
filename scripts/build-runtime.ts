@@ -1,7 +1,7 @@
 /**
  * Build the shipped script runtime.
  *
- * Every CLI and test bundle in `scripts/runtime-manifest.ts` is compiled here into
+ * Every CLI and test bundle in `src/runtime-manifest.ts` is compiled here into
  * one self-contained ES module per artifact. The output is written into the
  * gitignored `runtime/` tree; `scripts/build-assets.ts` copies it into `assets/`,
  * so the generated asset tree stays the only thing that ships.
@@ -36,7 +36,7 @@ import {
   TEST_SUPPORT_STAGED_PREFIX,
   type RuntimeEntry,
   type RuntimeSource,
-} from "./runtime-manifest.ts";
+} from "../src/runtime-manifest.ts";
 
 /** Gitignored build output; `assets/` is generated from it. */
 export const RUNTIME_ROOT = join(ROOT, ".build", "runtime");

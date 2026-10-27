@@ -27,7 +27,7 @@ import { basename, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ROOT } from "./build-assets.ts";
-import { RUNTIME_CLIS, RUNTIME_TESTS } from "./runtime-manifest.ts";
+import { RUNTIME_CLIS, RUNTIME_TESTS } from "../src/runtime-manifest.ts";
 
 /** The one asset tree copied for the check. */
 export const SOURCE_RELATIVE = "pstack/skills";

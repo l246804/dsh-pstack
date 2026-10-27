@@ -25,13 +25,13 @@ import {
 } from "./build-assets.ts";
 import type { SkillCategory } from "./build-assets.ts";
 import { AUTHORED_ROOT, VENDORED_ROOT, isLocal, readSources, skillDirectory } from "./sync-skills-ext.ts";
-import { RUNTIME_CLIS, RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
+import { RUNTIME_CLIS, RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../src/runtime-manifest.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
   PSTACK_MODELS_EXAMPLE_PATH,
   ROLE_MANIFEST,
   renderPstackModelsExample,
-} from "./role-manifest.ts";
+} from "../src/role-manifest.ts";
 import {
   AGENT_DROPPED_FIELDS,
   SKILL_DROPPED_FIELDS,
@@ -1203,7 +1203,7 @@ function checkRoleAssets(problems: string[]): void {
   const text = readFileSync(path, "utf8");
   if (text !== renderPstackModelsExample()) {
     problems.push(
-      `pstack/${PSTACK_MODELS_EXAMPLE_PATH}: differs from the renderer in scripts/role-manifest.ts`,
+      `pstack/${PSTACK_MODELS_EXAMPLE_PATH}: differs from the renderer in src/role-manifest.ts`,
     );
   }
   for (const role of ROLE_MANIFEST) {

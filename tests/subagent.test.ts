@@ -6,7 +6,7 @@ import { afterAll, describe, expect, it } from "vite-plus/test";
 import { assertSupportedJsonSchema, jsonSchemaToTs, violations } from "./host-schema.ts";
 import { fakeAgent } from "./fake-agent.ts";
 
-import { PSTACK_MODELS_FILENAME } from "../scripts/role-manifest.ts";
+import { PSTACK_MODELS_FILENAME } from "../src/role-manifest.ts";
 import type {
   LlmCallConfig,
   SubagentActivationSpec,

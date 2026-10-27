@@ -29,7 +29,7 @@ import type {
   ToolsHost,
   WorkingDirectoryHost,
 } from "./host-contract.ts";
-import { RUNTIME_CLIS } from "../scripts/runtime-manifest.ts";
+import { RUNTIME_CLIS } from "./runtime-manifest.ts";
 import { PSTACK_ROOT } from "./paths.ts";
 import { isAbsolute, join, resolve } from "node:path";
 

@@ -32,13 +32,20 @@ import { join, relative } from "node:path";
 import yaml from "js-yaml";
 
 import { ROOT } from "./root.ts";
+import { AUTHORED_SKILLS_ROOT, VENDORED_SKILLS_ROOT } from "../src/paths.ts";
 
 /** Where the pinned sources and their file hashes live. */
 export const SOURCES_PATH = join(ROOT, "skills", "sources.yml");
 
-/** Where the vendored skill trees live, one directory per source id. */
-export const VENDORED_ROOT = join(ROOT, "skills", "vendored");
-export const AUTHORED_ROOT = join(ROOT, "skills", "authored");
+/**
+ * The two skill roots come from `src/paths.ts`, which owns every shipped path.
+ *
+ * They used to be declared here as well, so `skills/vendored` had two independent
+ * definitions and an edit to one could not be caught by the other. The plugin and this
+ * checker now read the same constant, so a move cannot half-happen.
+ */
+export const VENDORED_ROOT = VENDORED_SKILLS_ROOT;
+export const AUTHORED_ROOT = AUTHORED_SKILLS_ROOT;
 
 /** One vendored skill inside a source. */
 export interface VendoredSkill {

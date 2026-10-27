@@ -23,7 +23,7 @@ import {
   PSTACK_MODELS_FILENAME,
   ROLE_MANIFEST,
   type RoleSpec,
-} from "../scripts/role-manifest.ts";
+} from "./role-manifest.ts";
 import { normalizeRoleName, suggestRoles } from "./roles.ts";
 
 /** One resolved child route. */

@@ -10,7 +10,7 @@ import {
   RUNTIME_TESTS,
   SHEBANG,
   isReplacedUpstreamScript,
-} from "../scripts/runtime-manifest.ts";
+} from "../src/runtime-manifest.ts";
 import { HEADER as AUDIT_HEADER } from "../scripts/runtime/worktree-audit.ts";
 
 /**

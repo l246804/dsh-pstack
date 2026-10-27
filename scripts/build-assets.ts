@@ -32,10 +32,11 @@ import { join, posix } from "node:path";
 import { Buffer } from "node:buffer";
 
 import { ADAPTER_ASSET, ADAPTER_POINTER, ADAPTER_SOURCE, termsUsedIn } from "./adapter.ts";
-import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "./role-manifest.ts";
+import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "../src/role-manifest.ts";
 import { RUNTIME_ROOT } from "./build-runtime.ts";
-import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "./runtime-manifest.ts";
+import { RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../src/runtime-manifest.ts";
 import { ROOT } from "./root.ts";
+import { PSTACK_ROOT } from "../src/paths.ts";
 import {
   parseFrontmatter,
   serializeAgentFrontmatter,
@@ -55,16 +56,20 @@ export { ROOT };
 export const UPSTREAM_ROOT = join(ROOT, "upstream", "cursor-plugins", "pstack");
 export const UPSTREAM_SKILLS = join(UPSTREAM_ROOT, "skills");
 
+
 /**
- * The generated, committed port tree.
+ * The generated, committed port tree, re-exported from `src/paths.ts`.
  *
  * An `Asset.path` is relative to this directory and is also its path below the upstream
  * root, with no exceptions. The port keeps upstream's own relative layout on purpose:
  * 110 shipped links run between `docs/guide/`, `skills/`, and `agents/`, and moving one
  * of those directories relative to the others breaks every one of them. Regrouping
  * inside `pstack/` would trade a cosmetic ordering for a table of link rewrites.
+ *
+ * The constant itself lives in `src/paths.ts`, because the plugin reads the same tree
+ * at run time. One directory, one definition.
  */
-export const PSTACK_ROOT = join(ROOT, "pstack");
+export { PSTACK_ROOT };
 export const STAGING_ROOT = join(ROOT, ".pstack-staging");
 export const BACKUP_ROOT = join(ROOT, ".pstack-backup");
 export const SKILLS_PREFIX = "skills/";

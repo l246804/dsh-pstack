@@ -12,7 +12,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { fakeAgent, type FakeAgent } from "./fake-agent.ts";
-import { PSTACK_MODELS_FILENAME } from "../scripts/role-manifest.ts";
+import { PSTACK_MODELS_FILENAME } from "../src/role-manifest.ts";
 import type {
   LlmCallConfig,
   LlmHost,

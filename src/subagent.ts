@@ -13,7 +13,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { PSTACK_MODELS_FILENAME } from "../scripts/role-manifest.ts";
+import { PSTACK_MODELS_FILENAME } from "./role-manifest.ts";
 import { parseFrontmatter } from "./frontmatter.ts";
 import type {
   Agent,
