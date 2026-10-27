@@ -30,11 +30,14 @@ Date: 2026-10-27
 - **`required: false`。** 放弃：可选运行时上下文被关掉时这条会消失，而写着 `.audit/` 的 playbook 会立刻指向一个没人告诉过它的位置。一句话的固定文本，值得常驻。
 - **在 context 里声称目录跨会话存活。** 放弃：文件确实留在磁盘上，但没有任何东西会从它续跑。写成就等于重犯本仓库已经记录过的错误——用措辞把缺失的能力说成存在。
 - **由 `pstack_subagent` 在每次 brief 里注入路径。** 放弃：那只覆盖子代理，覆盖不到主会话自己按 playbook 写文件的情况，而且把同一句话重复进每个 brief。
+- **把 `systemPrompt` 加进 `inject`。** 放弃：加进去之后，没有 prompt 服务的组合会让整行失活，55 个技能一起消失。服务是可选的，就必须用 `ctx.get("systemPrompt")` 可选访问，而不是声明硬依赖。
 
 ## 后果
 
 子代理和主会话都知道 `.audit/` 是默认落点，不必逐个交代，resume 后的"路径不知道"也一并解决。落点统一，且默认不入版本控制。
 
 代价三条。第一，每个 Session 多一行 user-role 快照，多一次 token 成本（很小，但是常驻的）。第二，`required: true` 意味着操作者无法通过关闭可选上下文来去掉它。第三，它只公布落点，不提供任何持久化或恢复能力——跨会话不续跑这条缺口仍在，清单里照实写着。
+
+补充一条实施中发现的问题，记在这里是因为它属于同一个决定的直接后果。第一版把 `host.systemPrompt` 当属性读，而 Cordis 按 `inject` 门控属性访问，那一行只 `inject ["skills"]`，所以每次激活都抛 `cannot get property "systemPrompt" without inject`——功能在真实组合里根本没生效。漏掉的原因是测试用的 fake host 提供了属性，而宿主并不允许那样读。修法是改用 `ctx.get`，并让 fake 按宿主的访问规则塑造。同一轮还发现 `plugin-wiring.test.ts` 的 `skills` stub 方法名写错（`register` 而非 `registerProvider`），导致 55 个技能从未注册而 7 条断言全绿。两处的共同点是**断言"没报错"而不断言结果**，现已都改为断言结果（provider 数量、注册的 context 名）。
 
 重新考虑的条件：如果 DSH 将来提供真正的 per-agent 持久目录（宿主分配、跨会话存活），这条 context 应改为公布那个路径，`agent-store` 行才有资格从 `degraded` 升为 `mapped`。

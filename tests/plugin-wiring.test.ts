@@ -89,6 +89,10 @@ interface Assembly {
   readonly definitions: ReadonlyMap<string, ToolDefinition>;
   /** Every message the context logged, which is where mount failures appear. */
   readonly logs: readonly string[];
+  /** Skill provider factories the `pstack` row registered. */
+  readonly providers: readonly unknown[];
+  /** Prompt-context contributions registered against `systemPrompt`. */
+  readonly contexts: readonly string[];
 }
 
 /**
@@ -99,7 +103,7 @@ interface Assembly {
  */
 async function assemble(
   profileRows: readonly unknown[],
-  options: { readonly sessionQuery?: boolean } = {},
+  options: { readonly sessionQuery?: boolean; readonly systemPrompt?: boolean } = {},
 ): Promise<Assembly> {
   const directory = temporaryDirectory();
   const profileFile = join(directory, "profile.json");
@@ -137,6 +141,8 @@ async function assemble(
 
   const definitions = new Map<string, ToolDefinition>();
   const logs: string[] = [];
+  const providers: unknown[] = [];
+  const contexts: string[] = [];
   const ctx = new Context();
   const capture = (...args: unknown[]): void => {
     logs.push(args.map((value) => (value instanceof Error ? `${value.name}: ${value.message}` : String(value))).join(" "));
@@ -160,9 +166,33 @@ async function assemble(
       },
     }),
   );
-  ctx.plugin(providerPlugin("skills", { register: () => () => {} }));
+  // `pstack` calls `registerProvider`, not `register`. A stub with the wrong method
+  // name still satisfies `inject`, and the resulting `TypeError` was not in the
+  // `conflicts` filter, so all 55 skills went unregistered while every assertion
+  // here passed. The provider count is captured for the same reason.
+  ctx.plugin(
+    providerPlugin("skills", {
+      registerProvider(create: () => unknown) {
+        providers.push(create);
+        return () => {};
+      },
+    }),
+  );
   ctx.plugin(providerPlugin("subagents", {}));
   ctx.plugin(providerPlugin("llm", {}));
+  // `systemPrompt` is optional in this plugin: a tool-only composition still gets
+  // every skill and tool, and only loses the placement sentence. Both shapes are
+  // exercised, so neither branch can rot.
+  if (options.systemPrompt !== false) {
+    ctx.plugin(
+      providerPlugin("systemPrompt", {
+        context(contribution: { name: string }) {
+          contexts.push(contribution.name);
+          return () => {};
+        },
+      }),
+    );
+  }
   // `pstack-script` injects `workingDirectory` to resolve the Session's current
   // directory before spawning; without it the fiber stays inactive.
   ctx.plugin(providerPlugin("workingDirectory", { ensure: async () => directory }));
@@ -211,12 +241,23 @@ async function assemble(
   const rootGroup = (entry as unknown as { subgroup?: Parameters<typeof walk>[0] }).subgroup;
   if (rootGroup !== undefined) walk(rootGroup, "");
 
-  return { rows, tools: [...definitions.keys()], definitions, logs };
+  return { rows, tools: [...definitions.keys()], definitions, logs, providers, contexts };
 }
 
-/** Failures that mean a row did not mount or a service was double-registered. */
+/**
+ * Failures that mean a row did not mount, a service was double-registered, or an
+ * `apply` threw.
+ *
+ * The `TypeError` arm is load-bearing. The `skills` stub once offered `register`
+ * instead of `registerProvider`, so the `pstack` row's `apply` threw on every
+ * activation while all seven assertions in this file passed: the thrown error was
+ * logged but matched none of the earlier patterns. Any `apply`-time exception has to
+ * fail here, because a row that throws still appears in `rows`.
+ */
 function conflicts(logs: readonly string[]): readonly string[] {
-  return logs.filter((line) => /has been registered|without inject|Cannot find package/.test(line));
+  return logs.filter((line) =>
+    /has been registered|without inject|Cannot find package|TypeError|is not a function|Error:/.test(line),
+  );
 }
 
 describe("the shipped patch mounts in a real Cordis composition", () => {
@@ -239,6 +280,30 @@ describe("the shipped patch mounts in a real Cordis composition", () => {
 
   it("logs no mount failure", async () => {
     const assembly = await assemble([]);
+    expect(conflicts(assembly.logs)).toEqual([]);
+  });
+
+  it("registers the skill provider, so all 55 skills reach the catalog", async () => {
+    // The `skills` stub once offered `register` instead of `registerProvider`. The
+    // row still mounted and the tools still appeared, so nothing failed — but every
+    // skill was silently absent. Counting the providers is what makes that visible.
+    const assembly = await assemble([]);
+    expect(assembly.providers).toHaveLength(1);
+    expect(conflicts(assembly.logs)).toEqual([]);
+  });
+
+  it("registers the audit placement context against a real prompt registry", async () => {
+    const assembly = await assemble([]);
+    expect(assembly.contexts).toEqual(["pstack:audit-store"]);
+    expect(conflicts(assembly.logs)).toEqual([]);
+  });
+
+  it("registers skills and skips the context when the profile has no prompt registry", async () => {
+    // `systemPrompt` is not in `inject`, so a tool-only composition must still
+    // activate: reading it as a property would throw on every startup here.
+    const assembly = await assemble([], { systemPrompt: false });
+    expect(assembly.providers).toHaveLength(1);
+    expect(assembly.contexts).toEqual([]);
     expect(conflicts(assembly.logs)).toEqual([]);
   });
 });

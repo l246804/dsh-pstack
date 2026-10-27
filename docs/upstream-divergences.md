@@ -166,6 +166,8 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 | 同上的判定理由 | 第一次改判时写"宿主没有系统提示原语"，这一条是错的：`SystemPrompt.context` 正是该原语（宿主文档原话 "durable user-role snapshot"），只是没有注册 | 补注册一条必需 prompt context（`src/audit-context.ts`），写明 `.audit/`；`degraded` 理由改为只保留真实缺口——跨会话不续跑 |
 | `skills/poteto-mode/playbooks/multi-phase-plan.md`（经 patch） | 计划默认写到 `docs/plans/`，而该路径**不在** `.gitignore` 里，会被提交；上游说 store 整体不入库，`show-me-your-work` 也写 "leave it out of git" | 改为 `.audit/plans/`，与 `autopilot-full`、`orchestrate` 的落点统一 |
 | `src/host-contract.ts` | 没有 `systemPrompt` 的结构化契约，插件无法注册 prompt context | 新增 `SystemPromptHost` 与 `PromptContextContribution`，只声明 `context` 一个方法 |
+| `src/index.ts` 的 `registerAuditContext(ctx)` | 写成 `host.systemPrompt` 直接取属性。Cordis 按 `inject` 门控属性访问，而 `inject` 只有 `["skills"]`，所以每次激活都抛 `cannot get property "systemPrompt" without inject`。**这条 bug 随上一次提交一起进了仓库** | 改为 `ctx.get("systemPrompt")` 可选访问；`inject` 保持只有 `skills`，因为把 `systemPrompt` 加进去会让没有 prompt 服务的组合整行失活、55 个技能全部消失 |
+| `tests/plugin-wiring.test.ts` 的 `skills` stub | 只提供 `register`，而 `src/index.ts` 调用 `registerProvider`。`apply` 每次都抛 `TypeError`，**55 个技能从未注册**，而该文件 7 条断言全绿 | stub 补上正确方法并记录 provider 数量；`conflicts()` 增加 `TypeError` / `is not a function` 分支，让 `apply` 阶段的任何异常都失败 |
 | `scripts/capabilities.ts` 的 `subagent-general` 行 | 只写 "never a DSH agent preset id"，读起来像本包不支持宿主预设；实际是另一个参数 `agentPreset` 负责这件事 | 补明两个参数分工，以及 `agentPreset` 仅在该行配了 `allowedAgentPresets` 时出现 |
 | 本文的类别词表 | 缺 `deferred`，且说"后四类各有 `reason`"与 `capabilities.ts` 的五类对不上 | 补齐 `deferred` 并修正这句 |
 | `scripts/divergence-ledger.ts` | 只比对计数，看不出"一条换一条" | 新增成员检查：每行带 `ledgerAnchor`，本文必须逐条点名，配 `tests/divergence-ledger.test.ts` 守住 |
@@ -180,6 +182,8 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 两条的共同点：**声称能力存在或不存在，都没有检查去核对**。静态门查的是"不该出现的词有没有出现"，对这两种偏差都不敏感。
 
 这次核查还暴露了第三条，形状不同：**清单声称的数字对，但它是用错误成员凑出来的**。前述两条讲的是"某条内容错了"，这一条是"每条内容都像对的，整体却错了"——一进一出让总数守恒，于是任何只比对总数的检查都会放行。修法是让检查从"数到 13"变成"13 个分别是哪一个"。
+
+还有第四条，是最贵的一条：**测试在断言一个没跑起来的组合**。`plugin-wiring.test.ts` 自称"真实 Cordis 装配"，但它的 `skills` stub 方法名写错，`apply` 每次抛 `TypeError`，55 个技能一个都没注册；而断言全绿，因为失败过滤器只认四种字符串，不认异常。更糟的是同一个形状在上一次提交里又犯了一次：`host.systemPrompt` 在 `inject` 没声明该服务的行上直接抛错，而 fake host 提供了属性，所以 fake 测不出来。教训是**fake 必须按宿主的访问规则塑造**（用 `get`，不给属性），而"真实组合"测试必须断言**结果**（provider 数量、注册了哪些 context），不能只断言"没报错"。
 
 ## 六、这里多出来的东西
 

@@ -20,9 +20,24 @@ import type { SkillProvider, SkillProviderControl } from "../src/provider.ts";
  * capability was weakened by wording rather than by a code change.
  */
 
-function fakeHost() {
+/**
+ * A host shaped the way Cordis presents one.
+ *
+ * `get` is the only accessor, because reading `host.systemPrompt` as a property is
+ * what threw `cannot get property "systemPrompt" without inject` before this
+ * function was rewritten — the fake that offered a property made the bug invisible.
+ */
+function fakeHost(options: { readonly withPrompt?: boolean } = {}) {
   const registered: string[] = [];
   const disposers: string[] = [];
+  const systemPrompt = {
+    context(contribution: { name: string }) {
+      registered.push(contribution.name);
+      return () => {
+        disposers.push(contribution.name);
+      };
+    },
+  };
   return {
     registered,
     disposers,
@@ -33,13 +48,8 @@ function fakeHost() {
           return () => {};
         },
       },
-      systemPrompt: {
-        context(contribution: { name: string }) {
-          registered.push(contribution.name);
-          return () => {
-            disposers.push(contribution.name);
-          };
-        },
+      get(name: string): unknown {
+        return name === "systemPrompt" && options.withPrompt !== false ? systemPrompt : undefined;
       },
     },
   };
@@ -85,9 +95,37 @@ describe("registerAuditContext", () => {
     expect(registerAuditContext({})).toBe(false);
   });
 
+  it("reports false when the service is present but not a prompt registry", () => {
+    // `get` is untyped by design, so a service under that name could be anything.
+    const host = { get: (name: string) => (name === "systemPrompt" ? { other(): void {} } : undefined) };
+    expect(registerAuditContext(host)).toBe(false);
+  });
+
+  it("never reads systemPrompt as a property", () => {
+    // The regression this guards: Cordis gates property access on `inject`, so a
+    // property read throws `cannot get property "systemPrompt" without inject` on
+    // every activation. The row must not `inject` it either, because a composition
+    // without a prompt registry would then go inactive and drop all 55 skills.
+    const host = {
+      get: (name: string) => (name === "systemPrompt" ? { context: () => () => {} } : undefined),
+      get systemPrompt(): never {
+        throw new Error('cannot get property "systemPrompt" without inject');
+      },
+    };
+    expect(registerAuditContext(host)).toBe(true);
+  });
+
   it("wires through plugin activation", () => {
     const { registered, host } = fakeHost();
     apply(host, {});
     expect(registered).toEqual([AUDIT_CONTEXT_NAME]);
+  });
+
+  it("still registers every skill when the host has no prompt registry", () => {
+    // Activation must not depend on the optional service. `inject` names only
+    // `skills`, so this host is a legal composition.
+    const { host } = fakeHost({ withPrompt: false });
+    expect(() => apply(host, {})).not.toThrow();
+    expect(registerAuditContext(host)).toBe(false);
   });
 });

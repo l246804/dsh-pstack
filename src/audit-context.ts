@@ -62,11 +62,24 @@ export const AUDIT_CONTEXT: PromptContextContribution = {
  *
  * The row is optional on purpose. A profile that composes a tool-only slice has no
  * prompt registry, and losing one sentence of placement guidance is a far better
- * outcome than refusing to start the whole provider. The return value reports which
- * happened so the caller can log it instead of guessing.
+ * outcome than refusing to start the whole provider.
+ *
+ * The service is read through `get`, never as a property. Cordis gates property
+ * access on `inject`, so `host.systemPrompt` on a row whose `inject` does not name
+ * that service throws `cannot get property "systemPrompt" without inject` — and
+ * `pstack` must not inject it, because a composition without a prompt registry
+ * would then keep the row inactive and drop all 55 skills. `get` returns `undefined`
+ * for an absent service and the service when present.
+ *
+ * @returns whether a contribution was registered.
  */
-export function registerAuditContext(host: { readonly systemPrompt?: SystemPromptHost }): boolean {
-  if (host.systemPrompt === undefined) return false;
-  host.systemPrompt.context(AUDIT_CONTEXT);
+export function registerAuditContext(host: {
+  get?(name: string): unknown;
+}): boolean {
+  const registry = host.get?.("systemPrompt");
+  if (registry === undefined || registry === null) return false;
+  const candidate = registry as Partial<SystemPromptHost>;
+  if (typeof candidate.context !== "function") return false;
+  candidate.context(AUDIT_CONTEXT);
   return true;
 }

@@ -17,7 +17,6 @@ import {
   loadBundledSkillIndexes,
 } from "./provider.ts";
 import type { SkillProvider, SkillProviderControl } from "./provider.ts";
-import type { SystemPromptHost } from "./host-contract.ts";
 import { registerAuditContext } from "./audit-context.ts";
 
 /** Plugin name used by Loader diagnostics for this row. */
@@ -88,12 +87,14 @@ export interface PstackSkillHost {
     registerProvider(create: (control: SkillProviderControl) => SkillProvider): () => void;
   };
   /**
-   * Prompt registry, when the composition has one.
+   * Optional-service accessor.
    *
-   * Optional on purpose: a tool-only slice of a profile may mount no prompt service,
-   * and losing one sentence of placement guidance is not worth failing activation.
+   * `systemPrompt` is deliberately absent from `inject`: a composition without a
+   * prompt registry would then keep this whole row inactive and drop every skill.
+   * `get` reads an absent service as `undefined` instead, which is why the registry
+   * is reached through it rather than as a property.
    */
-  readonly systemPrompt?: SystemPromptHost;
+  get?(name: string): unknown;
 }
 
 /**
