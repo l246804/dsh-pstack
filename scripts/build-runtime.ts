@@ -209,9 +209,31 @@ async function buildArtifact(entry: RuntimeEntry): Promise<BuiltArtifact> {
   // Some sources already begin with a shebang (`check-plan.mjs`, and the patched
   // `orch.ts`). The bundler keeps it, so it is removed before the one shipped
   // shebang goes on: two consecutive `#!` lines are a syntax error in Node.
-  const text = `${SHEBANG}${stripShebang(code)}`;
+  const text = `${SHEBANG}${stripShebang(stabilizeRegions(code))}`;
   assertArtifact(entry, text);
   return { entry, text };
+}
+
+/**
+ * Make bundler region labels independent of where a dependency was installed.
+ *
+ * The bundler writes `//#region <path>` comments naming each module's source. Those
+ * paths are resolved, so the same source built against `./node_modules` and against a
+ * hoisted copy produce different bytes. That broke the one property the tree needs:
+ * the committed artifacts must be reproducible from the sources alone, so `--check`
+ * can compare a fresh build with the commit.
+ *
+ * Only labels change, and only the directory part. Every module that ships from a
+ * `node_modules` tree is labelled `node_modules/<package>/<file>`, which is what a
+ * fresh install of this package resolves too.
+ */
+function stabilizeRegions(code: string): string {
+  return code.replace(/^\/\/#region (.*)$/gm, (_match, region: string) => {
+    const marker = "node_modules/";
+    const at = region.lastIndexOf(marker);
+    if (at === -1) return `//#region ${region}`;
+    return `//#region ${region.slice(at)}`;
+  });
 }
 
 /** Remove every leading shebang line from a chunk. */
