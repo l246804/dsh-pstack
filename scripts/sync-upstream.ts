@@ -1,5 +1,5 @@
 /**
- * Regenerate `assets/` from the pinned upstream tree, or prove it is current.
+ * Regenerate `pstack/` from the pinned upstream tree, or prove it is current.
  *
  * The tree is built in memory first, written to a staging directory, verified
  * against the expected bytes and modes, and only then swapped into place. A
@@ -12,7 +12,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  ASSETS_ROOT,
+  PSTACK_ROOT,
   BACKUP_ROOT,
   buildAssets,
   ROOT,
@@ -47,20 +47,20 @@ export function compareAssets(
     expectedPaths.add(asset.path);
     const found = actual.get(asset.path);
     if (found === undefined) {
-      problems.push(`missing: assets/${asset.path}`);
+      problems.push(`missing: pstack/${asset.path}`);
       continue;
     }
-    if (!found.bytes.equals(asset.bytes)) problems.push(`bytes differ: assets/${asset.path}`);
+    if (!found.bytes.equals(asset.bytes)) problems.push(`bytes differ: pstack/${asset.path}`);
     if (found.executable !== asset.executable) {
       problems.push(
-        `mode differs: assets/${asset.path} (expected ${asset.executable ? "0o755" : "0o644"}, found ${found.executable ? "0o755" : "0o644"})`,
+        `mode differs: pstack/${asset.path} (expected ${asset.executable ? "0o755" : "0o644"}, found ${found.executable ? "0o755" : "0o644"})`,
       );
     }
   }
 
   for (const path of [...actual.keys()].sort()) {
     if (expectedPaths.has(path)) continue;
-    problems.push(`unexpected: assets/${path}`);
+    problems.push(`unexpected: pstack/${path}`);
   }
 
   return problems;
@@ -69,7 +69,7 @@ export function compareAssets(
 export async function writeAssets(assets: readonly Asset[]): Promise<void> {
   assertGeneratedDirectory(STAGING_ROOT);
   assertGeneratedDirectory(BACKUP_ROOT);
-  assertGeneratedDirectory(ASSETS_ROOT);
+  assertGeneratedDirectory(PSTACK_ROOT);
   await assertAssetsHoldsOnlyGeneratedFiles(assets);
 
   await rm(STAGING_ROOT, { recursive: true, force: true });
@@ -90,12 +90,12 @@ export async function writeAssets(assets: readonly Asset[]): Promise<void> {
   }
 
   await rm(BACKUP_ROOT, { recursive: true, force: true });
-  const hadAssets = await exists(ASSETS_ROOT);
-  if (hadAssets) await rename(ASSETS_ROOT, BACKUP_ROOT);
+  const hadAssets = await exists(PSTACK_ROOT);
+  if (hadAssets) await rename(PSTACK_ROOT, BACKUP_ROOT);
   try {
-    await rename(STAGING_ROOT, ASSETS_ROOT);
+    await rename(STAGING_ROOT, PSTACK_ROOT);
   } catch (error) {
-    if (hadAssets) await rename(BACKUP_ROOT, ASSETS_ROOT);
+    if (hadAssets) await rename(BACKUP_ROOT, PSTACK_ROOT);
     throw error;
   }
   await rm(BACKUP_ROOT, { recursive: true, force: true });
@@ -120,20 +120,20 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
 
   if (!check) {
     await writeAssets(assets);
-    console.log(`wrote assets/: ${describeSummary(summary)}`);
+    console.log(`wrote pstack/: ${describeSummary(summary)}`);
     return 0;
   }
 
-  const problems = compareAssets(assets, await readAssets(ASSETS_ROOT));
+  const problems = compareAssets(assets, await readAssets(PSTACK_ROOT));
   if (problems.length === 0) {
-    console.log(`assets/ matches a fresh build: ${describeSummary(summary)}`);
+    console.log(`pstack/ matches a fresh build: ${describeSummary(summary)}`);
     return 0;
   }
 
-  console.error(`assets/ differs from a fresh build (${problems.length} difference(s)):`);
+  console.error(`pstack/ differs from a fresh build (${problems.length} difference(s)):`);
   for (const problem of problems) console.error(`  ${problem}`);
   console.error(
-    "Run `pnpm run build:assets` to regenerate the tree. Edit the rules, never assets/.",
+    "Run `pnpm run build:assets` to regenerate the tree. Edit the rules, never pstack/.",
   );
   return 1;
 }
@@ -185,9 +185,9 @@ async function exists(path: string): Promise<boolean> {
 }
 
 /**
- * Refuse to regenerate `assets/` while it holds a file this generator did not make.
+ * Refuse to regenerate `pstack/` while it holds a file this generator did not make.
  *
- * `writeAssets` renames a freshly staged tree over `assets/`, which deletes anything
+ * `writeAssets` renames a freshly staged tree over `pstack/`, which deletes anything
  * the generator does not produce. That is the correct behavior for a directory whose
  * whole promise is "a fresh build reproduces these bytes" — but it turns every
  * hand-maintained file placed there into silent data loss on the next build. It
@@ -195,21 +195,21 @@ async function exists(path: string): Promise<boolean> {
  * only warning came from `git status` afterwards.
  *
  * So this is a precondition, not a repair. A file that must survive regeneration
- * belongs outside `assets/` — beside it, as `static/` and `skills-ext/` are. Failing
+ * belongs outside `pstack/` — beside it, as `static/` and `skills-ext/` are. Failing
  * here names the offending path and says where it should go, which is the one moment
  * a maintainer can still act on it.
  */
 async function assertAssetsHoldsOnlyGeneratedFiles(assets: readonly Asset[]): Promise<void> {
-  if (!(await exists(ASSETS_ROOT))) return;
-  const present = await walk(ASSETS_ROOT);
-  const stale = present.map((path) => relative(ASSETS_ROOT, path).split("\\").join("/"));
+  if (!(await exists(PSTACK_ROOT))) return;
+  const present = await walk(PSTACK_ROOT);
+  const stale = present.map((path) => relative(PSTACK_ROOT, path).split("\\").join("/"));
   const expected = new Set(assets.map((asset) => asset.path));
   const foreign = stale.filter((path) => !expected.has(path));
   if (foreign.length === 0) return;
   throw new Error(
-    `refusing to regenerate assets/: it holds files this generator does not produce, and the ` +
-      `swap would delete them:\n${foreign.map((path) => `  assets/${path}`).join("\n")}\n` +
-      `Move them outside assets/ (a sibling directory, as static/ and skills-ext/ are) and re-run.`,
+    `refusing to regenerate pstack/: it holds files this generator does not produce, and the ` +
+      `swap would delete them:\n${foreign.map((path) => `  pstack/${path}`).join("\n")}\n` +
+      `Move them outside pstack/ (a sibling directory, as static/ and skills-ext/ are) and re-run.`,
   );
 }
 

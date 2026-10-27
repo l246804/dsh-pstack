@@ -24,6 +24,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { parseFrontmatter, validateSkillFrontmatter } from "./frontmatter.ts";
+import type { SkillRoot } from "./paths.ts";
 
 /**
  * Standard precedence rank for packaged skill providers, re-exported by
@@ -160,35 +161,31 @@ export class BundledSkillError extends Error {
 }
 
 /**
- * Read and validate the whole shipped catalog: the pstack tree plus the extension tree.
+ * Read and validate the whole shipped catalog.
  *
- * `assets/skills/` is generated from the pinned pstack submodule; `skills-ext/
- * <source>/` is vendored from one external repository per source directory. The model
- * sees one catalog, and the two trees stay independently verifiable because each is
- * loaded by its own layout rule. The vendored tree sits outside `assets/` so that a
- * regeneration of that directory cannot delete it.
+ * Roots come from `SKILL_ROOTS`. A `flat` root holds skill directories directly; a
+ * `sourced` root holds one directory per upstream source, each holding its skills. The
+ * model sees one catalog, and each root stays independently verifiable because it is
+ * loaded by its own layout rule. The two `skills/` roots sit outside `pstack/` so that
+ * a regeneration of the port cannot delete them.
  *
- * A skill name may appear in only one tree. A duplicate is a packaging mistake, not a
+ * A skill name may appear in only one root. A duplicate is a packaging mistake, not a
  * precedence question, so it fails activation instead of letting one silently shadow
  * the other.
  *
- * @param skillsRoot - absolute root of the flat pstack skill tree.
- * @param sourceRoot - absolute root grouped by upstream source; may be absent.
+ * @param roots - skill roots in load order, each labelled for collision errors.
  * @returns validated skills keyed by absolute skill directory.
- * @throws {BundledSkillError} when either tree is malformed or names collide.
+ * @throws {BundledSkillError} when any root is malformed or names collide.
  */
-export function loadBundledSkillIndexes(
-  skillsRoot: string,
-  sourceRoot: string,
-): BundledSkillIndex {
-  const merged = mergeIndexes([
-    loadBundledSkillIndex(skillsRoot),
-    loadSourcedSkillIndex(sourceRoot),
-  ]);
+export function loadBundledSkillIndexes(roots: readonly SkillRoot[]): BundledSkillIndex {
+  const merged = mergeIndexes(
+    roots.map((root) =>
+      root.kind === "flat" ? loadBundledSkillIndex(root.path) : loadSourcedSkillIndex(root.path),
+    ),
+  );
   if (merged.size === 0) {
-    throw new BundledSkillError(
-      `bundled skills: no skill directories under "${skillsRoot}" or "${sourceRoot}"`,
-    );
+    const listed = roots.map((root) => `"${root.path}"`).join(", ");
+    throw new BundledSkillError(`bundled skills: no skill directories under ${listed}`);
   }
   return merged;
 }
@@ -216,13 +213,13 @@ function mergeIndexes(indexes: readonly BundledSkillIndex[]): BundledSkillIndex 
 /**
  * Read every bundled skill below a tree whose first level is a source directory.
  *
- * `skills-ext/<source>/<skill>/` groups vendored skills by where they came
- * from, so the layout mirrors `scripts/skills-ext/sources.yml` and a maintainer can update one
+ * `skills/vendored/<source>/<skill>/` groups vendored skills by where they came
+ * from, so the layout mirrors `skills/sources.yml` and a maintainer can update one
  * upstream repository without touching another. The provider needs a flat catalog,
  * so this walks one level of source directories and merges what it finds.
  *
- * An absent or empty source root is not an error: the tree ships empty before the
- * first third-party skill is vendored.
+ * An absent or empty source root is not an error: a package may ship without any
+ * vendored source at all.
  *
  * @param sourceRoot - absolute path holding one directory per upstream source.
  * @returns validated skills keyed by absolute skill directory.

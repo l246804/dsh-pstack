@@ -19,13 +19,13 @@ export default defineConfig({
     include: ["tests/**/*.test.ts"],
   },
   lint: {
-    ignorePatterns: ["upstream/**", "assets/**", "dist/**"],
+    ignorePatterns: ["upstream/**", "pstack/**", "dist/**"],
     options: {
       typeAware: true,
       typeCheck: true,
     },
   },
   fmt: {
-    ignorePatterns: ["upstream/**", "assets/**", "dist/**"],
+    ignorePatterns: ["upstream/**", "pstack/**", "dist/**"],
   },
 });

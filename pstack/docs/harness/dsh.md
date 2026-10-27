@@ -9,7 +9,7 @@ this host's tool schema rejects.
 The generator applies four mechanical transforms and nothing else: it narrows frontmatter
 to the fields this host reads, repoints a relative link that would leave the shipped tree,
 inserts the pointer you followed here under the H1 of each skill that uses a Cursor name,
-and copies this file into `assets/`. Everything a skill says about the host is translated
+and copies this file into `pstack/`. Everything a skill says about the host is translated
 at read time, here.
 
 ## Tools
@@ -75,7 +75,7 @@ and otherwise use the highest advertised effort at or below the target, saying s
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `.cursor/skills/`, `~/.cursor/skills/` | `.dsh/skills/` for project skills, or this package's `assets/skills/<name>/` for the ported ones, which are read in place and never copied. |
+| `.cursor/skills/`, `~/.cursor/skills/` | `.dsh/skills/` for project skills, or this package's `pstack/skills/<name>/` for the ported ones, which are read in place and never copied. |
 | `.cursor/plugins/`, `.cursor-plugin/plugin.json` | Absolute resource paths inside this package. Each skill carries its own directory as the resource base, so `references/`, `scripts/`, and `playbooks/` resolve next to `SKILL.md`. |
 | `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md` for project instruction, and `$DSH_HOME/pstack-models.md` for the role file. Nothing else is loaded into every session. |
 | `agent-transcripts/` in `~/.cursor/projects/<slug>/` | `pstack_history`, a restricted read of raw session events over the calling session and its reviewable direct children. There is no transcript directory, and an arbitrary session id is refused rather than opened. |

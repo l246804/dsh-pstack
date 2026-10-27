@@ -43,7 +43,7 @@ import {
   type ChildRoute,
   type RouteSelection,
 } from "./models.ts";
-import { ASSETS_ROOT, POTETO_MODE_SKILL_PATH, agentPreamblePath } from "./paths.ts";
+import { PSTACK_ROOT, POTETO_MODE_SKILL_PATH, agentPreamblePath } from "./paths.ts";
 import { requireRole, type RoleSpec } from "./roles.ts";
 
 /** Cordis row name, used by Loader diagnostics. */
@@ -187,7 +187,7 @@ export interface SubagentRuntime {
   /** `$DSH_HOME`, home of the role file. */
   readonly dshHome: string;
   /** Absolute package assets root, home of the agent preambles. */
-  readonly assetsRoot: string;
+  readonly pstackRoot: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -339,11 +339,11 @@ export const Config = {
  * plain child, because a `comment-sicko` or `poteto-agent` child without its
  * instructions is a different agent wearing the name.
  */
-export function loadAgentPreamble(agent: AgentKind, assetsRoot: string): string | undefined {
+export function loadAgentPreamble(agent: AgentKind, pstackRoot: string): string | undefined {
   const path = agentPreamblePath(agent);
   if (path === undefined) return undefined;
 
-  const absolute = join(assetsRoot, "agents", `${agent}.md`);
+  const absolute = join(pstackRoot, "agents", `${agent}.md`);
   let text: string;
   try {
     text = readFileSync(absolute, "utf8");
@@ -626,7 +626,7 @@ export function planDelegation(
   runtime: SubagentRuntime,
   config: PstackSubagentConfig = DEFAULT_CONFIG,
 ): DelegationPlan {
-  const preamble = loadAgentPreamble(args.agent, runtime.assetsRoot);
+  const preamble = loadAgentPreamble(args.agent, runtime.pstackRoot);
 
   const rolePath = modelsFilePath(runtime.dshHome);
   const roleFile = readRoleFile(rolePath);
@@ -1233,7 +1233,7 @@ export function hostRuntime(
       return getAgentRegistry();
     },
     dshHome: resolveDshHome(),
-    assetsRoot: ASSETS_ROOT,
+    pstackRoot: PSTACK_ROOT,
   };
 }
 

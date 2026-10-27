@@ -19,7 +19,7 @@ import type {
   SubagentActivationSpec,
   SubagentsHost,
 } from "../src/host-contract.ts";
-import { ASSETS_ROOT } from "../src/paths.ts";
+import { PSTACK_ROOT } from "../src/paths.ts";
 import { validateEffortFor } from "../src/effort.ts";
 import {
   DelegationError,
@@ -147,7 +147,7 @@ function harness(roleFile: string, options: { readonly withAgents?: boolean } = 
       llm,
       ...(options.withAgents === false ? {} : { agents }),
       dshHome: home,
-      assetsRoot: ASSETS_ROOT,
+      pstackRoot: PSTACK_ROOT,
     },
     starts,
     configCalls,

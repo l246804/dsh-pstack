@@ -14,7 +14,7 @@ import {
   loadSourcedSkillIndex,
 } from "../src/provider.ts";
 import type { SkillCandidate, SkillProvider, SkillProviderControl } from "../src/provider.ts";
-import { apply, name as pluginName, inject, Config, SKILLS_EXT_ROOT, SKILLS_ROOT } from "../src/index.ts";
+import { apply, name as pluginName, inject, Config, SKILL_ROOTS, SKILLS_ROOT } from "../src/index.ts";
 import type { PstackSkillHost } from "../src/index.ts";
 
 const root = SKILLS_ROOT;
@@ -347,11 +347,19 @@ describe("host entry", () => {
 
     expect(registered).toHaveLength(1);
     const list = await (registered[0] as SkillProvider).list({});
-    // `apply` merges the 55 pstack skills with the vendored extension tree, so the
-    // catalog size is the two counts together rather than the pstack count alone.
-    const pstack = loadBundledSkillIndex(root);
-    const ext = loadSourcedSkillIndex(SKILLS_EXT_ROOT);
-    expect(list).toHaveLength(pstack.size + ext.size);
+    // `apply` merges every root in `SKILL_ROOTS`: the 55 ported skills, the vendored
+    // tree, and the authored tree. The catalog size is their sum, and deriving it from
+    // the same roots rather than restating a number keeps a new root from silently
+    // shrinking the assertion.
+    const expected = SKILL_ROOTS.reduce(
+      (total, skillRoot) =>
+        total +
+        (skillRoot.kind === "flat"
+          ? loadBundledSkillIndex(skillRoot.path).size
+          : loadSourcedSkillIndex(skillRoot.path).size),
+      0,
+    );
+    expect(list).toHaveLength(expected);
     expect(list.length).toBeGreaterThanOrEqual(55);
     expect(registered[0]?.name).toBe("pstack");
   });
@@ -363,7 +371,16 @@ describe("host entry", () => {
 
     const list = await (registered[0] as SkillProvider).list({});
     expect(registered[0]?.name).toBe("pstack-secondary");
-    expect(list).toHaveLength(loadBundledSkillIndex(root).size + loadSourcedSkillIndex(SKILLS_EXT_ROOT).size);
+    expect(list).toHaveLength(
+      SKILL_ROOTS.reduce(
+        (total, skillRoot) =>
+          total +
+          (skillRoot.kind === "flat"
+            ? loadBundledSkillIndex(skillRoot.path).size
+            : loadSourcedSkillIndex(skillRoot.path).size),
+        0,
+      ),
+    );
     expect(list[0]?.provider).toBe("pstack-secondary");
   });
 });

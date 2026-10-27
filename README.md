@@ -18,7 +18,7 @@ dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差�
 
 生成器只做四件不需要判断语义的机械变换：收窄 frontmatter 到本宿主实际读取的字段；把指向树外文件的相对链接改指上游 GitHub 原文；在每个用到 Cursor 名字的技能标题下插入一行指向适配说明的指针；拷入适配说明本身。
 
-覆盖度由 `scripts/adapter.ts` 从随包正文反推。它扫 `assets/` 里每个 Markdown 文件，收集用到的 Cursor 概念，要求适配说明里有一条对应的表格行；缺哪条就报哪条，并说明读者少了这条要付什么代价。新加一个技能说 `/visualize`，构建会失败直到文档给出那一行。所以这里不存在一份会过期的手工差异清单。
+覆盖度由 `scripts/adapter.ts` 从随包正文反推。它扫 `pstack/` 里每个 Markdown 文件，收集用到的 Cursor 概念，要求适配说明里有一条对应的表格行；缺哪条就报哪条，并说明读者少了这条要付什么代价。新加一个技能说 `/visualize`，构建会失败直到文档给出那一行。所以这里不存在一份会过期的手工差异清单。
 
 技能正文里会看到 `Task`、`readonly: true` 这类 Cursor 措辞，这是刻意保留的。上游改一句话不需要重新判断既有改写是否仍然成立，同步就是重跑生成器。
 
@@ -89,11 +89,18 @@ dsh plugin --profile <profile> add dsh-pstack
 
 ## 功能范围与已知限制
 
-包含 55 个 pstack 技能、23 个 playbook、24 个原则和两个子代理人格，另加 `skills-ext/` 下的第三方技能与本地技能。
+包含 55 个 pstack 技能、23 个 playbook、24 个原则和两个子代理人格，另加 `skills/` 下的第三方技能与本仓库自写的技能。
+
+### 目录结构
+
+随包内容分成两棵树，按**来源**划分，不按文件类型。
+
+- `pstack/` 是上游 pstack 的移植产物，由 `build:assets` 从固定的 submodule 整棵重新生成。它保持上游自己的相对布局（`skills/`、`agents/`、`docs/`），因为这几层之间有 110 处相对链接，重排其中任何一层都会让这些链接一起失效。手写内容不能放进去：下一次构建会把它删掉。
+- `skills/` 存放所有非上游技能，不会被重新生成。`skills/vendored/<来源>/<技能>/` 是外部仓库某个提交的逐字节拷贝，`skills/authored/<技能>/` 是本仓库写的。两者的校验规则都写在 `skills/sources.yml`。
 
 ### 第三方技能与同名冲突
 
-`skills-ext/<来源>/<技能>/` 存放移植自外部仓库的技能，每个来源在 `scripts/skills-ext/sources.yml` 里记录仓库地址、许可证和固定提交号。它放在 `assets/` 之外，因为 `assets/` 每次 `build:assets` 都会被整棵重写，而这些文件必须在重写后还在。
+`skills/vendored/<来源>/<技能>/` 存放移植自外部仓库的技能，每个来源在 `skills/sources.yml` 里记录仓库地址、许可证和固定提交号。它放在 `pstack/` 之外，因为 `pstack/` 每次 `build:assets` 都会被整棵重写，而这些文件必须在重写后还在。
 
 来源有两种。默认是 `vendored`，即上游某个提交的逐字节拷贝，内容哈希让它可验证。`origin: local` 表示那段文本就是本包的源，没有上游可 pin，因此跳过哈希与远端比对，只保留文件清单。`local` 来源当前提供三个技能：
 
@@ -111,7 +118,7 @@ dsh plugin --profile <profile> add dsh-pstack
 
 这个顺序是有意的：项目里的决定应当压过包里的默认值。副作用是冲突很安静，所以升级后行为变了，先查技能目录里有没有同名项。要让本包版本生效，删掉或重命名你那一份。
 
-本包内部的两个树不允许同名：`assets/skills/` 与 `skills-ext/` 出现同一个名字会让插件启动失败，而不是让其中一个悄悄胜出。
+本包内部的两个树不允许同名：`pstack/skills/` 与 `skills/` 下任意一棵出现同一个名字会让插件启动失败，而不是让其中一个悄悄胜出。
 
 - `make-bot-ui` 不在支持范围。它依赖 Cursor 的 webhook routine 和 secret request，DSH 没有等价闭环。技能不随包，上游正文里指向它的链接改指 GitHub 原文。
 - Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。技能正文保留上游措辞，遇到这类步骤时按 `docs/harness/dsh.md` 里那一行处理：说明不支持，继续执行这一步本来要做的事，不伪造替代。
@@ -161,4 +168,10 @@ dsh plugin --profile <profile> remove dsh-pstack
 
 MIT，见 [LICENSE](LICENSE)。
 
-上游 pstack 版权归 Lauren Tan，使用 MIT 许可证。技能、playbook 和代理文本来自 [cursor/plugins](https://github.com/cursor/plugins/tree/main/pstack)。
+署名范围是随包正文里实质承载内容的两个来源。
+
+- 上游 pstack，版权归 Lauren Tan，MIT 许可证。技能、playbook 和代理文本来自 [cursor/plugins](https://github.com/cursor/plugins/tree/main/pstack)。
+- [mattpocock/skills](https://github.com/mattpocock/skills)，版权归 Matt Pocock，MIT 许可证。`writing-for-agents` 技能来自该仓库。
+
+构建期依赖不在署名范围内。`commander` 这类开发依赖在构建时内联进产物，与其余 `devDependencies` 一样按常规开源项目处理，不逐个在本文署名。每个来源的许可证与提交号另记在 `skills/sources.yml`。
+

@@ -39,7 +39,7 @@ import {
 } from "./runtime-manifest.ts";
 
 /** Gitignored build output; `assets/` is generated from it. */
-export const RUNTIME_ROOT = join(ROOT, "runtime");
+export const RUNTIME_ROOT = join(ROOT, ".build", "runtime");
 
 /**
  * Where upstream sources are copied, with `RUNTIME_SOURCE_PATCHES` applied.
@@ -317,10 +317,10 @@ export async function buildRuntime(): Promise<readonly BuiltArtifact[]> {
   return artifacts;
 }
 
-/** Write the built tree, replacing `runtime/`. */
+/** Write the built tree, replacing `.build/runtime/`. */
 export async function writeRuntime(artifacts: readonly BuiltArtifact[]): Promise<void> {
-  if (dirname(RUNTIME_ROOT) !== ROOT) {
-    throw new RuntimeBuildError(`refusing to modify ${RUNTIME_ROOT}`);
+  if (dirname(RUNTIME_ROOT) !== join(ROOT, ".build")) {
+    throw new RuntimeBuildError(`refusing to modify ${RUNTIME_ROOT}; it must sit under .build/`);
   }
   await rm(RUNTIME_ROOT, { recursive: true, force: true });
   for (const { entry, text } of artifacts) {
