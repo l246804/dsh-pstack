@@ -1,4 +1,14 @@
-sources:
+# Every skill this package ships that is not generated from the pstack submodule.
+#
+# Two keys, mirroring the two roots. They are separate because their proofs differ:
+# a vendored skill is checked against a commit and a per-file hash, and an authored
+# skill has no commit to check against because the text here is the source. As a
+# field on one list, every check had to branch on it and assert both directions.
+#
+# A skill listed under the wrong key is caught by check-assets: the path it resolves
+# to exists in only one root.
+
+vendored:
   - id: mattpocock-skills
     repository: https://github.com/mattpocock/skills
     license: MIT
@@ -19,24 +29,23 @@ sources:
           SKILL.md: 551adca942227b44192edba88acd4e8db911f0121ce58ad16944ccf6a896a74a
           SKILL-MECHANICS.md: c768e6307c7c10728c401c213f2c4ba71c542127eeb7ad2956aabd15a0fa0059
 
-  # Skills the maintainer writes here, for this package's own use.
-  #
-  # `origin: local` says the text below is the source, not a copy of one. So there is
-  # no revision to pin and no upstream to re-fetch: content hashes and `--remote` do
-  # not apply, because there is nothing to drift from. The `files` inventory still
-  # applies, and it is the reason to list these here at all: a file appearing inside
-  # one of these skills shows up in review instead of shipping as text nobody chose.
-  #
-  # They live here rather than in `assets/skills/` because that tree is regenerated
-  # from the pstack submodule and asserted to hold only generated files. See
-  # docs/decisions/2026-10-27-local-skill-source.md.
-  #
-  # Each local skill declares its own `invocation`, and the check asserts the SKILL.md
-  # frontmatter agrees with it. There is no blanket rule that a package-authored skill
-  # is user-invoked: the port holds that shape because upstream declared it, while a
-  # skill written here picks whichever reach its trigger actually needs.
+# Skills written here, for this package's own use.
+#
+# There is no revision to pin and no upstream to re-fetch, so no hashes and no
+# `--remote`. The `files` inventory still applies, and it is the reason to list these
+# at all: a file appearing inside one of these skills shows up in review instead of
+# shipping as text nobody chose.
+#
+# They live outside `pstack/` because that tree is regenerated from the submodule and
+# asserted to hold only generated files. See
+# docs/decisions/2026-10-27-port-directory-layout.md.
+#
+# Each one declares its own `invocation`, and check-assets asserts the SKILL.md
+# frontmatter agrees. There is no blanket rule that a package-authored skill is
+# user-invoked: the port holds that shape because upstream declared it, while a skill
+# written here picks whichever reach its trigger actually needs.
+authored:
   - id: local
-    origin: local
     license: MIT
     copyright: Copyright (c) 2026 leiwang
     skills:

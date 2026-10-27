@@ -36,6 +36,8 @@ skills/
 
 **`pstack/` 内部不重排。** 我试过把 guide 提到 `pstack/guide/`、适配层放到 `pstack/adapter/`，生成器的链接检查立刻报出 110 处失效：这些链接从 `docs/guide/` 指向 `skills/`，把任何一层挪动相对位置都会全部断掉。所以 `pstack/` 内部保持上游的 `skills/`、`agents/`、`docs/` 三分的形状，外部按来源分树，内部按上游分。
 
+**`skills/sources.yml` 用两个键，删掉 `origin` 字段。** `vendored:` 与 `authored:` 各是列表，各自的字段在类型上必填。vendored 必须有 `repository`、40 位 `revision`、每文件哈希；authored 必须没有这些但有 `invocation`。原来一个 `origin` 字段要在检查里向两个方向各断言一次，现在文件形状本身说明适用哪条规则，列出错键的技能会因为解析出的路径不存在而被抓到。
+
 **`runtime/` 改到 `.build/runtime/`。** 同名冲突靠改名消除，不靠注释解释。
 
 **provider 收根列表。** `loadBundledSkillIndexes(skillsRoot, sourceRoot)` 改成 `loadBundledSkillIndexes(roots)`，每项带 `kind: "flat" | "sourced"` 与 `label`。根来自 `src/paths.ts` 的 `SKILL_ROOTS`，所以"技能从哪来"只有一个答案。

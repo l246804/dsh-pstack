@@ -24,7 +24,13 @@ import {
   walkUpstream,
 } from "./build-assets.ts";
 import type { SkillCategory } from "./build-assets.ts";
-import { AUTHORED_ROOT, VENDORED_ROOT, isLocal, readSources, skillDirectory } from "./sync-skills-ext.ts";
+import {
+  AUTHORED_ROOT,
+  VENDORED_ROOT,
+  authoredSkillDirectory,
+  readSources,
+  vendoredSkillDirectory,
+} from "./sync-skills-ext.ts";
 import { RUNTIME_CLIS, RUNTIME_ENTRIES, isReplacedUpstreamScript } from "../src/runtime-manifest.ts";
 import { WORKTREE_ROWS, worktreeRowGuardExpression } from "./worktree-mount.ts";
 import {
@@ -1715,14 +1721,13 @@ function messageOf(error: unknown): string {
 }
 /**
  * Audit the skills this package did not take from upstream pstack.
- *
- * Two roots, two rules, and the rules no longer branch on a manifest field. That is the
+ * Two roots, two rules, and the rules do not branch on a manifest field. That is the
  * point of the split: a byte-pinned copy and text written here have different proofs,
  * and `skills/vendored/` versus `skills/authored/` states which proof applies before
  * any check runs.
  *
- * - `skills/vendored/<source>/<skill>/` is a copy of one commit. Every file needs a
- *   manifest record with the upstream path and revision, plus a content hash that
+ * - `skills/vendored/<source>/<skill>/` is a copy of one commit. The manifest records
+ *   the upstream path and revision, plus a content hash that
  *   `scripts/sync-skills-ext.ts` verifies. A file with no record is text of unknown
  *   origin shipping under this package's licence.
  * - `skills/authored/<skill>/` is written here. There is no upstream and no hash,
@@ -1735,9 +1740,10 @@ function messageOf(error: unknown): string {
  */
 function checkSkillsExt(): readonly string[] {
   const problems: string[] = [];
-  // Absent is a defect now, not an initial state. The provider returns an empty
-  // catalog for a missing root, so a dropped tree would start clean and lose every
-  // skill with no error.
+
+  // Absent is a defect now, not an initial state. The provider returns an empty catalog
+  // for a missing root, so a dropped tree would start clean and lose every skill in it
+  // with no error.
   for (const [root, label] of [
     [VENDORED_ROOT, "skills/vendored"],
     [AUTHORED_ROOT, "skills/authored"],
@@ -1760,101 +1766,86 @@ function checkSkillsExt(): readonly string[] {
   const pstackNames = new Set(
     skillDirectories().filter((skill) => !EXCLUDED_SKILLS.includes(skill)),
   );
-  const declared = new Map<string, string>();
 
-  for (const source of sources.sources) {
-    const label = isLocal(source) ? "skills/authored" : `skills/vendored/${source.id}`;
+  // Vendored: the pin and the URL are what make the copy checkable, so both are
+  // required, and a skill may not carry an invocation of its own because upstream owns
+  // that choice.
+  for (const source of sources.vendored) {
+    const label = `skills/vendored/${source.id}`;
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(source.id)) {
       problems.push(`skills/sources.yml: source id "${source.id}" is not kebab-case`);
     }
-    if (source.origin !== undefined && source.origin !== "local" && source.origin !== "vendored") {
-      problems.push(
-        `skills/sources.yml: "${source.id}" has origin "${source.origin}"; it is \`local\` or \`vendored\``,
-      );
+    if (!/^https?:\/\//.test(source.repository)) {
+      problems.push(`skills/sources.yml: "${source.id}" has no repository URL`);
     }
-    // A vendored source is a copy of one commit, so the pin and the URL are what make
-    // the copy checkable. An authored source has neither, and demanding them would
-    // invite a placeholder revision that means nothing.
-    if (isLocal(source)) {
-      if (source.repository !== undefined) {
-        problems.push(
-          `skills/sources.yml: "${source.id}" is local, so it names no repository; a URL here promises an upstream that does not exist`,
-        );
-      }
-    } else {
-      if (source.repository === undefined || !/^https?:\/\//.test(source.repository)) {
-        problems.push(`skills/sources.yml: "${source.id}" has no repository URL`);
-      }
-      if (source.revision === undefined || !/^[0-9a-f]{40}$/.test(source.revision)) {
-        problems.push(
-          `skills/sources.yml: "${source.id}" pins "${source.revision}", which is not a 40-character commit SHA; a branch name is not a pin`,
-        );
-      }
+    if (!/^[0-9a-f]{40}$/.test(source.revision)) {
+      problems.push(
+        `skills/sources.yml: "${source.id}" pins "${source.revision}", which is not a 40-character commit SHA; a branch name is not a pin`,
+      );
     }
     if (source.license.trim() === "") {
       problems.push(`skills/sources.yml: "${source.id}" records no licence`);
     }
-
     for (const skill of source.skills) {
       if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
         problems.push(`skills/sources.yml: skill name "${skill.name}" is not kebab-case`);
       }
-      if (isLocal(source)) {
-        if (skill.upstream !== undefined) {
-          problems.push(`skills/sources.yml: "${source.id}/${skill.name}" is local, so it has no upstream path`);
-        }
-        if (skill.hashes !== undefined) {
-          problems.push(
-            `skills/sources.yml: "${source.id}/${skill.name}" is local, so a content hash pins nothing it could drift from`,
-          );
-        }
-        if (skill.invocation === undefined) {
-          problems.push(
-            `skills/sources.yml: "${source.id}/${skill.name}" is local, so it declares invocation: model or user next to the reason for that reach`,
-          );
-        } else if (skill.invocation !== "model" && skill.invocation !== "user") {
-          problems.push(
-            `skills/sources.yml: "${source.id}/${skill.name}" declares invocation "${skill.invocation}"; it is \`model\` or \`user\``,
-          );
-        }
-      } else {
-        if (skill.upstream === undefined) {
-          problems.push(`skills/sources.yml: "${source.id}/${skill.name}" has no upstream path`);
-        }
-        if (skill.invocation !== undefined) {
-          problems.push(
-            `skills/sources.yml: "${source.id}/${skill.name}" is vendored, so upstream owns its invocation and the manifest does not restate it`,
-          );
-        }
+      if (skill.upstream.trim() === "") {
+        problems.push(`skills/sources.yml: "${source.id}/${skill.name}" has no upstream path`);
       }
       if (skill.files.length === 0) {
         problems.push(`skills/sources.yml: "${source.id}/${skill.name}" lists no files`);
       }
-      declared.set(skill.name, source.id);
-    }
-
-    // The manifest's declared reach and the frontmatter agree, both ways. An authored
-    // skill picks model or user reach on purpose, and this is what keeps that choice
-    // visible in review instead of living in one frontmatter line.
-    for (const skill of source.skills) {
-      if (!isLocal(source) || skill.invocation === undefined) continue;
-      const directory = skillDirectory(source, skill);
+      const recorded = Object.keys(skill.hashes);
+      if (recorded.length !== skill.files.length) {
+        problems.push(
+          `skills/sources.yml: "${source.id}/${skill.name}" records ${recorded.length} hash(es) for ${skill.files.length} file(s); run --write`,
+        );
+      }
+      const directory = vendoredSkillDirectory(source, skill);
       if (!existsSync(directory)) {
         problems.push(`${label}/${skill.name}: declared but absent`);
+      }
+    }
+  }
+
+  // Authored: no repository and no revision to record, because there is no upstream.
+  // A hash here would pin the only copy against itself, so it is refused rather than
+  // ignored, and the declared reach is what review actually needs to agree with.
+  for (const source of sources.authored) {
+    if (source.license.trim() === "") {
+      problems.push(`skills/sources.yml: "${source.id}" records no licence`);
+    }
+    for (const skill of source.skills) {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
+        problems.push(`skills/sources.yml: skill name "${skill.name}" is not kebab-case`);
+      }
+      if (skill.invocation !== "model" && skill.invocation !== "user") {
+        problems.push(
+          `skills/sources.yml: "${source.id}/${skill.name}" declares invocation "${skill.invocation}"; it is \`model\` or \`user\``,
+        );
+      }
+      if (skill.files.length === 0) {
+        problems.push(`skills/sources.yml: "${source.id}/${skill.name}" lists no files`);
+      }
+
+      const directory = authoredSkillDirectory(skill);
+      if (!existsSync(directory)) {
+        problems.push(`skills/authored/${skill.name}: declared but absent`);
         continue;
       }
       let loaded;
       try {
-        loaded = loadBundledSkillIndex(dirname(directory)).get(directory);
+        loaded = loadBundledSkillIndex(AUTHORED_ROOT).get(directory);
       } catch (error) {
-        problems.push(`${label}/${skill.name}: ${messageOf(error)}`);
+        problems.push(`skills/authored/${skill.name}: ${messageOf(error)}`);
         continue;
       }
       if (loaded === undefined) continue;
       const actual: string = loaded.invocation.modelInvocable ? "model" : "user";
       if (actual !== skill.invocation) {
         problems.push(
-          `${label}/${skill.name}: declares invocation "${skill.invocation}" but its SKILL.md is ${actual === "model" ? "model-invocable (no \`disable-model-invocation\`)" : "user-invoked (\`disable-model-invocation: true\`)"}; state the reach you mean in both places`,
+          `skills/authored/${skill.name}: declares invocation "${skill.invocation}" but its SKILL.md is ${actual === "model" ? "model-invocable (no \`disable-model-invocation\`)" : "user-invoked (\`disable-model-invocation: true\`)"}; state the reach you mean in both places`,
         );
       }
     }
@@ -1875,9 +1866,6 @@ function checkSkillsExt(): readonly string[] {
       continue;
     }
     for (const skill of index.values()) {
-      if (!declared.has(skill.name)) {
-        problems.push(`${label}: "${skill.name}" loads but is not declared in skills/sources.yml`);
-      }
       if (pstackNames.has(skill.name)) {
         problems.push(
           `${label}: "${skill.name}" also exists in pstack/skills, so one would shadow the other`,
@@ -1894,7 +1882,6 @@ function checkSkillsExt(): readonly string[] {
 
 const PSTACK_PREFIX = "pstack/";
 const STATIC_PREFIX = "static/";
-/** Repository-relative prefix of the vendored tree. */
 const entryPoint = process.argv[1];
 if (entryPoint !== undefined && resolve(entryPoint) === fileURLToPath(import.meta.url)) {
   process.exitCode = main();

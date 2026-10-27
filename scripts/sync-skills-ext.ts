@@ -47,83 +47,109 @@ export const SOURCES_PATH = join(ROOT, "skills", "sources.yml");
 export const VENDORED_ROOT = VENDORED_SKILLS_ROOT;
 export const AUTHORED_ROOT = AUTHORED_SKILLS_ROOT;
 
-/** One vendored skill inside a source. */
+/** One skill copied byte for byte from an upstream repository. */
 export interface VendoredSkill {
   readonly name: string;
-  /** Path of the skill directory inside the upstream repository. Absent when local. */
-  readonly upstream?: string;
+  /** Path of the skill directory inside the upstream repository. */
+  readonly upstream: string;
   /** Upstream-relative file paths that ship. */
   readonly files: readonly string[];
   /** Lower-case hex SHA-256 of each shipped file, keyed by its relative path. */
-  readonly hashes?: Readonly<Record<string, string>>;
-  /**
-   * Declared invocation for a local skill.
-   *
-   * A local skill picks its own reach, so this records the choice beside the reason and
-   * `check-assets` asserts the `SKILL.md` frontmatter agrees. Without it, turning a skill
-   * from user-invoked to model-invoked is a one-word frontmatter edit that no review sees.
-   * A vendored skill leaves it absent: upstream owns that choice.
-   */
-  readonly invocation?: SkillInvocation;
+  readonly hashes: Readonly<Record<string, string>>;
   readonly note?: string;
 }
 
-/** How far a local skill reaches: model-invocable, or only by name. */
+/** How far a skill reaches: model-invocable, or only by name. */
 export type SkillInvocation = "model" | "user";
 
-/**
- * Where a source's text comes from.
- *
- * `vendored` is a byte-for-byte copy of one upstream revision, so a content hash is
- * what makes "this equals that commit" checkable. `local` is text this package
- * wrote: there is no revision to pin and nothing to drift from, so the hash step and
- * the remote comparison are both skipped. The file inventory applies to both — it is
- * the record of what ships, and it is the only thing that makes an added file visible.
- */
-export type SourceOrigin = "local" | "vendored";
+/** One skill written in this repository. */
+export interface AuthoredSkill {
+  readonly name: string;
+  /** Files that ship. The record of what exists, since there is no upstream to diff. */
+  readonly files: readonly string[];
+  /**
+   * Declared reach.
+   *
+   * An authored skill picks its own, so this records the choice beside the reason and
+   * `check-assets` asserts the `SKILL.md` frontmatter agrees. Without it, turning a
+   * skill from user-invoked to model-invoked is a one-word frontmatter edit no review
+   * sees.
+   */
+  readonly invocation: SkillInvocation;
+  readonly note?: string;
+}
 
 /** One upstream repository and the skills vendored from it. */
 export interface VendoredSource {
   readonly id: string;
-  /** Defaults to `vendored` when absent, which is the older form of this file. */
-  readonly origin?: SourceOrigin;
-  /** Absent for a local source: there is no upstream to name. */
-  readonly repository?: string;
+  readonly repository: string;
   readonly license: string;
   readonly copyright: string;
   /** Commit SHA the copy was taken from. A branch name is not a pin. */
-  readonly revision?: string;
+  readonly revision: string;
   readonly branch?: string;
   readonly fetched?: string;
   readonly skills: readonly VendoredSkill[];
 }
 
-/** Whether a source's text is this package's own. */
-export function isLocal(source: VendoredSource): boolean {
-  return source.origin === "local";
+/** The skills written here, grouped under whatever id the maintainer prefers. */
+export interface AuthoredSource {
+  readonly id: string;
+  readonly license: string;
+  readonly copyright: string;
+  readonly skills: readonly AuthoredSkill[];
 }
 
+/**
+ * The manifest, mirroring the two roots.
+ *
+ * `vendored` and `authored` are separate keys, not one list with an `origin` field.
+ * The two have different proofs: a vendored skill's text is verified against a commit
+ * and a hash, an authored skill's text is the source and has nothing to compare
+ * against. Encoding that as a field meant every check had to branch on it and assert
+ * both directions. Encoding it as two keys means the shape of the file states which
+ * rule applies, and a skill cannot be listed under the wrong one without moving the
+ * file it describes.
+ */
 export interface SourcesFile {
-  readonly sources: readonly VendoredSource[];
+  readonly vendored: readonly VendoredSource[];
+  readonly authored: readonly AuthoredSource[];
 }
 
 export function readSources(path: string = SOURCES_PATH): SourcesFile {
   const parsed = yaml.load(readFileSync(path, "utf8"));
-  if (typeof parsed !== "object" || parsed === null || !Array.isArray((parsed as SourcesFile).sources)) {
-    throw new Error(`${relative(ROOT, path)}: expected a top-level \`sources\` list`);
+  const record = parsed as Partial<SourcesFile> | null;
+  if (typeof record !== "object" || record === null) {
+    throw new Error(`${relative(ROOT, path)}: expected a top-level \`vendored\` and \`authored\` key`);
   }
-  return parsed as SourcesFile;
+  const vendored = record.vendored ?? [];
+  const authored = record.authored ?? [];
+  if (!Array.isArray(vendored) || !Array.isArray(authored)) {
+    throw new Error(
+      `${relative(ROOT, path)}: \`vendored\` and \`authored\` must both be lists when present`,
+    );
+  }
+  return { vendored, authored };
 }
 
 /**
- * Directory of one skill inside this repository.
+ * Directory of one vendored skill inside this repository.
  *
- * The two origins live in two roots, so which root a source uses is decided by
- * `origin` once, here, instead of by a path convention every caller repeats.
+ * A vendored source groups its skills under its own id, because two upstream
+ * repositories can ship a skill with the same name in different states.
  */
-export function skillDirectory(source: VendoredSource, skill: VendoredSkill): string {
-  const root = isLocal(source) ? AUTHORED_ROOT : join(VENDORED_ROOT, source.id);
-  return join(root, skill.name);
+export function vendoredSkillDirectory(source: VendoredSource, skill: VendoredSkill): string {
+  return join(VENDORED_ROOT, source.id, skill.name);
+}
+
+/**
+ * Directory of one authored skill inside this repository.
+ *
+ * No source id in the path: this package owns every one of them, and grouping them by
+ * an id that only ever has one value would add a level nothing reads.
+ */
+export function authoredSkillDirectory(skill: AuthoredSkill): string {
+  return join(AUTHORED_ROOT, skill.name);
 }
 
 /** SHA-256 of one file's bytes, or `undefined` when it is absent. */
@@ -134,7 +160,7 @@ export function hashFile(path: string): string | undefined {
 
 /** Hash every listed file of one vendored skill, skipping the ones that are absent. */
 export function hashSkill(source: VendoredSource, skill: VendoredSkill): Record<string, string> {
-  const directory = skillDirectory(source, skill);
+  const directory = vendoredSkillDirectory(source, skill);
   const hashes: Record<string, string> = {};
   for (const file of skill.files) {
     const hash = hashFile(join(directory, ...file.split("/")));
@@ -143,20 +169,21 @@ export function hashSkill(source: VendoredSource, skill: VendoredSkill): Record<
   return hashes;
 }
 
+
 /**
- * Compare the tree on disk with what the manifest recorded.
+ * Compare the vendored tree on disk with what the manifest recorded.
  *
  * Pure except for reading files, so the checks are unit-testable without network.
+ * Every branch here is about one thing: does the copy still equal the commit it
+ * claims to be? There is no second origin to branch on, which is the point of the
+ * split.
  */
-export function checkLocalTree(sources: SourcesFile): readonly string[] {
+export function checkVendoredTree(sources: SourcesFile): readonly string[] {
   const problems: string[] = [];
 
-  for (const source of sources.sources) {
-    // A vendored source is one directory named after the source, holding its skills.
-    // An authored source has no upstream name to group by, so its skills sit directly
-    // in `skills/authored/`. The two roots are the structure; `origin` only picks one.
-    const sourceRoot = isLocal(source) ? AUTHORED_ROOT : join(VENDORED_ROOT, source.id);
-    const label = isLocal(source) ? "skills/authored" : `skills/vendored/${source.id}`;
+  for (const source of sources.vendored) {
+    const sourceRoot = join(VENDORED_ROOT, source.id);
+    const label = `skills/vendored/${source.id}`;
     if (source.skills.length === 0) continue;
     if (!existsSync(sourceRoot)) {
       problems.push(`${label}: source "${source.id}" is declared but its directory is missing`);
@@ -174,15 +201,14 @@ export function checkLocalTree(sources: SourcesFile): readonly string[] {
     }
 
     for (const skill of source.skills) {
-      const directory = skillDirectory(source, skill);
+      const directory = vendoredSkillDirectory(source, skill);
       if (!existsSync(directory)) {
         problems.push(`${label}/${skill.name}: declared but the directory is missing`);
         continue;
       }
 
-      const present = walk(directory);
       const declaredFiles = new Set(skill.files);
-      for (const file of present) {
+      for (const file of walk(directory)) {
         if (!declaredFiles.has(file)) {
           problems.push(
             `${label}/${skill.name}/${file}: ships but is not in its \`files\` list, so nothing records where it came from`,
@@ -190,11 +216,7 @@ export function checkLocalTree(sources: SourcesFile): readonly string[] {
         }
       }
 
-      // An authored skill's text is the source, so there is no pin to compare it with
-      // and no hash worth recording: `--write` would only restate whatever is on disk.
-      if (isLocal(source)) continue;
-
-      for (const [file, expected] of Object.entries(skill.hashes ?? {})) {
+      for (const [file, expected] of Object.entries(skill.hashes)) {
         const actual = hashFile(join(directory, ...file.split("/")));
         if (actual === undefined) {
           problems.push(`${label}/${skill.name}/${file}: recorded but missing on disk`);
@@ -207,12 +229,66 @@ export function checkLocalTree(sources: SourcesFile): readonly string[] {
         }
       }
 
-      const recorded = skill.hashes ?? {};
       for (const file of skill.files) {
-        if (recorded[file] === undefined && existsSync(join(directory, ...file.split("/")))) {
+        if (skill.hashes[file] === undefined && existsSync(join(directory, ...file.split("/")))) {
           problems.push(
             `${label}/${skill.name}/${file}: no recorded hash, so an edit here would go unnoticed; run \`node scripts/sync-skills-ext.ts --write\``,
           );
+        }
+      }
+    }
+  }
+
+  return problems;
+}
+
+/**
+ * Compare the authored tree on disk with what the manifest recorded.
+ *
+ * A different question from the vendored check, so a different function. There is no
+ * commit to compare against, because this text is the source. What can still go wrong
+ * is a file shipping unrecorded, or a skill appearing without a manifest entry, and
+ * those are the two things checked here.
+ */
+export function checkAuthoredTree(sources: SourcesFile): readonly string[] {
+  const problems: string[] = [];
+
+  for (const source of sources.authored) {
+    if (source.skills.length === 0) continue;
+    const declared = new Set(source.skills.map((skill) => skill.name));
+
+    for (const entry of readdirSync(AUTHORED_ROOT, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        problems.push(
+          `skills/authored/${entry.name}: not a skill directory; the provider would fail activation on it`,
+        );
+        continue;
+      }
+      if (!declared.has(entry.name)) {
+        problems.push(
+          `skills/authored/${entry.name}: not declared in skills/sources.yml, so nothing records what it is`,
+        );
+      }
+    }
+
+    for (const skill of source.skills) {
+      const directory = authoredSkillDirectory(skill);
+      if (!existsSync(directory)) {
+        problems.push(`skills/authored/${skill.name}: declared but the directory is missing`);
+        continue;
+      }
+
+      const declaredFiles = new Set(skill.files);
+      for (const file of walk(directory)) {
+        if (!declaredFiles.has(file)) {
+          problems.push(
+            `skills/authored/${skill.name}/${file}: ships but is not in its \`files\` list, so nothing records what it is`,
+          );
+        }
+      }
+      for (const file of skill.files) {
+        if (!existsSync(join(directory, ...file.split("/")))) {
+          problems.push(`skills/authored/${skill.name}/${file}: recorded but missing on disk`);
         }
       }
     }
@@ -233,17 +309,11 @@ export async function checkRemote(
   fetchText: (url: string) => Promise<string | undefined>,
 ): Promise<readonly string[]> {
   const problems: string[] = [];
-  // Nothing to compare a local skill against: it has no upstream and no revision.
-  if (isLocal(source)) return problems;
-
   const repository = source.repository;
   const revision = source.revision;
-  if (repository === undefined || revision === undefined) {
-    return [`${source.id}: a vendored source needs both \`repository\` and \`revision\``];
-  }
 
   for (const skill of source.skills) {
-    const directory = skillDirectory(source, skill);
+    const directory = vendoredSkillDirectory(source, skill);
     for (const file of skill.files) {
       const upstreamPath = `${skill.upstream}/${file}`;
       const url = `${repository.replace(/\/$/, "")}/raw/${revision}/${upstreamPath}`;
@@ -269,22 +339,19 @@ export async function checkRemote(
 }
 
 /**
- * Record the current tree's hashes into the manifest.
+ * Record the current vendored tree's hashes into the manifest.
  *
- * Authored skills are left without hashes rather than given ones that would only
- * restate the working tree: a pin the author can regenerate with one command is not
- * a pin.
+ * Only the vendored half changes: an authored skill has no commit to pin, so a hash
+ * of it would only restate the working tree, and a pin the author regenerates with one
+ * command is not a pin. The authored half is carried through untouched.
  */
 export function writeHashes(sources: SourcesFile): SourcesFile {
   return {
-    sources: sources.sources.map((source) => ({
+    vendored: sources.vendored.map((source) => ({
       ...source,
-      skills: source.skills.map((skill) =>
-        isLocal(source)
-          ? { ...skill, hashes: undefined }
-          : { ...skill, hashes: hashSkill(source, skill) },
-      ),
+      skills: source.skills.map((skill) => ({ ...skill, hashes: hashSkill(source, skill) })),
     })),
+    authored: sources.authored,
   };
 }
 
@@ -318,21 +385,20 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
     return 0;
   }
 
-  const problems = [...checkLocalTree(sources)];
-  const skills = sources.sources.reduce((total, source) => total + source.skills.length, 0);
+  const problems = [...checkVendoredTree(sources), ...checkAuthoredTree(sources)];
+  const vendoredSkills = sources.vendored.reduce((total, source) => total + source.skills.length, 0);
+  const authoredSkills = sources.authored.reduce((total, source) => total + source.skills.length, 0);
   const describe = (source: VendoredSource): string =>
-    isLocal(source) ? `${source.id} (no upstream)` : `${source.id}@${(source.revision ?? "unpinned").slice(0, 7)}`;
+    `${source.id}@${source.revision.slice(0, 7)}`;
   console.log(
-    `skills-ext: ${sources.sources.length} source(s), ${skills} skill(s) (${sources.sources.map(describe).join(", ")})`,
+    `skills-ext: ${sources.vendored.length} vendored source(s) / ${vendoredSkills} skill(s) (${sources.vendored
+      .map(describe)
+      .join(", ") || "none"}), ${authoredSkills} authored skill(s)`,
   );
 
   if (remote) {
-    for (const source of sources.sources) {
-      if (isLocal(source)) {
-        console.log(`  ${source.id}: written here, so there is no upstream to compare with`);
-        continue;
-      }
-      const revision = (source.revision ?? "unpinned").slice(0, 7);
+    for (const source of sources.vendored) {
+      const revision = source.revision.slice(0, 7);
       const drift = await checkRemote(source, fetchText);
       if (drift.length === 0) {
         console.log(`  ${source.id}: matches upstream at ${revision}`);
@@ -341,6 +407,9 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
       console.log(`  ${source.id}: ${drift.length} file(s) differ from upstream at ${revision}`);
       for (const item of drift) console.log(`    ${item}`);
       console.log(`    This is upstream moving, not a defect here. To adopt it, raise \`revision\` and run --write.`);
+    }
+    if (sources.authored.length > 0) {
+      console.log(`  authored: written here, so there is no upstream to compare with`);
     }
   }
 
