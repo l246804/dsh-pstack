@@ -21,7 +21,7 @@ import type { SkillCategory } from "./build-assets.ts";
 import { CAPABILITIES, HARNESS_DOC_PATH, HARNESS_DOC_SCOPE_LINE, detectableCapabilities } from "./capabilities.ts";
 import { applyFilePatches } from "./apply-patches.ts";
 import { checkDivergenceLedger } from "./divergence-ledger.ts";
-import { readSources } from "./sync-skills-ext.ts";
+import { SKILLS_EXT_ROOT, readSources } from "./sync-skills-ext.ts";
 import {
   ALL_FORBIDDEN_FIELDS,
   STARTING_LEVEL,
@@ -411,11 +411,11 @@ export function readmeImageProblems(
 }
 
 function checkLayout(problems: string[]): void {
-  // `skills-ext` holds the vendored third-party tree. `checkSkillsExt` audits it
-  // against its own pin in `scripts/skills-ext/sources.yml` instead of the pstack
-  // submodule, which is why it is a sibling of `skills` rather than a subtree: a
-  // source directory must never be mistaken for a pstack skill.
-  const allowedTopLevel = new Set(["skills", "skills-ext", "agents", "docs"]);
+  // Three generated top-level directories, and nothing else. The vendored
+  // third-party tree is not here: it lives in `skills-ext/` beside `assets/`,
+  // because this directory is replaced wholesale on every `build:assets` and a tree
+  // that must survive that belongs outside it.
+  const allowedTopLevel = new Set(["skills", "agents", "docs"]);
   for (const entry of readdirSync(ASSETS_ROOT, { withFileTypes: true })) {
     if (!entry.isDirectory() || !allowedTopLevel.has(entry.name)) {
       problems.push(`assets/${entry.name}: unexpected top-level entry`);
@@ -675,15 +675,15 @@ function checkGuide(problems: string[]): { readonly markdown: number; readonly i
  * The two generated documents and the built scripts are the agreed exceptions.
  * Without the runtime list, nine artifacts would each read as an undeclared file.
  *
- * `assets/skills-ext/` is checked separately by `checkSkillsExt`, because its files
- * have no counterpart in the pstack submodule: they are vendored from other
- * repositories whose pins live in `scripts/skills-ext/sources.yml`. Leaving the tree
- * out of this list is deliberate, not an oversight.
+ * This now needs no exclusion for another origin: every directory under `assets/`
+ * that holds copied upstream text is walked here, and the rest of the tree is the
+ * generated set named above. The vendored third-party tree needs no exclusion because
+ * it is not in `assets/` at all — it is `skills-ext/`, beside it, checked by
+ * `checkSkillsExt`.
  */
 function checkUndeclaredFiles(problems: string[]): void {
   const covered = [
-    join(ASSETS_ROOT, "skills"),
-    join(ASSETS_ROOT, "agents"),
+    join(ASSETS_ROOT, "skills"),    join(ASSETS_ROOT, "agents"),
     join(ASSETS_ROOT, "docs", "guide"),
   ];
   const generated = new Set([
@@ -1042,19 +1042,23 @@ export function scanReleaseCopy(inputs: readonly ReleaseCopyInput[]): readonly s
  * Every shipped file this package generates, checked for the other host's name.
  *
  * The whole generated tree is in scope, not just Markdown: a resource file or a
- * script comment is shipped copy too. Two trees are out of scope on purpose.
- * `scripts/patches.ts` keeps upstream wording or `sync` stops matching.
- * `assets/skills-ext/` is vendored third-party text: its authors write for whatever
- * hosts they support, and rewriting their wording would break the content hash that
- * proves the copy still matches the pinned revision. A vendored skill that gave
- * Claude-specific instructions would be caught by review of its provenance entry,
- * not by this name grep.
+ * script comment is shipped copy too. `scripts/patches.ts` is out of scope on
+ * purpose, because it keeps upstream wording or `sync` stops matching.
+ *
+ * The vendored third-party tree is absent here for a different reason: it is not in
+ * `assets/`. Its authors write for whatever hosts they support, and rewriting their
+ * wording would break the content hash that proves the copy still matches the pinned
+ * revision, so it would have needed an exclusion either way. Living outside the
+ * generated tree means this walk never reaches it, and the exclusion is unnecessary
+ * rather than merely switched off. A vendored skill that gave Claude-specific
+ * instructions is caught by review of its provenance entry, not by this name grep.
  */
 export function checkAssetsHostCopy(): readonly string[] {
   const problems: string[] = [];
   for (const file of walkFiles(ASSETS_ROOT)) {
     const repositoryPath = toRepositoryPath(file);
-    if (repositoryPath.startsWith(`${ASSETS_PREFIX}skills-ext/`)) continue;
+    // `scripts/patches.ts` is deliberately outside `assets/`; nothing in this walk is
+    // a vendored third-party file, so every hit here is this package's own copy.
     const hits = otherHostMentionCount(readFileSync(file, "latin1"));
     if (hits > 0) {
       problems.push(
@@ -1735,7 +1739,11 @@ function checkPackageManifest(problems: string[]): void {
   const shipped = Array.isArray(record["files"])
     ? record["files"].filter((value): value is string => typeof value === "string")
     : [];
-  for (const required of ["dist", "assets", "cordis.patch.yml", "locale/*.json", "static"]) {
+  // `skills-ext` is listed here, not implied by `assets`: it is a sibling directory,
+  // and leaving it out of `files` would publish a package whose provider loads one
+  // tree and silently reports no third-party skills. The two exclusions above make
+  // the difference invisible at runtime, so the release gate has to state it.
+  for (const required of ["dist", "assets", "skills-ext", "cordis.patch.yml", "locale/*.json", "static"]) {
     if (!shipped.includes(required)) {
       problems.push(`package.json: "files" must include "${required}"`);
     }
@@ -2229,9 +2237,11 @@ function messageOf(error: unknown): string {
 /**
  * Audit the vendored third-party tree.
  *
- * `assets/skills-ext/<source>/<skill>/` holds text this package did not write. Three
- * things have to stay true, and none of them is covered by the checks over
- * `assets/skills/`, which assume a pstack upstream file for every path:
+ * `skills-ext/<source>/<skill>/` holds text this package did not write. It sits beside
+ * `assets/` rather than inside it, because `build:assets` replaces that whole
+ * directory and these files must survive a regeneration. Three things have to stay
+ * true, and none of them is covered by the checks over `assets/skills/`, which assume
+ * a pstack upstream file for every path:
  *
  * 1. Every shipped file is recorded in `scripts/skills-ext/sources.yml` with the
  *    upstream path and revision it came from. A file with no record is text of
@@ -2246,8 +2256,16 @@ function messageOf(error: unknown): string {
  */
 function checkSkillsExt(): readonly string[] {
   const problems: string[] = [];
-  const extRoot = join(ASSETS_ROOT, "skills-ext");
-  if (!existsSync(extRoot)) return problems;
+  const extRoot = SKILLS_EXT_ROOT;
+  // Absent is a defect now, not an initial state. The provider returns an empty
+  // catalog for a missing source root, so a dropped tree would start clean and lose
+  // every vendored skill without an error. The directory ships with a declared source,
+  // so its absence means something removed it.
+  if (!existsSync(extRoot)) {
+    return [
+      `skills-ext/: missing, but scripts/skills-ext/sources.yml declares sources; the provider would load no vendored skill and report no error`,
+    ];
+  }
 
   let sources;
   try {
@@ -2299,16 +2317,16 @@ function checkSkillsExt(): readonly string[] {
   for (const skill of index.values()) {
     if (!declared.has(skill.name)) {
       problems.push(
-        `assets/skills-ext: "${skill.name}" loads but is not declared in scripts/skills-ext/sources.yml`,
+        `skills-ext: "${skill.name}" loads but is not declared in scripts/skills-ext/sources.yml`,
       );
     }
     if (pstackNames.has(skill.name)) {
       problems.push(
-        `assets/skills-ext: "${skill.name}" also exists in assets/skills, so one would shadow the other`,
+        `skills-ext: "${skill.name}" also exists in assets/skills, so one would shadow the other`,
       );
     }
     if (!isInside(extRoot, skill.directory)) {
-      problems.push(`assets/skills-ext: "${skill.name}" resolves outside the extension tree`);
+      problems.push(`skills-ext: "${skill.name}" resolves outside the extension tree`);
     }
   }
 
@@ -2316,14 +2334,14 @@ function checkSkillsExt(): readonly string[] {
     for (const skill of source.skills) {
       const directory = join(extRoot, source.id, skill.name);
       if (!existsSync(directory)) {
-        problems.push(`assets/skills-ext/${source.id}/${skill.name}: declared but absent`);
+        problems.push(`skills-ext/${source.id}/${skill.name}: declared but absent`);
         continue;
       }
       for (const file of walkFiles(directory)) {
-        const assetRelative = toRepositoryPath(file).slice(ASSETS_PREFIX.length);
-        if (assetRelative.split("/").length < 4) {
+        const assetRelative = toRepositoryPath(file).slice(SKILLS_EXT_PREFIX.length);
+        if (assetRelative.split("/").length < 3) {
           problems.push(
-            `assets/skills-ext: "${assetRelative}" sits outside a source/skill directory pair`,
+            `skills-ext: "${assetRelative}" sits outside a source/skill directory pair`,
           );
         }
       }
@@ -2335,6 +2353,8 @@ function checkSkillsExt(): readonly string[] {
 
 const ASSETS_PREFIX = "assets/";
 const STATIC_PREFIX = "static/";
+/** Repository-relative prefix of the vendored tree, which lives beside `assets/`. */
+const SKILLS_EXT_PREFIX = "skills-ext/";
 const entryPoint = process.argv[1];
 if (entryPoint !== undefined && resolve(entryPoint) === fileURLToPath(import.meta.url)) {
   process.exitCode = main();

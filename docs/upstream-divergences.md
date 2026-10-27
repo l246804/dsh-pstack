@@ -113,6 +113,7 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 三类结构性差异值得单独说：
 
 - **跨技能引用改成读文件。** 上游 `**how**` 这类写法假定技能在 catalog 里按名可见。这里多数技能对模型隐藏，所以改成"读该技能 `SKILL.md` 的绝对资源路径并执行"。这是加载机制的必需改动，不是措辞偏好。
+- **随包正文只说读者能执行的事。** `assets/` 里的文字是给使用者的 agent 读的，而 `scripts/` 不随包发布（`package.json` 的 `files` 里没有它）。所以正文不得把本仓库的开发期脚本当作读者的验证手段：`check-assets.ts` 守的是生成树，谁写一个 `.dsh/skills/` 里的技能，那个检查根本看不到。`authoring-a-skill` 第 2 步与 `reflect` 的收尾句都曾写成"跑 `scripts/check-assets.ts`"，现已改回上游的清单，并补上宿主加载器真正会静默拒绝的一条（非法 `name` 会被跳过，只留一条 warn 日志）。这条规则的判据在 `scripts/check-assets.ts` 的 `checkScriptReferences` 注释里，那里一直写着 `.ts` 引用"不随包、读者不该跑"。
 - **22 处"选档位"句改成一条共享常量。** `DELEGATION_EFFORT_SENTENCE` 由所有丢了上游句子的 patch 追加，`check-assets` 从上游 anchor 反推期望集合，双向断言。之所以收成一条，是因为 24 份手写副本就是它丢 24 次的原因。
 - **`fast` 语义不恢复。** 上游的 `-fast` 是 Cursor 的 slug 约定，DSH 没有 speed 旋钮。虚构一个等价物就是本次回退的镜像错误。
 
@@ -175,17 +176,22 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 - `scripts/` 整个生成链：patch 定义、资产生成、`check` 的四段（`check:assets`、`check:scripts`、`typecheck`、`test`）、运行时打包，以及第三方技能树的 `sync-skills-ext.ts`。
 - `docs/decisions/` 的决策记录。
 - 按需挂载的 worktree 行，以及它对该 profile 是否已有等价行的判断。
-- `assets/skills-ext/` 第三方技能树。上游 pstack 没有这个概念，它不来自 pstack submodule，见下一节。
+- `skills-ext/` 第三方技能树。上游 pstack 没有这个概念，它不来自 pstack submodule，见下一节。
 
 ## 六之一、第三方技能树
 
-`assets/skills-ext/<来源>/<技能>/` 存放移植自 pstack 之外的技能。它与 `assets/skills/` 有三点不同，同步时不要混在一起处理：
+`skills-ext/<来源>/<技能>/` 存放移植自 pstack 之外的技能。它放在 `assets/` 之外，与 `assets/skills/` 有几点不同，同步时不要混在一起处理：
 
-|  | `assets/skills/` | `assets/skills-ext/` |
+|  | `assets/skills/` | `skills-ext/` |
 |---|---|---|
+| 位置 | `assets/` 之内 | `assets/` 之外，作为兄弟目录 |
 | 来源 | 一个 pinned submodule | 每个来源一个仓库，各自 pin |
-| 生成方式 | 由 `build:assets` 从上游加 patch 生成 | 从上游原样复制，不经过生成器 |
+| 生成方式 | 由 `build:assets` 从上游加 patch 生成，整棵重写 | 从上游原样复制，不经过生成器 |
 | 校验方式 | `sync-upstream --check` 逐字节比对生成结果 | `sync-skills-ext.ts` 比对记录的内容哈希 |
+
+**为什么在 `assets/` 之外。** `assets/` 的承诺是"一次全新构建能重现这些字节"，而 `writeAssets` 的做法是把新树 `rename` 盖上去，所以它**只能**放生成物。`skills-ext/` 要跨过这次重写存活，就不能待在里面。这条规则早先由 [静态资源决策](decisions/2026-10-26-static-resource-directory.md)为 `static/` 定下（`assets/` 保持纯生成树），本树是第二个案例。
+
+在此之前它确实在 `assets/` 里，代价是 `build:assets` 会把它删掉，而且不报错。现在写入前有一道前置断言：`assets/` 里只要出现生成器不产出的文件，`build:assets` 直接失败并点名该路径，而不是静默删除。这道断言是这次事故的真正修复，位置调整是让它不可能再犯。
 
 现有来源：
 

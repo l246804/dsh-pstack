@@ -162,10 +162,11 @@ export class BundledSkillError extends Error {
 /**
  * Read and validate the whole shipped catalog: the pstack tree plus the extension tree.
  *
- * `assets/skills/` is generated from the pinned pstack submodule; `assets/skills-ext/
+ * `assets/skills/` is generated from the pinned pstack submodule; `skills-ext/
  * <source>/` is vendored from one external repository per source directory. The model
  * sees one catalog, and the two trees stay independently verifiable because each is
- * loaded by its own layout rule.
+ * loaded by its own layout rule. The vendored tree sits outside `assets/` so that a
+ * regeneration of that directory cannot delete it.
  *
  * A skill name may appear in only one tree. A duplicate is a packaging mistake, not a
  * precedence question, so it fails activation instead of letting one silently shadow
@@ -215,7 +216,7 @@ function mergeIndexes(indexes: readonly BundledSkillIndex[]): BundledSkillIndex 
 /**
  * Read every bundled skill below a tree whose first level is a source directory.
  *
- * `assets/skills-ext/<source>/<skill>/` groups vendored skills by where they came
+ * `skills-ext/<source>/<skill>/` groups vendored skills by where they came
  * from, so the layout mirrors `scripts/skills-ext/sources.yml` and a maintainer can update one
  * upstream repository without touching another. The provider needs a flat catalog,
  * so this walks one level of source directories and merges what it finds.

@@ -23,15 +23,18 @@ export const SKILLS_ROOT = join(ASSETS_ROOT, "skills");
 /**
  * Absolute path of the third-party skill tree.
  *
- * One directory per upstream source, then one per skill. Kept separate from
- * `assets/skills/` because that tree is generated from one pinned submodule while
- * this one is vendored from several repositories, each with its own revision
- * recorded in `scripts/skills-ext/sources.yml`.
+ * One directory per upstream source, then one per skill. A sibling of `assets/`
+ * rather than a subtree, because the two trees have different owners: `assets/` is
+ * rewritten wholesale from the pinned pstack submodule on every `build:assets`,
+ * while this tree changes only when a maintainer re-pins a source. Files that must
+ * survive a regeneration cannot live in the directory that regeneration replaces.
+ * Each source's revision is recorded in `scripts/skills-ext/sources.yml`.
  *
- * The manifest sits outside `assets/` on purpose: the provider treats every entry
- * under a skill root as a skill directory, so a stray file there fails activation.
+ * The manifest sits outside the skill root on purpose: the provider treats every
+ * entry under a skill root as a skill directory, so a stray file there fails
+ * activation.
  */
-export const SKILLS_EXT_ROOT = join(ASSETS_ROOT, "skills-ext");
+export const SKILLS_EXT_ROOT = join(PACKAGE_ROOT, "skills-ext");
 
 /** Absolute path of the directory holding the generated agent preambles. */
 export const AGENTS_ROOT = join(ASSETS_ROOT, "agents");

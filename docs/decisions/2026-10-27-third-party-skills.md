@@ -1,7 +1,9 @@
 # 决定：第三方技能按来源分目录 vendored，用内容哈希固定来源
 
-Status: accepted
+Status: superseded
 Date: 2026-10-27
+
+> **本记录的"位置"部分已被 [第三方技能树移到 `assets/` 之外](2026-10-27-skills-ext-outside-assets.md)取代。** 下面第 16 行把树放在 `assets/skills-ext/`，那个位置会让 `build:assets` 在重写 `assets/` 时删掉它。其余决定（按来源分目录、内容哈希固定、同步分两步、两棵树不许同名）继续有效。
 
 ## 背景
 

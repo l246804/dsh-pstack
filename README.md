@@ -83,17 +83,17 @@ dsh plugin --profile <profile> add dsh-pstack
 
 ## 功能范围与已知限制
 
-包含 55 个 pstack 技能、23 个 playbook、24 个原则和两个子代理人格，另加 `assets/skills-ext/` 下按来源分目录存放的第三方技能。
+包含 55 个 pstack 技能、23 个 playbook、24 个原则和两个子代理人格，另加 `skills-ext/` 下按来源分目录存放的第三方技能。
 
 ### 第三方技能与同名冲突
 
-`assets/skills-ext/<来源>/<技能>/` 存放移植自外部仓库的技能，每个来源在 `scripts/skills-ext/sources.yml` 里记录仓库地址、许可证和固定提交号。
+`skills-ext/<来源>/<技能>/` 存放移植自外部仓库的技能，每个来源在 `scripts/skills-ext/sources.yml` 里记录仓库地址、许可证和固定提交号。它放在 `assets/` 之外，因为 `assets/` 每次 `build:assets` 都会被整棵重写，而这些文件必须在重写后还在。
 
 **同名技能以你那一侧为准，本包的会被遮蔽。** DSH 按 rank 从小到大取第一个同名技能。本包提供的 rank 是 600，项目内技能是 100（`.dsh/skills/`）和 200（`AGENTS.md`），用户级是 400 和 500。所以你在项目里放一个同名技能，它会盖掉本包的那个，本包版本不会被调用，也不会报错。同理，你自己写的 `writing-for-agents` 会盖掉本包随附的那份。
 
 这个顺序是有意的：项目里的决定应当压过包里的默认值。副作用是冲突很安静，所以升级后行为变了，先查技能目录里有没有同名项。要让本包版本生效，删掉或重命名你那一份。
 
-本包内部的两个树不允许同名：`assets/skills/` 与 `assets/skills-ext/` 出现同一个名字会让插件启动失败，而不是让其中一个悄悄胜出。
+本包内部的两个树不允许同名：`assets/skills/` 与 `skills-ext/` 出现同一个名字会让插件启动失败，而不是让其中一个悄悄胜出。
 
 - `make-bot-ui` 不在支持范围。它依赖 Cursor 的 webhook routine 和 secret request，DSH 没有等价闭环。
 - Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes 和 Bugbot 配置。相关技能会在需要它们的步骤说明不支持，不伪造替代。

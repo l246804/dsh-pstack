@@ -53,6 +53,7 @@
   "files": [
     "dist",
     "assets",
+    "skills-ext",
     "cordis.patch.yml",
     "locale/*.json",
     "static",

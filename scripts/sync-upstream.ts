@@ -60,12 +60,6 @@ export function compareAssets(
 
   for (const path of [...actual.keys()].sort()) {
     if (expectedPaths.has(path)) continue;
-    // The vendored third-party tree is not generated from the pstack submodule, so
-    // this comparison cannot speak for it. `scripts/sync-skills-ext.ts` owns those
-    // files and checks them against their own pinned revision instead. Reporting them
-    // here as "unexpected" would be the true statement that the generator did not
-    // produce them, which is not a problem a reader could act on.
-    if (path.startsWith("skills-ext/")) continue;
     problems.push(`unexpected: assets/${path}`);
   }
 
@@ -76,6 +70,7 @@ export async function writeAssets(assets: readonly Asset[]): Promise<void> {
   assertGeneratedDirectory(STAGING_ROOT);
   assertGeneratedDirectory(BACKUP_ROOT);
   assertGeneratedDirectory(ASSETS_ROOT);
+  await assertAssetsHoldsOnlyGeneratedFiles(assets);
 
   await rm(STAGING_ROOT, { recursive: true, force: true });
   await mkdir(STAGING_ROOT, { recursive: true });
@@ -186,6 +181,35 @@ async function exists(path: string): Promise<boolean> {
   return stat(path).then(
     () => true,
     () => false,
+  );
+}
+
+/**
+ * Refuse to regenerate `assets/` while it holds a file this generator did not make.
+ *
+ * `writeAssets` renames a freshly staged tree over `assets/`, which deletes anything
+ * the generator does not produce. That is the correct behavior for a directory whose
+ * whole promise is "a fresh build reproduces these bytes" — but it turns every
+ * hand-maintained file placed there into silent data loss on the next build. It
+ * happened once, to the vendored third-party tree: `build:assets` deleted it, and the
+ * only warning came from `git status` afterwards.
+ *
+ * So this is a precondition, not a repair. A file that must survive regeneration
+ * belongs outside `assets/` — beside it, as `static/` and `skills-ext/` are. Failing
+ * here names the offending path and says where it should go, which is the one moment
+ * a maintainer can still act on it.
+ */
+async function assertAssetsHoldsOnlyGeneratedFiles(assets: readonly Asset[]): Promise<void> {
+  if (!(await exists(ASSETS_ROOT))) return;
+  const present = await walk(ASSETS_ROOT);
+  const stale = present.map((path) => relative(ASSETS_ROOT, path).split("\\").join("/"));
+  const expected = new Set(assets.map((asset) => asset.path));
+  const foreign = stale.filter((path) => !expected.has(path));
+  if (foreign.length === 0) return;
+  throw new Error(
+    `refusing to regenerate assets/: it holds files this generator does not produce, and the ` +
+      `swap would delete them:\n${foreign.map((path) => `  assets/${path}`).join("\n")}\n` +
+      `Move them outside assets/ (a sibling directory, as static/ and skills-ext/ are) and re-run.`,
   );
 }
 
