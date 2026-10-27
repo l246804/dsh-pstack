@@ -17,6 +17,7 @@ import {
   SKILLS_PREFIX,
   UPSTREAM_ROOT,
   classifySkills,
+  shippedSkillCount,
   renderSkill,
 
   retargetLinks,
@@ -115,7 +116,9 @@ export function checkAssets(): AssetsReport {
   for (const problem of checkScriptIdReferences()) problems.push(problem);
   for (const problem of checkSkillsExt()) problems.push(problem);
 
-  if (skills.count !== 55) problems.push(`assets: expected 55 skills, found ${skills.count}`);
+  if (skills.count !== shippedSkillCount()) {
+    problems.push(`assets: expected ${shippedSkillCount()} skills, found ${skills.count}`);
+  }
   // "Upstream skill files, minus the ones a built artifact replaces, plus the artifacts
   // themselves". Derived rather than hardcoded, so it stays honest when the runtime
   // manifest changes.
@@ -137,8 +140,12 @@ export function checkAssets(): AssetsReport {
   if (guide.markdown !== 11)
     problems.push(`assets: expected 11 guide Markdown files, found ${guide.markdown}`);
   if (guide.images !== 6) problems.push(`assets: expected 6 guide images, found ${guide.images}`);
-  if (skills.categories.copy + skills.categories.pointer + skills.categories.stripped !== 55) {
-    problems.push("assets: skill categories do not cover all 55 skills");
+  const categorised =
+    skills.categories.copy + skills.categories.pointer + skills.categories.stripped;
+  if (categorised !== shippedSkillCount()) {
+    problems.push(
+      `assets: skill categories cover ${categorised} of ${shippedSkillCount()} skills; every shipped skill needs exactly one category`,
+    );
   }
 
   const markdown = walkFiles(PSTACK_ROOT)
@@ -1287,8 +1294,8 @@ function checkBundledSkills(problems: string[]): number {
   const expected = new Set(
     skillDirectories().filter((skill) => !excluded.has(skill)),
   );
-  if (index.size !== 55) {
-    problems.push(`bundled provider: expected 55 skills, found ${index.size}`);
+  if (index.size !== shippedSkillCount()) {
+    problems.push(`bundled provider: expected ${shippedSkillCount()} skills, found ${index.size}`);
   }
 
   for (const skill of index.values()) {

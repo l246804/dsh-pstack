@@ -320,11 +320,26 @@ export function skillDirectories(): readonly string[] {
     .sort(compareStrings);
 }
 
+/**
+ * The upstream skills this package ships: every upstream directory minus the exclusions.
+ *
+ * The number that comes out of this is the shipped skill count. Checks compare against
+ * it rather than against a literal, because a literal is a second place the same fact
+ * lives: adding a skill upstream would need the generator, four checks, and two test
+ * files edited in step, and nothing would fail if one were missed.
+ */
+export function shippedSkillNames(): readonly string[] {
+  return skillDirectories().filter((skill) => !EXCLUDED_SKILLS.includes(skill));
+}
+
+/** How many upstream skills ship. Derived, never written down. */
+export function shippedSkillCount(): number {
+  return shippedSkillNames().length;
+}
+
 /** Classify every upstream skill, for the report and the tests. */
 export function classifySkills(): readonly SkillClassification[] {
-  return skillDirectories()
-    .filter((skill) => !EXCLUDED_SKILLS.includes(skill))
-    .map((skill) => ({ skill, category: classifySkill(skill) }));
+  return shippedSkillNames().map((skill) => ({ skill, category: classifySkill(skill) }));
 }
 
 /**

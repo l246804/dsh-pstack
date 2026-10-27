@@ -26,7 +26,7 @@ export const PACKAGE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..
 /** Absolute path of the generated, committed upstream port. Replaced wholesale on every build. */
 export const PSTACK_ROOT = join(PACKAGE_ROOT, "pstack");
 
-/** Absolute path of the directory holding the 55 generated pstack skill directories. */
+/** Absolute path of the directory holding the generated pstack skill directories. */
 export const SKILLS_ROOT = join(PSTACK_ROOT, "skills");
 
 /** Absolute path of the directory holding the vendored third-party skill sources. */

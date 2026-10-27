@@ -168,7 +168,7 @@ async function assemble(
   );
   // `pstack` calls `registerProvider`, not `register`. A stub with the wrong method
   // name still satisfies `inject`, and the resulting `TypeError` was not in the
-  // `conflicts` filter, so all 55 skills went unregistered while every assertion
+  // `conflicts` filter, so every bundled skill went unregistered while every assertion
   // here passed. The provider count is captured for the same reason.
   ctx.plugin(
     providerPlugin("skills", {
@@ -283,7 +283,7 @@ describe("the shipped patch mounts in a real Cordis composition", () => {
     expect(conflicts(assembly.logs)).toEqual([]);
   });
 
-  it("registers the skill provider, so all 55 skills reach the catalog", async () => {
+  it("registers the skill provider, so every bundled skill reaches the catalog", async () => {
     // The `skills` stub once offered `register` instead of `registerProvider`. The
     // row still mounted and the tools still appeared, so nothing failed — but every
     // skill was silently absent. Counting the providers is what makes that visible.

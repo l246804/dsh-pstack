@@ -1,5 +1,5 @@
 /**
- * The bundled pstack skill provider: one provider over the 55 generated skills
+ * The bundled pstack skill provider: one provider over the generated skills
  * that ship inside this package.
  *
  * The provider contract below mirrors `@deepseek-ai/dsh-skill` 0.2.1-rc.3, which

@@ -68,7 +68,7 @@ export const AUDIT_CONTEXT: PromptContextContribution = {
  * access on `inject`, so `host.systemPrompt` on a row whose `inject` does not name
  * that service throws `cannot get property "systemPrompt" without inject` — and
  * `pstack` must not inject it, because a composition without a prompt registry
- * would then keep the row inactive and drop all 55 skills. `get` returns `undefined`
+ * would then keep the row inactive and drop every bundled skill. `get` returns `undefined`
  * for an absent service and the service when present.
  *
  * @returns whether a contribution was registered.
