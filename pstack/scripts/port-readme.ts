@@ -7,13 +7,13 @@
  * `pstack/pstack/` tree and the sentence has to name only files that exist.
  *
  * It lives in a module rather than on disk because the tree is replaced wholesale on every
- * build. A file that has to survive that belongs in `pstack/docs/`, and this one belongs to
+ * build. A file that has to survive that belongs in `pstack/overlay/`, and this one belongs to
  * the tree itself, not to a page a reader may override.
  */
 
 export const PORT_README = `# pstack port
 
-This folder is generated from \`pstack/runtime/\`, the upstream pstack submodule, and the overlay in \`pstack/docs/\`. Do not edit it by hand: a build replaces every file here.
+This folder is generated from \`pstack/runtime/\`, the upstream pstack submodule, and the overlay in \`pstack/overlay/\`. Do not edit it by hand: a build replaces every file here.
 
 DeepSeek Harness installs \`dist/pstack\`, which is this tree. The tree carries \`skills/\`, \`agents/\`, and \`docs/\`, and nothing else.
 

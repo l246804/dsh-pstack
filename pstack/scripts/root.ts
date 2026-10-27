@@ -24,5 +24,14 @@ export const UPSTREAM_PREFIX = "upstream/cursor-plugins/pstack/";
 /** Repository-relative path of the generated tree root. */
 export const PORT_DIRECTORY = "pstack/pstack";
 
-/** Repository-relative path of the hand-written overlay that replaces ported files. */
-export const OVERLAY_DIRECTORY = "pstack/docs";
+/**
+ * Repository-relative path of the hand-written overlay.
+ *
+ * The overlay mirrors the generated tree's layout: a file at `pstack/overlay/skills/x/SKILL.md`
+ * replaces `skills/x/SKILL.md` in the tree, and one at `pstack/overlay/agents/y.md` replaces
+ * `agents/y.md`. The path inside the overlay is therefore also the path inside the tree, so
+ * there is one value to get right instead of two to keep in step. A flat `pstack/docs/` gave
+ * the overlay a second directory name for its `docs/` files and no obvious home for the
+ * others.
+ */
+export const OVERLAY_DIRECTORY = "pstack/overlay";

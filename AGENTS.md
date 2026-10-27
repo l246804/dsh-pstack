@@ -7,7 +7,7 @@ dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。旧实�
 随包内容只发 `dist/`。源码按生命周期分，这个划分是硬规则。
 
 - `pstack/pstack/` 是生成树，每次构建整棵替换，不进 git。手写内容放进去会在下一次构建时被拒。
-- `pstack/docs/` 是手写覆盖层，整份替换生成树里的同名文件。每条在 `overlay.yml` 里记 base 与哈希。
+- `pstack/overlay/` 是手写覆盖层，布局镜像生成树：一个文件在覆盖层里的路径就是它在树里的路径。每条在 `overlay.yml` 里记 base 与哈希。
 - `pstack/runtime/` 是脚本源码，`fork/` 保存从上游移植的 TypeScript。
 - `pstack/scripts/` 是生成器、检查脚本与构建脚本。
 - `skills/` 是非上游技能，从不重新生成。`vendored/<来源>/<技能>/` 必须有哈希与提交号，`authored/<技能>/` 不能有哈希。清单在 `skills/sources.yml`，构建时复制进 `dist/skills/`。

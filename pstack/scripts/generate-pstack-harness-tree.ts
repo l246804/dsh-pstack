@@ -11,10 +11,10 @@
  * | Source | Question it answers | Editable by hand |
  * | --- | --- | --- |
  * | `upstream/cursor-plugins/pstack/` | What upstream pstack says | No, pinned submodule |
- * | `pstack/docs/` | What this host says instead | Yes |
+ * | `pstack/overlay/` | What this host says instead | Yes |
  * | `pstack/runtime/` | What the scripts are here | Yes |
  *
- * **The overlay replaces whole files.** A file in `pstack/docs/` wins over the upstream
+ * **The overlay replaces whole files.** A file in `pstack/overlay/` wins over the upstream
  * file at the same relative path inside the generated `docs/`. That is deliberately
  * coarse. A sentence-level patch table would fail when upstream re-wraps a paragraph and
  * silently succeed when upstream changes the meaning while keeping the anchor, and this
@@ -59,12 +59,7 @@ import {
   retargetLinks,
 } from "./frontmatter-render.ts";
 import { PSTACK_MODELS_EXAMPLE_PATH, renderPstackModelsExample } from "../../src/role-manifest.ts";
-import {
-  ADAPTER_ASSET_FILENAME,
-  overlayEntryProblem,
-  readOverlayManifest,
-  type OverlayEntry,
-} from "./overlay.ts";
+import { overlayEntryProblem, readOverlayManifest, type OverlayEntry } from "./overlay.ts";
 
 /** Absolute path of the pinned upstream pstack tree. */
 export const UPSTREAM_ROOT = join(ROOT, UPSTREAM_PREFIX);
@@ -86,9 +81,6 @@ export const PORT_DIRECTORIES: readonly string[] = ["agents", "docs", "skills"];
  * here could drift from the renderer without any check noticing.
  */
 export { PSTACK_MODELS_EXAMPLE_PATH };
-
-/** Where the harness mapping document lands, relative to the tree root. */
-export const ADAPTER_ASSET = `docs/harness/${ADAPTER_ASSET_FILENAME}`;
 
 /**
  * Upstream skills this package does not carry.
@@ -129,8 +121,18 @@ export interface PortFile {
   readonly path: string;
   readonly bytes: Buffer;
   readonly executable: boolean;
-  /** Where the bytes came from, for the report and for the tests. */
+  /**
+   * Which source supplied the bytes, before any transform ran.
+   *
+   * Source and transform are separate questions, and folding them into one field made the
+   * report lie: an overlaid `SKILL.md` still gets the narrowed frontmatter and the adapter
+   * pointer, so a file whose bytes changed was reported as `generated` and the overlay it
+   * came from disappeared from the count. `rewritten` says whether a transform changed the
+   * bytes, and `origin` says where they started.
+   */
   readonly origin: "upstream" | "overlay" | "runtime" | "generated";
+  /** True when a transform changed the source bytes. */
+  readonly rewritten: boolean;
 }
 
 /** Link targets that are template placeholders rather than files. */
@@ -199,7 +201,7 @@ function readOverlay(entry: OverlayEntry): Buffer {
 export function buildPort(): readonly PortFile[] {
   const files: PortFile[] = [];
   const overlayEntries = readOverlayManifest(OVERLAY_ROOT);
-  const overlay = new Map(overlayEntries.map((entry) => [entry.tree, entry]));
+  const overlay = new Map(overlayEntries.map((entry) => [entry.path, entry]));
 
   // Skills: every shipped directory, minus the script directories the runtime replaces.
   for (const skill of shippedSkillNames()) {
@@ -223,14 +225,17 @@ export function buildPort(): readonly PortFile[] {
   // README. Both are this host's own prose with nothing upstream to replace.
   const produced = new Set(files.map((file) => file.path));
   for (const entry of overlayEntries) {
-    if (produced.has(entry.tree)) continue;
+    if (produced.has(entry.path)) continue;
+    const source = readOverlay(entry).toString("utf8");
+    const rendered = retargetLinks(source);
     files.push({
-      path: entry.tree,
-      bytes: Buffer.from(retargetLinks(readOverlay(entry).toString("utf8")), "utf8"),
+      path: entry.path,
+      bytes: Buffer.from(rendered, "utf8"),
       executable: false,
       origin: "overlay",
+      rewritten: rendered !== source,
     });
-    produced.add(entry.tree);
+    produced.add(entry.path);
   }
 
   files.push(...builtRuntimeAssets());
@@ -239,6 +244,7 @@ export function buildPort(): readonly PortFile[] {
     bytes: Buffer.from(renderPstackModelsExample(), "utf8"),
     executable: false,
     origin: "generated",
+    rewritten: false,
   });
 
   const sorted = files.sort((left, right) => compare(left.path, right.path));
@@ -258,21 +264,20 @@ export function buildPort(): readonly PortFile[] {
  */
 function fromUpstreamOrOverlay(path: string, overlay: ReadonlyMap<string, OverlayEntry>): PortFile {
   const entry = overlay.get(path);
-  const source = entry === undefined ? readFileSync(join(UPSTREAM_ROOT, ...path.split("/"))) : readOverlay(entry);
+  const source =
+    entry === undefined ? readFileSync(join(UPSTREAM_ROOT, ...path.split("/"))) : readOverlay(entry);
   const executable =
     entry === undefined && (statSync(join(UPSTREAM_ROOT, ...path.split("/"))).mode & 0o111) !== 0;
   const origin = entry === undefined ? "upstream" : "overlay";
+  const body = source.toString("utf8");
 
-  if (/^skills\/[^/]+\/SKILL\.md$/.test(path)) {
-    const rendered = Buffer.from(renderSkill(source.toString("utf8"), path), "utf8");
-    return { path, bytes: rendered, executable, origin: rendered.equals(source) ? origin : "generated" };
-  }
-  if (/^agents\/[^/]+\.md$/.test(path)) {
-    const rendered = Buffer.from(renderAgent(source.toString("utf8"), path), "utf8");
-    return { path, bytes: rendered, executable, origin: rendered.equals(source) ? origin : "generated" };
-  }
-  const rendered = Buffer.from(retargetLinks(source.toString("utf8")), "utf8");
-  return { path, bytes: rendered, executable, origin: rendered.equals(source) ? origin : "generated" };
+  const rendered =
+    /^skills\/[^/]+\/SKILL\.md$/.test(path)
+      ? Buffer.from(renderSkill(body, path), "utf8")
+      : /^agents\/[^/]+\.md$/.test(path)
+        ? Buffer.from(renderAgent(body, path), "utf8")
+        : Buffer.from(retargetLinks(body), "utf8");
+  return { path, bytes: rendered, executable, origin, rewritten: !rendered.equals(source) };
 }
 
 /** Read the built runtime as files of the tree. */
@@ -288,7 +293,13 @@ function builtRuntimeAssets(): readonly PortFile[] {
         `${entry.assetPath}: missing built runtime; run \`vp run build:runtime\` first, which rebuilds .build/runtime/ and then regenerates the tree`,
       );
     }
-    files.push({ path: entry.assetPath, bytes, executable: entry.executable, origin: "runtime" });
+    files.push({
+      path: entry.assetPath,
+      bytes,
+      executable: entry.executable,
+      origin: "runtime",
+      rewritten: false,
+    });
   }
   return files;
 }
@@ -383,8 +394,17 @@ export interface PortSummary {
   readonly guideMarkdown: number;
   readonly guideImages: number;
   readonly executables: number;
+  /** Files whose bytes came from the overlay, whether or not a transform changed them. */
   readonly overlay: number;
   readonly runtime: number;
+  /**
+   * Files a transform changed.
+   *
+   * Reported beside the source count rather than folded into it. An overlaid skill is both
+   * an overlay file and a rewritten one, and a single field could only say one of those,
+   * so the overlay it came from dropped out of the report.
+   */
+  readonly rewritten: number;
 }
 
 export function summarizePort(files: readonly PortFile[]): PortSummary {
@@ -395,11 +415,13 @@ export function summarizePort(files: readonly PortFile[]): PortSummary {
   let executables = 0;
   let overlay = 0;
   let runtime = 0;
+  let rewritten = 0;
 
   for (const file of files) {
     if (file.executable) executables += 1;
     if (file.origin === "overlay") overlay += 1;
     if (file.origin === "runtime") runtime += 1;
+    if (file.rewritten) rewritten += 1;
     const [top, second] = file.path.split("/");
     if (top === "skills" && second !== undefined) skills.add(second);
     else if (top === "agents" && file.path.endsWith(".md")) agents += 1;
@@ -418,6 +440,7 @@ export function summarizePort(files: readonly PortFile[]): PortSummary {
     executables,
     overlay,
     runtime,
+    rewritten,
   };
 }
 
@@ -428,7 +451,7 @@ export async function writePort(files: readonly PortFile[]): Promise<void> {
     throw new Error(
       `refusing to regenerate ${PORT_DIRECTORY}/: it holds files this generator does not produce, and ` +
         `the replacement would delete them:\n${foreign.map((path) => `  ${PORT_DIRECTORY}/${path}`).join("\n")}\n` +
-        `Move them outside the tree; a file that must survive regeneration belongs in pstack/docs/.`,
+        `Move them outside the tree; a file that must survive regeneration belongs in pstack/overlay/.`,
     );
   }
 
@@ -453,6 +476,7 @@ export function readPort(): readonly PortFile[] {
     bytes: readFileSync(join(PORT_ROOT, ...path.split("/"))),
     executable: (statSync(join(PORT_ROOT, ...path.split("/"))).mode & 0o111) !== 0,
     origin: "upstream" as const,
+    rewritten: false,
   }));
 }
 
@@ -529,6 +553,7 @@ function describe(summary: PortSummary): string {
     `${summary.guideImages} images`,
     `${summary.executables} executables`,
     `${summary.overlay} overlay`,
+    `${summary.rewritten} rewritten`,
     `${summary.runtime} runtime`,
     `${summary.files} files`,
   ].join(", ");

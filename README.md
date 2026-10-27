@@ -14,7 +14,7 @@ pstack 的 DeepSeek Harness 移植。它把 Cursor pstack 的技能、playbook�
 
 上游 pstack 对 Claude Code 的适配保留技能原文，生成独立的宿主资产，再用一份宿主适配说明处理工具、路径、模型和能力差异。
 
-dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差异只写在 [`pstack/docs/harness/dsh.md`](https://github.com/l246804/dsh-pstack/blob/main/pstack/docs/harness/dsh.md) 一处，构建时拷进 `dist/pstack/docs/harness/dsh.md`。读者每次会话读一次，按其中的对照表把 Cursor 的说法映射成这里的工具、路径、模型和档位。
+dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差异只写在 [`pstack/overlay/docs/harness/dsh.md`](https://github.com/l246804/dsh-pstack/blob/main/pstack/overlay/docs/harness/dsh.md) 一处，构建时拷进 `dist/pstack/docs/harness/dsh.md`。读者每次会话读一次，按其中的对照表把 Cursor 的说法映射成这里的工具、路径、模型和档位。
 
 生成器只做四件不需要判断语义的机械变换：收窄 frontmatter 到本宿主实际读取的字段；把指向树外文件的相对链接改指上游 GitHub 原文；在每个用到 Cursor 名字的技能标题下插入一行指向适配说明的指针；拷入适配说明本身。
 

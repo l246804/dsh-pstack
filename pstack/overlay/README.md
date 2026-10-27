@@ -20,7 +20,7 @@ dsh plugin --profile <profile> add dsh-pstack
 
 `<profile>` is the profile you use, such as `web`. DeepSeek Harness asks you to restart the session, and the restart is what makes the skills available. The [DSH adapter](./docs/harness/dsh.md) maps every cursor name the skills still use, and a step that needs a cursor-only feature, such as bugbot or automations, is skipped with a one-line note.
 
-This readme and the guide ship inside the package at `dist/pstack/`, generated from the upstream pstack submodule and the overlay in `pstack/docs/`. After you change a source, run `vp run build:port` from the repository root and commit the result. A check fails while the generated tree is out of date.
+This readme and the guide ship inside the package at `dist/pstack/`, generated from the upstream pstack submodule and the overlay in `pstack/overlay/`. After you change a source, run `vp run build:port` from the repository root and commit the result. A check fails while the generated tree is out of date.
 
 ## get started
 

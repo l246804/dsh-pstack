@@ -3,7 +3,7 @@
  *
  * The shipped tree is upstream pstack text. A skill says `Task`, `readonly: true`, and
  * `~/.cursor/rules/pstack-models.mdc`, because that is what upstream says. The
- * translation lives in one hand-written file, `pstack/docs/harness/dsh.md`, which the
+ * translation lives in one hand-written file, `pstack/overlay/docs/harness/dsh.md`, which the
  * generator copies into the tree unchanged and is the only place a DSH difference is
  * written down.
  *
@@ -25,9 +25,14 @@
  * the gate stays green; that was measured here before this rule was written.
  */
 
-/** The document, as a source file in this repository and as a shipped asset. */
+/**
+ * The document, as a path inside the overlay and inside the tree.
+ *
+ * One value, not two: the overlay mirrors the tree, so the path a file has here is the path
+ * it has after generation. A separate "source" and "asset" constant with the same spelling
+ * would be two definitions of one fact, which is the shape this repository keeps paying for.
+ */
 export const ADAPTER_SOURCE = "docs/harness/dsh.md";
-export const ADAPTER_ASSET = "docs/harness/dsh.md";
 
 /**
  * A name upstream pstack text uses that this host spells differently.

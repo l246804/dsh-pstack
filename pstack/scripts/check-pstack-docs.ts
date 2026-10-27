@@ -3,7 +3,7 @@
  *
  * This is the port of upstream's `scripts/check-pstack-docs.mjs`, adapted to this package.
  * Upstream's version lists the tree's skills, playbooks, and agents, then checks what
- * `pstack/README.md` and `pstack/docs/guide` say about them: slash commands, relative links
+ * `README.md` and `docs/guide` say about them: slash commands, relative links
  * and anchors, counts, and model names. The same questions are asked here, with three
  * changes this host forces.
  *
@@ -193,7 +193,7 @@ export function checkPstackDocs(): DocReport {
   }
 
   for (const problem of overlayProblems(OVERLAY, UPSTREAM)) {
-    problems.push({ file: "pstack/docs", line: 0, message: problem });
+    problems.push({ file: "pstack/overlay", line: 0, message: problem });
   }
 
   // An absent skill root is not an empty root. The provider tolerates a missing root at
