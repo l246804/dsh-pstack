@@ -21,6 +21,21 @@ export type CapabilityKind = "tool" | "path" | "model" | "host";
 
 export type CapabilityCoverage = "mapped" | "degraded" | "preserved" | "excluded" | "deferred";
 
+/**
+ * Every `coverage` value the type allows.
+ *
+ * Kept as a value so callers that check a *vocabulary* (`checkDivergenceLedger` and its
+ * tests) do not have to infer it from the rows that happen to exist. `deferred` is legal
+ * even while no row uses it, which is why deriving the set from `CAPABILITIES` is wrong.
+ */
+export const CAPABILITY_COVERAGES: readonly CapabilityCoverage[] = [
+  "mapped",
+  "degraded",
+  "preserved",
+  "excluded",
+  "deferred",
+];
+
 interface CapabilityBase {
   readonly id: string;
   readonly kind: CapabilityKind;
@@ -28,6 +43,17 @@ interface CapabilityBase {
   readonly dsh: string;
   readonly detect?: string;
   readonly note?: string;
+  /**
+   * The text `docs/upstream-divergences.md` must contain for this row.
+   *
+   * The ledger restates which upstream concepts fall in each coverage class, and a
+   * count alone cannot tell "one row was swapped for another" from "nothing changed".
+   * That is not hypothetical: `/visualize` was missing from the ledger's degraded
+   * table while `Cursor Automations` (an `excluded` row) sat in its place, and the
+   * count still read 13. This anchor is what the member check looks for, so the
+   * ledger cannot quietly trade one capability for another.
+   */
+  readonly ledgerAnchor: string;
 }
 
 export interface MappedCapability extends CapabilityBase {
@@ -46,6 +72,7 @@ export type Capability = MappedCapability | UnmappedCapability;
 export const CAPABILITIES: readonly Capability[] = [
   {
     id: "task-spawn",
+    ledgerAnchor: "`Task` 派发",
     kind: "tool",
     cursor: "`Task` spawn",
     dsh: "`pstack_subagent`, which returns a child id and reports by completion notice",
@@ -54,14 +81,16 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "subagent-general",
+    ledgerAnchor: "generalPurpose",
     kind: "tool",
     cursor: "`subagent_type: generalPurpose`",
     dsh: '`agent: "general"`',
     coverage: "mapped",
-    note: "A plain child with no injected preamble. `agent` accepts only the three pstack kinds, never a DSH agent preset id.",
+    note: "A plain child with no injected preamble. `agent` accepts only the three pstack brief kinds and never a DSH agent preset id; a preset goes in the separate `agentPreset` argument, which appears only when this row configures `allowedAgentPresets`.",
   },
   {
     id: "subagent-poteto",
+    ledgerAnchor: "poteto-agent",
     kind: "tool",
     cursor: "`subagent_type: poteto-agent`",
     dsh: '`agent: "poteto-agent"`, with the preamble injected by the tool',
@@ -70,6 +99,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "subagent-comment-sicko",
+    ledgerAnchor: "comment-sicko",
     kind: "tool",
     cursor: "`comment-sicko` subagent",
     dsh: '`agent: "comment-sicko"`, briefed read-only',
@@ -80,6 +110,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "background-field",
+    ledgerAnchor: "run_in_background",
     kind: "tool",
     cursor: "`run_in_background: true`",
     dsh: "field removed; children start as activations",
@@ -89,6 +120,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "readonly-field",
+    ledgerAnchor: "readonly",
     kind: "tool",
     cursor: "`readonly: true` and `readonly: false`",
     dsh: "a no-write constraint in the brief; the field is removed",
@@ -98,6 +130,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "resume",
+    ledgerAnchor: "resume",
     kind: "tool",
     cursor: "`resume`",
     dsh: "a fresh child; `send_message` only when state is expensive to move",
@@ -106,6 +139,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "attachments",
+    ledgerAnchor: "file_attachments",
     kind: "tool",
     cursor: "`file_attachments`",
     dsh: "real paths listed in the brief",
@@ -114,6 +148,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "askquestion",
+    ledgerAnchor: "AskQuestion",
     kind: "tool",
     cursor: "`AskQuestion`",
     dsh: "`ask_user_question` with `multi_select`",
@@ -121,6 +156,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "todolist",
+    ledgerAnchor: "TodoWrite",
     kind: "tool",
     cursor: "`TodoWrite`",
     dsh: "`todo_write` with the full list; a skipped step stays in `content`",
@@ -128,6 +164,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "file-tools",
+    ledgerAnchor: "文件工具",
     kind: "tool",
     cursor: "`Grep`, `Glob`, `Read`, `Shell`",
     dsh: "`grep`, `glob`, `read`, `bash`",
@@ -135,6 +172,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "create-skill",
+    ledgerAnchor: "create-skill",
     kind: "tool",
     cursor: "built-in `create-skill`",
     dsh: "the authoring playbook plus this package's frontmatter, link, and structure checks",
@@ -145,6 +183,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "skill-by-name",
+    ledgerAnchor: "按名调用技能",
     kind: "tool",
     cursor: "`/name` or the named skill",
     dsh: "the `skill` tool for model-invocable skills, `/name` for the rest",
@@ -153,6 +192,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "model-route",
+    ledgerAnchor: "模型与档位",
     kind: "model",
     cursor: "model slug, reasoning effort, `fast`",
     dsh: "`role` resolved from `$DSH_HOME/pstack-models.md`, plus `reasoningEffort` per delegation",
@@ -161,6 +201,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "models-rule",
+    ledgerAnchor: "pstack-models",
     kind: "path",
     cursor: "`~/.cursor/rules/pstack-models.mdc`",
     dsh: "`$DSH_HOME/pstack-models.md`, read for each new delegation",
@@ -170,6 +211,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "project-skills",
+    ledgerAnchor: "项目技能目录",
     kind: "path",
     cursor: "`.cursor/skills`, `~/.cursor/skills`",
     dsh: "`assets/skills/<name>/SKILL.md` inside this package",
@@ -179,6 +221,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "plugin-location",
+    ledgerAnchor: "插件资源路径",
     kind: "path",
     cursor: "`~/.cursor/plugins`, `.cursor-plugin`",
     dsh: "absolute resource paths inside this package",
@@ -188,6 +231,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "transcripts",
+    ledgerAnchor: "pstack_history",
     kind: "path",
     cursor: "`~/.cursor/projects/.../agent-transcripts`",
     dsh: "`pstack_history`, a restricted read of raw `sessionQuery` events",
@@ -199,6 +243,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "cross-session-search",
+    ledgerAnchor: "session_search",
     kind: "host",
     cursor: "search across other sessions in the workspace, which `recall` and `automate-me` both do",
     dsh: "`session_search` and its four sibling tools, mounted only by the official session-search bundle",
@@ -210,13 +255,18 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "agent-store",
+    ledgerAnchor: "agent store",
     kind: "path",
     cursor: "agent store",
-    dsh: "`.audit/<task-slug>/` or a directory the user names",
-    coverage: "mapped",
+    dsh: "a repository directory the operator names; `.audit/<task-slug>/` or `docs/plans/` when they name none",
+    coverage: "degraded",
+    reason:
+      "Upstream's store is a per-agent directory the host puts in the system prompt: outside the repo, outliving the session, and shared by every agent the run spawns. This host hands the model no store path, so each playbook that used one was rewritten to name a repository directory instead. What is kept is a place to write; what is lost is the host-assigned location, survival past the session, and a single location every child already knows. The `orchestrate` playbook keeps its one-writer-per-file discipline over `.audit/orchestrate/`, and a resume has to be handed its standing orders again rather than re-reading them by store path.",
+    unit: "4",
   },
   {
     id: "skill-paths-field",
+    ledgerAnchor: "paths:",
     kind: "host",
     cursor: "`paths:` auto-attach globs in SKILL.md",
     dsh: "not consumed; skills load by explicit invocation",
@@ -227,6 +277,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "custom-mode",
+    ledgerAnchor: "Custom Mode",
     kind: "host",
     cursor: "Custom Mode",
     dsh: "an explicit `/poteto-mode` on each new task",
@@ -237,6 +288,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "loop",
+    ledgerAnchor: "/loop",
     kind: "host",
     cursor: "`/loop`",
     dsh: "`create_goal` for automatic continuation, plus `schedule_create` only as a timed heartbeat",
@@ -248,6 +300,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "automations",
+    ledgerAnchor: "Cursor Automations",
     kind: "host",
     cursor: "Cursor Automations, `update_state`, `SendToUser`",
     dsh: "not mapped; routine-style automation is excluded",
@@ -258,6 +311,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "cloud-agent",
+    ledgerAnchor: "cloud agent",
     kind: "host",
     cursor: "cloud agent, `cloud_base_branch`, dashboard",
     dsh: "a local child with a real `cwd`, started from a local branch or a prepared checkout",
@@ -268,6 +322,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "deslop",
+    ledgerAnchor: "deslop",
     kind: "host",
     cursor: "`deslop`",
     dsh: "`/no-comments` plus one read-through of the diff",
@@ -278,6 +333,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "control-ui",
+    ledgerAnchor: "control-ui",
     kind: "host",
     cursor: "`control-ui`, `control-cli`",
     dsh: "a project verification skill or an existing driver",
@@ -289,6 +345,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "bugbot",
+    ledgerAnchor: "Bugbot",
     kind: "host",
     cursor: "Bugbot",
     dsh: "triage of review comments already on a pull request",
@@ -299,6 +356,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "pr-tool",
+    ledgerAnchor: "PR 工具",
     kind: "host",
     cursor: "built-in pull request tool",
     dsh: "resolved `gh`, or an `origin` CLI that is actually available",
@@ -308,6 +366,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "image-generation",
+    ledgerAnchor: "image generation",
     kind: "host",
     cursor: "image generation, `/visualize`",
     dsh: "Mermaid, existing screenshots, or a real renderer",
@@ -317,6 +376,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "worktree",
+    ledgerAnchor: "worktree",
     kind: "host",
     cursor: "worktree isolation",
     dsh: "the official worktree rows, mounted by this bundle when the profile lacks them",
@@ -325,6 +385,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "bundled-scripts",
+    ledgerAnchor: "pstack_script",
     kind: "tool",
     cursor: "`bun` + shell scripts under `poteto-mode/scripts/`",
     dsh: "`pstack_script`, which runs the bundled CLIs on the Host's own runtime",
@@ -334,6 +395,7 @@ export const CAPABILITIES: readonly Capability[] = [
   },
   {
     id: "make-bot-ui",
+    ledgerAnchor: "make-bot-ui",
     kind: "host",
     cursor: "the `/make-bot-ui` skill",
     dsh: "excluded from the port",

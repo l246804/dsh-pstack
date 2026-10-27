@@ -32,15 +32,16 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 | `degraded` | 宿主只有部分等价物，必须写明丢了什么 | 允许，但必须写明 |
 | `preserved` | 上游行为原样保留，只是范围变窄 | 允许 |
 | `excluded` | 不移植，所有用到它的技能都已改写 | 允许，但必须有理由 |
+| `deferred` | 后面的单元才交付，`Unit` 写明是哪个单元 | 允许，但必须写明单元 |
 | `regression` | 宿主**能**支持，却被删掉或改写弱化了 | **不允许**，必须修 |
 
-后四类在 `scripts/capabilities.ts` 里各有 `reason`。`regression` 是本清单专门要防的：它不该出现在最终状态里，只应出现在"本次核查发现并已修复"的记录中。
+前五类对应 `scripts/capabilities.ts` 的 `coverage`；其中非 `mapped` 的四类各带一条 `reason`。`regression` 只存在于本清单，是专门要防的：它不该出现在最终状态里，只应出现在"本次核查发现并已修复"的记录中。
 
 ## 一、能力映射表（`mapped` 与降级）
 
 权威来源是 `scripts/capabilities.ts`，它生成 `assets/docs/harness/dsh.md`。本文只列结论和易混淆处，不复述整表。
 
-### 完全对等（17 条 `mapped`）
+### 完全对等（16 条 `mapped`）
 
 `Task` 派发、`generalPurpose`、`poteto-agent`、`run_in_background`、`resume`、`file_attachments`、`AskQuestion`、`TodoWrite`、文件工具、按名调用技能、模型与档位、角色文件路径、项目技能目录、插件资源路径、worktree 隔离、随包脚本。
 
@@ -50,7 +51,7 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 - **档位控制**。`reasoningEffort` 是自由字符串，按目标模型自己广告的列表校验，不设本包的固定档位表。这比上游用 `-fast` 后缀拼 slug 的方式更精确，不是降级。
 - **随包脚本**。上游是 Bun 加 shell，这里是单文件 Node bundle，经 `pstack_script` 用宿主进程运行。接口对等（同一组命令行参数、同样的输出与退出码），换的是运行方式。见第六节。
 
-### 降级（13 条 `degraded`）
+### 降级（14 条 `degraded`）
 
 | 上游能力 | 这里的形态 | 丢了什么 |
 |---|---|---|
@@ -60,13 +61,14 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 | `agent-transcripts/` 目录 | `pstack_history` 分页读原始事件 | 无目录可读、无任意 session id、不遍历后代；冷读无法区分存储日志与读时修补事件 |
 | 跨会话检索（`recall`、`automate-me` 都要） | 官方 `session-search` bundle 提供的 `session_search` 与四个同类工具，需在 Plugins 里手动启用 | 该 bundle 官方默认关闭；`pstack_history` 不能替代它，只能读调用者自己与直接子会话。缺它时这两个技能只在当前会话内工作，跨会话那一半必须如实报为不可用 |
 | `paths:` 自动挂载 | 不消费该字段，技能改为显式调用 | `typescript-best-practices` 失去按文件自动触发 |
+| agent store | 由操作者指定的仓库目录，未指定时用 `.audit/<task-slug>/` 或 `docs/plans/` | 上游的 store 是宿主注入到 system prompt 的每 agent 目录：在仓库之外、跨会话存活、本次运行启动的每个 agent 都共享同一个位置。这里没有宿主分配的路径，只有"一个可写的地方"，而且每个 playbook 各自改指了仓库内路径。`orchestrate` 保留了每文件单写者纪律，但 resume 必须重新交出 standing orders，不能按 store 路径重读 |
 | Custom Mode | 每个新任务显式 `/poteto-mode` | 没有持久模式，没有快捷键 |
 | `/loop` | `create_goal` 承载目标，`schedule_create` 只作定时心跳 | 没有事件订阅；goal 续跑依赖 profile 挂载 round driver |
-| Cursor Automations | 不映射 | `automate-me` 只从授权历史起草技能并开 PR，不建 webhook routine |
 | cloud agent | 本地 child 加真实 `cwd`，用 worktree 隔离 | 无 VM、无跨设备恢复、无 dashboard、无云端存活检查 |
 | `deslop` | `/no-comments` 加一次 diff 通读 | 不是改名移植，是替换 |
 | `control-ui` / `control-cli` | 项目自己的验证技能或已有 driver | 没有 driver 就没有验证结论 |
 | 内置 PR 工具 | 解析出的 `gh` 或实际可用的 `origin` | 必须先解析 forge，没有内置工具 |
+| image generation | Mermaid、已有截图或真实渲染器 | 渲染不出就不能凭空造图，只读采集仍只读 |
 
 另有一条 `preserved`（Bugbot 只做已存在评论的 triage）与 2 条 `excluded`（`make-bot-ui`、Cursor Automations）。
 
@@ -158,6 +160,14 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 | `skills/automate-me/SKILL.md`（经 patch） | 把 `session_search` 写成"官方工具"，读起来像一定有；该工具由可选的 session-search 插件提供，当前 profile 并未挂载 | 改为"仅当 profile 挂载该可选插件时可用；缺失时说明跨会话那一半不可用，不得当作已完成" |
 | `skills/figure-it-out/SKILL.md`（经 patch） | 说"本包尚未随附历史工具"，而 `pstack_history` 已经随包发布 | 改为指向 `pstack_history`，并保留"无法归因时报告审计未完成"的诚实条款 |
 | `scripts/divergence-ledger.ts`、`check-assets.ts` | 本文本身没有任何检查守着，会像能力一样静默过期 | 新增 `checkDivergenceLedger`：本文缺失、缺类别定义、或引用的能力计数与 `capabilities.ts` 不符即失败 |
+| 本文第一节的降级表 | 表里有一行 `Cursor Automations`，而它在 `capabilities.ts` 里是 `excluded`；同时缺了 `image generation` 一行。因为一进一出，总数仍是 13，计数检查全绿 | 换回 `image generation` 行，把 `Cursor Automations` 留在 `excluded` 一节 |
+| 本文第一节的 `mapped` 列举 | 列了 16 个名字，`capabilities.ts` 有 17 条，缺 `agent store` | 补上（随后 `agent store` 本身改判为 `degraded`，见下一行） |
+| `scripts/capabilities.ts` 的 `agent-store` 行 | 判为 `mapped`，而本仓库自己的 patch 写着 "This host hands no agent store to the model"，`multi-phase-plan`、`autopilot-full`、`orchestrate` 三处都已改写。上游的 store 由宿主注入 system prompt，在仓库之外、跨会话存活、多个 agent 共享；移植后只剩"一个可写的地方" | 改判 `degraded`，写明丢的是宿主分配的位置、跨会话存活、以及每个 child 都已经知道的统一位置 |
+| `scripts/capabilities.ts` 的 `subagent-general` 行 | 只写 "never a DSH agent preset id"，读起来像本包不支持宿主预设；实际是另一个参数 `agentPreset` 负责这件事 | 补明两个参数分工，以及 `agentPreset` 仅在该行配了 `allowedAgentPresets` 时出现 |
+| 本文的类别词表 | 缺 `deferred`，且说"后四类各有 `reason`"与 `capabilities.ts` 的五类对不上 | 补齐 `deferred` 并修正这句 |
+| `scripts/divergence-ledger.ts` | 只比对计数，看不出"一条换一条" | 新增成员检查：每行带 `ledgerAnchor`，本文必须逐条点名，配 `tests/divergence-ledger.test.ts` 守住 |
+
+最后一行是这次真正的修复。前五条都是它的症状：**计数相等不等于成员相同**。历史漂移（`image generation` 被 `Cursor Automations` 顶掉，13 仍是 13）现在会让检查失败，`agent store` 被从列举里删掉也会。
 
 根因有两条，都属于同一类"能力/事实与现实脱节"：
 
@@ -166,11 +176,13 @@ V2 重写时发生过一次能力丢失，值得作为判例。上游 24 个文�
 
 两条的共同点：**声称能力存在或不存在，都没有检查去核对**。静态门查的是"不该出现的词有没有出现"，对这两种偏差都不敏感。
 
+这次核查还暴露了第三条，形状不同：**清单声称的数字对，但它是用错误成员凑出来的**。前述两条讲的是"某条内容错了"，这一条是"每条内容都像对的，整体却错了"——一进一出让总数守恒，于是任何只比对总数的检查都会放行。修法是让检查从"数到 13"变成"13 个分别是哪一个"。
+
 ## 六、这里多出来的东西
 
 上游没有、这里有的部分。同步上游时不要把它们当成"上游缺了"去补：
 
-- `pstack_subagent` 的 `reasoningEffort`、`roleIndex`、`maxDepth`、`agentPreset` 参数。
+- `pstack_subagent` 的 `reasoningEffort`、`roleIndex`、`maxDepth`、`agentPreset` 参数。`agentPreset` 与 `agent` 是两个参数，不冲突：`agent` 是 pstack 自带的三种 brief 形态之一（`poteto-agent` / `comment-sicko` / `general`），不接受 DSH 预设 id；要让 child 换一个宿主预设，用另一个参数 `agentPreset`，且只有该行配了 `allowedAgentPresets` 时它才出现在 schema 里。
 - child 作用域的 `set_reasoning_effort`。
 - `pstack_history`（受限只读历史）与 `pstack_script`（随包脚本运行）。
 - `scripts/` 整个生成链：patch 定义、资产生成、`check` 的四段（`check:assets`、`check:scripts`、`typecheck`、`test`）、运行时打包，以及第三方技能树的 `sync-skills-ext.ts`。

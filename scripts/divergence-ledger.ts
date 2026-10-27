@@ -28,7 +28,17 @@ export const LEDGER_CATEGORIES: readonly string[] = [
   "degraded",
   "preserved",
   "excluded",
+  "deferred",
 ];
+
+/**
+ * Category names the ledger's rule table must define that are not `coverage` values.
+ *
+ * `regression` is the ledger's own vocabulary for "the host could support this and the
+ * port dropped it". `capabilities.ts` cannot express it, because a regression is never
+ * an acceptable resting state.
+ */
+export const LEDGER_EXTRA_CATEGORIES: readonly string[] = ["regression"];
 
 export interface LedgerProblem {
   readonly message: string;
@@ -54,6 +64,14 @@ export function checkDivergenceLedger(): readonly string[] {
   const problems: string[] = [];
 
   for (const category of LEDGER_CATEGORIES) {
+    if (!text.includes(`\`${category}\``)) {
+      problems.push(
+        `${LEDGER_PATH}: does not define the \`${category}\` category, so a row using it has no stated meaning`,
+      );
+    }
+  }
+
+  for (const category of LEDGER_EXTRA_CATEGORIES) {
     if (!text.includes(`\`${category}\``)) {
       problems.push(
         `${LEDGER_PATH}: does not define the \`${category}\` category, so a row using it has no stated meaning`,
@@ -95,5 +113,34 @@ export function checkDivergenceLedger(): readonly string[] {
     }
   }
 
+  problems.push(...checkLedgerMembers(text));
+
+  return problems;
+}
+
+/**
+ * Assert the ledger still names every capability, not just the right number of them.
+ *
+ * The count check above cannot see a swap. It once passed while `/visualize` was absent
+ * from the ledger's degraded table and an `excluded` row (`Cursor Automations`) was
+ * listed there in its place: 13 rows, still 13. Quoting a total is not the same claim as
+ * naming the members, and only the second one survives an edit that trades one row for
+ * another.
+ *
+ * Each row carries a `ledgerAnchor` for this purpose rather than a mechanically derived
+ * name. Deriving one from `cursor` was tried and rejected: the field is upstream prose
+ * (`built-in pull request tool`), so the derived anchor matches nothing and reports a
+ * drift that is not there.
+ */
+function checkLedgerMembers(text: string): readonly string[] {
+  const problems: string[] = [];
+  for (const capability of CAPABILITIES) {
+    if (!text.includes(capability.ledgerAnchor)) {
+      problems.push(
+        `${LEDGER_PATH}: the ${capability.coverage} capability "${capability.id}" is not named; ` +
+          `the ledger's member list is missing ${JSON.stringify(capability.ledgerAnchor)}`,
+      );
+    }
+  }
   return problems;
 }
