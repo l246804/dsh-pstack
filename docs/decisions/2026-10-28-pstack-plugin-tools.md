@@ -1,9 +1,9 @@
 # 决定：pstack 插件工具面按命名加载、角色文件与 agent preset 组织
 
-Status: proposed
+Status: accepted
 Date: 2026-10-28
 Scope: src/**, tests/**, cordis.patch.yml
-Implemented-by: -
+Implemented-by: commit:2d47218696015d461e93216cea3d9602d2d24917
 Review: 2027-04-28
 
 ## 背景

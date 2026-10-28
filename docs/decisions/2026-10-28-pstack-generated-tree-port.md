@@ -1,9 +1,9 @@
 # 决定：pstack 以生成树为唯一产物，脚本在 runtime 重写为 Node
 
-Status: proposed
+Status: accepted
 Date: 2026-10-28
 Scope: pstack/**
-Implemented-by: -
+Implemented-by: commit:489334b88c460bb988916d008d3f602a43f5fe64
 Review: 2027-04-28
 
 ## 背景

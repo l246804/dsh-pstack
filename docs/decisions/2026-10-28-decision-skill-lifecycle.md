@@ -1,9 +1,9 @@
 # 决定：决策记录的状态更新并入 decision-write，不单开技能
 
-Status: proposed
+Status: accepted
 Date: 2026-10-28
 Scope: skills/authored/decision-*/**, skills/authored/setup-project-docs/**, skills-lock.json, docs/decisions/AGENTS.md, AGENTS.md
-Implemented-by: -
+Implemented-by: commit:aeaf377199f5a215fd8267bcce534acb0f954c0c
 Review: 2027-04-28
 
 ## 背景

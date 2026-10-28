@@ -1,9 +1,9 @@
 # 决定：skills 目录只补充 pstack 缺失的能力
 
-Status: proposed
+Status: accepted
 Date: 2026-10-28
 Scope: skills/**
-Implemented-by: -
+Implemented-by: commit:478a5140b15cbab8d927b6ce4626c2e71e840a48
 Review: 2027-04-28
 
 ## 背景
