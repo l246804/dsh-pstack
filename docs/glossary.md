@@ -9,7 +9,7 @@
 
 ## 覆盖层（overlay）
 
-`pstack/overlay/` 与 `overlay.yml`：手写文件按路径镜像生成树、替换上游同名文件；`overlay.yml` 记 `replaces`、`revision`、`sha256`，哈希与上游不符时构建失败。
+`pstack/overlay/` 与 `overlay.yml`：手写文件按路径镜像生成树、替换上游同名文件；`overlay.yml` 记 `replaces`、`revision`、`sha256`，`verify:overlay` 在渲染前核对哈希，不符就构建失败。
 反例：不要把 `pstack/pstack/` 里已生成的结果叫作“覆盖层”。
 
 ## 随包内容（shipped payload）

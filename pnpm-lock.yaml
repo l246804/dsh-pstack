@@ -235,6 +235,9 @@ importers:
         specifier: catalog:inlined
         version: 14.0.0
     devDependencies:
+      js-yaml:
+        specifier: catalog:testing
+        version: 5.5.0
       vite-plus:
         specifier: catalog:cli
         version: 1.4.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)

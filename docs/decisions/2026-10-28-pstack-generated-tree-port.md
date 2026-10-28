@@ -20,7 +20,7 @@ pstack 是上游 `cursor/plugins` 里的 Cursor 插件（`upstream/cursor-plugin
 
 ## 决定
 
-`pstack/pstack/` 是 `pstack/scripts/generate-pstack-harness-tree.mjs` 从上游渲染出的生成树，是唯一要发布的内容，不手工编辑。文本差异放到 `pstack/overlay/`，按生成树内的路径镜像；`overlay.yml` 为每个改写上游文件登记 `replaces`、`revision`、`sha256`，生成器会核对上游文件哈希与 pin 的 revision，不符就让构建失败。宿主适配文档 `docs/harness/dsh.md` 登记为 `replaces: none`，是 DSH 自己的文档，没有可比对的上游文件；它的内容规则不在本记录范围内。
+`pstack/pstack/` 是 `pstack/scripts/generate-pstack-harness-tree.mjs` 从上游渲染出的生成树，是唯一要发布的内容，不手工编辑。文本差异放到 `pstack/overlay/`，按生成树内的路径镜像；`overlay.yml` 为每个改写上游文件登记 `replaces`、`revision`、`sha256`，`verify:overlay` 在渲染前核对上游文件哈希与 pin 的 revision，不符就让构建失败。宿主适配文档 `docs/harness/dsh.md` 登记为 `replaces: none`，是 DSH 自己的文档，没有可比对的上游文件；它的内容规则不在本记录范围内。
 
 上游所有脚本在 `pstack/runtime/skills/<技能>/scripts/**` 下重写为 Node 脚本，目录结构逐一对应上游脚本的真实路径：
 
@@ -32,8 +32,9 @@ pstack 是上游 `cursor/plugins` 里的 Cursor 插件（`upstream/cursor-plugin
 
 脚本需要的三方依赖（目前是 `commander`）声明为包的生产依赖，由安装插件的 pnpm 自动装好；编译产物里不再复制一份依赖。
 
-移植后的正确性由生成器在渲染时对照上游校验，不另设验证脚本：
+移植后的正确性分两处校验——覆盖层由 `pstack/scripts/verify-overlay.mjs` 在 `generate` 前独立校验，其余由生成器在渲染时对照上游校验：
 
+- `overlay.yml` 里每个 `sha256` 必须等于它声明的上游文件当前哈希，`path` 与 `replaces` 必须成对，且 `pstack/overlay/` 下不能有未登记的文件；
 - 每个技能的 frontmatter `name` 必须等于文件夹名，且符合技能名格式；
 - 技能正文里出现的每个 Cursor 专有名词（`Task`、`AskQuestion`、模型 slug、`.cursor/` 路径等）必须在宿主适配文档里有对应行；
 - 相对链接指向的文件必须在生成树里存在，否则改写成上游 GitHub 地址，指向树内却缺失即失败；
