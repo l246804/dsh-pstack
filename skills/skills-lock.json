@@ -3,6 +3,7 @@
   "skills": {
     "writing-for-agents": {
       "source": "mattpocock/skills",
+      "ref": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
       "sourceType": "github",
       "skillPath": "skills/productivity/writing-for-agents/SKILL.md",
       "computedHash": "95da47fc97af998e85b7d7e6d57b3ac76727c1e290cfe9ea09005aacb826959f",

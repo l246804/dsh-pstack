@@ -28,13 +28,13 @@ export default defineConfig({
         command: "node scripts/replace-scripts.mjs",
         dependsOn: ["build:runtime", "copy:pstack"],
       },
-      "test:runtime": {
-        command: "node --test 'dist/runtime/**/*.test.mjs'",
-        dependsOn: ["build:runtime"],
-      },
       build: {
         command: "vp run replace:scripts",
         dependsOn: ["replace:scripts"],
+      },
+      test: {
+        command: "node --test 'dist/runtime/**/*.test.mjs'",
+        dependsOn: ["build:runtime"],
       },
     },
   },

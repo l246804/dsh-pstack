@@ -21,7 +21,7 @@ catalogs:
     vite: npm:@voidzero-dev/vite-plus-core@1.4.0
     vite-plus: 1.4.0
   types:
-    '@types/node': ^24.1.0
+    "@types/node": ^24.1.0
     "@deepseek-ai/dsh-agent": "0.2.1-rc.3"
     "@deepseek-ai/dsh-jobs": "0.2.1-rc.3"
     "@deepseek-ai/dsh-llm": "0.2.1-rc.3"

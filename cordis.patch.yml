@@ -1,25 +1,20 @@
 # dsh-pstack bundle patch.
 #
 # `pstack` registers the bundled skill provider. `pstack-subagent` registers
-# `pstack_subagent`, which starts one child per activation and re-reads the role
-# file on every delegation. `pstack-history` registers `pstack_history`, the
-# restricted read-only history tool; it reads raw events through `sessionQuery`
-# and authorizes the caller and its direct children only.
+# `pstack_subagent`, which re-reads the role file on every delegation. `pstack-models`
+# registers the read-only `pstack_models` model directory. `pstack-script` registers
+# `pstack_script`.
 #
-# The two worktree rows carry the README promise that worktree support ships as a
-# necessary dependency: the bundle turns the official integration on when the
-# profile does not have it, and mounts nothing when it does. `disabled: !!js` is
-# evaluated by the Loader at every mount decision, and each expression reads the
-# composed row list rather than a startup snapshot. The row handle is
-# `ctx[Symbol.for('cordis.entry')]` (this entry), not `ctx.fiber.entry`, which
-# resolves to the enclosing `include` row and therefore never sees these siblings.
-# `scripts/worktree-mount.ts` owns the text of both expressions and `check:assets`
-# fails when this file drifts from it. See
-# docs/decisions/2026-10-26-worktree-guard-reads-own-entry.md.
+# The two worktree rows and the session-query row carry the README promise that each
+# integration turns on only when the profile does not already provide it. `disabled:
+# !!js` is evaluated by the Loader at every mount decision. The row handle is
+# `ctx[Symbol.for('cordis.entry')]` (this entry), not `ctx.fiber.entry`, which resolves to
+# the enclosing `include` row and never sees these siblings. The expression returns
+# `false` (mount) when it cannot read the composed row list.
 #
-# `pstack-history` is appended after the unit-4 rows so no delivered line moves.
-# Row order is not part of the history contract; the two worktree guards, by
-# contrast, stay adjacent and byte-identical to their generator.
+# `@deepseek-ai/dsh-tool-session-query` rides over the existing `ctx.sessionQuery`
+# backend; no SQLite backend is added here, and an existing backend config is never
+# overwritten. See docs/decisions/2026-10-26-worktree-guard-reads-own-entry.md.
 - insert:
     - id: pstack
       name: dsh-pstack
@@ -27,13 +22,16 @@
       name: dsh-pstack/subagent
       config:
         maxDepth: 2
+    - id: pstack-models
+      name: dsh-pstack/models
+    - id: pstack-script
+      name: dsh-pstack/script
     - id: pstack-worktree
       name: '@deepseek-ai/dsh-experimental-worktree'
       disabled: !!js "(() => { const own = ctx[Symbol.for('cordis.entry')]; const rows = own && own.parent && own.parent.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-worktree' && row.name === '@deepseek-ai/dsh-experimental-worktree' && row.disabled !== true) })()"
     - id: pstack-tool-worktree
       name: '@deepseek-ai/dsh-experimental-tool-worktree'
       disabled: !!js "(() => { const own = ctx[Symbol.for('cordis.entry')]; const rows = own && own.parent && own.parent.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-tool-worktree' && row.name === '@deepseek-ai/dsh-experimental-tool-worktree' && row.disabled !== true) })()"
-    - id: pstack-history
-      name: dsh-pstack/history
-    - id: pstack-script
-      name: dsh-pstack/script
+    - id: pstack-tool-session-query
+      name: '@deepseek-ai/dsh-tool-session-query'
+      disabled: !!js "(() => { const own = ctx[Symbol.for('cordis.entry')]; const rows = own && own.parent && own.parent.data; if (!Array.isArray(rows)) return false; return rows.some((row) => row !== null && typeof row === 'object' && row.id !== 'pstack-tool-session-query' && row.name === '@deepseek-ai/dsh-tool-session-query' && row.disabled !== true) })()"

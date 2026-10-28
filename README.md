@@ -1,6 +1,6 @@
 # dsh-pstack
 
-<img src="static/icon.png" alt="pstack logo" width="96" height="96">
+<img src="assets/icon.png" alt="pstack logo" width="96" height="96">
 
 pstack 的 DeepSeek Harness 移植。它把 Cursor pstack 的技能、playbook、原则和角色化子代理工作流带到 DSH。
 
@@ -26,7 +26,7 @@ dsh-pstack 沿用这个思路。**技能正文保留上游原文**，宿主差�
 
 - worktree 插件。并行写入和隔离工作目录需要它。未启用时插件自动启用，已启用时不会重复启用。
 - DSH 的 skills 和 subagents 能力，由支持的 DSH 版本提供。
-- Node.js `>=22.19`。仅 npm CLI 部署需要它出现在 `PATH` 上；Desktop（Electron）部署走 Host 自己的运行时。
+- Node.js `>=24.21.0`。仅 npm CLI 部署需要它出现在 `PATH` 上；Desktop（Electron）部署走 Host 自己的运行时。
 - Git。worktree 需要 Git 仓库。
 
 随包的编排、PR watcher、计划检查、worktree 审计和决策日志脚本已构建为单文件 Node 产物，依赖全部内联，源码在 `pstack/runtime/`。运行时通过 `pstack_script` 工具以宿主进程启动它们，因此**不需要 Bun，也不需要 bash，更不需要安装任何依赖**。Desktop 用户不在 `PATH` 上放 `node` 也能用：工具用 Electron 自带的 Node 运行时执行，并在需要时自动附加 `ELECTRON_RUN_AS_NODE`。脚本从**会话目录**启动，所以参数里的相对路径落在当前工作区或 worktree 内。
@@ -86,7 +86,6 @@ dsh plugin --profile <profile> add dsh-pstack
 
 合法档位由目标模型自己广告。本包不假设通用阶梯，所以参数是自由字符串而不是枚举。值不被支持时，调用在启动任何子代理**之前**失败，并在错误里列出该模型真实支持的档位。panel 中任一项不支持时整次失败，不会只启动一半。
 
-
 ## 功能范围与已知限制
 
 包含 55 个 pstack 技能、23 个 playbook、24 个原则和两个子代理人格，另加 `skills/` 下的第三方技能与本仓库自写的技能。
@@ -109,11 +108,11 @@ dsh plugin --profile <profile> add dsh-pstack
 
 来源有两种。默认是 `vendored`，即上游某个提交的逐字节拷贝，内容哈希让它可验证。`origin: local` 表示那段文本就是本包的源，没有上游可 pin，因此跳过哈希与远端比对，只保留文件清单。`local` 来源当前提供三个技能：
 
-| 技能 | 调用方式 | 作用 |
-|---|---|---|
-| `decision-write` | 模型可调用 | 起草 `docs/decisions/` 下的决策记录：查重、验锚点、查 Scope 是否覆盖本次改动 |
-| `decision-audit` | 仅用户调用 | 按改动面列出需要人看的记录，只出报告，不改文件 |
-| `setup-project-docs` | 仅用户调用 | 写架构、术语表、决策记录目录，并把指针写进仓库根的 `AGENTS.md` |
+| 技能                 | 调用方式   | 作用                                                                         |
+| -------------------- | ---------- | ---------------------------------------------------------------------------- |
+| `decision-write`     | 模型可调用 | 起草 `docs/decisions/` 下的决策记录：查重、验锚点、查 Scope 是否覆盖本次改动 |
+| `decision-audit`     | 仅用户调用 | 按改动面列出需要人看的记录，只出报告，不改文件                               |
+| `setup-project-docs` | 仅用户调用 | 写架构、术语表、决策记录目录，并把指针写进仓库根的 `AGENTS.md`               |
 
 前两个在仓库没有 `docs/decisions/` 时停下并说明，不创建目录，所以"不启用"就是让它们静默失效，不需要额外配置。`setup-project-docs` 是唯一写仓库文件的技能，且只由你显式调用。
 
@@ -179,4 +178,3 @@ MIT，见 [LICENSE](LICENSE)。
 - [mattpocock/skills](https://github.com/mattpocock/skills)，版权归 Matt Pocock，MIT 许可证。`writing-for-agents` 技能来自该仓库。
 
 构建期依赖不在署名范围内。`commander` 这类开发依赖在构建时内联进产物，与其余 `devDependencies` 一样按常规开源项目处理，不逐个在本文署名。每个来源的许可证与提交号另记在 `skills/sources.yml`。
-

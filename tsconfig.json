@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": ["esnext", "esnext.disposable"],
+    "lib": ["esnext"],
     "moduleDetection": "force",
     "module": "nodenext",
     "moduleResolution": "nodenext",
@@ -15,7 +15,7 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
   },
   // The hand-written sources are type-checked; the generated tree is not, because it is
   // upstream text this repository renders rather than code it maintains. The fork is

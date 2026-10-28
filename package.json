@@ -2,14 +2,6 @@
   "name": "dsh-pstack",
   "version": "0.2.0-beta.1",
   "description": "pstack for DeepSeek Harness: rigorous agent workflows ported from cursor/plugins.",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/l246804/dsh-pstack.git"
-  },
-  "homepage": "https://github.com/l246804/dsh-pstack#readme",
-  "bugs": {
-    "url": "https://github.com/l246804/dsh-pstack/issues"
-  },
   "keywords": [
     "agent-skills",
     "deepseek-harness",
@@ -19,13 +11,25 @@
     "pstack",
     "workflow"
   ],
+  "homepage": "https://github.com/l246804/dsh-pstack#readme",
+  "bugs": {
+    "url": "https://github.com/l246804/dsh-pstack/issues"
+  },
+  "license": "MIT",
   "author": {
     "name": "leiwang",
     "email": "leiwang2000@foxmail.com"
   },
-  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/l246804/dsh-pstack.git"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "cordis.patch.yml"
+  ],
   "type": "module",
-  "icon": "./assets/icon.png",
   "types": "./dist/index.d.mts",
   "exports": {
     ".": "./dist/index.mjs",
@@ -34,19 +38,12 @@
     "./subagent": "./dist/subagent.mjs",
     "./package.json": "./package.json"
   },
-  "files": [
-    "dist",
-    "assets",
-    "cordis.patch.yml"
-  ],
-  "dsh": {
-    "manifestVersion": 1,
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
+  "scripts": {
+    "prerelease": "vp run -r test",
+    "release": "bumpp",
+    "prepublishOnly": "vp run build"
   },
   "dependencies": {
-    "commander": "catalog:inlined",
     "@deepseek-ai/dsh-agent": "catalog:types",
     "@deepseek-ai/dsh-jobs": "catalog:types",
     "@deepseek-ai/dsh-llm": "catalog:types",
@@ -55,7 +52,8 @@
     "@deepseek-ai/dsh-subagent": "catalog:types",
     "@deepseek-ai/dsh-system-prompt": "catalog:types",
     "@deepseek-ai/dsh-tools": "catalog:types",
-    "@deepseek-ai/dsh-working-directory": "catalog:types"
+    "@deepseek-ai/dsh-working-directory": "catalog:types",
+    "commander": "catalog:inlined"
   },
   "devDependencies": {
     "@types/node": "catalog:types",
@@ -67,6 +65,7 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "~4.0.5"
   },
+  "icon": "./assets/icon.png",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
@@ -80,7 +79,13 @@
     }
   },
   "engines": {
-    "node": ">=24.21.0",
-    "dsh": "0.2.1-rc.3"
+    "dsh": "0.2.1-rc.3",
+    "node": ">=24.21.0"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   }
 }
