@@ -12,8 +12,7 @@ jobs:
       publish: true
       build: |
         git submodule update --init --recursive
-        pnpm run build:runtime
-        pnpm run build:bundle
+        pnpm exec vp run build
     permissions:
       contents: write
       id-token: write
