@@ -1,12 +1,12 @@
 ---
 name: setup-project-docs
-description: Set up a repository's architecture, glossary, decision records, and root agent-doc pointers. Run once per repository.
+description: Bootstrap architecture, glossary, decision-record documentation, and root agent-doc pointers; rerun to fill approved gaps.
 disable-model-invocation: true
 ---
 
 # Set up project docs
 
-Establish living documentation and context pointers to it. Reuse existing homes and conventions; the person approves every new file before it is written.
+Create or complete living project documentation and its context pointers. Obtain approval before writing or modifying files.
 
 | Piece | Answers | Default location |
 |---|---|---|
@@ -17,31 +17,31 @@ Establish living documentation and context pointers to it. Reuse existing homes 
 
 ## 1. Inventory the repository
 
-Inspect the root `AGENTS.md`, existing architecture and glossary documents, and `docs/decisions/`, `docs/adr/`, `doc/adr/`. Use existing paths and conventions instead of creating parallel homes. If several decision directories exist, ask which is current.
+Inspect root `AGENTS.md`, existing architecture and glossary documents, and `docs/decisions/`, `docs/adr/`, `doc/adr/`. Reuse existing homes and conventions. If several decision directories exist, ask which is current and wait.
 
-Read the build and workspace configuration to determine the repository's module boundaries. Inspect real directories and entry points until you can name the principal modules and their responsibilities. Stop when every proposed document has a source-backed outline and every missing fact is identified.
+Read build and workspace configuration, real directories, and entry points until every principal module has a source-backed responsibility. Finish with an outline for each proposed document and an explicit list of facts the repository cannot supply.
 
 ## 2. Confirm the plan
 
-Present what exists, what is missing, and the proposed paths. Ask for decisions the repository cannot supply, leading with a recommendation:
+Present existing, missing, and proposed paths. Lead with recommendations for decisions the repository cannot supply:
 
 - **Decision records:** recommend them when choices are costly to reverse; a small script or disposable prototype usually needs none. Declining leaves the related skills inert.
-- **Glossary layout:** recommend one file. Offer per-context glossaries only when the repository has genuinely separate bounded contexts.
+- **Glossary layout:** recommend one file; split by context only for genuinely separate bounded contexts.
 
-Get approval for the files and content to write. A re-run instead confirms which missing pieces to add and which existing pointers to update.
+Confirm the proposed paths and content. On a rerun, limit the plan to missing pieces and stale pointers. Step 3 supplies the final write approval.
 
 ## 3. Draft source-backed content
 
-- **Architecture:** start with a module table using real directories and entry points. Document dependency direction and extension points demonstrated by the code; leave rationale to decision records.
-- **Glossary:** define three to five terms already used by the code whose ambiguity would cause divergent names.
-- **Decisions:** write one real record only when an existing choice warrants it; otherwise create no placeholder record.
-- **Decision conventions:** put record format, scope, status transitions, and search rules in the chosen decision directory's `AGENTS.md` when decision records are enabled.
+- **Architecture:** use a module table with real directories and entry points. Document dependency direction and extension points demonstrated by the code; put rationale in decision records.
+- **Glossary:** define three to five existing code terms whose ambiguity could produce divergent names.
+- **Decisions:** create no placeholder record. Leave any real record to `decision-write`; this skill only scaffolds the directory and conventions.
+- **Decision conventions:** when enabled, write `<dir>/AGENTS.md` following [the decision-record conventions](references/decision-conventions.md).
 
-Show all drafts together and obtain approval before writing.
+Present every draft together and obtain approval before writing. The approved set is the write plan.
 
 ## 4. Write or update
 
-Create only approved files. Preserve and edit existing files in place. Update the single block under `## Project docs` in root `AGENTS.md`, adapting this example to its language and approved paths:
+Create or update exactly the approved paths, editing existing files in place. Keep one `## Project docs` block in root `AGENTS.md`, adapted to its language and actual paths:
 
 ```markdown
 ## Project docs
@@ -51,8 +51,8 @@ Create only approved files. Preserve and edit existing files in place. Update th
 - Before writing or reviewing decisions, read `docs/decisions/AGENTS.md` for format and search conventions.
 ```
 
-Each pointer states its trigger and target. Keep the block to these three approved branches; omit pointers to declined documents. Use the actual glossary and decision paths, and point to the plain decision reference rather than presenting a user-invoked skill as automatically callable.
+Lead each pointer with its trigger and target; include only approved branches. Point decision work to the plain reference.
 
 ## 5. Verify and report
 
-Verify that root `AGENTS.md` contains one `## Project docs` block and that every pointer resolves from the repository root. Report written, updated, and skipped paths with reasons. State that the pointers take effect in the next session.
+Confirm that root `AGENTS.md` contains one `## Project docs` block, every approved path was written or updated, and every pointer resolves from the repository root. Report written, updated, and skipped paths with reasons. State that pointers take effect in the next session.

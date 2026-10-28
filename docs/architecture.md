@@ -7,14 +7,15 @@
 | 模块 | 目录与入口 | 职责 |
 |---|---|---|
 | 根打包 | 根 `vite.config.ts`、根 `package.json` | 用 vite-plus 打包 `src/*.ts`，并把生成树与技能复制进 `dist/`；npm 只发布 `dist/`、`assets/`、`cordis.patch.yml` |
-| 插件入口 | 根 `src/*.ts`、`cordis.patch.yml` | 注册 bundle 技能 provider、`pstack_skill`、`pstack_models`、`pstack_subagent`、`pstack_script`；patch 声明这些行与 `poteto-agent`、`comment-sicko` 两个 agent preset |
+| 插件入口 | 根 `src/*.ts`、`cordis.patch.yml` | `pstack` 行注册 bundle 技能 provider 与 `pstack_skill`；`cordis.patch.yml` 另声明 `pstack-models`、`pstack-subagent`、`pstack-script` 三行及 `poteto-agent`、`comment-sicko` 两个 agent preset |
+| 插件内部 | 根 `src/internal/*.ts` | 宿主契约、技能索引与角色配置：`host-contract.ts` 只从 `@deepseek-ai/*` 导入类型，`skill-provider.ts` 建 bundle 技能目录，`role-config.ts` 与 `role-manifest.ts` 解析角色文件，`effort.ts` 校验 effort，`script-registry.ts` 列随包脚本，`paths.ts` 定资源根，`frontmatter.ts` 读上游 frontmatter，`audit-context.ts` 注入 `.audit` 约定 |
 | 插件验证 | 根 `tests/**/*.test.ts` | 驱动插件公共行为：隐藏技能加载、模型目录、角色文件解析与 preset 选择 |
 | pstack 工作区（`@internal/pstack`） | `pstack/package.json`、`pstack/vite.config.ts` | 编译运行时脚本、生成移植树、组装 `pstack/dist/` |
 | 覆盖层 | `pstack/overlay/`、`pstack/overlay/overlay.yml` | 手写文件按路径镜像生成树，替换上游同名文件；`overlay.yml` 记 `replaces`、`revision`、`sha256`，`verify:overlay` 在渲染前核对上游哈希 |
 | 运行时 | `pstack/runtime/skills/<技能>/scripts/**` | 可执行脚本的 TS 源码，编译成 mjs 后替换随包树里上游附带的脚本 |
 | 生成器 | `pstack/scripts/*.mjs` | `verify:overlay`（渲染前校验覆盖层）、`generate`（渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
 | 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加覆盖层渲染；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移 |
-| 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/.agents/skills/`（`skills experimental_sync` 的落盘目录） | 随包发布的非上游技能；`authored/` 手写、`.agents/skills/` 是 vendored 技能（构建时以 `vendored/` 落进 `dist/skills`），带哈希与提交号（记于 `skills-lock.json`） |
+| 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/.agents/skills/`（`skills experimental_sync` 的落盘目录） | 随包发布的非上游技能；`authored/` 手写、`.agents/skills/` 是 vendored 技能（构建时以 `vendored/` 落进 `dist/skills`），带哈希与提交号（记于 `skills/skills-lock.json`） |
 | 仓库维护技能 | 根 `.agents/skills/<名>/SKILL.md`、`README.md`、`references/` | 路由型维护技能的入口、使用说明与按分支加载的指令；不进入 `dist/` 或随包技能工作区 |
 | 本地扩展登记 | `docs/extensions.md` | 登记 DSH 版独立功能的 `EXT-*` 需求、DSH 依赖与验收；基线重建保留这些范围 |
 | 上游子模块 | `upstream/cursor-plugins`、`upstream/deepseek-harness` | 生成树的来源，与 DSH 宿主的参考实现 |
@@ -30,6 +31,7 @@ upstream/cursor-plugins/pstack + pstack/overlay
                                       ▲
 pstack/runtime ──vp pack──▶ pstack/dist/runtime ──replace:scripts──┘
 
+pstack/dist/pstack ──根 vp pack（copy）──▶ dist/pstack
 skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
   （后者在 dist 里落名为 vendored/）
 根 src/*.ts ──根 vp pack──▶ dist/{index,models,script,skill,subagent}.mjs
@@ -47,6 +49,6 @@ skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
 ## 已知缺口
 
 - vendored 技能来源记在 `skills/skills-lock.json`，不存在单独的 `skills/sources.yml`。
-- `pstack/overlay/docs/harness/dsh.md` 仍是上一轮工具名的适配文档；面向用户的运行时映射由 `doc` 阶段按当前实现重写。
+- `pstack/pstack/` 生成树落后于覆盖层：覆盖层 `docs/harness/dsh.md` 已按当前实现重写，但 `node pstack/scripts/generate-pstack-harness-tree.mjs --check` 仍报告生成树的 `docs/harness/dsh.md` 与 `docs/guide/01-setup.md` 两处漂移；覆盖层 `docs/guide/01-setup.md` 还把 DSH 角色文件写成 `$DSH_HOME/pstack-models.mdc`（实现读取 `$DSH_HOME/poteto-models.mdc`）。先改覆盖层，再重跑 `generate` 并提交结果。
 
 本节记录的是当前事实；缺口修复或消失后同步更新。

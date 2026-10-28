@@ -1,86 +1,99 @@
 ---
 name: decision-audit
-description: Read-only report of decision records relevant to a change or repository, with command evidence.
+description: Audit decision records against a change set or the whole repository; report routing, status, scope, anchor, supersession, and review findings with command evidence.
 disable-model-invocation: true
 ---
 
 # Audit decision records
 
-Report which records need human attention. Do not edit files or decide whether the code still matches a decision. Every finding cites the command and observed output that supports it.
+Produce a read-only report of records needing human attention, without judging whether code still honors a decision. Cite each finding with its command and observed output; leave every edit to `decision-write`.
 
-## 1. Resolve inputs
+## 1. Resolve the inputs
 
-Inputs are `mode` (`pr` by default, `local`, or `full`), optional `base`, and optional `scope` paths that replace the computed change set.
+Accept `mode` (`pr`, `local`, or `full`; default `pr`), optional `base`, and optional `scope` paths replacing the computed change set.
 
-Use the PR base for `pr` and `origin/main` otherwise. If absent, try `origin/master`, `main`, `master`, the newest tag, then `HEAD~20`; report the selected ref. If none resolves, stop and list the attempted refs.
+For `pr`, resolve the PR base; otherwise try `origin/main`. When absent, try `origin/master`, `main`, `master`, the newest tag, then `HEAD~20`. Report the selected ref, or stop and list every attempted ref.
 
-Inspect `docs/decisions/`, `docs/adr/`, and `doc/adr/`. Use the single existing directory as `<dir>` and report its path. If several exist, ask which is current and wait. If none exists or it is empty, report that normal result and stop.
+Inspect `docs/decisions/`, `docs/adr/`, and `doc/adr/`:
+
+- One exists: call it `<dir>` and report its path.
+- Several exist: ask which is current and wait.
+- None exists or it contains no records: report that normal result and stop.
 
 ## 2. Collect the evidence
 
-For `pr` and `local`, compute the change set unless `scope` was supplied:
+When `scope` is absent, compute the change set:
 
 ```bash
+# pr
 git diff --name-only "$(git merge-base HEAD <base>)"..HEAD
+
+# local: base-relative commits plus the working tree and index
+git diff --name-only "$(git merge-base HEAD <base>)"..HEAD
+git status --porcelain=v1 --untracked-files=all
 ```
 
-Exclude lock files, generated files, snapshots, and pure assets. For `full`, use all tracked files instead.
+Decode `git status` paths, including the destination of a rename. For `full`, use all tracked files. Exclude lock files, generated files, snapshots, and pure assets from the computed set; record these exclusions and the final set.
 
-Read each record through its first `## ` heading and parse the header. Put records predating the five-field header in a separate legacy list; they need human backfill and are exempt from the checks below.
+Read `<dir>/AGENTS.md` and `<dir>/README.md` when present; these are conventions, not records. Apply their conventions to every other `*.md`. Parse each header through its first `## ` heading. List records missing any of `Status`, `Date`, `Scope`, `Implemented-by`, or `Review` separately as `Legacy`, exempt from all six checks.
 
-## 3. Apply all five checks
+Apply every applicable check to every current record; a record may have multiple findings.
 
-**A — Route.** For every non-`superseded` record whose `Scope` matches the change set, report its title, path, matching paths, and change-set evidence. Keep this to one line; the record supplies the details.
+## 3. Apply all six checks
 
-**B — Candidate status.** Report a `proposed` record only when its anchor verifies:
+**A — Route.** For each non-`superseded` record whose `Scope` matches the change set, report its title, path, matched paths, and change-set evidence in one line.
 
-- `PR #N`: `gh pr view N --json state` returns `MERGED`.
-- `commit:SHA`: `git merge-base --is-ancestor SHA <base>` exits 0.
+**B — Status pair.** Use the anchor results below and report each matching row:
 
-A `-` anchor is pending, not a finding. Put unverifiable anchors in an `Unverified` section, outside B and C.
+| Status | Anchor result | Finding |
+|---|---|---|
+| `proposed` | verified | Should be `accepted` |
+| `accepted` | `-`, missing, pending, or unverified | Landing lacks verified evidence |
 
-**B′ — Dead scope.** For an `accepted` record, report when no `Scope` glob matches an existing file. Give the path and glob-check evidence; ask whether the decision is obsolete or the scope is wrong.
+For `proposed`, `-` or a pending anchor is not a finding; an unverified anchor belongs in `Unverified`, outside B and C.
 
-**C — Broken anchor.** Report a commit missing from history or an unresolvable PR. Before calling a commit lost, recover its patch identity when its object remains available:
+**B′ — Dead scope.** For each `accepted` record with no `Scope` glob matching an existing file, report its path and glob-check evidence. Ask whether the decision is obsolete or its scope is wrong.
+
+**C — Broken anchor.** For each non-`superseded` `Implemented-by` value, classify it with evidence:
+
+| Value | Verification | Result |
+|---|---|---|
+| `-` or missing | None | Pending |
+| `PR #N` | `gh pr view N --json state,files` | `MERGED`: continue below; `OPEN`: pending; `CLOSED`: C; otherwise: unverified |
+| `commit:SHA` | `git merge-base --is-ancestor SHA <base>` | Exit 0: continue below; exit 1: C; otherwise: unverified |
+| Any value | Command unavailable, authentication fails, or object cannot be read | Unverified |
+
+For a landed PR or ancestral commit, list its paths with `gh pr view N --json files --jq '.files[].path'` or `git show --pretty=format: --name-only SHA`. `Verified` requires a path matching `Scope` and at least one path outside `<dir>`; otherwise report C with the path evidence.
+
+Before reporting a commit as lost, read [Recover a rewritten commit](references/recover-commit.md) and attempt patch-identity recovery while its object remains available.
+
+**D — Overdue review.** In `full` mode only, report each record whose `Review` date is before the current date. Collect the changes since the decision date:
 
 ```bash
-git show <dead-sha> | git patch-id --stable
+date +%F
+git log --since=<Date> --oneline -- <Scope paths>
 ```
 
-Search plausible replacements within the record's date and scope:
+Include the count and latest subject when present; suggest human review and a new `Review` date.
 
-```bash
-git log --since=<Date> --format=%H -- <Scope paths> |
-  while read -r sha; do git show "$sha" | git patch-id --stable; done |
-  grep -F "<patch-id>"
-```
-
-A match supports suggesting the new SHA. No match remains a human question. Prefer PR anchors in squash-merged repositories.
-
-**D — Overdue review.** In `full` mode only, report commits touching a record's `Scope` after its `Review` date:
-
-```bash
-git log --since=<Review> --oneline -- <Scope paths>
-```
-
-Include the count and latest subject; suggest human review and a new `Review` date.
+**E — Superseded record.** For each current `superseded` record, report when `Superseded-by` is missing, does not resolve to a record in `<dir>`, or carries no ` — <reason>` text. Suggest adding the replacing record path and a one-line reason.
 
 ## 4. Report and trim
 
-Order findings `C`, `B`, `B′`, `D`, `A`; within each class, put more matched files first.
+Account for every current record as pending, clean, unverified, or carrying one or more findings. Order findings `C`, `B`, `B′`, `E`, `D`, `A`; within each class, put more matched files first.
 
 - `pr`: at most 15 findings, followed by the omitted count.
 - `local`: at most 8 findings, including at most 3 class-A findings.
-- `full`: no trimming; group by class.
+- `full`: no trimming; report every class count, including zeroes.
 
-Format:
+Use this structure for findings; include `Evidence` for every class:
 
-```
+```text
 [C] Decision title
   Record: docs/decisions/2026-08-14-use-postgres.md
   Basis: commit:3f9a1c2 is not in history
-  Evidence: patch-id d064e03f4e53 matches new commit 8ff9f762
-  Suggest: change Implemented-by to commit:8ff9f762
+  Evidence: git merge-base --is-ancestor 3f9a1c2 origin/main -> exit 1
+  Suggest: replace the anchor with commit:8ff9f762 (matching patch-id d064e03f4e53)
 ```
 
-When nothing matches, say so in one line. In `full` mode, instead report every class count, including zeroes. List legacy and unverified records separately. If `gh` is missing or unauthenticated, mark PR anchors unverified and continue the other checks.
+List `Legacy` and `Unverified` separately from findings. When nothing needs attention, say so in one line. An unavailable or unauthenticated `gh` leaves PR anchors unverified while the other checks continue.
