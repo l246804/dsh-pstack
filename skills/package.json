@@ -1,0 +1,14 @@
+{
+  "name": "@internal/skills",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "skills experimental_sync -y -a universal"
+  },
+  "skills": [
+    { "source": "mattpocock/skills", "skills": ["writing-for-agents"] }
+  ],
+  "devDependencies": {
+    "skills": "catalog:agentic"
+  }
+}

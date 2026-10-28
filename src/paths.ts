@@ -34,7 +34,7 @@ export const PORT_ROOT = join(DIST_ROOT, "pstack");
 /** Absolute path of the directory holding the ported pstack skill directories. */
 export const SKILLS_ROOT = join(PORT_ROOT, "skills");
 
-/** Absolute path of the directory holding the third-party skill sources. */
+/** Absolute path of the directory holding the vendored skill directories. */
 export const VENDORED_SKILLS_ROOT = join(DIST_ROOT, "skills", "vendored");
 
 /** Absolute path of the directory holding the skills written in this repository. */
@@ -58,13 +58,11 @@ export const HARNESS_DOC_PATH = join(PORT_ROOT, "docs", "harness", "dsh.md");
 /**
  * One skill root the provider loads.
  *
- * `flat` roots hold skill directories directly. `sourced` roots hold one directory
- * per upstream source, each of which holds the skills. The label names the root in a
+ * Every root holds skill directories directly. The label names the root in a
  * collision error, so a duplicate says which two trees disagree.
  */
 export interface SkillRoot {
   readonly path: string;
-  readonly kind: "flat" | "sourced";
   readonly label: string;
 }
 
@@ -75,9 +73,9 @@ export interface SkillRoot {
  * than one, so this list is the whole answer to "where do skills come from".
  */
 export const SKILL_ROOTS: readonly SkillRoot[] = [
-  { path: SKILLS_ROOT, kind: "flat", label: "pstack" },
-  { path: VENDORED_SKILLS_ROOT, kind: "sourced", label: "vendored" },
-  { path: AUTHORED_SKILLS_ROOT, kind: "flat", label: "authored" },
+  { path: SKILLS_ROOT, label: "pstack" },
+  { path: VENDORED_SKILLS_ROOT, label: "vendored" },
+  { path: AUTHORED_SKILLS_ROOT, label: "authored" },
 ];
 
 /**

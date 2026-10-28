@@ -1,120 +1,106 @@
 # pstack in DeepSeek Harness
 
-pstack skills keep upstream wording. They say `Task`, `readonly: true`, and
-`~/.cursor/rules/pstack-models.mdc`, because that is what pstack says for Cursor.
-Read this file once per session, then map each Cursor name with the tables below. If a
-Cursor field has no row, drop it and say so in your reply. Never pass a field or a value
-this host's tool schema rejects.
-
-The generator applies four mechanical transforms and nothing else: it narrows frontmatter
-to the fields this host reads, repoints a relative link that would leave the shipped tree,
-inserts the pointer you followed here under the H1 of each skill that uses a Cursor name,
-and copies this file into `pstack/`. Everything a skill says about the host is translated
-at read time, here.
+pstack skills use Cursor names. In DeepSeek Harness, read this file once per session, then map each Cursor name in a skill with the tables below. `<pstack>` means the directory holding `skills/` and `docs/` inside this package. If a Cursor field has no row, drop it and say so. Never pass a field or value the tool schema rejects.
 
 ## Tools
 
-| Cursor | DeepSeek Harness |
-| --- | --- |
-| `Task` and `Task` subagents | `pstack_subagent`. Every call starts one child per activation and returns its id; the report arrives as a completion notice, so nothing polls. Never start a child to run the playbook itself. |
-| `subagent_type: "generalPurpose"` | `agent: "general"`. A plain child with no injected preamble. |
-| `subagent_type: "poteto-agent"` | `agent: "poteto-agent"`. The tool injects that preamble itself and puts the `poteto-mode` instructions path into the brief. |
-| `poteto-agent` and `comment-sicko` | `agent: "poteto-agent"` and `agent: "comment-sicko"`. These are this package's three brief kinds; they are not host agent preset ids. To run a child under a host preset, the row has to configure an allowlist and you pass the separate `agentPreset` argument. |
-| `comment-sicko` subagent | `agent: "comment-sicko"` and brief it read-only in words. The no-write rule is brief text, not a sandbox, so check `git status` after the child reports. |
-| `readonly: true` | Drop the field and state the no-write constraint in the brief. Prose is not a sandbox, so a read-only child has to be checked rather than trusted. |
-| `readonly: false` | Drop it. A child gets the session's tools unless the brief narrows them. |
-| `run_in_background: true` | Drop it. There is no background flag: every child is a managed activation that reports through a completion notice. |
-| `resume` | Start a fresh child. Use `send_message` or resume only when the state that would move is expensive: its checkout, its uncommitted work, or a process it still runs. A settled child is not silently resumed, and a stop order is not reuse. |
-| `file_attachments` | List the real paths in the brief. No attachment argument exists. |
-| `environment: "local"` | Drop it. Every child is local. |
-| `environment: "cloud"` | Name the working directory and the branch. Isolation is a real `cwd` in its own checkout, not a separate machine. |
-| `cloud_base_branch: <b>` | Tell the child to check out `<b>` first, or pass the checkout path as its `cwd`. |
-| `AskQuestion` | `ask_user_question`, which takes `multi_select` for a choice. |
-| Opening a todolist | `todo_write` with the full list. A step you skip stays in the list with a one-line `skip: <reason>`. |
-| `Grep`, `Glob`, `Read`, `Shell` | `grep`, `glob`, `read`, `bash`. |
-| Running another pstack skill (the **name** skill, or `/name`) | Load it with the `skill` tool when it is model-invocable; otherwise read `SKILL.md` at its absolute resource path and follow it. A bare `**name**` or `/name` only works for a skill the catalog offers, and most pstack skills are invoked by name rather than by the model. |
-| `MCP` servers and tools | The session's own tool list. There is no MCP directory to inspect, and narrowing a child's tool set can strip the evidence its brief depends on, so name the tools a child must keep instead of assuming a preset is safe. |
+| Cursor                                                     | DeepSeek Harness                                                                                                                                                                                                            |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Task`                                                     | `pstack_subagent`, provided by this package. It starts one child per activation and returns each child's id and model route. Results arrive as completion notices. Do not poll or start a child to run the parent playbook. |
+| `AskQuestion`                                              | `ask_user_question`. Its `multi_select` field replaces `allow_multiple`.                                                                                                                                                    |
+| Open a todolist                                            | `todo_write` with the full list. Keep a skipped step in the list with `skip: <reason>`.                                                                                                                                     |
+| Run another pstack skill (`/name` or "the **name** skill") | Use `skill` when the catalog offers it for model invocation. Otherwise read its `SKILL.md` through the absolute skill resource path and follow it. Commands keep their plain names, such as `/setup-pstack`.                |
+| `Grep`, `Glob`, `Read`, `Shell`                            | `grep`, `glob`, `read`, and `bash`.                                                                                                                                                                                         |
+| Cursor's available-tools map and enabled MCP directory     | The session's tool catalog. Use `cordis_inspect_query` with the `Tool` provider to inspect it when composing a plugin. Keep the MCP tools a brief needs instead of narrowing a child's tool set.                            |
+| Cursor Plan Mode                                           | DeepSeek Harness plan mode. Use its plan controls and `exit_plan_mode` for plan approval.                                                                                                                                   |
 
-## The pstack CLIs
+## Subagent fields
 
-pstack ships five CLIs, and they run through `pstack_script` rather than a shell.
+Every `pstack_subagent` call must pass `description`, `prompt`, `agent`, `role`, `roleIndex`, `reasoningEffort`, `cwd`, and `maxDepth` explicitly. No field may be omitted. Pass `null` for `role`, `roleIndex`, `reasoningEffort`, or `cwd` when that setting is unused. `maxDepth` is a non-negative integer limiting further delegation. Choose `agent` explicitly rather than relying on a default.
 
-| Cursor | DeepSeek Harness |
-| --- | --- |
-| `bun` running `poteto-mode/scripts/` | `pstack_script` with `id` from the shipped manifest. Every artifact is one dependency-free Node module launched on the Host's own runtime, so no `bun`, `bash`, or `node` on `PATH` is needed. |
-| `scripts/log.sh <logfile> <phase> <decision> <why> <evidence> <result>` | `pstack_script` with `id: "log"` and those six arguments. Same columns, same header-once rule, same escaping. |
-| `scripts/worktree-audit.sh [-b <ref>] [repo-path]` | `pstack_script` with `id: "worktree-audit"`. `-b` reads as its first argument. |
-| `node pstack/skills/poteto-mode/scripts/check-plan.mjs <plan.md>` | `pstack_script` with `id: "check-plan"` and `args: ["<plan.md>"]`. |
-| `scripts/snapshot.sh` in a decision-log example | An example row naming evidence kinds, not a shipped helper. Name the real command your project uses for that evidence. |
+| Cursor                          | DeepSeek Harness                                                                                                                                                                                                        |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `subagent_type: generalPurpose` | `agent: "general"`.                                                                                                                                                                                                     |
+| `poteto-agent`, `comment-sicko` | `agent: "poteto-agent"`, `agent: "comment-sicko"`. These select briefs, not DSH agent presets.                                                                                                                          |
+| `readonly: true`                | Drop the field. Say "do not edit files" in the brief, then check `git status` after the child reports. This instruction is not a sandbox.                                                                               |
+| `readonly: false`               | Drop the field. The child keeps the session's tools unless its brief narrows them.                                                                                                                                      |
+| `environment: "cloud"`          | Use a local child in its own checkout through `create_worktree`, then pass that checkout as `cwd`. This does not provide a separate machine. Skip steps that need a cloud machine or its dashboard.                     |
+| `environment: "local"`          | Omit.                                                                                                                                                                                                                   |
+| `cloud_base_branch: <b>`        | Pass `from: "<b>"` to `create_worktree`, or tell the child to check out `<b>` first.                                                                                                                                    |
+| `run_in_background: true`       | Omit. Every `pstack_subagent` activation is managed and reports by completion notice.                                                                                                                                   |
+| `resume`                        | Start a fresh child with consolidated instructions. Use `send_message` only when its existing checkout, uncommitted work, or running process is costly to replace. A fresh child is the default after a completed turn. |
+| `file_attachments`              | List real paths in the brief.                                                                                                                                                                                           |
 
-`pstack_script` goes through no command approval and no sandbox policy. Say so when a
-step depends on that difference, because the caller cannot see it happen. `background:
-true` needs the Host jobs service and is refused with a reason when the composition has none.
+## Models
 
-## Models and effort
+| Cursor                                                | DeepSeek Harness                                                                                                                                                                                   |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A `claude-*`, `grok-*`, `gpt-*`, or other Cursor slug | Pass `role: "<role key>"`, never a model id. The role file supplies the exact `<provider>/<model> [effort]` route. A missing role inherits the parent route.                                       |
+| `auto` or `inherit-parent`                            | Pass `role: null`, or configure the role with that value. The child inherits the parent route.                                                                                                     |
+| `-fast` and "fast or standard speed"                  | Drop. DSH has no speed parameter. Keep the effort instruction.                                                                                                                                     |
+| Pick or adjust a subagent's reasoning level           | Pass `reasoningEffort` to `pstack_subagent`. Use only a token the target model advertises. A refusal lists the accepted tokens. A child can adjust its next step with `set_reasoning_effort`.      |
+| A role with a list of models                          | Configure a comma-separated list in the role file. Automatic panels start one child per entry. Use `roleIndex` for a pool or race-arm selection. Duplicate routes do not make a cross-model panel. |
+| `~/.cursor/rules/pstack-models.mdc`                   | `$DSH_HOME/pstack-models.md`. `pstack_subagent` re-reads it for every delegation, so an edit affects the next child rather than a running child. An unreadable file is an error.                   |
 
-| Cursor | DeepSeek Harness |
-| --- | --- |
-| `~/.cursor/rules/pstack-models.mdc` | `$DSH_HOME/pstack-models.md`. `/setup-pstack` writes it and `pstack_subagent` re-reads it on every delegation, so an edit reaches the next child and never one that already started. An unreadable file is an error, not an empty configuration. |
-| A `claude-*`, `grok-*`, or `gpt-*` model slug | Nothing. Pass `role: "<role key>"` and let the role line supply the route. No model id is hardcoded in the assets, and this package cannot know which routes a deployment serves, so an invented slug fails the call before any child starts. |
-| `model: "claude-opus-5-5-xhigh"` in a table below a role | The role line's value, not the slug. The tables in the skills name their intended default; the role file decides, and `.example.md` shows the shipped defaults. |
-| `inherit-parent` or `auto` | Both mean the same thing: send no route for that child and it runs on the parent. A role the file does not name inherits the parent too. |
-| `-fast` speed variants, and "fast or standard speed" | There is no speed parameter. Drop the phrase and keep the effort instruction. |
-| "Pick each subagent's reasoning level", "raise it one step" | `reasoningEffort` on the same call, per delegation. The role line is where the role starts, not a ceiling or a floor. One step is the adjacent entry in the model's own effort list, which the adapter reports from least to greatest; never infer a token from a model id. A child can lower or raise its own with `set_reasoning_effort`, which applies from its next step. |
-| "If the Task tool rejects a slug, use the default" | A refusal lists that model's real efforts. Read the refusal instead of guessing a token, and report the route each child resolved. |
-| A panel role: a list of models, one child per entry | The same thing, spelled as a comma-separated role line. Two entries on one route are not a cross-model review, and `pstack_subagent` says so in its result. Pass `roleIndex` to pick one entry for a race arm or a cross-judge. |
+## setup-pstack
 
-`/setup-pstack` writes the file. Follow its steps with these changes. Detect by the routes
-this deployment serves and each model's advertised effort list. Write one line per role as
-`<provider>/<model> [effort]`, which splits at the first `/` so a model id may keep its own
-vendor prefix. Overwrite the whole file and an unreadable file is an error, not an empty
-configuration. The budget line targets an effort; apply it only to routes that advertise it
-and otherwise use the highest advertised effort at or below the target, saying so.
+Run `pstack_models` before writing `$DSH_HOME/pstack-models.md`. It reads the registered DSH providers, models, and reasoning efforts instead of inferring routes from Cursor slugs.
+
+Follow the upstream setup steps with these changes:
+
+- Read the current role file when it exists. Keep roles whose routes still exist. A missing role inherits the parent route.
+- Use `ask_user_question` for the budget and role choices. A panel's list sets its child count. `arena cross-judge pool` and `swarm workers` are lists without automatic fan-out.
+- Write `<provider>/<model> [effort]`. Split the route at the first `/`, so a model id may retain a vendor prefix. Apply a budget only to efforts the model advertises. Otherwise choose the highest advertised effort at or below the target and say so.
+- Overwrite the whole role file. Do not put role lines in `AGENTS.md`. The next delegation reads the new file, so starting another chat is unnecessary.
 
 ## Paths
 
-| Cursor | DeepSeek Harness |
-| --- | --- |
-| `.cursor/skills/`, `~/.cursor/skills/` | `.dsh/skills/` for project skills, or this package's `pstack/skills/<name>/` for the ported ones, which are read in place and never copied. |
-| `.cursor/plugins/`, `.cursor-plugin/plugin.json` | Absolute resource paths inside this package. Each skill carries its own directory as the resource base, so `references/`, `scripts/`, and `playbooks/` resolve next to `SKILL.md`. |
-| `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md` for project instruction, and `$DSH_HOME/pstack-models.md` for the role file. Nothing else is loaded into every session. |
-| `agent-transcripts/` in `~/.cursor/projects/<slug>/` | `pstack_history`, a restricted read of raw session events over the calling session and its reviewable direct children. There is no transcript directory, and an arbitrary session id is refused rather than opened. |
-| A cross-session search through transcripts | The official session-search bundle's tools, mounted only when the profile enables it. `pstack_history` does not substitute for it. Without the bundle, the cross-session half of a step is unavailable and a step that needs it says so instead of presenting it as done. |
-| `agent store`, a per-agent directory named in the system prompt, outside the repository | `.audit/` in the repository, stated in a prompt context so a child knows the path without being told. Plans, decision trails, and orchestration state go under it. What is lost is durability: nothing resumes from `.audit/` on its own, so a resumed child is handed its instructions again rather than told to re-read them. The operator's named directory wins. |
-| `Projects` | No container for long runs exists. A run is this Session plus whatever the goal and reminder rows carry. |
-| A relative link that leaves the shipped tree | The generator repoints it, so the link you are reading already resolves inside the package. |
+| Cursor                                                      | DeepSeek Harness                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `.cursor/skills/`, `~/.cursor/skills/`                      | `.dsh/skills/` in the project, or `$DSH_HOME/skills/` for user skills. Read packaged pstack skills in place under `<pstack>/skills/`.                                                                                                                                                                                                                                                                                                            |
+| `~/.cursor/plugins/`, `.cursor-plugin/plugin.json`          | The installed package's absolute resource paths. Resolve `references/`, `playbooks/`, and `scripts/` beside their `SKILL.md`. Do not scan a plugin directory for the highest version.                                                                                                                                                                                                                                                            |
+| Frontmatter `paths:` rules that auto-attach a skill         | Drop the field. DSH loads skills by explicit model or user invocation, not by matching edited file paths.                                                                                                                                                                                                                                                                                                                                        |
+| `.cursor/rules/*.mdc`, always-applied rules                 | Project instructions in `AGENTS.md`, and the pstack role file described in Models. DSH does not load `.mdc` files.                                                                                                                                                                                                                                                                                                                               |
+| `https://github.com/cursor/plugins/blob/main/pstack/<path>` | `<pstack>/<path>` when the package ships that file. Use the public URL when the user needs a link.                                                                                                                                                                                                                                                                                                                                               |
+| `~/.cursor/projects/<slug>/agent-transcripts/`              | The official `@deepseek-ai/dsh-tool-session-query` tools. `session_search` finds earlier sessions in the same workspace. `session_event_search`, `session_trace`, `session_event_trace`, and `session_event_read` inspect them. They require exact `cwd` equality across sessions. Use `session_event_search` with the current Session's own id for its transcript, including a decision-trail audit. Do not read a Cursor transcript directory. |
+| `agent store`, a per-agent directory outside the repository | `.audit/` in the repository, unless the operator names another directory. Give children this path in their briefs. Files persist on disk, but nothing resumes work from them automatically.                                                                                                                                                                                                                                                      |
+| `Projects`                                                  | A DSH Workspace groups related Sessions. A coordinator uses one Session plus its goal and reminders. This preserves the coordinator's state, not a cloud program that runs after the Host stops.                                                                                                                                                                                                                                                 |
+
+## Scripts
+
+Use `pstack_script`, provided by this package. Its `id` is a closed list of bundled scripts. `args` contains one array item per argument. Relative paths resolve from the Session's working directory.
+
+| Cursor                                                            | DeepSeek Harness                                                                                                                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun scripts/orch/orch.ts`                                        | `pstack_script` with `id: "orch"`.                                                                                                                                  |
+| `scripts/watch-pr/watch-pr`                                       | `pstack_script` with `id: "watch-pr"`. Use `background: true` for a long watch when the jobs service is available. Collect it with `job_output`.                    |
+| `scripts/worktree-audit.sh`                                       | `pstack_script` with `id: "worktree-audit"`. Omit the Cursor transcript scan. The user's pinned-chat set remains authoritative, but this script cannot discover it. |
+| `scripts/log.sh`                                                  | `pstack_script` with `id: "log"`. Pass the log path and five row fields in `args`.                                                                                  |
+| `node pstack/skills/poteto-mode/scripts/check-plan.mjs <plan.md>` | `pstack_script` with `id: "check-plan"` and `args: ["<plan.md>"]`.                                                                                                  |
+| `scripts/snapshot.sh` in a decision-log example                   | An evidence example, not a bundled command. Use the project's real capture command.                                                                                 |
+
+`pstack_script` launches the package's audited scripts with the Host's Node runtime. It does not pass through shell approval or the Host filesystem sandbox. Say so when that distinction matters. Background runs require the jobs service.
 
 ## Host features
 
-| Cursor | DeepSeek Harness |
-| --- | --- |
-| `AskQuestion` in a plan-mode step | `ask_user_question`. Reserve it for a product or preference call no experiment can settle. |
-| Custom Mode, and "keep `/poteto-mode` on for the whole chat" | Type `/poteto-mode` on each new task. The skill attaches to the task that invoked it and nothing keeps it in context afterwards, so there is no persistent mode and no keyboard shortcut. |
-| `/loop <duration>` and "arm a tick" | `create_goal` carries a predicate across rounds for automatic continuation, and `schedule_create` is a timed heartbeat that delivers a follow-up into this Session. Neither watches a PR or CI, a reminder refuses a delegated caller, and a goal can be created while the profile mounts no round driver, so the run then stops unless a background job's settlement wakes it or you poll and say that you are polling. |
-| Automations, routines, `update_state`, `SendToUser` secret requests, automation packs | Not carried. There is no webhook ingress, no routine id, and no wake call. A scheduled input is a cron job or a `schedule_create` reminder, and a step that needs a routine is skipped with one line naming it. |
-| Bugbot, and a review-aware wait for it | Review comments already on a PR are ordinary data: triage them with the forge command the step gives, and treat an Absent Bugbot check as absent rather than as pending. Starting or configuring Bugbot is out of scope. |
-| A cloud agent, its dashboard, and its own machine | A local child in its own checkout. Worktree isolation covers the working directory and branch only, so name which of ports, caches, credentials, and services each lane still shares, and remember that every child ends with the host process. |
-| A built-in PR tool | Resolve the forge once: `gh`, or `origin` when it can resolve the repository. That resolution is a required step, not a fallback. |
-| `/visualize`, and a generated-image step | A Mermaid diagram, an existing screenshot, or a real renderer the project ships. When none can produce the image, say so and leave the figure out rather than fabricating one. A read-only capture stays read-only. |
-| `cursor-team-kit`, `control-ui`, `control-cli`, `create-skill`, and `/deslop` | None of these plugins can be installed here. Use a project verification skill that `create-verification-skill` builds, or a driver the repo already ships; a surface with no driver is a gap you report rather than a pass you claim. Author skills through the `authoring-a-skill` playbook, which carries this host's frontmatter, link, and structure rules. Before a commit, read the whole staged diff back once instead of running a stripping plugin, and run `/no-comments` before review. |
-| worktree isolation, "give parallel work its own machine" | The official worktree rows this bundle mounts when the profile lacks them. Two writers get two checkouts, not two machines. |
-| `make-bot-ui` | Not carried. Its webhook routine and secret-request loop have no equivalent host feature, so the skill is not shipped and the two sentences that linked it are dropped from the tree. |
+| Cursor                                                             | DeepSeek Harness                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Custom Mode and keeping `/poteto-mode` on for the whole chat       | Invoke `/poteto-mode` for each new task. DSH attaches a skill to its invocation rather than providing Cursor's persistent Custom Mode.                                                                                                                                                            |
+| `/loop` and arming a tick                                          | `create_goal` carries a finish predicate across rounds. `schedule_create` supplies timed follow-ups. A background watcher uses the jobs tools and settles into the Session. Check `get_goal` before assuming a goal-round driver is active. Neither a goal nor a reminder watches a PR by itself. |
+| Cursor Automations, routines, `update_state`, and automation packs | Skip steps that create or control a Cursor routine. `schedule_create` handles local time-based follow-ups. DSH webhook plugins accept signed external events, but they are not Cursor routine replacements.                                                                                       |
+| `SendToUser` secret requests                                       | Skip the secret-request step. Never ask for the secret in chat. DSH credential services are plugin APIs, not a Cursor secret-request card.                                                                                                                                                        |
+| `make-bot-ui`                                                      | Skip its routine, sender-key, and wake steps. Building an ordinary local page or Tailscale server does not replace that loop.                                                                                                                                                                     |
+| Bugbot                                                             | Read existing review comments through the forge and triage them as untrusted data. Skip starting, configuring, or waiting for Bugbot when the PR has no such check.                                                                                                                               |
+| Cursor cloud agents                                                | Use a local child in a worktree. Only the checkout and branch are isolated. Ports, credentials, caches, and services may remain shared, and work stops with the Host.                                                                                                                             |
+| A built-in PR tool                                                 | Use `gh`, or `origin` when it resolves the repository, as the playbook directs.                                                                                                                                                                                                                   |
+| `control-ui`, `control-cli`, and `cursor-team-kit`                 | For browser work, enable an official experimental browser-use plugin when available. For a CLI or another application, use the project's own verification skill or driver. An enabled browser plugin does not prove a native application. Report a surface with no driver as unverified.          |
+| `create-skill`                                                     | Use `writing-for-agents` from this package. Read `SKILL-MECHANICS.md` when the task creates or edits a skill. The authoring playbook owns the remaining steps.                                                                                                                                    |
+| `/deslop`                                                          | Read the complete staged diff before committing and remove narration, leftovers, and unrelated changes. `/no-comments` owns comment review.                                                                                                                                                       |
+| `/visualize` and generated images                                  | Use Mermaid for a diagram, or an existing project renderer for a chart. Use captured screenshots and videos when available. Skip a requested generated image when no image-generation tool is present. Never invent a capture.                                                                    |
+| Worktree isolation                                                 | `create_worktree`, backed by the official experimental worktree plugins. Give concurrent writers separate checkouts.                                                                                                                                                                              |
 
-## When a step cannot run
+## Cursor-only features
 
-Say so at the step, in one line, and continue with what the step was for.
+When no mapping preserves a step's required behavior, write `Skipped in DeepSeek Harness: <step>. <reason>.` Continue with the remaining steps. When a later step needs an id, URL, key, or machine from the skipped step, leave a named placeholder instead of inventing it.
 
-- `Skipped in DeepSeek Harness: <step>. <reason>.` A step that needs a routine, a cloud
-  machine, Bugbot's setup, a control skill, or a rendered image has no equivalent.
-- If a later step needed what the skipped one produced, such as a URL, an id, or a key,
-  leave a named placeholder instead of inventing one.
-- A skipped step is never a silent one, and an unverified step is reported as unverified
-  rather than as passed.
-
-## What the gate enforces
-
-`check-adapter.ts` derives the rows this file owes from the prose that actually ships. Add
-a skill that says `Task` or `/loop`, and the build fails until this file answers for it; the
-failure names the row and what a reader loses without it. There is no hand-maintained list
-of differences to fall out of date, which is what makes this file the only place a
-divergence is written down.
+A skipped step is not a passed step. Report unavailable verification separately.

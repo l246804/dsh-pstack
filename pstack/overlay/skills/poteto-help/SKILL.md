@@ -43,9 +43,9 @@ Installing changes nothing until the user invokes a skill. Only `/setup-pstack` 
 
 If cost is the worry, say where the tokens go and how to spend fewer. pstack spends extra tokens on subagents and review panels. Rerun `/setup-pstack` and pick a smaller budget or cheaper models. A role set to `auto` or `inherit-parent` runs on the chat's model, which saves tokens when the chat runs on Auto or a cheaper model. A shorter panel list runs fewer subagents, one for each entry. Save `/poteto-mode` for work that needs rigor.
 
-pstack installs in DeepSeek Harness with `dsh plugin --profile <profile> add dsh-pstack`, and the skill surface is per task. Each command attaches to one message, so `/poteto-mode` is typed on every task that needs it. The [DSH adapter](../../docs/harness/dsh.md) maps the Cursor names the skills still use, and a step that needs a Cursor-only feature, such as Bugbot or Automations, is skipped with a one-line note.
+pstack is built for Cursor, and it also installs in DeepSeek Harness with `dsh plugin --profile <profile> add dsh-pstack`, then a session restart. There, each command keeps its plain name, such as `/poteto-mode`, because DeepSeek Harness does not prefix plugin commands. The [DSH adapter](../../docs/harness/dsh.md) maps the Cursor names, and a step that needs a Cursor-only feature, such as Bugbot or Automations, is skipped with a one-line note.
 
-Other tools can read the skills, because they use the Agent Skills format. But most workflow skills, including `/poteto-mode`, `/how`, `/why`, and `/teach`, spawn subagents with per-role routes, and those routes come from this package. Custom Modes and `/loop` do not exist here, and their places are taken by `create_goal` and `schedule_create`.
+Other tools can read the skills, because they use the Agent Skills format. But most workflow skills, including `/poteto-mode`, `/how`, `/why`, and `/teach`, spawn Cursor subagents with per-role models, and Custom Modes and `/loop` are Cursor features, so those parts may not work there.
 
 ## Start a task with `/poteto-mode`
 

@@ -163,8 +163,7 @@ export class BundledSkillError extends Error {
 /**
  * Read and validate the whole shipped catalog.
  *
- * Roots come from `SKILL_ROOTS`. A `flat` root holds skill directories directly; a
- * `sourced` root holds one directory per upstream source, each holding its skills. The
+ * Roots come from `SKILL_ROOTS`, and every root holds skill directories directly. The
  * model sees one catalog, and each root stays independently verifiable because it is
  * loaded by its own layout rule. The two `skills/` roots sit outside `pstack/` so that
  * a regeneration of the port cannot delete them.
@@ -178,11 +177,7 @@ export class BundledSkillError extends Error {
  * @throws {BundledSkillError} when any root is malformed or names collide.
  */
 export function loadBundledSkillIndexes(roots: readonly SkillRoot[]): BundledSkillIndex {
-  const merged = mergeIndexes(
-    roots.map((root) =>
-      root.kind === "flat" ? loadBundledSkillIndex(root.path) : loadSourcedSkillIndex(root.path),
-    ),
-  );
+  const merged = mergeIndexes(roots.map((root) => loadBundledSkillIndex(root.path)));
   if (merged.size === 0) {
     const listed = roots.map((root) => `"${root.path}"`).join(", ");
     throw new BundledSkillError(`bundled skills: no skill directories under ${listed}`);
@@ -211,43 +206,6 @@ function mergeIndexes(indexes: readonly BundledSkillIndex[]): BundledSkillIndex 
 }
 
 /**
- * Read every bundled skill below a tree whose first level is a source directory.
- *
- * `skills/vendored/<source>/<skill>/` groups vendored skills by where they came
- * from, so the layout mirrors `skills/sources.yml` and a maintainer can update one
- * upstream repository without touching another. The provider needs a flat catalog,
- * so this walks one level of source directories and merges what it finds.
- *
- * An absent or empty source root is not an error: a package may ship without any
- * vendored source at all.
- *
- * @param sourceRoot - absolute path holding one directory per upstream source.
- * @returns validated skills keyed by absolute skill directory.
- * @throws {BundledSkillError} when a source directory or a skill inside it is
- *   malformed, or when one name appears in two sources.
- */
-export function loadSourcedSkillIndex(sourceRoot: string): BundledSkillIndex {
-  let sources;
-  try {
-    sources = readdirSync(sourceRoot, { withFileTypes: true });
-  } catch {
-    return new Map<string, BundledSkill>();
-  }
-
-  const indexes: BundledSkillIndex[] = [];
-  for (const source of sources.sort((left, right) => (left.name < right.name ? -1 : 1))) {
-    if (!source.isDirectory()) {
-      throw new BundledSkillError(
-        `bundled skills: "${join(sourceRoot, source.name)}" is not a source directory; the extension tree groups skills under their upstream source`,
-      );
-    }
-    indexes.push(loadBundledSkillIndex(join(sourceRoot, source.name), { allowEmpty: true }));
-  }
-
-  return mergeIndexes(indexes);
-}
-
-/**
  * Read and validate every bundled skill below one directory.
  *
  * This is the startup check: it runs before the provider registers, so a missing
@@ -256,20 +214,14 @@ export function loadSourcedSkillIndex(sourceRoot: string): BundledSkillIndex {
  * dropping a skill from the catalog.
  *
  * @param skillsRoot - absolute path of the directory holding the skill directories.
- * @param options - `allowEmpty` lets the extension root ship empty before any
- *   third-party skill is vendored, which is its state on a fresh checkout.
  * @returns validated skills keyed by absolute skill directory, sorted by name.
  * @throws {BundledSkillError} when the tree or any skill in it is malformed.
  */
-export function loadBundledSkillIndex(
-  skillsRoot: string,
-  options: { readonly allowEmpty?: boolean } = {},
-): BundledSkillIndex {
+export function loadBundledSkillIndex(skillsRoot: string): BundledSkillIndex {
   let entries;
   try {
     entries = readdirSync(skillsRoot, { withFileTypes: true });
   } catch (error) {
-    if (options.allowEmpty === true) return new Map<string, BundledSkill>();
     throw new BundledSkillError(
       `bundled skills: cannot read "${skillsRoot}": ${messageOf(error)}`,
     );
@@ -309,7 +261,6 @@ export function loadBundledSkillIndex(
   }
 
   if (index.size === 0) {
-    if (options.allowEmpty === true) return index;
     throw new BundledSkillError(`bundled skills: no skill directories under "${skillsRoot}"`);
   }
 

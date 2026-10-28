@@ -1,0 +1,11 @@
+{
+  "name": "@internal/pstack",
+  "type": "module",
+  "private": true,
+  "dependencies": {
+    "commander": "catalog:inlined"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:cli"
+  }
+}

@@ -26,7 +26,7 @@ README 必须包含以下章节。内容只描述用户可见的行为、契约�
 - **角色配置。** 说明 `~/.dsh/pstack-models.md` 由 `/setup-pstack` 生成，支持 `inherit-parent`，panel 角色是列表，一行删除后回落到父路由。
 - **功能范围与已知限制。** 列出 55 个技能、23 个 playbook、24 个原则和两个子代理人格。明确 `make-bot-ui` 不在首版。明确 Cursor 专属能力没有等价物，包括 Automations、cloud agents、Custom Modes、`/loop` 和 Bugbot 配置。明确 `typescript-best-practices` 的 `paths` 自动触发不支持，需要显式调用。说明 worktree 不是 VM、schedule 不是事件订阅、多模型评审需要真实不同的 route。
 - **更新与卸载。** 给出升级和移除命令，说明角色文件在用户目录，卸载插件不会自动处理它。
-- **平台与运行要求。** Linux 和 macOS 是主要验证目标，Windows 的 shell 和脚本支持尚未验证。Node.js 要求 `>=22.19`，worktree 需要 Git。
+- **平台与运行要求。** Linux 和 macOS 是主要验证目标，Windows 的 shell 和脚本支持尚未验证。Node.js 要求 `>=24.21.0`，worktree 需要 Git。
 - **安全与数据。** 说明代理会在 DSH 权限模型下读写文件、执行命令，子代理继承调用方的策略。提醒不要把密钥写进角色文件或 prompt。会话记录保存在 DSH 的会话存储中，pstack 不另建云端记录。
 - **故障排查与支持。** 给出先检查 DSH 版本、worktree 插件和 Agent Team 冲突的顺序，以及提交 issue 时需要附带的版本、profile 和最小复现。
 - **目录。** README 超过一屏时提供目录。

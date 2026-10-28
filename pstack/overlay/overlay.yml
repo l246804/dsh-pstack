@@ -12,10 +12,6 @@
 # `docs/harness/dsh.md` has `replaces: none`: it is this host's own document and there is
 # nothing upstream for it to go stale against.
 overlay:
-  - path: README.md
-    replaces: README.md
-    revision: d1453c11d1dde9714d4c313c97d3a68432265c7f
-    sha256: b928886260bd551b0c8f3e58617a5dc3ad8dfc1293d096b1ef81b84007532486
   - path: docs/harness/dsh.md
     replaces: none
   - path: docs/guide/01-setup.md

@@ -12,10 +12,10 @@
  *
  * **The fork is the source.** `orch`, `watch-pr`, and `check-plan` began as upstream
  * TypeScript that a patch list rewrote at build time. That patch list is gone: the
- * rewritten text is now the checked-in source under `pstack/runtime/fork/`, so a build
- * reads files that exist instead of files that are assembled from an upstream tree plus
- * thirteen anchors. The cost is that an upstream change no longer arrives by syncing
- * the submodule; it has to be re-ported by hand, and
+ * rewritten text is now the checked-in source under `pstack/runtime/skills/`, which
+ * mirrors upstream's own layout, so a build reads files that exist instead of files that
+ * are assembled from an upstream tree plus thirteen anchors. The cost is that an upstream
+ * change no longer arrives by syncing the submodule; it has to be re-ported by hand, and
  * `docs/decisions/2026-10-27-script-fork.md` records that trade.
  *
  * **There is no staging step.** Nothing rewrites a source before bundling, so the
@@ -43,23 +43,20 @@ export interface RuntimeEntry {
 /** Where the checked-in sources live. */
 export const RUNTIME_SOURCE_ROOT = "pstack/runtime/";
 
-/** Where the fork of the upstream scripts lives, keeping upstream's own layout. */
-export const FORK_ROOT = `${RUNTIME_SOURCE_ROOT}fork/`;
-
 /** Upstream script directories whose contents the built artifacts replace. */
 export const REPLACED_SCRIPT_DIRECTORIES: readonly string[] = [
   "skills/poteto-mode/scripts/",
   "skills/show-me-your-work/scripts/",
 ];
 
-const fork = (path: string): string => `${FORK_ROOT}${path}`;
+const source = (path: string): string => `${RUNTIME_SOURCE_ROOT}${path}`;
 
 /** CLI artifacts, in the order the reviews and the prose name them. */
 export const RUNTIME_CLIS: readonly RuntimeEntry[] = [
   {
     id: "check-plan",
     kind: "cli",
-    entry: fork("skills/poteto-mode/scripts/check-plan.mjs"),
+    entry: source("skills/poteto-mode/scripts/check-plan.mjs"),
     out: "check-plan.mjs",
     assetPath: "skills/poteto-mode/scripts/check-plan.mjs",
     executable: true,
@@ -68,7 +65,7 @@ export const RUNTIME_CLIS: readonly RuntimeEntry[] = [
   {
     id: "orch",
     kind: "cli",
-    entry: fork("skills/poteto-mode/scripts/orch/orch.ts"),
+    entry: source("skills/poteto-mode/scripts/orch/orch.ts"),
     out: "orch/orch.mjs",
     assetPath: "skills/poteto-mode/scripts/orch/orch.mjs",
     executable: true,
@@ -77,7 +74,7 @@ export const RUNTIME_CLIS: readonly RuntimeEntry[] = [
   {
     id: "watch-pr",
     kind: "cli",
-    entry: fork("skills/poteto-mode/scripts/watch-pr/watch-pr"),
+    entry: source("skills/poteto-mode/scripts/watch-pr/watch-pr"),
     out: "watch-pr/watch-pr.mjs",
     assetPath: "skills/poteto-mode/scripts/watch-pr/watch-pr.mjs",
     executable: true,
@@ -86,7 +83,7 @@ export const RUNTIME_CLIS: readonly RuntimeEntry[] = [
   {
     id: "worktree-audit",
     kind: "cli",
-    entry: `${RUNTIME_SOURCE_ROOT}worktree-audit.ts`,
+    entry: source("skills/poteto-mode/scripts/worktree-audit.ts"),
     out: "worktree-audit.mjs",
     assetPath: "skills/poteto-mode/scripts/worktree-audit.mjs",
     executable: true,
@@ -95,7 +92,7 @@ export const RUNTIME_CLIS: readonly RuntimeEntry[] = [
   {
     id: "log",
     kind: "cli",
-    entry: `${RUNTIME_SOURCE_ROOT}log.ts`,
+    entry: source("skills/show-me-your-work/scripts/log.ts"),
     out: "log.mjs",
     assetPath: "skills/show-me-your-work/scripts/log.mjs",
     executable: true,
@@ -108,7 +105,7 @@ export const RUNTIME_TESTS: readonly RuntimeEntry[] = [
   {
     id: "check-plan-test",
     kind: "test",
-    entry: fork("skills/poteto-mode/scripts/check-plan.test.ts"),
+    entry: source("skills/poteto-mode/scripts/check-plan.test.ts"),
     out: "check-plan.test.mjs",
     assetPath: "skills/poteto-mode/scripts/check-plan.test.mjs",
     executable: false,
@@ -117,7 +114,7 @@ export const RUNTIME_TESTS: readonly RuntimeEntry[] = [
   {
     id: "orch-test",
     kind: "test",
-    entry: fork("skills/poteto-mode/scripts/orch/orch.test.ts"),
+    entry: source("skills/poteto-mode/scripts/orch/orch.test.ts"),
     out: "orch/orch.test.mjs",
     assetPath: "skills/poteto-mode/scripts/orch/orch.test.mjs",
     executable: false,
@@ -126,7 +123,7 @@ export const RUNTIME_TESTS: readonly RuntimeEntry[] = [
   {
     id: "watch-pr-cli-test",
     kind: "test",
-    entry: fork("skills/poteto-mode/scripts/watch-pr/cli.test.ts"),
+    entry: source("skills/poteto-mode/scripts/watch-pr/cli.test.ts"),
     out: "watch-pr/cli.test.mjs",
     assetPath: "skills/poteto-mode/scripts/watch-pr/cli.test.mjs",
     executable: false,
@@ -135,7 +132,7 @@ export const RUNTIME_TESTS: readonly RuntimeEntry[] = [
   {
     id: "watch-pr-github-test",
     kind: "test",
-    entry: fork("skills/poteto-mode/scripts/watch-pr/github.test.ts"),
+    entry: source("skills/poteto-mode/scripts/watch-pr/github.test.ts"),
     out: "watch-pr/github.test.mjs",
     assetPath: "skills/poteto-mode/scripts/watch-pr/github.test.mjs",
     executable: false,
@@ -144,7 +141,7 @@ export const RUNTIME_TESTS: readonly RuntimeEntry[] = [
   {
     id: "watch-pr-policy-test",
     kind: "test",
-    entry: fork("skills/poteto-mode/scripts/watch-pr/policy.test.ts"),
+    entry: source("skills/poteto-mode/scripts/watch-pr/policy.test.ts"),
     out: "watch-pr/policy.test.mjs",
     assetPath: "skills/poteto-mode/scripts/watch-pr/policy.test.mjs",
     executable: false,

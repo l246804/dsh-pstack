@@ -17,7 +17,7 @@ Date: 2026-10-25
 
 ## 决定
 
-1. **构建。** 新增 `scripts/build-runtime.ts`，用 vite-plus 的 `build()` 编程式打包（`write: false`，内存产物，target `node22`，format esm，`codeSplitting: false`，单文件）。`commander` 固定 14.0.0，源码提交在 `vendor/commander/`（含 MIT LICENSE），通过 alias 供打包使用，**不是**运行时依赖。
+1. **构建。** 新增 `scripts/build-runtime.ts`，用 vite-plus 的 `build()` 编程式打包（`write: false`，内存产物，target `node24`，format esm，`codeSplitting: false`，单文件）。`commander` 固定 14.0.0，源码提交在 `vendor/commander/`（含 MIT LICENSE），通过 alias 供打包使用，**不是**运行时依赖。
 2. **产物。** `orch/orch.mjs`、`watch-pr/watch-pr.mjs`、`worktree-audit.mjs`、`log.mjs`、`check-plan.mjs`，以及五个 `.test.mjs`。首行 `#!/usr/bin/env node`，CLI 可执行位 `0o755`、测试 `0o644`，不含 `bun:` 引用、`Bun.*` 全局和 `node_modules` 解析。随包的 `bootstrap.ts`、`package.json`、`bun.lock` 删除，产物不调用任何安装命令。
 3. **Host 执行入口。** 新增模型工具 `pstack_script`：`id` 是固定枚举（只允许随包脚本，不接受任意路径或 shell 字符串），用 `node:child_process` 以 `process.execPath` 启动产物，当 `process.versions.electron` 存在时附加 `ELECTRON_RUN_AS_NODE=1`。非零退出码、超时、输出上限都显式返回；`background: true` 需要 jobs 服务，缺失时明确拒绝并说明原因。
 4. **两个 shell 脚本改写成 Node**，行为逐字节对齐：`worktree-audit` 保留现有列、bucket 取值、`PINNED unknown`、`--sessions` 语义、git/du 等价逻辑，jq 改为 `JSON.parse`，不扫描会话存储；`log` 保留表头只写一次、追加不覆盖、tab/CR/LF 清理、`= + - @` 前缀转义和结尾换行。
