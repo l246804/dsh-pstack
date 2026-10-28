@@ -1,64 +1,53 @@
 ---
 name: decision-audit
-description: Report which decision records need a human look, based on the files a change touches. Read-only.
+description: Read-only report of decision records relevant to a change or repository, with command evidence.
 disable-model-invocation: true
 ---
 
 # Audit decision records
 
-Answer one question: for the code this change touches, which decision records should a person read now? The output is a list of leads for a human to judge, never an automatic fix.
+Report which records need human attention. Do not edit files or decide whether the code still matches a decision. Every finding cites the command and observed output that supports it.
 
-## Where the records live
+## 1. Resolve inputs
 
-Look for the directory instead of assuming one. The default is `docs/decisions/`; a repository that already kept ADRs has `docs/adr/` or `doc/adr/`. Read whichever exists and report its path in the output. When more than one exists, ask which one is current rather than merging them.
+Inputs are `mode` (`pr` by default, `local`, or `full`), optional `base`, and optional `scope` paths that replace the computed change set.
 
-Stop with "this repository keeps no decision records" when none exists. That is a normal result, not a failure. The rest of this skill writes `<dir>` for that path.
+Use the PR base for `pr` and `origin/main` otherwise. If absent, try `origin/master`, `main`, `master`, the newest tag, then `HEAD~20`; report the selected ref. If none resolves, stop and list the attempted refs.
 
-## Inputs
+Inspect `docs/decisions/`, `docs/adr/`, and `doc/adr/`. Use the single existing directory as `<dir>` and report its path. If several exist, ask which is current and wait. If none exists or it is empty, report that normal result and stop.
 
-- `mode`: `pr` (the default, the change under review), `local` (unpushed commits), or `full` (the whole repository).
-- `base`: the PR base in `pr` mode, `origin/main` otherwise. When that ref is missing, try `origin/master`, `main`, `master`, the newest tag, then `HEAD~20`, and say which one was used.
-- `scope`: an optional path list that replaces the computed change set.
+## 2. Collect the evidence
 
-## Output discipline
-
-- This skill changes no file. Not a status, not a field, not a sentence. The report is the whole deliverable.
-- Name the record and leave the verdict to the reader. Whether the code still matches it is a new decision for a person to make.
-- Treat a scheduled `proposed` record as normal and leave it out.
-- Quote the command and its output behind every line. A line without them does not ship, and "possibly stale" is not a finding.
-
-## 1. Collect the change set
+For `pr` and `local`, compute the change set unless `scope` was supplied:
 
 ```bash
 git diff --name-only "$(git merge-base HEAD <base>)"..HEAD
 ```
 
-Drop lock files, generated files, snapshots, and pure assets. In `full` mode, skip this step and use every file in the repository.
+Exclude lock files, generated files, snapshots, and pure assets. For `full`, use all tracked files instead.
 
-## 2. Load the headers
+Read each record through its first `## ` heading and parse the header. Put records predating the five-field header in a separate legacy list; they need human backfill and are exempt from the checks below.
 
-Read each record up to its first `## ` heading and parse the fields there. A record that predates the five-field header is legacy rather than malformed. List those in their own section and keep them out of the checks below. They are the backfill list a person works through once.
+## 3. Apply all five checks
 
-## 3. Five checks
+**A — Route.** For every non-`superseded` record whose `Scope` matches the change set, report its title, path, matching paths, and change-set evidence. Keep this to one line; the record supplies the details.
 
-**A, routing.** `Status` is not `superseded`, and at least one `Scope` glob matches a changed file. Report the title and the path. State no opinion on whether the change is right.
+**B — Candidate status.** Report a `proposed` record only when its anchor verifies:
 
-**B, status candidate.** Only when `Status: proposed` and the anchor verifies:
+- `PR #N`: `gh pr view N --json state` returns `MERGED`.
+- `commit:SHA`: `git merge-base --is-ancestor SHA <base>` exits 0.
 
-- `PR #N` returns `MERGED` from `gh pr view N --json state`
-- `commit:SHA` exits 0 from `git merge-base --is-ancestor SHA <base>`
+A `-` anchor is pending, not a finding. Put unverifiable anchors in an `Unverified` section, outside B and C.
 
-A `-` anchor never qualifies. Neither does an unverifiable one: mark it unverified and keep it out of this class.
+**B′ — Dead scope.** For an `accepted` record, report when no `Scope` glob matches an existing file. Give the path and glob-check evidence; ask whether the decision is obsolete or the scope is wrong.
 
-**B', scope went dead.** `Status: accepted` and no `Scope` glob matches any file that still exists. Two very different causes, so report the question rather than a verdict. Either the decision is obsolete and wants `superseded`, or the paths were written wrong and want fixing.
-
-**C, anchor broke.** A `commit:SHA` that is not in history, or a `PR #N` that does not resolve. Look for the commit's content before calling it lost:
+**C — Broken anchor.** Report a commit missing from history or an unresolvable PR. Before calling a commit lost, recover its patch identity when its object remains available:
 
 ```bash
 git show <dead-sha> | git patch-id --stable
 ```
 
-Then search only the commits that could contain it, which keeps this affordable on a large repository:
+Search plausible replacements within the record's date and scope:
 
 ```bash
 git log --since=<Date> --format=%H -- <Scope paths> |
@@ -66,27 +55,25 @@ git log --since=<Date> --format=%H -- <Scope paths> |
   grep -F "<patch-id>"
 ```
 
-A hit means the SHA moved and the record can be corrected to the new one. No hit means a person decides. A repository that squash-merges usually lands here, which is why records in one should carry `PR #N` instead.
+A match supports suggesting the new SHA. No match remains a human question. Prefer PR anchors in squash-merged repositories.
 
-**D, overdue for review.** `full` mode only. Files matching `Scope` gained commits after `Review`:
+**D — Overdue review.** In `full` mode only, report commits touching a record's `Scope` after its `Review` date:
 
 ```bash
 git log --since=<Review> --oneline -- <Scope paths>
 ```
 
-Report the commit count and the most recent subject, and suggest re-reading the record and moving `Review` forward.
+Include the count and latest subject; suggest human review and a new `Review` date.
 
-## 4. Order and trim
+## 4. Report and trim
 
-`C` first, then `B`, `B'`, `D`, `A`. Within a class, more matched files first.
+Order findings `C`, `B`, `B′`, `D`, `A`; within each class, put more matched files first.
 
-- `pr`: at most 15 items, then one line naming how many were left out.
-- `local`: at most 8 items, of which at most 3 are class `A`.
-- `full`: no trim, grouped by class.
+- `pr`: at most 15 findings, followed by the omitted count.
+- `local`: at most 8 findings, including at most 3 class-A findings.
+- `full`: no trimming; group by class.
 
-Class `A` gets a title and a link only. Its job is to send the reader to the record, so restating the record defeats it.
-
-## 5. Output
+Format:
 
 ```
 [C] Decision title
@@ -96,10 +83,4 @@ Class `A` gets a title and a link only. Its job is to send the reader to the rec
   Suggest: change Implemented-by to commit:8ff9f762
 ```
 
-With nothing found, print one line saying no record matched. In `full` mode, print the per-class counts instead, including the zeroes.
-
-## Failure handling
-
-- No usable base: stop and list every ref that was tried. Do not fall back to a base that changes what the report means.
-- `gh` missing or unauthenticated: mark `PR #N` items unverified and continue with the rest.
-- Empty `<dir>`: say so and exit normally.
+When nothing matches, say so in one line. In `full` mode, instead report every class count, including zeroes. List legacy and unverified records separately. If `gh` is missing or unauthenticated, mark PR anchors unverified and continue the other checks.
