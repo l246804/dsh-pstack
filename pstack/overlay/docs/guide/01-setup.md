@@ -12,7 +12,7 @@ In a Cursor chat, run:
 
 Cursor confirms the plugin is installed.
 
-In DeepSeek Harness, run `dsh plugin --profile <profile> add dsh-pstack`, then restart the session. DeepSeek Harness does not prefix plugin commands, so each command in this guide keeps its plain name there, such as `/setup-pstack`, which writes its model rule to `$DSH_HOME/pstack-models.md`. The [DSH adapter](../harness/dsh.md) covers the other differences.
+In DeepSeek Harness, run `dsh plugin --profile <profile> add dsh-pstack`, then restart the session. DeepSeek Harness does not prefix plugin commands, so each command in this guide keeps its plain name there, such as `/setup-pstack`, which writes its model rule to `$DSH_HOME/pstack-models.mdc`. The [DSH adapter](../harness/dsh.md) covers the other differences.
 
 ## Pick your models
 
