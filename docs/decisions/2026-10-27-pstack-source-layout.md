@@ -30,7 +30,7 @@ pstack/
 pstack/README.md  手写，说明这个目录由什么生成
 ```
 
-**生成树不进 git，落到 `dist/`。** `dist/pstack` 由生成器写入，`dist/skills` 由复制脚本写入，`dist/*.mjs` 由 bundler 写入。`dist/` 一直在 `.gitignore` 里，`package.json` 的 `files` 因此收到三项：`dist`、`cordis.patch.yml`、`static`。
+**生成树不进 git，落到 `dist/`。** `dist/pstack` 由生成器写入，`dist/skills` 由复制脚本写入，`dist/*.mjs` 由 bundler 写入。`dist/` 一直在 `.gitignore` 里，`package.json` 的 `files` 因此收到三项：`dist`、`cordis.patch.yml`、`assets`。
 
 **运行期只认 `dist/`，路径只有一个答案。** `src/paths.ts` 的 `PACKAGE_ROOT` 是"本模块的上一级"，这个表达式在 checkout（`src/paths.ts` → 仓库根）与安装包（`dist/index.mjs` → 包根）里都成立，所以 `join(PACKAGE_ROOT, "dist")` 在两处指向同一棵真实的树。删掉了"先找 `dist` 再回落到仓库根"的探测：那条规则会让同一个资源有两个位置，checkout 与安装包对"哪些文件是真的"给出不同答案。
 
@@ -103,5 +103,5 @@ build:bundle ──────────────────┘
 - 覆盖守卫：往上游 `docs/guide/01-setup.md` 追加一行，构建失败并打印新哈希；恢复后通过。
 - 非生成物守卫：在 `pstack/pstack/` 放一个文件，构建失败并点名。
 - worktree 守卫：改 `cordis.patch.yml` 里一个字符，检查失败并点名该行。
-- 安装形态：把 `dist`、`cordis.patch.yml`、`static`、`package.json` 复制到独立目录，九个路径常量全部指向存在的文件，技能目录加载到 59 个技能，与重构前的基线逐条一致。
+- 安装形态：把 `dist`、`cordis.patch.yml`、`assets`、`package.json` 复制到独立目录，九个路径常量全部指向存在的文件，技能目录加载到 59 个技能，与重构前的基线逐条一致。
 - `vp run check` 10/10 通过，`vp run build` 8/8 通过，417 条测试全绿，与重构前同数。

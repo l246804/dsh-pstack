@@ -7,7 +7,7 @@ Date: 2026-10-27
 
 [第三方技能决策](2026-10-27-third-party-skills.md)把 vendored 技能树放在 `assets/skills-ext/`。那个位置在第一次真正跑 `pnpm run build:assets` 时把它删掉了：生成器先在 `.assets-staging/` 建好整棵新树，再 `rename` 盖到 `assets/` 上，而 vendored 树不是生成物，所以随旧目录一起消失。没有报错，唯一的信号是事后 `git status` 里的两个 `D`。
 
-这不是写入顺序写错了。仓库早就定过 `assets/` 的性质：[静态资源决策](2026-10-26-static-resource-directory.md)第 16 行写着"`assets/` 保持纯生成树"，并为此专门建了 `static/` 放手工内容。`skills-ext/` 是 `assets/` 里唯一一处不是生成物的东西，它违反了那条规则，`rename` 只是把一直存在的矛盾暴露出来。实测数字：`buildAssets()` 产出 142 个文件，磁盘上 144 个，多出的 2 个正是 vendored 树。
+这不是写入顺序写错了。仓库早就定过 `assets/` 的性质：[静态资源决策](2026-10-26-static-resource-directory.md)第 16 行写着"`assets/` 保持纯生成树"，并为此专门建了 `assets/` 放手工内容。`skills-ext/` 是 `assets/` 里唯一一处不是生成物的东西，它违反了那条规则，`rename` 只是把一直存在的矛盾暴露出来。实测数字：`buildAssets()` 产出 142 个文件，磁盘上 144 个，多出的 2 个正是 vendored 树。
 
 同时，为了让这套结构能通过检查，代码里有 49 处 `skills-ext` 相关处理，其中三处是纯粹的豁免：`compareAssets` 跳过 `skills-ext/` 前缀、`checkUndeclaredFiles` 不覆盖这棵树、`checkAssetsHostCopy` 遇到它就 `continue`。**豁免的数量是分层错误的计量单位**：生成器需要替一棵不归它管的树背书，说明这棵树站错了位置。
 

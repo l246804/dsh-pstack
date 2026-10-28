@@ -65,7 +65,7 @@ src/ + scripts/runtime/  →  runtime/  →  assets/  →  dist/
 
 新增的 `check:pack`（`scripts/check-pack.ts`）补三件事：
 
-- 从生成器、`dist/`、`locale/`、`static/`、根文件**推导**应有条目集合，与 `pnpm pack --dry-run --json` 逐条比对，并按 `assets`/`dist`/`locale`/`static`/`root` 五栏打印。发布清单里的 166 从"手抄的基线"变成"现场可复现的输出"。
+- 从生成器、`dist/`、`locale/`、`assets/`、根文件**推导**应有条目集合，与 `pnpm pack --dry-run --json` 逐条比对，并按 `assets`/`dist`/`locale`/`assets`/`root` 五栏打印。发布清单里的 166 从"手抄的基线"变成"现场可复现的输出"。
 - 校验 `exports` 里每个目标**文件存在**、不是目录、且在 `files` 覆盖范围内。这是缺 `dist/` 时唯一会红的门。
 - 读 `dist/script.mjs` 与 `dist/subagent.mjs`，确认它们分别携带 `RUNTIME_CLIS[].assetPath` 和 `ROLE_MANIFEST[].key`。这两个表在编译期被内联进字节，manifest 改了没重打包，运行时症状是"脚本找不到"，与已修复的 `pstack_script` 缺陷同一形态。
 

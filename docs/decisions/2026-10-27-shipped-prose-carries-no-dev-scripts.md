@@ -7,7 +7,7 @@ Date: 2026-10-27
 
 `authoring-a-skill` playbook 的第 2 步被移植成"跑 `scripts/check-assets.ts`，它会在本包的 `assets/` 树上跑这些检查；你写在 `.dsh/skills/` 里的技能不在这棵树里，所以自己检查，别声称跑过检查"。`reflect` 的收尾句也补了同样的话，说本宿主"没有独立的 SKILL.md 校验器，别声称跑过"。
 
-这三句话在事实层面都不算撒谎，但放错了地方。`scripts/` 不随包发布：`package.json` 的 `files` 只有 `dist`、`assets`、`cordis.patch.yml`、`locale`、`static`、`README.md`、`LICENSE`。所以一个装了这个包的使用者，看到"跑 `scripts/check-assets.ts`"时无从执行。它是开发期门，守的是"生成树可以由源码重建"，与使用者写一个技能没有任何关系。
+这三句话在事实层面都不算撒谎，但放错了地方。`scripts/` 不随包发布：`package.json` 的 `files` 只有 `dist`、`assets`、`cordis.patch.yml`、`locale`、`assets`、`README.md`、`LICENSE`。所以一个装了这个包的使用者，看到"跑 `scripts/check-assets.ts`"时无从执行。它是开发期门，守的是"生成树可以由源码重建"，与使用者写一个技能没有任何关系。
 
 仓库自己早就写下过这条判据。`scripts/check-assets.ts` 的 `checkScriptReferences` 注释原文是：`.ts` 与 `.sh` 引用是"this repository's build scripts"，"They never ship and the reader is not meant to run them"。检查按这条规则放过 `.ts`，于是正文里那几处开发期脚本引用既不被拦下，也没有任何检查守"随包正文不许提它们"。判据存在，执行缺位。
 

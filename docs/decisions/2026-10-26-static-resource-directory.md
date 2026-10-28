@@ -1,4 +1,4 @@
-# 决定：手工维护的静态资源集中在 `static/`，插件图标换成 PNG
+# 决定：手工维护的静态资源集中在 `assets/`，插件图标换成 PNG
 
 Status: accepted
 Date: 2026-10-26
@@ -13,12 +13,12 @@ DSH 宿主的读图标逻辑（`dsh-app-boot` 的 `iconOf`）接受 SVG、PNG、
 
 ## 决定
 
-1. 新增根目录 `static/`，作为手工维护静态资源的唯一位置。`assets/` 保持纯生成树，两者互不收纳。
-2. 插件图标改为 `static/icon.png`，512×512。源图是用户提供的 1536×1536 PNG，等比缩放到 512 后用调色板压缩，约 141 KiB，在宿主 256 KiB 上限内。图标是插画而不是线条 mark，位图比矢量更合适；不提供 SVG 壳内嵌位图那种折衷形式。
-3. `package.json` 的 `icon`、`exports["./icon"]` 和 `files` 同步改到 `static`；README 的 `<img src>` 指向 `static/icon.png`。
-4. `check:assets` 增加 `STATIC_FILES` 清单与 `checkStaticDirectory`：`static/` 下的实际文件必须与清单逐项相等，允许新增但必须同时登记，且不允许多级子目录，保住"一屏读完的清点"。
-5. `checkIcon` 按宿主的四个格式校验：扩展名在集合内、文件非空、不超过 256 KiB、前导字节与扩展名相符；`package.json` 的 `icon` 必须落在 `static/` 内。
-6. README 里 `<img src>` 的目标必须是 `static/` 下的已登记文件。Markdown 链接检查看不到 HTML 标签，图标改名后第一屏会静默破图，所以单独加一条。
+1. 新增根目录 `assets/`，作为手工维护静态资源的唯一位置。`assets/` 保持纯生成树，两者互不收纳。
+2. 插件图标改为 `assets/icon.png`，512×512。源图是用户提供的 1536×1536 PNG，等比缩放到 512 后用调色板压缩，约 141 KiB，在宿主 256 KiB 上限内。图标是插画而不是线条 mark，位图比矢量更合适；不提供 SVG 壳内嵌位图那种折衷形式。
+3. `package.json` 的 `icon`、`exports["./icon"]` 和 `files` 同步改到 `assets`；README 的 `<img src>` 指向 `assets/icon.png`。
+4. `check:assets` 增加 `STATIC_FILES` 清单与 `checkStaticDirectory`：`assets/` 下的实际文件必须与清单逐项相等，允许新增但必须同时登记，且不允许多级子目录，保住"一屏读完的清点"。
+5. `checkIcon` 按宿主的四个格式校验：扩展名在集合内、文件非空、不超过 256 KiB、前导字节与扩展名相符；`package.json` 的 `icon` 必须落在 `assets/` 内。
+6. README 里 `<img src>` 的目标必须是 `assets/` 下的已登记文件。Markdown 链接检查看不到 HTML 标签，图标改名后第一屏会静默破图，所以单独加一条。
 
 本记录取代 [README 内容决策](2026-10-24-readme-content.md)第 7 条里"展示 `icon.svg`"这一处具体路径；该条其余要求（顶部展示插件 logo、提供可读替代文本）继续有效。
 
@@ -33,7 +33,7 @@ DSH 宿主的读图标逻辑（`dsh-app-boot` 的 `iconOf`）接受 SVG、PNG、
 
 ## 后果
 
-`icon.svg` 从根目录删除，`files` 里由 `static` 取代。发布包的条目数不变（一个图标文件换一个图标文件），但根目录不再堆积静态文件。
+`icon.svg` 从根目录删除，`files` 里由 `assets` 取代。发布包的条目数不变（一个图标文件换一个图标文件），但根目录不再堆积静态文件。
 
 代价是每次新增静态资源要改一处清单：`STATIC_FILES` 加名字，`files` 已按目录整包包含，因此只需这一步。忘记登记会失败在 `check:assets`，而不是发布后才发现多了个没人认识的文件。
 

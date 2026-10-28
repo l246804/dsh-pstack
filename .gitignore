@@ -9,9 +9,5 @@ dist
 # at the top level so its name cannot collide with a source directory, which an older layout
 # got wrong once.
 /.build
-# The generated port tree. Rebuilt from pstack/runtime/, pstack/docs/, and the pinned
-# submodule on every build, and shipped inside dist/. Ignoring it keeps an upstream sync's
-# diff to the files a person actually wrote.
-/pstack/pstack
 # Scratch space for local verification; never part of the package.
 .tmp
