@@ -22,6 +22,16 @@
 `pstack/runtime/skills/<技能>/scripts/**` 的脚本源码，编译为 mjs 后经 `replace:scripts` 替换随包树里上游附带的脚本。
 反例：不是泛指“运行环境”；指本仓这份脚本源码及其编译产物。
 
+## pstack 工具（pstack tools）
+
+根 `src/*.ts` 注册到 DSH 的模型可见工具：`pstack_skill`（按名加载隐藏技能）、`pstack_models`（只读模型目录）、`pstack_subagent`（按角色与 agent preset 委派）、`pstack_script`（运行随包 Node 脚本）。
+反例：不是 pstack 上游技能里的 `Task`/`AskQuestion` 文本，也不是宿主标准工具。
+
+## 角色文件（role file）
+
+`$DSH_HOME/poteto-models.mdc`：`/setup-pstack` 写入、`pstack_subagent` 每次委派重读的角色到 `provider/model [effort]` 映射；缺失表示全部角色继承父级路由。
+反例：不是 DSH 的 `AGENTS.md`，也不是 `pstack-models.example.md` 示例。
+
 ## 上游（upstream）
 
 `upstream/cursor-plugins`（生成树来源）与 `upstream/deepseek-harness`（DSH 宿主参考）两个 git 子模块。

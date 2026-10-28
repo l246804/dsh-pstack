@@ -15,12 +15,12 @@
     "esModuleInterop": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "skipLibCheck": true,
+    "skipLibCheck": true
   },
   // The hand-written sources are type-checked; the generated tree is not, because it is
   // upstream text this repository renders rather than code it maintains. The fork is
   // excluded too: it is upstream's TypeScript kept close to its original form, and
   // checking it here would report the upstream tree's types instead of this package's.
-  "include": ["src", "pstack", "skills", "vite.config.ts"],
-  "exclude": ["pstack/pstack", "pstack/runtime"]
+  "include": ["src", "tests", "pstack", "skills", "vite.config.ts"],
+  "exclude": ["pstack/pstack"]
 }

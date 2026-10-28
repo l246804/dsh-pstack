@@ -52,7 +52,7 @@ export interface AuditRow {
   readonly worktree: string;
 }
 
-/** One entry of the caller's `pstack_history` JSON. */
+/** One entry of the caller's DSH session-search projection. */
 export interface SessionInput {
   readonly sessionId?: string;
   readonly cwd?: string | null;
@@ -514,7 +514,7 @@ export function buildRow(worktree: string, context: AuditContext): AuditRow {
   const pr = prColumn(branch === "" ? undefined : branch, context.prs);
 
   // The newest supplied session whose cwd is this worktree. The caller produced
-  // that list with `pstack_history`; nothing here reads the session store.
+  // that list from DSH session search results; nothing here reads the session store.
   //
   // `usageKnown` means "this worktree has a matching session", not "a non-empty
   // array was supplied". The difference decides whether a worktree becomes a
@@ -629,7 +629,7 @@ export function renderTable(rows: readonly AuditRow[], base: string): string {
  * `unknown-usage`.
  *
  * Every element is checked, not filtered. The array is a projection the caller
- * builds from `pstack_history` results, so a malformed entry is a real mistake; the
+ * builds from DSH session search results, so a malformed entry is a real mistake; the
  * previous `filter` dropped such entries and let the row fall through to
  * `unknown-usage`, which is exactly the silent data loss the paragraph above says
  * this function refuses to do.
@@ -650,12 +650,12 @@ export function readSessionsFile(path: string): readonly SessionInput[] {
     throw new AuditError(`sessions file must be ${SESSIONS_SHAPE}: ${path}`);
   }
   if (!Array.isArray(parsed)) {
-    // The most likely mistake is passing a `pstack_history` result straight in:
+    // The most likely mistake is passing a single session-search result straight in:
     // that tool returns one object, never an array, so say so rather than only
     // "not an array".
     throw new AuditError(
       `sessions file must be ${SESSIONS_SHAPE}: ${path}. ` +
-        "Build it from pstack_history results; the history page itself is not an array.",
+        "Build it from DSH session search results; a single result is not an array.",
     );
   }
 
@@ -701,7 +701,7 @@ export const USAGE = [
   "  repo-path defaults to the current repo.",
   "  -b sets the ref the MERGED column checks against (e.g. origin/integration).",
   "  Without it the base is origin/HEAD, then origin/main, then origin/master.",
-  "  -s takes the JSON you produced with `pstack_history`, an array of",
+  "  -s takes a JSON array you build from DSH session search results, of",
   '  {"sessionId","cwd","lastEventTime"}. This script never reads the session',
   '  store, so without it LAST_CHAT is "-" and the bucket is unknown-usage.',
   '  PINNED is always "unknown": this host exposes no pinned-state source, so the',

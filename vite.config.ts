@@ -13,6 +13,9 @@ export default defineConfig({
     ],
     exports: true,
   },
+  test: {
+    include: ["tests/**/*.test.ts"],
+  },
   run: {
     tasks: {
       dev: {
