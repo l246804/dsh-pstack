@@ -13,7 +13,8 @@
 | 生成器 | `pstack/scripts/*.mjs` | `verify:overlay`（渲染前校验覆盖层）、`generate`（渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
 | 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加覆盖层渲染；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移 |
 | 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/.agents/skills/`（`skills experimental_sync` 的落盘目录） | 随包发布的非上游技能；`authored/` 手写、`.agents/skills/` 是 vendored 技能（构建时以 `vendored/` 落进 `dist/skills`），带哈希与提交号（记于 `skills-lock.json`） |
-| 仓库维护技能 | 根 `.agents/skills/<名>/SKILL.md` | 供维护本仓使用，不进入 `dist/` 或随包技能工作区 |
+| 仓库维护技能 | 根 `.agents/skills/<名>/SKILL.md`、`README.md`、`references/` | 路由型维护技能的入口、使用说明与按分支加载的指令；不进入 `dist/` 或随包技能工作区 |
+| 本地扩展登记 | `docs/extensions.md` | 登记 DSH 版独立功能的 `EXT-*` 需求、DSH 依赖与验收；基线重建保留这些范围 |
 | 上游子模块 | `upstream/cursor-plugins`、`upstream/deepseek-harness` | 生成树的来源，与 DSH 宿主的参考实现 |
 | 发布产物 | `dist/`（.gitignore） | npm 实际发布内容：`index.mjs`、`pstack/`、`skills/` |
 

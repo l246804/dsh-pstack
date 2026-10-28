@@ -26,3 +26,9 @@
 
 `upstream/cursor-plugins`（生成树来源）与 `upstream/deepseek-harness`（DSH 宿主参考）两个 git 子模块。
 反例：上游 ≠ 生成树；生成树是上游经渲染后的结果。
+
+## 本地扩展（local extension）
+
+上游 pstack 未声明、由 DSH 版插件独立维护的产品能力；在 `docs/extensions.md` 以 `EXT-*` 编号登记需求、DSH 依赖与验收，区别于 README 中的上游移植能力。
+
+反例：不要把 Cursor 已有但 DSH 尚未完整覆盖的移植缺口叫作本地扩展。
