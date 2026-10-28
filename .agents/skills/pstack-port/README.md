@@ -1,12 +1,13 @@
 # `/pstack-port` 使用说明
 
-用于从零建立或完整重建 pstack 的 DSH 移植基线。`SKILL.md` 只负责路由，`references/` 保存三个阶段说明；每次只加载一个分支，完成该阶段后停止。本说明供人阅读，不是额外执行分支。
+用于从零建立或完整重建 pstack 的 DSH 移植基线。`SKILL.md` 只负责路由，`references/` 保存四个阶段说明；每次只加载一个分支，完成该阶段后停止。本说明供人阅读，不是额外执行分支。
 
 ## 使用方式
 
 ```text
 /pstack-port audit
 /pstack-port implement
+/pstack-port review
 /pstack-port doc
 ```
 
@@ -14,37 +15,12 @@
 
 ## 阶段与确认门
 
-1. `audit`：清点上游需求、核对 DSH 证据，生成**中文** `pstack/README.md` 移植审查记录。
-2. `implement`：按 README 中确定的方案实现插件内缺口。
-3. `doc`：按上游模板和真实实现生成**英文** `pstack/overlay/docs/harness/dsh.md`。
+1. `audit`：清点上游文档和脚本、核对 DSH 能力与本仓既定适配，生成**中文** `pstack/README.md`。
+2. `implement`：按既定适配和 README 中已确定的方案实现插件内缺口、声明式插件组合及权限边界。
+3. `review`：只读审查 DSH 插件范式、宿主能力复用、权限、最小实现和冗余残留，生成 `docs/port-review.md`；必要时退回实现。
+4. `doc`：在实现审查通过后，按上游模板和真实实现生成**英文** `pstack/overlay/docs/harness/dsh.md`。
 
-若某个待实现能力存在多种合理实现建议，`audit` 会在 README 中列出候选、限制与取舍，并标记“待选择”。此时 `implement` 会暂停，请你明确选择一种；选择结果写入 README 后才继续。证据只支持一种方案时标记“证据唯一”，无需形式化选择。
-
-## 示例
-
-### 从零审查
-
-```text
-/pstack-port audit
-```
-
-只生成中文审查记录，不读取现有实现来反推需求，也不继续开发。
-
-### 确认方案后实现
-
-```text
-/pstack-port implement
-```
-
-检查 README 的上游提交、实现范围与方案状态。遇到“待选择”时先请你选定方案，再开始修改实现。
-
-### 基于真实实现生成使用文档
-
-```text
-/pstack-port doc
-```
-
-只生成英文 DSH 使用文档，不继承 README 的审查章节，也不把规划能力写成已提供能力。
+既定适配直接成为实现与验收基线。只有 `audit` 标为“待选择”的能力需要你在 `implement` 前选定方案。
 
 ## 与其他技能的分工
 

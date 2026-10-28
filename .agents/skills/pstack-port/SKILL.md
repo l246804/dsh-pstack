@@ -12,8 +12,9 @@ disable-model-invocation: true
 |---|---|---|---|
 | 审查 | `audit` | [`references/audit.md`](references/audit.md) | 中文 `pstack/README.md` |
 | 实现 | `implement` | [`references/implement.md`](references/implement.md) | 审查范围内的插件实现与验证 |
+| 实现审查 | `review` | [`references/review.md`](references/review.md) | 中文 `docs/port-review.md` 实现审查报告 |
 | 文档 | `doc` | [`references/doc.md`](references/doc.md) | 英文 `pstack/overlay/docs/harness/dsh.md` |
 
 读取 [`references/contract.md`](references/contract.md)、`docs/architecture.md` 和所选分支文件，全程执行；其他分支文件保留在上下文之外。完成当前分支的产物、验证与报告后停止；后续阶段、失效基线与证据冲突按分支文件处理。缺陷修复、本地功能扩展和上游增量维护交给 `/pstack-maintain`。
 
-使用方式、方案确认门与示例见 [`README.md`](README.md)。
+人工使用说明见 [`README.md`](README.md)。
