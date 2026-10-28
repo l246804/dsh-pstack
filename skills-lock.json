@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "skills": {
+    "decision-audit": {
+      "source": "./skills/authored/decision-audit",
+      "sourceType": "local",
+      "computedHash": "00753cef7d1e7a095a4995c31243d8385ec29cc9de76b3bda6aae0bced36662d"
+    },
+    "decision-write": {
+      "source": "./skills/authored/decision-write",
+      "sourceType": "local",
+      "computedHash": "ead7df1730736dd531e1a1b1cb7e38883d69d52e795ba0ddc7d96ef0ad7e4584"
+    },
+    "setup-project-docs": {
+      "source": "./skills/authored/setup-project-docs",
+      "sourceType": "local",
+      "computedHash": "26da0289c6647c22fe624099c8df466c22a17ae67f6862dd4f59fa3e4e037cb2"
+    }
+  }
+}
