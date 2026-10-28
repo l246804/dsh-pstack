@@ -4,7 +4,7 @@
 
 ## 生成树（generated tree）
 
-`pstack/pstack/`：`generate` 从 `upstream/cursor-plugins/pstack` 加覆盖层渲染出的整棵树，每次构建整棵替换、不进 git。
+`pstack/pstack/`：`generate` 从 `upstream/cursor-plugins/pstack` 加覆盖层渲染出的整棵树；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移。
 反例：`pstack/` 是整个工作区（含源码与配置），不要把它叫“生成树”。
 
 ## 覆盖层（overlay）

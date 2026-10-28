@@ -11,7 +11,7 @@
 | 覆盖层 | `pstack/overlay/`、`pstack/overlay/overlay.yml` | 手写文件按路径镜像生成树，替换上游同名文件；`overlay.yml` 记 `replaces`、`revision`、`sha256` |
 | 运行时 | `pstack/runtime/skills/<技能>/scripts/**` | 可执行脚本的 TS 源码，编译成 mjs 后替换随包树里上游附带的脚本 |
 | 生成器 | `pstack/scripts/*.mjs` | `generate`（渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
-| 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加覆盖层渲染；每次构建整棵替换，不进 git |
+| 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加覆盖层渲染；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移 |
 | 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/.agents/skills/`（`skills experimental_sync` 的落盘目录） | 非上游技能；`authored/` 手写、`.agents/skills/` 是 vendored 技能（构建时以 `vendored/` 落进 `dist/skills`），带哈希与提交号（记于 `skills-lock.json`） |
 | 上游子模块 | `upstream/cursor-plugins`、`upstream/deepseek-harness` | 生成树的来源，与 DSH 宿主的参考实现 |
 | 发布产物 | `dist/`（.gitignore） | npm 实际发布内容：`index.mjs`、`pstack/`、`skills/` |
