@@ -35,6 +35,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
+    "prepare": "skills experimental_sync -y -a universal",
     "prerelease": "vp run -r test",
     "release": "bumpp",
     "prepublishOnly": "vp run build"
@@ -46,6 +47,7 @@
     "@types/node": "catalog:types",
     "bumpp": "catalog:cli",
     "js-yaml": "catalog:testing",
+    "skills": "catalog:agentic",
     "typescript": "catalog:cli",
     "vite-plus": "catalog:cli"
   },
@@ -74,5 +76,15 @@
     "bundle": {
       "patch": "./cordis.patch.yml"
     }
-  }
+  },
+  "skills": [
+    {
+      "source": "mattpocock/skills",
+      "skills": [
+        "writing-for-agents",
+        "retro"
+      ],
+      "ref": "59db609eb1e18aaf59b63284d0e52255aff0c63c"
+    }
+  ]
 }
