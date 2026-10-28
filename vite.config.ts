@@ -9,7 +9,7 @@ export default defineConfig({
     copy: [
       "pstack/dist/pstack",
       { from: "skills/authored", to: "dist/skills" },
-      { from: "skills/vendored", to: "dist/skills" },
+      { from: "skills/.agents/skills", to: "dist/skills", rename: "vendored" },
     ],
     exports: true,
   },

@@ -12,7 +12,7 @@
 | 运行时 | `pstack/runtime/skills/<技能>/scripts/**` | 可执行脚本的 TS 源码，编译成 mjs 后替换随包树里上游附带的脚本 |
 | 生成器 | `pstack/scripts/*.mjs` | `generate`（渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
 | 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加覆盖层渲染；每次构建整棵替换，不进 git |
-| 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/vendored/`（→ `.agents/skills`） | 非上游技能；`authored/` 手写、`vendored/` 带哈希与提交号（记于 `skills-lock.json`） |
+| 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/.agents/skills/`（`skills experimental_sync` 的落盘目录） | 非上游技能；`authored/` 手写、`.agents/skills/` 是 vendored 技能（构建时以 `vendored/` 落进 `dist/skills`），带哈希与提交号（记于 `skills-lock.json`） |
 | 上游子模块 | `upstream/cursor-plugins`、`upstream/deepseek-harness` | 生成树的来源，与 DSH 宿主的参考实现 |
 | 发布产物 | `dist/`（.gitignore） | npm 实际发布内容：`index.mjs`、`pstack/`、`skills/` |
 
@@ -26,7 +26,8 @@ upstream/cursor-plugins/pstack + pstack/overlay
                                       ▲
 pstack/runtime ──vp pack──▶ pstack/dist/runtime ──replace:scripts──┘
 
-skills/authored + skills/vendored ──根 vp pack──▶ dist/skills
+skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
+  （后者在 dist 里落名为 vendored/）
 根 src/*.ts ──根 vp pack──▶ dist/index.mjs
 ```
 
@@ -35,7 +36,7 @@ skills/authored + skills/vendored ──根 vp pack──▶ dist/skills
 ## 扩展点
 
 - **改上游页面**：写 `pstack/overlay/<同路径>`，并在 `overlay.yml` 登记 `replaces`、`revision`、`sha256`；不要直接改 `pstack/pstack/`。
-- **新增技能**：手写放 `skills/authored/<名>/SKILL.md`；第三方放 `skills/vendored/` 并登记哈希与提交号。
+- **新增技能**：手写放 `skills/authored/<名>/SKILL.md`；第三方把 `source` 与技能名加进 `skills/package.json` 的 `skills` 数组，跑 `skills experimental_sync`，哈希与提交号自动记入 `skills/skills-lock.json`。仓库里没有 `skills/vendored` 目录或符号链接：`vp pack` 的清理步骤会顺着指向 `.agents/skills` 的符号链接删掉源文件，拷贝步骤又会把链接按本机绝对路径写进产物；所以构建直接从 `.agents/skills` 拷贝并 `rename` 成 `vendored`。
 - **新增或修改脚本**：改 `pstack/runtime/skills/<技能>/scripts/`，并把技能名加入 `pstack/scripts/replace-scripts.mjs` 的 `REPLACED` 列表。
 
 ## 已知缺口
