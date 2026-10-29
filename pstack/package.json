@@ -6,7 +6,6 @@
     "commander": "catalog:inlined"
   },
   "devDependencies": {
-    "js-yaml": "catalog:testing",
     "vite-plus": "catalog:cli"
   }
 }

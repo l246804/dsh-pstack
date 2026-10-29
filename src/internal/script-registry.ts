@@ -14,7 +14,6 @@ export interface ScriptEntry {
 
 export const SCRIPT_ENTRIES: readonly ScriptEntry[] = [
   { id: "check-plan", assetPath: "skills/poteto-mode/scripts/check-plan.mjs" },
-  { id: "orch", assetPath: "skills/poteto-mode/scripts/orch/orch.mjs" },
   { id: "watch-pr", assetPath: "skills/poteto-mode/scripts/watch-pr/watch-pr.mjs" },
   { id: "worktree-audit", assetPath: "skills/poteto-mode/scripts/worktree-audit.mjs" },
   { id: "log", assetPath: "skills/show-me-your-work/scripts/log.mjs" },

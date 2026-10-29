@@ -1,12 +1,26 @@
 #!/usr/bin/env node
 
-import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, posix, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const PSTACK = join(ROOT, "upstream", "cursor-plugins", "pstack");
-const OVERLAY = join(ROOT, "pstack", "overlay");
+// The local DSH adaptation tree. Its paths mirror the generated tree, so the main adapter
+// (`docs/harness/dsh.md`) replaces the upstream CC adapter (`docs/harness/claude-code.md`),
+// and any other upstream harness attachment keeps its relative path and file name here.
+// Upstream pages, skills, playbooks and references are never rewritten; only a file that
+// exists in this tree overrides its upstream counterpart.
+const HARNESS = join(ROOT, "pstack", "harness");
 const SKILLS = join(PSTACK, "skills");
 // The generated tree this package ships: `dist/pstack` is a copy of it.
 const OUT = join(ROOT, "pstack", "pstack");
@@ -23,7 +37,7 @@ const TERMS = [
   { key: "poteto-agent", re: /poteto-agent/ },
   { key: "comment-sicko", re: /comment-sicko/ },
   { key: "`readonly: true`", re: /readonly: (true|false)|readonly\/Ask/ },
-  { key: "`environment: \"cloud\"`", re: /environment: "(cloud|local)"/ },
+  { key: '`environment: "cloud"`', re: /environment: "(cloud|local)"/ },
   { key: "cloud_base_branch", re: /cloud_base_branch/ },
   { key: "`run_in_background: true`", re: /run_in_background/ },
   { key: "`resume`", re: /`resume`/ },
@@ -37,7 +51,10 @@ const TERMS = [
   { key: "~/.cursor/plugins/", re: /\.cursor\/plugins|\.cursor-plugin/ },
   { key: ".cursor/rules/", re: /\.cursor\/rules|always-applied rule/ },
   { key: "agent-transcripts", re: /agent-transcripts|\.cursor\/projects/ },
-  { key: "Cursor-only features", re: /Bugbot|Cursor [Aa]utomation|cursor\.(sh|com)\/automations|[Cc]loud [Aa]gent|built-in PR tool/ },
+  {
+    key: "Cursor-only features",
+    re: /Bugbot|Cursor [Aa]utomation|cursor\.(sh|com)\/automations|[Cc]loud [Aa]gent|built-in PR tool/,
+  },
 ];
 const ROUTE_KEY = "Run another pstack skill";
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -50,10 +67,10 @@ function walk(dir) {
   });
 }
 
-// The file a tree path reads from: the overlay's copy when one exists, else upstream's.
+// The file a tree path reads from: the local harness copy when one exists, else upstream's.
 function origin(path) {
-  const override = join(OVERLAY, ...path.split("/"));
-  return existsSync(override) ? override : join(PSTACK, ...path.split("/"));
+  const local = join(HARNESS, ...path.split("/"));
+  return existsSync(local) ? local : join(PSTACK, ...path.split("/"));
 }
 
 function file(path) {
@@ -65,18 +82,23 @@ const skills = readdirSync(SKILLS).filter((name) => existsSync(join(SKILLS, name
 function classify(skill) {
   const dir = join(SKILLS, skill);
   const others = skills.filter((name) => name !== skill).join("|");
-  const route = new RegExp(`the \\*\\*(?<bold>${others})\\*\\* skill|\`/(?<command>${others})\``, "g");
+  const route = new RegExp(
+    `the \\*\\*(?<bold>${others})\\*\\* skill|\`/(?<command>${others})\``,
+    "g",
+  );
   const linksToSkill = (line, name) => line.includes(`(../${name}/`);
   const namesBareSkill = (line) =>
-    [...line.matchAll(route)].some(({ groups }) => !linksToSkill(line, groups.bold ?? groups.command));
+    [...line.matchAll(route)].some(
+      ({ groups }) => !linksToSkill(line, groups.bold ?? groups.command),
+    );
   const usesCursorNames = new Set();
   for (const path of walk(dir).filter((path) => path.endsWith(".md"))) {
     const text = readFileSync(path, "utf8");
     for (const term of TERMS) if (term.re.test(text)) usesCursorNames.add(term.key);
     if (text.split("\n").some(namesBareSkill)) usesCursorNames.add(ROUTE_KEY);
   }
-  // A skill the overlay rewrites is read from the overlay here too, so the H1 the pointer is
-  // inserted under is the one that ships.
+  // A skill whose SKILL.md the harness tree overrides is read through origin here too, so the
+  // H1 the pointer is inserted under is the one that ships.
   const text = readFileSync(origin(`skills/${skill}/SKILL.md`), "utf8");
   const wrap = usesCursorNames.size > 0 && /^# /m.test(text);
   return { usesCursorNames, wrap };
@@ -86,17 +108,30 @@ const classes = new Map(skills.map((skill) => [skill, classify(skill)]));
 const problems = [];
 const users = new Map();
 for (const [skill, { usesCursorNames, wrap }] of classes) {
-  if (usesCursorNames.size > 0 && !wrap) problems.push(`skills/${skill}/SKILL.md uses Cursor names but has no H1`);
+  if (usesCursorNames.size > 0 && !wrap)
+    problems.push(`skills/${skill}/SKILL.md uses Cursor names but has no H1`);
   for (const key of usesCursorNames) users.set(key, [...(users.get(key) ?? []), skill]);
   // Cursor runs a skill by its folder name and the host lists it by its frontmatter `name`, so the two must match. The Agent Skills spec limits both to SKILL_NAME.
-  const frontmatter = readFileSync(origin(`skills/${skill}/SKILL.md`), "utf8").match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
-  const name = frontmatter.match(/^name:(.*)$/m)?.[1].trim().replace(/^(["'])(.*)\1$/, "$2");
-  if (name !== skill) problems.push(`skills/${skill}/SKILL.md has name ${JSON.stringify(name ?? "")}, not its folder name ${skill}`);
-  if (!SKILL_NAME.test(skill) || skill.length > 64) problems.push(`skills/${skill} is not lowercase words joined by hyphens, at most 64 characters`);
+  const frontmatter =
+    readFileSync(origin(`skills/${skill}/SKILL.md`), "utf8").match(/^---\n([\s\S]*?)\n---/)?.[1] ??
+    "";
+  const name = frontmatter
+    .match(/^name:(.*)$/m)?.[1]
+    .trim()
+    .replace(/^(["'])(.*)\1$/, "$2");
+  if (name !== skill)
+    problems.push(
+      `skills/${skill}/SKILL.md has name ${JSON.stringify(name ?? "")}, not its folder name ${skill}`,
+    );
+  if (!SKILL_NAME.test(skill) || skill.length > 64)
+    problems.push(
+      `skills/${skill} is not lowercase words joined by hyphens, at most 64 characters`,
+    );
 }
 const adapter = readFileSync(origin(ADAPTER), "utf8");
 for (const [key, using] of users) {
-  if (!adapter.includes(key)) problems.push(`DSH adapter has no row for ${key}, used by ${using.join(", ")}`);
+  if (!adapter.includes(key))
+    problems.push(`DSH adapter has no row for ${key}, used by ${using.join(", ")}`);
 }
 for (const problem of problems) console.log(`FAIL ${problem}`);
 if (problems.length > 0) process.exit(1);
@@ -155,14 +190,17 @@ for (const [path, entry] of files) {
   if (!path.endsWith(".md")) continue;
   for (const [, href] of entry.bytes.toString("utf8").matchAll(LINK)) {
     const target = resolve(path, href);
-    if (target && !has(files, target)) dangling.push(`pstack/pstack/${path} links to ${href}, which is not in the tree`);
+    if (target && !has(files, target))
+      dangling.push(`pstack/pstack/${path} links to ${href}, which is not in the tree`);
   }
 }
 for (const link of dangling) console.log(`FAIL ${link}`);
 if (dangling.length > 0) process.exit(1);
 
 if (process.argv.includes("--check")) {
-  const onDisk = new Map(existsSync(OUT) ? walk(OUT).map((path) => [relative(OUT, path), file(path)]) : []);
+  const onDisk = new Map(
+    existsSync(OUT) ? walk(OUT).map((path) => [relative(OUT, path), file(path)]) : [],
+  );
   const drifted = [...new Set([...rendered.keys(), ...onDisk.keys()])].sort().filter((path) => {
     const [want, have] = [rendered.get(path), onDisk.get(path)];
     return !want || !have || !want.bytes.equals(have.bytes) || want.executable !== have.executable;

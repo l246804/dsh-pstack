@@ -11,10 +11,10 @@
 | 插件内部 | 根 `src/internal/*.ts` | 宿主契约、技能索引与角色配置：`host-contract.ts` 只从 `@deepseek-ai/*` 导入类型，`skill-provider.ts` 建 bundle 技能目录，`role-config.ts` 与 `role-manifest.ts` 解析角色文件，`effort.ts` 校验 effort，`script-registry.ts` 列随包脚本，`paths.ts` 定资源根，`frontmatter.ts` 读上游 frontmatter，`audit-context.ts` 注入 `.audit` 约定 |
 | 插件验证 | 根 `tests/**/*.test.ts` | 驱动插件公共行为：隐藏技能加载、模型目录、角色文件解析与 preset 选择 |
 | pstack 工作区（`@internal/pstack`） | `pstack/package.json`、`pstack/vite.config.ts` | 编译运行时脚本、生成移植树、组装 `pstack/dist/` |
-| 覆盖层 | `pstack/overlay/`、`pstack/overlay/overlay.yml` | 手写文件按路径镜像生成树，替换上游同名文件；`overlay.yml` 记 `replaces`、`revision`、`sha256`，`verify:overlay` 在渲染前核对上游哈希 |
+| 本地适配树 | `pstack/harness/docs/harness/dsh.md` | DSH 宿主适配文档，按生成树相对路径镜像；主适配器替换上游 `claude-code.md`，其他上游 harness 附件保持上游相对路径与文件名。上游页面、技能、playbook、reference 原文不改写 |
 | 运行时 | `pstack/runtime/skills/<技能>/scripts/**` | 可执行脚本的 TS 源码，编译成 mjs 后替换随包树里上游附带的脚本 |
-| 生成器 | `pstack/scripts/*.mjs` | `verify:overlay`（渲染前校验覆盖层）、`generate`（渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
-| 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加覆盖层渲染；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移 |
+| 生成器 | `pstack/scripts/*.mjs` | `generate`（以上游原文加本地适配树渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
+| 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加 `pstack/harness/` 渲染；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移 |
 | 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/.agents/skills/`（`skills experimental_sync` 的落盘目录） | 随包发布的非上游技能；`authored/` 手写、`.agents/skills/` 是 vendored 技能（构建时以 `vendored/` 落进 `dist/skills`），带哈希与提交号（记于 `skills/skills-lock.json`） |
 | 仓库维护技能 | 根 `.agents/skills/<名>/SKILL.md`、`README.md`、`references/` | 路由型维护技能的入口、使用说明与按分支加载的指令；不进入 `dist/` 或随包技能工作区 |
 | 本地扩展登记 | `docs/extensions.md` | 登记 DSH 版独立功能的 `EXT-*` 需求、DSH 依赖与验收；基线重建保留这些范围 |
@@ -24,7 +24,7 @@
 ## 依赖方向
 
 ```
-upstream/cursor-plugins/pstack + pstack/overlay
+upstream/cursor-plugins/pstack + pstack/harness
         │ generate
         ▼
    pstack/pstack ──copy:pstack──▶ pstack/dist/pstack
@@ -37,11 +37,11 @@ skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
 根 src/*.ts ──根 vp pack──▶ dist/{index,models,script,skill,subagent}.mjs
 ```
 
-上游只向下游流动：生成树与 `dist/` 不反向修改上游；`pstack/pstack/` 是渲染结果，手写内容一律进 `pstack/overlay/`。
+上游只向下游流动：生成树与 `dist/` 不反向修改上游；`pstack/pstack/` 是渲染结果，手写内容一律进 `pstack/harness/`（仅适配文档）与 `pstack/runtime/`（脚本），不改写上游页面。
 
 ## 扩展点
 
-- **改上游页面**：写 `pstack/overlay/<同路径>`，并在 `overlay.yml` 登记 `replaces`、`revision`、`sha256`；不要直接改 `pstack/pstack/`。`generate` 依赖的 `verify:overlay` 会核对上游文件哈希，不符就停在渲染前。
+- **DSH 文本差异**：只写 `pstack/harness/<生成树相对路径>`；主适配器是 `docs/harness/dsh.md`（替换上游 `claude-code.md`），其他上游 harness 附件按上游相对路径与文件名建同名文件。上游页面、技能、playbook、reference 保持原文，不写覆盖层、不改上游内容；生成器渲染时本地适配树优先于上游。不要直接改 `pstack/pstack/`。
 - **新增技能**：随包手写技能放 `skills/authored/<名>/SKILL.md`，仅供维护本仓的技能放根 `.agents/skills/<名>/SKILL.md`；第三方随包技能把 `source` 与技能名加进 `skills/package.json` 的 `skills` 数组，跑 `skills experimental_sync`，哈希与提交号自动记入 `skills/skills-lock.json`。仓库里没有 `skills/vendored` 目录或符号链接：`vp pack` 的清理步骤会顺着指向 `.agents/skills` 的符号链接删掉源文件，拷贝步骤又会把链接按本机绝对路径写进产物；所以构建直接从 `.agents/skills` 拷贝并 `rename` 成 `vendored`。
 - **新增或修改脚本**：改 `pstack/runtime/skills/<技能>/scripts/`，并把技能名加入 `pstack/scripts/replace-scripts.mjs` 的 `REPLACED` 列表。模型通过 `pstack_script` 的 `id` 调用，不直接拼路径；新增脚本必须同步 `src/internal/script-registry.ts` 的 `SCRIPT_ENTRIES`。
 - **新增或修改插件工具**：改 `src/*.ts`，在 `cordis.patch.yml` 增加对应 `dsh-pstack/<入口>` 行；`package.json` 的 `exports` 必须暴露同一入口。插件只从 `@deepseek-ai/*` 导入类型，运行时保持自包含。
@@ -49,6 +49,8 @@ skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
 ## 已知缺口
 
 - vendored 技能来源记在 `skills/skills-lock.json`，不存在单独的 `skills/sources.yml`。
-- `pstack/pstack/` 生成树落后于覆盖层：覆盖层 `docs/harness/dsh.md` 已按当前实现重写，但 `node pstack/scripts/generate-pstack-harness-tree.mjs --check` 仍报告生成树的 `docs/harness/dsh.md` 与 `docs/guide/01-setup.md` 两处漂移；覆盖层 `docs/guide/01-setup.md` 还把 DSH 角色文件写成 `$DSH_HOME/pstack-models.mdc`（实现读取 `$DSH_HOME/poteto-models.mdc`）。先改覆盖层，再重跑 `generate` 并提交结果。
+- `statechart` 技能的脚本尚未做 Node 等价移植：`pstack/runtime` 没有对应镜像，随包树原样发布上游 `.ts` 与 `sh` 启动器（`statechart/scripts` 约 4MB、405 个文件，含测试语料）；由 `implement` 决定移植方式与是否裁剪测试语料。
+- `poteto-mode` 的 `check-plan`、`watch-pr`、`worktree-audit` 上游脚本在 `d1453c1..1ba91fc` 间有改动，本地 `pstack/runtime` 移植尚未同步，交 `implement`。
+- 本地适配树只有主适配器 `docs/harness/dsh.md`；其内容仍把 `pstack_script` 的 `orch` id 列在脚本清单里，而上游已删除 orch 脚本，需在 `doc` 阶段更新适配文档。
 
 本节记录的是当前事实；缺口修复或消失后同步更新。

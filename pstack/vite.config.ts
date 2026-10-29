@@ -17,12 +17,8 @@ export default defineConfig({
       "build:runtime": {
         command: "vp pack",
       },
-      "verify:overlay": {
-        command: "node scripts/verify-overlay.mjs",
-      },
       generate: {
         command: "node scripts/generate-pstack-harness-tree.mjs",
-        dependsOn: ["verify:overlay"],
       },
       "copy:pstack": {
         command: "node scripts/copy-pstack.mjs",
@@ -34,7 +30,6 @@ export default defineConfig({
       },
       build: {
         command: "vp run replace:scripts",
-        dependsOn: ["replace:scripts"],
       },
       test: {
         command: "node --test 'dist/runtime/**/*.test.mjs'",

@@ -1,10 +1,11 @@
 # 决定：pstack 以生成树为唯一产物，脚本在 runtime 重写为 Node
 
-Status: accepted
+Status: superseded
 Date: 2026-10-28
 Scope: pstack/**
 Implemented-by: commit:489334b88c460bb988916d008d3f602a43f5fe64
 Review: 2027-04-28
+Superseded-by: docs/decisions/2026-10-29-pstack-harness-tree-port.md — 生成树改用上游原文加本地 harness 适配树，覆盖层整份替换被取代
 
 ## 背景
 

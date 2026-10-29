@@ -4,13 +4,13 @@
 
 ## 生成树（generated tree）
 
-`pstack/pstack/`：`generate` 从 `upstream/cursor-plugins/pstack` 加覆盖层渲染出的整棵树；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移。
+`pstack/pstack/`：`generate` 从 `upstream/cursor-plugins/pstack` 加本地 harness 适配树 `pstack/harness/` 渲染出的整棵树；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移。
 反例：`pstack/` 是整个工作区（含源码与配置），不要把它叫“生成树”。
 
-## 覆盖层（overlay）
+## 本地适配树（local harness tree）
 
-`pstack/overlay/` 与 `overlay.yml`：手写文件按路径镜像生成树、替换上游同名文件；`overlay.yml` 记 `replaces`、`revision`、`sha256`，`verify:overlay` 在渲染前核对哈希，不符就构建失败。
-反例：不要把 `pstack/pstack/` 里已生成的结果叫作“覆盖层”。
+`pstack/harness/`：DSH 宿主适配文档，按生成树相对路径镜像；主适配器 `docs/harness/dsh.md` 替换上游 `claude-code.md`，其他上游 harness 附件保持上游相对路径与文件名。只承载适配文档，不改写上游页面、技能、playbook、reference。
+反例：不是覆盖层，不能整份替换上游正文；生成树里的结果也不叫“本地适配树”。
 
 ## 随包内容（shipped payload）
 
