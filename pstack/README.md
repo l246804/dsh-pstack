@@ -10,7 +10,7 @@
 - 审查采用「先排除、再分层」：先读上游 `docs/harness/claude-code.md` 的 `Cursor-only features`，舍弃依赖 Cursor 平台的完整能力；剩余需求拆成原子能力，每项只归入映射、标准模式、可选插件中的一层。
 - 本文的「插件」一律指本仓 `dsh-pstack`；「可选插件」一律指 DSH 随安装提供、默认未启用的插件或 bundle。
 - 「当前提交未证实」表示在固定提交与本次调查范围内找不到足够源码证据，不表示该能力在别的 DSH 版本也不存在。
-- 本轮是 `baseline` 轮次，没有 blocker，也没有 core Issue 或 core EXT 输入。审查从空白的 `pstack/README.md` 重新建立，不继承上一版内容。
+- 本轮是 core 轮次 `#1`，唯一输入是 GitHub Issue #1（角色配置文件名 `poteto-models.mdc` 与上游 `pstack-models.mdc` 不一致）。上一轮 `baseline` 的 135 项能力表沿用；本轮只重审 Issue #1 触及的 `SET-02`、`SET-06`、`MOD-04`、`PI-02` 与 `AD-01`，其余能力行不变。逐条映射见 1.8。
 
 ### 1.2 上游提交与版本
 
@@ -108,6 +108,17 @@
 | E26 | Agent Teams | [packages/experimental/tool-agent-team/README.md#L10-L32](../upstream/deepseek-harness/packages/experimental/tool-agent-team/README.md#L10-L32) |
 | E27 | 技能目录格式 | [packages/skill/skill-filesystem/README.md#L36-L38](../upstream/deepseek-harness/packages/skill/skill-filesystem/README.md#L36-L38) |
 
+### 1.8 本轮 core 输入（Issue #1）
+
+本轮唯一 core 输入是 GitHub Issue #1：DSH 把上游角色文件 `pstack-models.mdc` 改名成 `poteto-models.mdc`，要求改回上游命名。逐条 `required_behavior` 映射到能力行如下；`implement` 与 `review` 按这些行验证，`doc` 写最终覆盖。
+
+| required_behavior | 主要能力行 | 本轮处理 |
+|---|---|---|
+| 新写入和读取的角色文件路径为 `$DSH_HOME/pstack-models.mdc`，与上游命名一致 | `SET-02`（读取）、`SET-06`（写入）、`PI-02` | 角色文件名从 `poteto-models.mdc` 改为 `pstack-models.mdc` |
+| 用户文档、DSH 适配文档、术语表和测试中的 DSH 角色文件名与上游一致 | `SET-06`、`AD-01`（`dsh.md`、根 README、`docs/glossary.md`、`tests/**`） | 同步文档与测试里的文件名 |
+| 不兼容、不迁移已有的 `poteto-models.mdc`；旧文件不再读取，按缺失配置处理 | `SET-02`、`SET-06` | 只认新文件名，旧文件视为缺失并回退 `inherit-parent` |
+| 格式错误仍按行号报告 | `SET-06`、`PI-02` | 保持现有按行号诊断，不变 |
+
 ## 2. 完整能力表
 
 本节按模板覆盖域列出上游需求与 DSH 对应项。每行给出能力编号、上游期待、DSH 实际、审查结论和证据。只有 `标准 · 部分` 和 `可选 · 部分` 的剩余缺口进入第 3.4 节。
@@ -160,7 +171,7 @@
 | SET-03 | 用 `AskQuestion` 询问 `unlimited`、`large`、`medium`、`small` 四档预算 | `ask_user_question` 支持带描述的选项和单选；技能文本可以照搬四档标签 | 映射 · 完整 | [setup-pstack L20-L28](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L20-L28) · [E07](../upstream/deepseek-harness/docs/tool-catalog.md#L546-L616) |
 | SET-04 | 按预算改写每个真实 slug 的 effort token，处理 `max`、`xhigh`、`high`、`medium`、`low` 阶梯和 `-fast` 后缀 | DSH 没有内建预算换算；`reasoning_effort` 的允许值由模型目录决定，非法值会被 adapter 拒绝 | 标准 · 部分（G-01）。预算映射逻辑进入 `PI-02`，并按 `ctx.llm.resolveModelInfo` 校验 | [setup-pstack L29-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L29-L31) · [E24](../upstream/deepseek-harness/packages/llm/llm/README.md#L87-L87) |
 | SET-05 | 展示每个角色和模型，标出不可用项，询问是否修改 | `ask_user_question` 可以逐项确认；展示表格由技能文本负责 | 映射 · 完整 | [setup-pstack L31-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L31) · [E07](../upstream/deepseek-harness/docs/tool-catalog.md#L546-L616) |
-| SET-06 | 把结果写入 `~/.cursor/rules/pstack-models.mdc`，覆盖整个文件，保持幂等，删除退役角色 | DSH 没有 `.cursor/rules`；可以写 `$DSH_HOME/poteto-models.mdc`，但没有任何 DSH 机制自动读取并应用 | 标准 · 部分（G-01）。写入格式和位置进入 `PI-02` | [setup-pstack L37-L66](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L37-L66) · [E20](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L30-L40) |
+| SET-06 | 把结果写入 `~/.cursor/rules/pstack-models.mdc`，覆盖整个文件，保持幂等，删除退役角色 | DSH 没有 `.cursor/rules`；可以写 `$DSH_HOME/pstack-models.mdc`（本轮 core Issue #1 起与上游同名），但没有任何 DSH 机制自动读取并应用 | 标准 · 部分（G-01）。写入格式和位置进入 `PI-02` | [setup-pstack L37-L66](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L37-L66) · [E20](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L30-L40) |
 | SET-07 | 面板角色的列表长度决定子代理数量；`swarm workers` 是默认 worker 模型 | 技能文本可以对每个列表项发一次 `subagent` 调用；`swarm workers` 需要按角色表解析 | 映射 · 完整（面板扇出部分） | [setup-pstack L31-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L31) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
 | SET-08 | 首次检测项目是否已有验证技能和形式验证技能，必要时各询问一次 | `create-verification-skill` 与 `create-formal-verification-skill` 文本可移植；技能创建结果写项目技能目录 | 映射 · 完整 | [setup-pstack L72-L78](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L72-L78) · [E01](../upstream/deepseek-harness/docs/subsystems/skills.md#L64-L89) |
 
@@ -517,7 +528,7 @@
 - **决策**：[docs/decisions/2026-10-28-pstack-plugin-tools.md](../docs/decisions/2026-10-28-pstack-plugin-tools.md#L1-L35)（Status: accepted，2026-10-28）。
 - **内容**：根 `src/` 注册四个工具行和两个 agent preset。`pstack_skill` 通过 `ctx.skills.get()` 按名称加载 pstack 技能与相对资源；`pstack_models` 只读枚举 `ctx.llm` 的 provider、model、effort；`pstack_subagent` 按 `role` 解析 `provider/model [effort]`，把 `agent` 映射到 `poteto-agent` 或 `comment-sicko` preset；`pstack_script` 以封闭 `id` 运行随包 Node 脚本；`comment-sicko` 的只读约束由 preset 内 `dsh-tool-fs` 关闭 `write` 与 `edit` 实现。
 - **能力范围**：`TOOL-04b`、`MOD-01`、`MOD-04`、`MOD-06`、`SET-01`、`SET-02`、`SET-04`、`SET-06`、`SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SCR-01` 至 `SCR-05`，以及依赖这些能力的 `SKL-01`、`SKL-02`、`SKL-05`、`SKL-06`、`SKL-07`、`SKL-11` 至 `SKL-14`、`SKL-24`、`SKL-27`、`SKL-29`、`SKL-30` 与相应 playbook。
-- **验收行为**：隐藏技能仍可被 pstack 路由但不进入普通模型目录；未知技能名返回明确错误；角色文件格式为 `$DSH_HOME/poteto-models.mdc`，重跑幂等，退役角色删除，缺失文件回退 `inherit-parent`，格式错误按行号报告；`pstack_subagent` 的 `general` 不挂 preset，两个命名 agent 走各自 preset；`pstack_script` 的 id 集合与 `src/internal/script-registry.ts` 一致；`comment-sicko` 的写工具被静态移除。
+- **验收行为**：隐藏技能仍可被 pstack 路由但不进入普通模型目录；未知技能名返回明确错误；角色文件格式为 `$DSH_HOME/pstack-models.mdc`（本轮 core Issue #1 起与上游同名，决策记录随 `implement` 同步），重跑幂等，退役角色删除，缺失文件回退 `inherit-parent`，格式错误按行号报告；`pstack_subagent` 的 `general` 不挂 preset，两个命名 agent 走各自 preset；`pstack_script` 的 id 集合与 `src/internal/script-registry.ts` 一致；`comment-sicko` 的写工具被静态移除。
 - **源码核验位置**：`src/*.ts`、`cordis.patch.yml`、`tests/**/*.test.ts`（模块职责见 [docs/architecture.md#L9-L21](../docs/architecture.md#L9-L21)；实现与 review 均已通过）。
 - **已知代价**：`pstack_script` 不经过 bash 审批与文件系统沙箱，这是 Desktop Electron 运行时的已接受代价；插件组合变更需要改 `cordis.patch.yml` 并重新安装。
 
@@ -619,11 +630,11 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | MOD-05 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（provider/model [effort]） |
 | MOD-06 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（PI-02 角色清单） |
 | SET-01 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
-| SET-02 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
+| SET-02 | 待实现（本轮 #1 重开） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：读取 `$DSH_HOME/pstack-models.mdc`；PI-02） |
 | SET-03 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | SET-04 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；按模型目录校验 effort） |
 | SET-05 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
-| SET-06 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（$DSH_HOME/poteto-models.mdc；PI-02） |
+| SET-06 | 待实现（本轮 #1 重开） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：写入 `$DSH_HOME/pstack-models.mdc`；PI-02） |
 | SET-07 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（角色面板扇出） |
 | SET-08 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | PATH-01 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |
