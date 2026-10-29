@@ -1,89 +1,115 @@
 # pstack 移植契约
 
-`<root>` 为仓库根，相对路径从 `<root>` 解析。本文件适用于全部分支；port 基线的原子能力、分层和证据规则见 [`port-baseline.md`](port-baseline.md)。`issue` 与 `EXT-*` 以用户请求、GitHub Issue 和 `docs/extensions.md` 为独立需求来源。
+`<root>` 为仓库根。相对路径从 `<root>` 解析。`<pstack>` 与 `<dsh>` 分别按当前工作区定位 upstream pstack 与 DSH 检出，不写死检出前缀。本文件适用于全部分支；port 原子能力、分层与证据规则见 [`port-baseline.md`](port-baseline.md)。
 
-## 1. 冻结三类事实
+## 1. 入口门禁与串行工作项
 
-每轮分别记录来源，不用旧实现反推需求，也不重新决定已经落地的适配：
+每次分支调用先读 `docs/port-state.yaml`。文件不存在时，仅 `upstream`、`prepare`、`audit` 可按 `port.state: idle`、`blocker: null` 继续；其他分支报告缺少状态文件并停止。
 
-1. **上游需求**（`<pstack>` = `upstream/cursor-plugins/pstack/`）：Markdown 声明行为；被文档或技能调用的脚本声明执行入口、运行时和具体算法。
-2. **DSH 能力**（`<dsh>` = `upstream/deepseek-harness/`）：源码、类型、包清单、插件声明和测试证明能力；示例和注释不能单独作证。
-3. **本仓适配契约**：`docs/architecture.md`、`docs/decisions/` 中 `Status: accepted` 的记录、`docs/extensions.md` 的 `proposed` 与 `active` 条目。它们规定长期适配选择及保留范围，不证明上游需求或 DSH 能力。
+工作项是 `port`、一个 `EXT-*` 或一个 `#编号`。blocker 非空时，`allowed_routes` 是工作项层面的唯一可执行集合：
 
-`proposed` 决策和当前手写实现只在分支规定的阶段用于差异或实现核验，本身不是既定适配。`AGENTS.md` 与技能文件是操作指令，不是产品能力证据；配置只提供命令、依赖等对应事实，生成树、旧文档、测试和构建产物只证明各自直接表达的事实。
+1. 将本次完整路由与列表逐项匹配。未列出时拒绝执行，报告 `active_item`、`mode`、`reason` 和允许路由，不写任何文件。
+2. 其他 Issue 或 EXT 不得切换、并行或合并；不得为它们建立工作文件。
+3. 匹配后再检查该分支的阶段、工作文件和验收前置。`allowed_routes` 不替代阶段顺序。
+4. `issue #n` 只在对应实现审查通过后执行；core Issue 还必须等 `doc` 完成。
 
-只读子任务遵循同一路径白名单，主任务打开原证据核验后才采用结论。网络资料、记忆和本机其他版本不扩大证据范围。
+blocker 有两种模式：
 
-用 `git -C <pstack> rev-parse HEAD` 和 `git -C <dsh> rev-parse HEAD` 记录并绑定两个上游提交。目录缺失、证据不可读或提交不符时，报告具体路径与提交状态，等待用户提供预期检出。
+| mode | 用途 | 路由形态 |
+|---|---|---|
+| `issue` | 普通 EXT、bug、external Issue | `implement/review` 当前 EXT 或 Issue；满足验收前置后加 `issue #n` |
+| `core` | 必须改 port 基线的 Issue 或 EXT | `audit → implement port ⇄ review port → doc`；满足验收前置后加 `issue #n` |
 
-## 2. 写入边界与最小移植
+port 进行中收到新工作项时，`mode: issue` 把当前阶段保存到 `resume_route`，验收后恢复。`mode: core` 把需求交回 `audit` 重新冻结，不在 `implement` 或 `review` 中直接加入。任何恢复都先清 blocker。
 
-每个分支只写自己的产物及当前需求所需的文件：
+## 2. 唯一状态源与轮次
 
-- `pstack/README.md`：审查基线与各阶段状态区。
-- 根 `docs/`：架构、决策、本地扩展、`docs/port-prepare.md`、`docs/port-review.md`、`docs/extensions/<EXT-ID>/review.md` 和 `docs/issues/<编号>/review.md`。
-- `pstack/harness/`：本地适配树；`prepare` 整理结构与映射，`doc` 编写适配文档。
-- `pstack/runtime/`：上游脚本的 Node 等价移植及其行为测试。
-- 根 `src/`、根 `tests/`、`cordis.patch.yml`：当前能力必需的插件集成与验证。
-- 根或 `pstack/` 的包清单、锁文件、构建与生成脚本：当前能力、依赖或组装方式确有变化时才修改。
+`docs/port-state.yaml` 是 port 状态与 blocker 的唯一状态源，固定结构为：
 
-`pstack/` 的其他文档、技能、playbook、reference 保持原状；上游子模块只由 `upstream` 更新检出，DSH 文本差异只进入本地适配树，不改写 `01-setup.md` 等上游页面。`pstack/pstack/` 和 `dist/` 只由构建生成。文件越界时，目录或适配树问题交回 `prepare`，基线实现问题交回 `implement`，独立功能问题交回 `issue`。
-
-上游 `docs/harness/` 的主适配器 `claude-code.md` 对应本地 `pstack/harness/docs/harness/dsh.md`，其他附件保持上游相对路径与文件名；新增附件按同一规则获得本地对应文件，不维护固定附件清单。生成树以本地上游原文加本地适配树为输入，用主适配器替换上游 CC 适配器，并按当前主适配器生成技能引用、检查名称映射与链接。
-
-runtime 只修改 Node 运行必需的部分及会造成错误行为或误报的少量逻辑，保持上游输入、输出、文件格式、外部命令、退出码与关键算法。`origin/main` 等上游已有约定原样保留。runtime 不设独立类型检查门禁，以行为测试、真实脚本调用和与上游关键行为对照验收；确有行为差异时登记到 README 的能力状态，并在对应上游适配文档的本地 DSH 产物中说明。
-
-## 3. 范围与生命周期
-
-内部工作范围只有 `port` 或一个 `EXT-*`；Issue 编号是外部追踪标识，不是第三种内部状态。每条 finding 标记所属范围，每次 `implement`、`review` 和状态更新只处理一个范围。
-
-| 范围 | 需求与状态 | 审查工作文件 | 收尾 |
-|---|---|---|---|
-| `port` | `pstack/README.md` 的上游能力、分类和分阶段状态区 | `docs/port-review.md` | 正常 `doc` 保持 `审查状态：通过`、置 `收尾状态：已完成`；部分/未实现 `doc` 保持 `审查状态：阻断-待决策`、置 `收尾状态：已完成` |
-| 一个 `EXT-*`（经 `#编号` 映射） | `docs/extensions.md` 中该编号的条目 | `docs/extensions/<EXT-ID>/review.md` | 该 EXT 的 `issue` 验收成功后清理 |
-
-`docs/issues/<编号>/review.md` 只保存 Issue 到内部范围的映射、责任层和公开沟通状态，不承载技术 findings。文件开头记录 `分析状态：未分析 | 已分析` 和 `内部范围：未定 | port | EXT-* | 外部上游`；其中 `外部上游` 表示只由外部责任层处理，不产生本仓实现范围。未分析时只能进入 `review`。
-
-每个审查工作文件开头记录：
-
-- `轮次：baseline | #编号`，绑定本轮工作来源；同一工作轮次内的多次 review 称审查迭代。
-- `审查对象：<本仓提交或明确的变更范围>`。
-- `审查状态：未运行 | 待审查 | 阻断-可修复 | 阻断-待决策 | 通过`。
-- `收尾状态：未开始 | 已完成`，仅 `port` 使用。
-- `阻断摘要：无 | <原因、证据、影响、可选处置>`，用于 `blocked` findings；最终由 `阻断-待决策` 收尾使用。
-- `用户确认：- | <日期 + 部分实现/未实现/无法复现结论>`，仅 `阻断-待决策` 使用。
-
-finding 状态为 `open | reopened | fixed-pending-review | closed | blocked`。`blocked` 只用于需要用户决策、缺少 DSH 公共能力、外部依赖或许可证的项，不参与普通修复；存在可修复的 `open`/`reopened` finding 时先修复，仅剩 `blocked` 时进入 `阻断-待决策`。
-
-同一范围同一时刻只允许一个活跃轮次：`port` 要求上一轮 `收尾状态：已完成`，`EXT-*` 要求上一轮 `docs/extensions/<EXT-ID>/review.md` 已清理；开始新的 Issue 驱动轮次前，还要求旧 Issue 工作文件已清理。`docs/port-review.md` 缺失或基线不符时，`implement`、`review`、`doc` 交回 `audit`，由 `audit` 创建初始报告。
-
-`implement`、`review` 必须由用户显式指定 `port` 或 `#编号`；`EXT-*` 只作为 `issue` 的创建参数，或由 `#编号` 的映射得到。无参数调用只读列出待处理范围、状态和开放 findings，等待用户明确选择后再开始。Issue 相关工作必须使用 `#编号`，不得以 `EXT-*` 绕过映射与验收。用户指定范围后只处理该范围，其他工作文件保持原状；不自动合并修复、同时收尾或相互清理。
-
-共享实现可以服务多个范围，但每个范围只更新自己的状态。EXT 工作不改写 README 的上游能力状态；共享改动须运行受影响的既有回归。发现必须改变另一范围的行为时，暂停当前收尾，记录阻断并请用户显式切换范围处理，不顺带改变对方需求、状态或工作文件。
-
-阶段产物与状态流（本节是状态与下一步的单一事实来源；分支文件只补充操作细节，冲突时以本节为准）：
-
-- `prepare` 写 `docs/port-prepare.md`，保留 README 和各审查工作文件；它开始本轮移植但不结束本轮移植，后续由显式调用进入 `audit`。
-- `audit` 重建 README，重置 `docs/port-review.md` 为 `轮次：baseline`、`审查对象：本轮上游提交`、`审查状态：未运行`、`收尾状态：未开始`、`阻断摘要：无`、`用户确认：-`，为每个能力 ID 预留实现、审查、文档和最终覆盖状态区；EXT 工作文件不受影响。
-- `implement` 按选定范围实现或修复，更新对应状态和 `审查对象`；实现完成且没有 `open`/`reopened`/`fixed-pending-review` findings 时把 `审查状态` 置为 `待审查`，修复通过标为 `fixed-pending-review`，未通过标为 `open`。
-- `review` 按选定范围审查并更新状态；复核通过标为 `closed`、`审查状态：通过`；可修复问题标为 `reopened`、`审查状态：阻断-可修复`；需要用户决策、缺少 DSH 公共能力、外部依赖或许可证的 finding 标为 `blocked`，仅剩 `blocked` 时标 `审查状态：阻断-待决策` 并记录阻断原因与可选处置。存在可修复 finding 时先交回 `implement`，不因同时存在 `blocked` 项而跳过修复。
-- `doc` 正常模式只在 `审查状态：通过` 后更新 README 的文档状态区与最终覆盖状态，保留 `轮次` 与 `审查对象`，并把 `docs/port-review.md` 的 `收尾状态` 置为 `已完成`；部分/未实现模式在 `审查状态：阻断-待决策` 时更新受影响能力的适配文档和最终覆盖状态，保留阻断状态并同样置 `收尾状态：已完成`。`轮次：#编号` 的 `用户确认` 由后续 `issue` 记录；`轮次：baseline` 由本阶段展示 `阻断摘要` 与拟结论，取得用户确认后写入。
-- `issue` 创建 GitHub Issue 并初始化 `docs/issues/<编号>/review.md`；正常验收 `port` 要求 `轮次` 等于当前 `#编号`、`审查状态：通过` 且 `收尾状态：已完成`；`阻断-待决策` 在 `收尾状态：已完成` 后可发布部分/无法实现结论，允许保留 `blocked` findings，不要求审查通过；正常验收 `EXT-*` 要求 `轮次` 等于当前 `#编号`、`审查状态：通过`，`阻断-待决策` 按用户确认结论处理；外部上游 Issue 只发布结论。
-
-历史由提交记录保存。结构问题交回 `prepare`；活跃轮次先结束或由用户明确放弃，再进入 `upstream`、`prepare` 或 `audit`。基线实现与行为问题交回 `implement`，新的事实调查交回 `audit`。正常收尾要求当前范围实现与必要验收完成且没有未关闭 findings；`阻断-待决策` 由 `doc` 部分模式准备文档并完成相应确认，Issue 驱动的 `#编号` 轮次再由 `issue` 发布部分/未实现结论，不要求审查通过。
-
-## 4. 插件组合与权限边界
-
-- 优先通过本 bundle 的声明式组合复用 DSH 插件：宿主已提供的行直接复用，缺失的必要行随本 bundle 启用；互斥行明确禁用及理由。安装后组合是一次性配置，不由模型在运行时改写用户 profile。验证两种初始状态与冲突状态。
-- 模型触发的进程、文件、网络、安装和远程操作进入 DSH 对应执行面，继承其 sandbox、审批、取消和生命周期。可信插件代码的内部初始化与模型触发操作分开记录；不能用封闭脚本 ID、参数校验或文档提示代替权限执行。
-- 每个手写工具列出实际副作用与所继承的 DSH 权限执行面。没有公共接口能保留必要边界时，记录安全阻断并提交最小方案选择，不以直接 spawn、直接文件访问或本插件自设旁路交付。
-
-## 5. 交付前追踪
-
-移植分支按当前阶段回查：
-
-```text
-上游文档条目/脚本入口 → 原子能力编号 → DSH 分类与证据 → 本仓既定适配或待选方案 → 实现与审查结论 → 本阶段产物位置
+```yaml
+schema: 1
+port:
+  state: idle | active | done
+  round: baseline | "#123" | "EXT-001"
+  phase: audit | implement | review | doc | done
+  started_at: <ISO 时间>
+  updated_at: <ISO 时间>
+blocker:
+  active_item: null | "#123" | "EXT-001"
+  mode: issue | core
+  allowed_routes: []
+  resume_route: idle | audit | implement port | review port | doc
+  reason: <一句话>
 ```
 
-`issue` 回查“GitHub Issue → 内部范围 → 公共接口与权限 → 实现与真实安装验证 → 公开结论与状态清理”。报告未覆盖、证据不足和有意跳过项；为空时明确写“无”。每项来源、分类、证据和产物去向均可回查才可交付。
+无 blocker 时写 `blocker: null`。每次状态变更更新 `updated_at`；新 port 轮次同时写 `started_at`。保留 YAML 中编号与 EXT ID 的引号。
+
+- `idle`：没有活跃 port 轮次；可以存在 issue blocker。
+- `active`：port 轮次进行中；blocker 可以暂停它。
+- `done`：`doc` 已完成，仍有 core Issue 等待 `issue #编号` 验收。
+- `audit` 设置 `active/audit`；`doc` 在无 core 验收事项时设置 `idle/done`，有 core Issue 时设置 `done/done`。
+
+工作文件不驱动路由：
+
+| 文件 | 职责与生命周期 |
+|---|---|
+| `docs/port-review.md` | 当前 port 轮次证据；`audit` 重置，`doc` 清空正文，只留完成头部 |
+| `docs/extensions.md` | EXT 登记；状态只用 `proposed \| active \| broken \| retired` |
+| `docs/extensions/<EXT-ID>/review.md` | 记录 `status`、`repair_target`、`required_behavior` 及实现、审查、验收证据；EXT 验收后删除 |
+| `docs/issues/<编号>/review.md` | 记录 `target`、`status`、`required_behavior`、`port_round`、映射和公开状态；Issue 验收后删除 |
+| `pstack/README.md` | port 能力、缺口与覆盖；`audit` 重建，后续阶段增量更新 |
+
+Issue 的 `target` 只用 `undecided | core | extension | bug | external`；未完成时 `status: open`。`port_round` 用 `pending`、`no-impact` 或当前 port 轮次标识。Issue 的 `stage` 用 `implement | review | passed`，与 EXT/FIX 审查进度同步；只有 `passed` 才能验收。EXT 工作文件的 `status` 用 `implement | review | passed | broken`；登记表的 `broken` 表示等待修复，修复通过后回到 `active`。
+
+port finding 记录 `id`、`origin`、`status`、`affected_ext`、`required_behavior`、`evidence`。finding 状态用 `open | reopened | fixed-pending-review | closed | blocked`；外部责任或待用户决策项用 `blocked`，可修复项保持开放直至复核通过。Markdown 中不另设路由或收尾状态。
+
+## 3. FIX 台账
+
+`docs/port-fixes.yaml` 只保存 `open` 与 `active`：
+
+```yaml
+schema: 1
+fixes:
+  - id: FIX-001
+    issue: "#123" | "EXT-001"
+    kind: bug | extension | adapter | runtime | plugin | docs
+    title: "..."
+    files: [...]
+    test: "..."
+    status: open | active
+    verified_against:
+      pstack: <sha>
+      dsh: <sha>
+    note: "..."
+```
+
+`docs/port-fixes-archive.yaml` 使用同一记录结构，另加 `retired_at`、`retired_reason`，状态只用 `upstream-fixed | obsolete`。`FIX-*` 编号永不复用。bug 分诊创建 `open`；实现填 `files`、`test` 并转为 `active`；复核保持 `active`。退役条目移入 archive，`doc` 再执行 compact 清理遗留候选。replay 只读活跃台账中的 `status: active`。
+
+## 4. 事实、写入与权限边界
+
+每轮分别冻结三类事实：
+
+1. **上游需求**：`<pstack>` 的 Markdown、被调用脚本与配置声明行为。
+2. **DSH 能力**：`<dsh>` 的源码、类型、包清单、插件声明和测试证明能力。
+3. **本仓适配契约**：`docs/architecture.md`、适用的 accepted 决策与 `docs/extensions.md` 规定长期选择。
+
+当前实现、生成树、旧 README 和测试只证明各自直接表达的事实。用 `git -C <pstack> rev-parse HEAD` 与 `git -C <dsh> rev-parse HEAD` 绑定提交。只读子任务的结论须由主任务打开原证据核验。
+
+分支只写自己的产物与当前工作项所需文件。手写位置限于根 `src/`、`tests/`、`pstack/harness/`、`pstack/runtime/`、必要构建配置和上述状态文件。上游只由 `upstream` 更新；`pstack/pstack/` 与 `dist/` 只由生成器或构建改变。EXT 与 bug 工作不改 port 基线；port 工作不修改 EXT 登记，除非分支明确规定破坏或恢复状态。
+
+模型触发的进程、文件、网络、安装和远程操作进入 DSH 对应执行面，继承 sandbox、审批、取消和生命周期。公开 GitHub 操作每次先展示目标仓库与完整内容并取得确认。
+
+## 5. 共同验证与报告
+
+按场景运行最窄行为测试，再运行相关门禁：
+
+```bash
+vp check
+vp test
+node pstack/scripts/generate-pstack-harness-tree.mjs --check
+node pstack/scripts/port-fixes.mjs replay
+```
+
+每条命令记录实际退出码；相关测试写明文件或用例。状态验收同时给出文件字段、路由拒绝或通过的观察结果。`doc` 与 Issue 验收运行全部四条门禁。
+
+报告回查“需求 → 工作项 → 实现 → 验证 → 产物”。列出未覆盖、证据不足和有意跳过项；为空写“无”。报告最后给出参数齐全的 `/pstack-port ...` 下一步命令；多个选择分别说明条件；没有下一步写“本轮结束，无下一步”。

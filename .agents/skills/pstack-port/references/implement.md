@@ -1,96 +1,73 @@
-# implement：按范围实现能力并修复审查发现
+# implement：实现一个工作项
 
-交付当前范围内的代码及必要的生产依赖。先冻结需求、既定适配与 DSH API 方案，再读取现有实现；从 `docs/architecture.md` 确定当前手写实现位置。`docs/extensions.md` 中其他 `proposed` 与 `active` 条目是独立保留范围，其增量开发通过 `/pstack-port issue` 发起并验收。
+交付当前 `port`、`EXT-*` 或 `#编号` 的实现与行为验证。先冻结需求和 DSH 公共接口，再读取现有实现。一次只处理一个工作项。
 
-## 1. 选择范围与模式
+## 1. 选择工作项并检查前置
 
-按契约接收 `port` 或 `#编号`。无参数时只读列出范围、状态和开放 findings，等待用户明确选择后再修改。
+无参数时，请用户选择 `port`、`EXT-*` 或 `#编号`。可以列出 `docs/issues/*` 与 `docs/extensions.md` 的本地待办，但不访问 GitHub 自动发现。
 
-Issue 相关工作必须传 `#编号`，先经 `review #编号` 建立映射；不得用 `EXT-*` 绕过 Issue 工作区和最终验收。传入 `#编号` 时，读取 `docs/issues/<编号>/review.md` 取得已确认的 `port` 或 `EXT-*` 映射、责任层和验收范围；映射缺失或证据过期时，停止并交回 `/pstack-port review #编号`，不自行推断范围。
+| 路由 | 可执行前置 | 工作文件 |
+|---|---|---|
+| `implement port` | `port.state: active`，phase 为 `audit` 或 `implement`；core blocker 可暂停后恢复，但必须允许本路由 | `pstack/README.md`、`docs/port-review.md` |
+| `implement EXT-*` | blocker `mode: issue` 且对应当前 EXT；或无 blocker、`port.state: idle` 且用户显式选择本地 EXT | `docs/extensions.md`、`docs/extensions/<EXT-ID>/review.md` |
+| `implement #编号` | 已分诊为 `extension` 或 `bug`，工作文件处于实现阶段，issue blocker 对应当前编号 | `docs/issues/<编号>/review.md` 及其 EXT/FIX 映射 |
 
-按契约读取对应工作文件和需求：
+`core` 不使用 `implement #编号`；下一步是 `/pstack-port audit` 或当前 port 阶段命令。`external` 不进入实现。工作文件缺失、阶段不符或映射缺失时停止，报告对应 `review`、`audit` 或 `issue` 命令。
 
-- **port**：README 的上游能力、分类、实现范围、验收行为和分阶段状态，以及 `docs/port-review.md` 的 `轮次`、`审查对象`、`审查状态` 与 `收尾状态`。README 与当前上游提交不符、证据不完整或 `docs/port-review.md` 缺失时，停止并交回 `audit`。
-- **`#编号` 映射到 `EXT-*`**：读取 `docs/issues/<编号>/review.md` 的 `内部范围`，再读取 `docs/extensions.md` 中该 EXT 的用户场景、范围、验收行为和状态，以及 `docs/extensions/<EXT-ID>/review.md` 的 `轮次`、`审查对象` 与 `审查状态`。缺少条目或编号歧义时交回 `issue`，审查工作文件缺失时交回 `review #编号`，验收不完整时交回 `issue`。
+port 在 `phase: review` 且存在开放 finding 时，下一步是 `/pstack-port review port` 完成复核；finding 已确认可修复时由审查结果切回 `implement`。EXT 工作文件的 `status` 只能是 `implement` 或 `broken` 才开始实现，`review` 等待复核，`passed` 等待验收或恢复。
 
-传入 `#编号` 时，审查工作文件的 `轮次` 必须等于该编号；不相等时停止并交回 `/pstack-port review #编号`。直接处理 `port` 时，轮次必须是 `baseline`；轮次为 `#编号` 时改用对应 Issue 编号。
+完成标准：只有一个工作项；前置状态、需求、验收行为和产物边界明确；其他工作项的状态与文件不变。
 
-按以下状态选择模式：
+## 2. 冻结接口与实现范围
 
-- **待决策**：`审查状态：阻断-待决策`；报告阻断原因和可选处置，停止，不进入修复；由 `doc` 处理部分/未实现收尾。`收尾状态：已完成` 时，`轮次：#编号` 说明下一步是 `issue`，`轮次：baseline` 说明本轮已由 `doc` 完成确认并结束。
-- **审查修复**：存在 `open`/`reopened` findings，或 `审查状态：阻断-可修复`；只处理这些 findings 及其受影响的调用方、权限边界、组合行和测试。
-- **实现**：`审查状态：未运行`；完成当前范围的实现项并核对所需验证。
-- **等待复核**：`审查状态：待审查`；报告状态并等待 `review`。
-- **等待收尾**：`审查状态：通过` 且当前范围没有待实现项；`port` 的 `轮次：baseline` 在 `收尾状态：未开始` 时等待 `doc`、在 `已完成` 时本轮结束；`port` 的 `轮次：#编号` 在 `未开始` 时等待 `doc`、在 `已完成` 时等待 `issue`；映射为 `EXT-*` 时等待 `issue`。
+读取 `docs/architecture.md`、适用 accepted 决策和当前需求。沿 `<dsh>` 的正式导出、类型、插件包与测试确认公共接口、依赖、权限执行面和插件组合。优先复用 SDK、声明式 bundle 和公共插件接口；确需手写时使用架构规定的位置。
 
-审查修复建立“finding ID → 能力/EXT → 文件/行 → 修复动作 → 验证”清单。报告与需求基线不符时停止；finding 的代码或证据已变化时，先交回 `review` 重新确认。
+读取现有实现，逐项标为保留、修改、新增或删除。每项对应一个能力、EXT 或 finding。生产依赖与类型声明按仓库约定进入 `dependencies`，生成树与发布树只由构建更新。
 
-`port` 逐项复核 README 的既定适配与对应决策，不重新生成候选；确需改变长期选择时停止并交回 `audit`。每项实现建议必须是“已选择”或“证据唯一”；存在“待选择”时，展示候选、限制与取舍，取得用户确认后更新该选择记录再继续。映射为 `EXT-*` 时按已登记需求与公共接口实现，不读取或修改 README 的上游状态。
+按工作项限制范围：
 
-读取现有实现前，用当前需求及 `<dsh>` 源码复核宿主接口与待实现范围，冻结基线。
+- **port**：实现 README 的插件内范围与 `status: active` FIX；开放 port finding 也只在此修复。忽略无效 FIX 记录，不汇报被忽略项。EXT 风险不改变 port 需求，不修改 `docs/extensions.md`。
+- **本地 EXT 或 Issue 映射的 EXT**：只改该扩展代码、必要测试和 EXT 工作记录，不改 `pstack/runtime/`、`pstack/harness/` 或 port 能力行为。
+- **Issue 映射的 FIX**：按 Issue 工作文件实现，填写 `files`、`test`，将对应 FIX 从 `open` 改为 `active`。不改 port 行为。
 
-完成标准：只有一个工作范围；模式与处理范围明确；每个待实现项或 `open`/`reopened` finding 都有目标接口和可观察验收结果；其他范围的需求、状态和工作文件保持不变。
+完成标准：每个实现项都有公共接口依据、具体文件动作和可观察验收；当前范围不含其他工作项。
 
-## 2. 核对公共接口、组合与依赖
+## 3. 处理 EXT 修复落点
 
-对每个宿主交互点，沿 `<dsh>` 的正式导出、类型声明、SDK、插件包和调用示例确认公共接口；读取实际包的 `package.json`、导出类型与实现，区分宿主内部能力和公共 SDK。
+实现前和修复 finding 时先判断 `repair_target`，按实际修复动作落点分类：
 
-按优先级选择实现：
+| repair_target | 判定 | 处置 |
+|---|---|---|
+| `extension` | 只改 `src/` 或 EXT 扩展代码 | 走当前 EXT 的 implement/review；port 中发现时先暂停 |
+| `port` | 必须改 `pstack/runtime/`、`pstack/harness/` 或 port 能力行为 | 并入当前 port 需求或 finding，不建普通 Issue、不写 issue blocker |
+| `external` | 只能改上游 pstack 或 DSH | 记录复现、版本、外部责任层和证据，停止并询问用户一次 |
 
-1. 复用可由依赖包导入的 DSH SDK、类型、schema、协议辅助函数和工具实现。
-2. 通过本 bundle 的声明式组合复用 DSH 插件与服务。
-3. 使用有源码证据的公共插件接口。
-4. 上述方式仍不覆盖缺口时，在架构规定的手写位置实现插件专属逻辑，以最小接口隔离。
+在 `implement port` 中发现修法会破坏 EXT 时：
 
-为每个所需 DSH 插件建立组合表：能力、插件包与行 ID、服务或工具、宿主已启用时的复用方式、宿主未启用时的 bundle 行、互斥行、验证环境。宿主已有行保持其配置，缺失的必要行随本 bundle 启用；互斥只处理同一组合中的重复或冲突，保留服务提供者与消费者完整性。公开 API 不能表达所需条件时，记录限制并选择最小的声明式方案。
+- `extension`：在 EXT 工作文件写 `status: broken`、`repair_target: extension`、`required_behavior`；登记表标 `broken`。写 `mode: issue` blocker，`active_item` 为该 EXT，`resume_route: implement port`，`allowed_routes: [implement EXT-ID, review EXT-ID]`，停止。关联 Issue 只在其实现审查通过后增加 `issue #n`。
+- `port`：在 `docs/port-review.md` 增加或更新 finding，登记 `affected_ext` 与验收行为，把 EXT 修复并入当前 port 清单；EXT 登记表标 `broken`，继续 port 实现。
+- `external`：保留证据和当前 port 状态，停止并询问用户，不交付未登记破坏。
 
-发布源码导入的 DSH SDK、运行时服务包和类型声明包均放入根 `package.json` 的 `dependencies`；构建、测试和仓库维护工具才放入 `devDependencies`。类型包作为生产依赖时，不通过打包配置把它隐藏或内联。使用 `<dsh>` 证明的准确包名及兼容版本，遵循工作区 catalog/版本协议，更新锁文件并确认实际安装；依赖来源使用包声明，而非 `<dsh>` 相对路径。构建配置只承担编译与资源组装。
+独立 EXT 或 `implement #编号` 发现必须改 port 时，停止当前修改，登记 `repair_target: port` 与 `required_behavior`，转 core 流程：`mode: core`、`active_item` 为 EXT 或 Issue、`resume_route: idle`、只允许 port 链；关联 Issue 的验收路由等 `doc` 后再加。Issue 转流时把工作文件改为 `target: core`、`port_round: pending`、`stage: implement`，保留原 EXT/FIX 映射作为证据；对应 EXT 登记表标 `broken`，工作文件同步 `repair_target: port` 与验收行为。下一步 `/pstack-port audit`。
 
-完成标准：每个宿主交互都有 DSH 源码位置和导入来源；每个所需插件都有已验证的组合与冲突处理；每项发布运行或类型依赖都在 `dependencies`；手写声明均无法由已确认 SDK 替代。
+完成标准（S-11、S-18）：每个破坏都有 `repair_target`、验收行为及对应 blocker 或 port finding；没有先改坏再补，也没有用 EXT/FIX 实现夹带 port 改动。
 
-## 3. 对照现有实现
+## 4. 实现并验证
 
-需求基线和 API 方案冻结后，读取架构指出的入口、本地适配树、runtime 等手写实现，逐文件判定：
+实现当前范围的公共行为、输入校验、生命周期、错误传播与清理。为每项需求建立可执行测试，覆盖验收行为与相关失败路径。所有模型触发副作用进入 DSH 权限执行面。
 
-- **保留**：行为符合当前范围且未重复 DSH 能力。
-- **修改**：接口、行为、依赖或权限与当前证据存在明确偏差。
-- **新增**：当前范围要求但尚不存在。
-- **删除**：重复 DSH 能力、处理已移除行为、依赖不存在的宿主接口或仅服务旧抽象。
+共享 port 改动运行受影响回归。除第 3 节已登记的破坏外，此阶段不修复或改登记 EXT。EXT/FIX 改动用 `git diff --name-only` 核对没有 port 基线路径，并运行对应 EXT 验收或 FIX 测试。
 
-符合既定适配的既有实现以保留和核验为起点；有行为偏差才修改。需要重建时，先列出拟删除文件和符号，解析绝对路径并确认均位于契约允许的手写范围内，再清理并按已确认方案重建。保留其他 `proposed` 与 `active` 扩展及回归验证。
+至少运行相关测试、`vp check`、`vp test` 和 `node pstack/scripts/generate-pstack-harness-tree.mjs --check`。记录实际退出码；本次失败未解决时不得报告完成。
 
-完成标准：每个待实现项映射到具体保留、修改或新增动作；每个相关既定适配都有源码与测试核验；每个重复或过时行为都有处理结论；需求集合与冻结基线一致。
+完成标准：每个实现项都有代码和测试；公共接口与权限边界有证据；相关门禁通过；范围外文件未改变。
 
-## 4. 实现并建立行为与权限验证
+## 5. 更新记录并报告
 
-实现模式只实现当前范围的需求；审查修复模式只处理当前范围的开放 findings。DSH 文本适配由 `doc` 编写，独立功能状态由 `issue` 验收。
+- **port**：更新 README 对应能力的实现字段和 `docs/port-review.md` 的修复、验证证据。已修 finding 标 `fixed-pending-review`，未通过保持或改回 `open`。实现待复核时设 `phase: review`。
+- **EXT**：工作文件写实现、验证与 `status: review`；`docs/extensions.md` 只更新该条目的实现记录，独立本地 EXT 不借实现阶段改成 `active`。
+- **Issue**：Issue 工作文件保留 `status: open`，写 `stage: review`；EXT/FIX 工作记录进入审查。blocker 不变，下一步是同一编号的 review。
 
-遵循 `docs/architecture.md`、`docs/glossary.md` 和相关决策约定；架构边界、入口或术语变化时同步更新。实现公共接口、输入校验、生命周期、清理、错误传播和用户可见行为，使其符合上游场景与 DSH 语义；类型以声明包为准。
+建立“需求/finding → 接口 → 实现 → 测试 → 未解决限制”追踪。报告实际变更、验证和范围检查，并以完整命令给出唯一下一步：`/pstack-port review port`、`/pstack-port review EXT-001` 或 `/pstack-port review #123`。若尚未完成，报告 `/pstack-port implement <当前工作项>`；core 转流报告 `/pstack-port audit`。
 
-每个模型可触发的操作都按契约进入对应 DSH 执行面。逐一核验 sandbox、审批、取消、超时、后台任务和工作目录语义；脚本执行尤其要检查直接 `spawn`、shell、文件、网络和外部命令。没有保留这些边界的公共接口时，按契约记录安全阻断并请求方案选择。
-
-为每个当前需求建立公共行为的可执行验证，覆盖具体场景、边界和失败路径。为既定适配保留回归，包括带多级 `/` 的完整模型 ID 和每个 Node 脚本的真实调用。按操作适用面验证权限拒绝、批准、只读、越界与取消。runtime 按契约保持上游行为，确有差异时记录到对应 port 能力状态。
-
-共享改动同时运行受影响的移植和其他 EXT 回归。发现必须改变另一范围的行为时，在当前范围记录阻断，并请用户显式切换范围处理；不直接改变对方需求、状态或工作文件。
-
-完成标准：当前范围每个实现项都有对应代码和至少一个行为验证；相关既定适配与其他扩展回归保持有效；所有宿主交互使用已核实的公共导入或接口；DSH 已覆盖能力没有替代实现；所有模型触发副作用都有经过验证的权限边界。
-
-## 5. 验证、记录并停止
-
-执行最窄的相关测试、类型检查和构建，再执行受影响工作区及真实安装环境验收；runtime 不增加独立类型检查门禁。逐项检查退出码，区分本次失败、环境问题和既有失败；本次未解决失败不得报告完成。
-
-真实安装至少覆盖所需 DSH 插件未启用、已由宿主启用两种初始组合；存在互斥时增加冲突状态。检查 bundle 行、服务可用性、工具可见性和重启后的新会话行为，不以 package 安装成功代替能力验收。
-
-核对生产依赖、锁文件、实际解析位置与源码导入一致。port 只更新 README 中本次涉及能力的实现状态区；EXT 只更新该 EXT 条目的实现与验证记录，不将扩展状态改为 `active`，由 `issue` 最终验收。当前范围实现项完成且没有 `open`/`reopened`/`fixed-pending-review` findings 时，按第 1 节把审查工作文件的 `审查状态` 置为 `待审查`，并把 `审查对象` 写为当前本仓提交或明确变更范围。
-
-审查修复只在当前范围的 finding 记录下追加本轮修复与验证：验证完成标为 `fixed-pending-review`，未通过标为 `open` 并保留原因；其他范围及当前范围的其他记录保持原状。仍有 `open`/`reopened`/`fixed-pending-review` findings 时，报告继续修复，不宣称当前范围完成；仅有 `blocked` findings 时，报告阻断并等待 `review` 路由，不宣称已通过。
-
-建立最终追踪表：
-
-```text
-范围/能力编号/finding ID → 既定适配/公共接口 → 实现文件 → 行为与权限验证 → 未解决限制
-```
-
-报告范围、模式、处理的 finding ID、实现变化、插件组合、生产依赖及全部验证结果。报告后结束本分支；需要审查时等待用户显式调用 `review <范围或关联Issue编号>`；`port` 的 `轮次：baseline` 已完成时报告本轮结束，不等待 `issue`。
-
-完成标准：验证结果与当前范围状态已记录，追踪表完整；未解决限制和下一步明确。
+完成标准（S-02～S-04）：状态与验证一致；普通 port 实现后 `phase: review` 且 EXT 登记无差异，S-11 已登记的 EXT 破坏除外；EXT/FIX 实现后处于 review 且无 port diff；报告含完整下一步命令。

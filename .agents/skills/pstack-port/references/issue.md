@@ -1,65 +1,79 @@
-# issue：发起与验收 GitHub 事项
+# issue：创建与验收 GitHub 事项
 
-负责创建本地新事项的 GitHub Issue，以及验收已有 Issue。别人已提交的 Issue 从 `/pstack-port review #编号` 开始，不必先经过本分支。Issue 编号是外部追踪标识，`port` 或 `EXT-*` 才是内部工作范围；本分支不直接实现功能。
+无参数或带尚无 Issue 的 `EXT-*` 时创建；带 `#编号` 时验收。本分支不实现功能。公开创建、评论、关闭、重开或标签变更前，每次展示目标仓库和完整内容并取得用户确认。
 
-公开操作只由用户显式调用触发，不自动发现或轮询 Issue。每次创建、评论、重开、关闭或修改标签前，展示目标仓库与脱敏后的完整内容并取得用户确认。
+## 1. 选择模式并检查入口
 
-## 1. 选择创建或验收
+创建要求 `port.state: idle`、`blocker: null`。验收要求当前 blocker 允许 `issue #编号`，并满足对应 target 的审查或 doc 前置。其他工作项的 blocker 会拒绝本路由，不创建或修改任何文件。
 
-- 无 Issue 编号且用户提出新事项时，进入**创建模式**。
-- 参数为 `EXT-*` 且该条目尚无 Issue 时，按创建模式为该扩展建立追踪入口；该条目已有 Issue 时，改用 `#编号` 进入验收模式。
-- 有 `#编号` 或明确 Issue 链接时，进入**验收模式**。
-- 多个 Issue 候选或编号歧义时，请用户选择一个，不合并处理。
+完成标准：只选定一个 Issue 或一个待创建事项；目标仓库、模式和入口前置明确；公开操作尚未执行。
 
-验收前读取原始 Issue、评论和 `docs/issues/<编号>/review.md`。工作文件缺失、`分析状态：未分析` 或 `内部范围` 未定时，交回 `/pstack-port review #编号`。已完成分析时按映射检查：
+## 2. 创建 GitHub Issue（S-22）
 
-- `port`：`docs/port-review.md` 缺失或基线不符交回 `audit`；`轮次` 不是当前 `#编号` 时交回 `review #编号`；`审查状态` 为 `未运行` 或 `阻断-可修复` 时交回 `implement`，为 `待审查` 时交回 `review`，为 `阻断-待决策` 时在 `收尾状态：未开始` 交回 `doc`、在 `已完成` 进入部分/未实现验收，为 `通过` 时在 `收尾状态：未开始` 交回 `doc`、在 `已完成` 继续验收。
-- 映射为 `EXT-*`：`docs/extensions/<EXT-ID>/review.md` 缺失或 `轮次` 不是当前 `#编号` 时交回 `review #编号`；`审查状态` 为 `未运行` 或 `阻断-可修复` 时交回 `implement`，为 `待审查` 时交回 `review`，为 `阻断-待决策` 时进入部分/未实现验收，为 `通过` 时继续验收。
-- `外部上游`：只核对证据并准备公开结论，不检查或修改本仓内部状态。
+整理用户场景、最小复现（如适用）、预期/实际、验收行为、环境和版本，形成脱敏草稿。带 `EXT-*` 时引用其编号、状态和待验收项，不预置功能已被接受或缺陷已确认。
 
-`阻断-待决策` 只能形成部分实现、未实现或无法复现结论，发布前需要用户明确确认；不能用它冒充审查通过。
+展示目标仓库和完整草稿，取得确认后创建。记录编号与 URL，初始化 `docs/issues/<编号>/review.md`：
 
-其他 Issue 的待办不妨碍验收当前 Issue。
+- `target: undecided`
+- `status: open`
+- `required_behavior`
+- `port_round: pending`
+- `stage: review`
+- Issue URL 与公开状态
 
-完成标准：只选定一个 Issue 或一个待创建事项，模式与目标仓库明确；公开操作尚未执行。
+带 EXT 时，把编号和 URL 写入 `docs/extensions.md` 的 `Issue` 字段。写 blocker：`mode: issue`、`active_item: "#编号"`、`allowed_routes: [review #编号]`、`resume_route: idle`。保持 `port.state: idle`。
 
-## 2. 创建 GitHub Issue
+完成标准：Issue 已创建且内容经确认；工作文件与 blocker 完整；未开始实现；报告最后写 `/pstack-port review #编号`。
 
-明确用户场景、问题或功能、最小复现（如适用）、预期/实际、验收行为、环境与版本。整理脱敏草稿，不预置功能或扩展编号。已有 `EXT-*` 尚无关联 Issue 时，在草稿中引用其编号、当前状态和待验收项，为它建立追踪入口。
+## 3. 验收已有 Issue（S-15）
 
-展示目标仓库和完整草稿，取得确认后创建 Issue。记录返回的 Issue 编号、URL 和当前提交，初始化 `docs/issues/<编号>/review.md`，只写关联信息、`分析状态：未分析`、`内部范围：未定` 和公开沟通状态，不在这里复制需求或技术状态。草稿关联已有 `EXT-*` 时，把 Issue 编号和 URL 写入 `docs/extensions.md` 该条目的 `Issue` 字段。
+读取原始 Issue、评论和工作文件，按 target 核对：
 
-内部范围（`port` 或 `EXT-*`）由 `review #编号` 分析确认；创建 Issue 不代表接受功能或确认缺陷。
+| target | 验收前置与内部结果 |
+|---|---|
+| `extension` | 对应 EXT review 已通过，验收测试与真实安装验证通过。全部实现后 `proposed → active`；部分实现保持 `proposed` 并记录缺口；`broken` 修复通过后回 `active` |
+| `bug` | FIX 已实现、review 通过且 replay 通过；保持 FIX `active`，不把 `open` 当完成 |
+| `core` | 有 port 影响时要求 `port.state: done`、`phase: done` 且 doc 已完成，逐项核对 `required_behavior`、测试、真实安装与 README 最终覆盖；`port_round: no-impact` 时改为核对 audit 的无影响证据和公开结论，保持 `idle/done` |
+| `external` | 复现、版本、外部责任层、链接与结论齐全；只发布结论，不写内部实现记录 |
 
-完成标准：Issue 已创建且内容经确认；本地关联可回查；未把草稿或未验证陈述当作事实。报告后等待 `/pstack-port review #编号`。
+运行全部四条门禁并记录实际退出码：
 
-## 3. 验收并发布结论
+```bash
+vp check
+vp test
+node pstack/scripts/generate-pstack-harness-tree.mjs --check
+node pstack/scripts/port-fixes.mjs replay
+```
 
-逐项读取 Issue、映射范围的需求记录（README、扩展条目或外部链接）、实现、测试和真实安装验证。`port` 的审查门禁已由第 1 节确认；此处核对 README 的最终覆盖状态和提交记录。确认：
+另运行当前 EXT 验收、FIX 测试或 core 需求测试。真实安装验证不能只以 package 安装成功代替。形成与证据一致的公开结论，展示评论、关闭或其他公开操作，取得确认后执行。
 
-- 每项验收行为均有实现与通过证据，或明确记录部分/未实现及原因。
-- 权限、失败路径、共享回归和必要验证已完成。
-- 正常验收：当前 Issue 关联的 findings 全部为 `closed`，无安全或必要验收阻断。
-- `阻断-待决策`：允许保留 `blocked` findings；结论为部分/未实现或无法复现，`阻断摘要` 中的原因、证据、影响和可选处置完整；发布前取得并记录 `用户确认`；不要求审查通过。
-- 外部责任层、上游链接和剩余限制均有证据。
-- `外部上游` 以复现、版本、责任层和外部链接为验收证据，不要求本仓实现或内部状态变更。
+完成标准：验收行为、测试、真实安装和公开结论互相一致；全部四条门禁通过；没有把技术验证通过描述成用户已接受结果。
 
-根据证据形成完成、部分完成、未实现或无法复现的结论。`阻断-待决策` 结论在发布前向用户展示 `阻断摘要` 和拟结论，取得确认并写入映射范围的 `用户确认`。需要改变另一范围的行为时，阻断验收并请用户显式切换范围，不直接修改其状态。
+## 4. 验收成功：清理并恢复
 
-展示建议的公开评论、关闭/重开或标签变更及未解决限制，取得用户确认后执行。公开结论与本地证据一致，不把技术验证通过描述成用户已接受结果。
+按 target 更新最终记录：core 核对 README 最终覆盖；extension 更新 EXT 状态与关联；bug 保持 FIX active；external 不改内部实现记录。删除 `docs/issues/<编号>/review.md`，并删除已完成 EXT 的 `docs/extensions/<EXT-ID>/review.md`。其他工作文件不变。
 
-完成标准：验收项有明确结论；公开操作经确认；本地与 GitHub 状态一致。
+清 blocker，再按 `resume_route` 恢复：
 
-## 4. 更新内部状态并清理
+- `idle`：port 收尾后设 `idle/done`，本轮结束。
+- `audit`：报告 `/pstack-port audit`。
+- `implement port`：恢复 `port.state: active`、`phase: implement`，报告 `/pstack-port implement port`。
+- `review port`：恢复 `active/review`，报告 `/pstack-port review port`。
+- `doc`：恢复 `active/doc`，报告 `/pstack-port doc`。
 
-仅更新当前 Issue 已映射范围的状态：
+core Issue 验收后统一回到 `idle`，不恢复一个已经完成的 port 轮次。报告 Issue、target、结论、验证、公开操作、清理和恢复状态，最后给出上述完整命令或“本轮结束，无下一步”。
 
-- `port`：正常模式由 `doc` 写入最终覆盖状态，部分/未实现模式也由 `doc` 写入；`issue` 只核对 README、审查记录和 `收尾状态：已完成`，不重复改写已经闭合并经过验证的内容。`阻断-待决策` 在用户确认后把 `用户确认` 写入 `docs/port-review.md`。
-- 映射为 `EXT-*`：更新该条目的 `Issue` 链接、实现位置、验证、兼容版本与状态；新建 EXT 只在全部验收通过时标为 `active`，未完成保持 `proposed` 并写明缺口；已有 `active` EXT 修复未完成时保持 `active`，在审查工作文件记录缺口。`阻断-待决策` 允许保留 `blocked` findings，按用户确认结论记录部分/未实现，不把状态误写为 `active`；在清理扩展审查工作文件前，把 `阻断摘要` 和 `用户确认` 写入 `docs/extensions.md` 的该条目。退役先确认替代与迁移路径，再标为 `retired` 并记录原因。
-- `外部上游`：不更新本仓内部状态，只保留外部责任层、链接与公开结论。
+完成标准：blocker 为 null；Issue 已关闭或结论已发布；临时工作文件已清理；恢复路由与 port 状态一致；报告含 R-09 下一步。
 
-完成验收与公开操作后，清理 `docs/issues/<编号>/review.md`。`port` 范围的技术工作区已由 `doc`（正常或部分模式）重置为完成状态；`EXT-*` 范围在此清理 `docs/extensions/<EXT-ID>/review.md`。其他范围的工作文件保持原状；若仍需后续修复，保留工作文件和未决项。
+## 5. 验收失败：保留 blocker 并回退（S-24）
 
-报告 Issue、范围、结论、验证、公开操作及剩余限制后停止。
+保持 Issue 打开和 blocker 非空，不写通过，不关闭 Issue。把缺口与失败证据写入 Issue、EXT review 或 FIX 记录，并按 target 回退：
 
-完成标准：当前 Issue 的状态、关联文件与公开结论一致；剩余限制已报告。
+- **extension / bug**：从 `allowed_routes` 移除 `issue #编号`。在 Issue 工作文件把 `stage` 显式设为 `review` 或 `implement`，并同步 EXT 工作文件的 `status` 或 FIX 的审查记录；下一步分别为 `/pstack-port review #编号` 或 `/pstack-port implement #编号`。修复并通过 review 后把 `stage` 置为 `passed`，才能加回验收路由。
+- **core，有 port 影响**：从 `allowed_routes` 移除 `issue #编号`，加回对应 port 路由，并在 `docs/port-review.md` 重开一条 finding。行为或实现缺口把 `port.state` 从 `done` 改回 `active`、`phase: review`，下一步 `/pstack-port review port`。仅文档缺口且实现审查证据仍有效时设 `active/doc`，将 finding 标为 documentation-only，下一步 `/pstack-port doc`；doc 复核并关闭该 finding 后才能加回验收路由。
+- **core，no-impact**：保持 `port.state: idle`、`phase: done`，不启动 port 轮次。保留仅含 `issue #编号` 的路由，在 Issue 工作文件记录无影响证据或公开结论的缺口；补齐后重试 `/pstack-port issue #编号`。
+- **external**：保留仅含 `issue #编号` 的路由，补齐证据后重试 `/pstack-port issue #编号`。
+
+报告失败项、证据、保留的 blocker 和回退状态，最后给出参数完整的回退命令。
+
+完成标准：blocker 与 Issue 仍活跃；缺口记录存在；extension/bug 的 `stage` 与下一命令匹配；有影响的 core 已从 done 回退，no-impact core 保持 idle；`allowed_routes` 不含尚未满足前置的验收；下一步命令可执行。

@@ -1,125 +1,80 @@
-# review：按范围审查实现、权限与最小性
+# review：分诊 Issue 或审查一个工作项
 
-在 `implement` 后、对应收尾前审查实现，只更新当前范围的审查工作文件与状态。输入是当前需求、两个上游、适用的已接受决策，以及当前手写实现、依赖、bundle patch、测试和真实安装验证结果；插件实现与测试保持原状，构建结果只作为一项证据。
+`review #编号` 首次分诊，已分诊后做实现审查。`review EXT-*` 与 `review port` 只审查实现，不修改实现或测试；本分支明确规定的退役清理除外。
 
-## 1. 固定审查范围
+## 1. 固定路由与前置
 
-按契约接收 `port` 或 `#编号`。无参数时只读列出待处理范围、状态和开放 findings，等待用户明确选择后再审查。
+| 路由 | 前置 |
+|---|---|
+| `review port` | `port.state: active`、`phase: review`，core blocker 可允许本路由；issue blocker 会暂停 port |
+| `review EXT-*` | 对应当前 issue blocker，或无 blocker 的独立本地 EXT；EXT 工作文件 `status: review` |
+| `review #编号` 首次分诊 | 无 blocker，或当前 blocker 只允许该 Issue 的 review；其他工作项不得切入 |
+| `review #编号` 实现审查 | `target: extension \| bug`，当前 issue blocker，对应 EXT/FIX 工作记录处于 review |
 
-Issue 相关工作必须传 `#编号`，由本分支完成复现、归因和范围映射；不得用 `EXT-*` 绕过 Issue 工作区。
+无参数时只列本地待办并请用户选择。已有活跃工作项 A 时拒绝 B，不创建 B 的文件，不改变 A 的状态。port 进行中收到新 Issue 时，首次分诊可以建立 blocker：`mode: issue` 保存当前 port 阶段到 `resume_route`；`mode: core` 以 `audit` 为恢复入口重新冻结需求。
 
-传入 `#编号` 时，先读取原始 Issue、评论、当前提交和 `docs/issues/<编号>/review.md`；文件缺失时按“未分析”处理。把报告视为待验证陈述，核实版本、环境、最小复现、预期/实际与证据，确定唯一内部范围并把映射写入 Issue 工作文件：
+完成标准：只处理一个工作项；首次分诊与实现后审查没有混淆；阶段不符时报告正确的完整命令。
 
-- 本仓移植问题：映射 `port`，使用 README 和 `docs/port-review.md`。
-- 独立产品能力或扩展问题：在 `docs/extensions.md` 登记或复用 `EXT-*`，新建条目保持 `proposed` 并写入当前 Issue 编号和 URL，已有条目保持原状态；初始化或读取 `docs/extensions/<EXT-ID>/review.md`。
-- 上游 pstack 或 DSH 问题：记录外部责任层、最小复现、版本与外部链接，不修改本仓实现。
-- 证据不足：保留未决和下一次区分实验；需要补充公开信息时，准备追问内容，经用户确认后评论。
+## 2. 首次分诊 GitHub Issue（S-05～S-07、S-17）
 
-范围未确定、无法复现或需要改变另一范围时，停止实现，报告当前证据和下一步。不得仅凭 Issue 标题或标签直接修改代码。
+读取原始 Issue、评论、当前提交和 `docs/issues/<编号>/review.md`。核实版本、环境、最小复现、预期与实际，不凭标题或标签修改代码。工作文件记录 `status: open`、`required_behavior`、映射、公开状态和以下一种 `target`：
 
-**首次分析**（`docs/issues/<编号>/review.md` 缺失或 `分析状态：未分析`）按以下情况分流：
+| target | 本地记录与 blocker | 下一步 |
+|---|---|---|
+| `core` | `port_round: pending`。写 `mode: core`、`active_item: "#编号"`、`allowed_routes: [audit, implement port, review port, doc, issue #编号]`；idle 时 `resume_route: idle` | `/pstack-port audit` |
+| `extension` | 新建或关联 EXT；新条目为 `proposed`，写入 Issue 编号与 URL。Issue 写 `stage: implement`；EXT 工作文件写 `status: implement`、`repair_target: extension`、`required_behavior`。写 `mode: issue` blocker，允许 implement/review 当前编号 | `/pstack-port implement #编号` |
+| `bug` | 新建 `FIX-*`，`status: open`，关联当前 Issue；Issue 写 `stage: implement`。写 `mode: issue` blocker，允许 implement/review 当前编号 | `/pstack-port implement #编号` |
+| `external` | 只记录外部责任层、复现、版本与外部链接，不建 EXT/FIX，不改本仓实现。blocker 仅允许 `issue #编号` | `/pstack-port issue #编号` |
 
-- 映射为 `port`，工作文件缺失或基线不符：交回 `audit`。
-- 映射为 `port`，且 `轮次：baseline`、`收尾状态：已完成`、`审查状态：通过`：清空旧 findings，开启 `轮次：#编号`、`审查对象：当前本仓提交`、`审查状态：未运行`、`收尾状态：未开始`、`阻断摘要：无`、`用户确认：-`。
-- 映射为 `port`，且 `轮次：baseline`、`收尾状态：已完成`、但 `审查状态：阻断-待决策`：
-  - `用户确认` 已记录且新 Issue 需要追踪：开启 `轮次：#编号`，清空旧 findings，写入 `审查对象：当前本仓提交`、`审查状态：未运行`、`收尾状态：未开始`、`阻断摘要：无`、`用户确认：-`。
-  - 否则：停止，要求先由 `audit` 建立新基线或用户明确关闭该阻断；不继承旧阻断字段。
-- 映射为 `port`，且 `轮次：baseline` 尚未收尾；或轮次属于其他未收尾 Issue：停止并报告当前活跃轮次，不覆盖其历史。
-- 轮次属于其他 Issue 且其 `docs/issues/<旧编号>/review.md` 仍存在：停止并先完成该 Issue 的验收与清理。
-- `#编号` 映射到 `EXT-*` 且工作文件缺失：初始化 `轮次：#编号`、`审查对象：当前本仓提交`、`审查状态：未运行`、`阻断摘要：无`、`用户确认：-`。
-- 映射到 `EXT-*` 的已有工作文件且 `轮次` 不是当前 `#编号`：停止并报告当前活跃轮次，不覆盖历史。
-- 轮次已是当前 `#编号`：保留现有审查状态，只补写映射并停止。
-- 其余情况：开启新轮次，写入 `轮次：#编号`、`审查对象：当前本仓提交`、`审查状态：未运行`、`阻断摘要：无`、`用户确认：-`；映射为 `port` 时同时写 `收尾状态：未开始`，映射为 `EXT-*` 时不写。清空旧 findings。
+`issue` blocker 的 `resume_route` 在 idle 时为 `idle`，在 port 中为被中断的 `implement port`、`review port` 或 `doc`。port 保持原阶段，由 blocker 拒绝所有 port 路由；issue 验收成功后按 `resume_route` 恢复。core blocker 在 idle 时为 `idle`，在活跃 port 中为 `audit`；同时把 `port.phase` 置为 `audit`，使其他 port 路由在重新冻结需求前不满足前置。首次分诊后停止，不直接实现，不关闭 Issue。
 
-所有新轮次完成映射后写 `分析状态：已分析`、`内部范围` 和 `责任层`；证据不足保持 `未分析` 并继续记录区分实验。首次分析报告后停止，等待 `implement #编号`。`外部上游` 也要写 `分析状态：已分析`、`内部范围：外部上游`，只记录外部责任层，报告并停止，后续由 `issue` 发布结论。
+完成标准：Issue 字段、EXT/FIX 映射和 blocker 完整；core 可执行 audit，extension/bug 可执行 implement，external 只能验收；`implement #编号` 对 core 被拒绝；port README 未因 extension/bug/external 分诊改变。
 
-**实现后审查**：传入 `#编号` 时，只在映射范围 `轮次` 与当前 Issue 一致且 `审查状态：待审查` 时进入实现审查；直接处理 `port` 时，`轮次` 必须为 `baseline` 且 `审查状态：待审查`。`未运行`/`阻断-可修复` 交回 `implement`；`阻断-待决策` 时，`port` 在 `收尾状态：未开始` 交回 `doc` 部分模式，`轮次：#编号` 且 `收尾状态：已完成` 进入 `issue`，`轮次：baseline` 且 `收尾状态：已完成` 本轮结束；映射为 `EXT-*` 时直接由 `issue` 发布结论。`轮次` 不一致时，把 `docs/issues/<编号>/review.md` 的 `分析状态` 置为 `未分析`（文件缺失则按未分析处理），按首次分析规则重新分流；不进入实现审查，也不覆盖其他轮次。
+## 3. 全量审查 port（S-08～S-12、S-23）
 
-`审查状态：通过` 后按以下唯一下一步处理：
+逐项审查 README 能力、core Issue 的 `required_behavior`、公共 API、权限、最小性与共享影响。运行所有 `active` EXT 的验收测试，不抽查；运行全部 `active` FIX replay，不只看本次改动。执行并记录：
 
-- `port`、`收尾状态：未开始`：进入 `doc`。
-- `port`、`轮次：baseline`、`收尾状态：已完成`：本轮结束。
-- `port`、`轮次：#编号`、`收尾状态：已完成`：进入 `issue`。
-- 映射为 `EXT-*`：进入 `issue`。
+```bash
+vp check
+vp test
+node pstack/scripts/generate-pstack-harness-tree.mjs --check
+node pstack/scripts/port-fixes.mjs replay
+```
 
-按映射读取：
+将受审提交、文件、测试、退出码和 findings 写入 `docs/port-review.md`，更新 README 审查字段。`fixed-pending-review` 通过则 `closed`，失败则 `reopened`。普通 port 修复问题写开放 finding，设 `phase: implement`，下一步 `/pstack-port implement port`。
 
-- **port**：README 和 `docs/port-review.md`，逐项取得原子能力、既定适配、实现选择、公共接口和验收行为；只更新 README 的审查状态区。
-- **映射为 `EXT-*`**：`docs/extensions.md` 中该编号条目和 `docs/extensions/<EXT-ID>/review.md`，逐项取得用户场景、验收行为、公共接口和状态；只更新该 EXT 的审查工作文件与 `docs/extensions.md` 的实现与验证记录。
+### 3.1 EXT 被破坏
 
-`docs/issues/<编号>/review.md` 只保存 Issue 与内部范围的映射、责任层和公开沟通状态，技术 findings 留在映射范围的工作文件。
+按修复动作落点分类：
 
-读取当前范围的文件哈希、finding 状态和 `fixed-pending-review` 修复记录，比较当前文件与受影响调用链。首轮详审该范围的全部手写实现与发布配置；后续轮次详审修复文件、受影响调用方、权限边界、组合行和相关验收。已有结论仅在其证据、代码及依赖未变化时保留；受影响的关闭 finding 重新打开，新发现分配新 ID。每轮重新执行当前范围的能力去向、权限和必要验收门禁。
+- **extension**：EXT 工作文件写 `status: broken`、`repair_target: extension`、`required_behavior`；登记表标 `broken`。写 `mode: issue` blocker，`active_item: EXT-ID`、`resume_route: review port`、`allowed_routes: [implement EXT-ID, review EXT-ID]`；有关联 Issue 时加 `issue #编号`，但仍须先通过 EXT review。报告后停止，下一步 `/pstack-port implement EXT-ID`。
+- **port**：在 `docs/port-review.md` 写 `origin: review port`、`affected_ext`、`required_behavior` 的开放 finding；EXT 工作文件写 `broken/port`，登记表标 `broken`。不写 blocker，设 `phase: implement`，下一步 `/pstack-port implement port`。
+- **external**：记录责任层与证据，停止并询问用户一次；不伪写本地修复通过。
 
-读取 `<dsh>` 中对应公共 API、服务定义、提供者、消费者、bundle patch、权限执行面和测试。其他手写插件只作参考，不能替代公共接口证据。
+`repair_target: port` 的 EXT 由后续 `review port` 复核。通过后登记表恢复 `active`，工作文件写 `passed`，由 `doc` 记录最终状态。
 
-完成标准：首次分析已写清分析状态、内部范围和责任层并停止；实现后审查只在 `审查状态：待审查` 时开始；当前范围的每个实现项、既定适配、发布依赖和模型触发副作用都有审查位置；审查状态为 `通过`、`阻断-可修复`（已记录并交回 `implement`），或 `阻断-待决策`（已记录原因与可选处置）；其他范围的需求、状态与工作文件未改变。
+### 3.2 active FIX replay 失败
 
-## 2. 审查 DSH 插件开发范式与能力复用
+- `upstream-fixed`：记录 replay FAIL 与上游修复证据，删除本地补丁、保留测试，加 `retired_at`、`retired_reason` 后移入 archive。
+- `obsolete`：记录 replay FAIL 与失效证据，删除补丁和测试，加退役字段后移入 archive。
+- `conflict`：FIX 保持 `active`，不归档。重建或更新对应 Issue/EXT 工作文件，写入 conflict finding 与 `required_behavior`，作废旧 review passed；Issue 写 `stage: implement`，EXT 写 `status: implement`，并同步 FIX 审查记录。写 `mode: issue` blocker，`active_item` 取 FIX 的 `issue` 值，`resume_route: review port`。`#编号` 允许 `[implement #编号, review #编号]`；`EXT-*` 允许 `[implement EXT-ID, review EXT-ID]`。下一步 `/pstack-port implement <active_item>`；新 review 通过前不得增加或执行 issue 验收路由。
 
-逐项检查：
+退役或冲突处置写入 `docs/port-review.md`。台账只保留 `open/active`，archive 保留完整历史。`upstream-fixed` 与 `obsolete` 处置后继续 `/pstack-port review port`；冲突先完成指定工作项。
 
-- 使用公开导出、声明包和当前版本支持的插件接口；服务定义、提供者与消费者完整，类型和运行时导入可解析。
-- bundle patch 按 DSH 行 ID 与组合语义声明依赖、启用、覆盖和互斥；宿主已提供的能力直接复用，缺失的必要行随本插件启用，没有重复注册或运行时擅自改写 profile。
-- 声明式组合能够表达的行为没有另写服务、工具或配置系统；DSH SDK、类型和 schema 能替代的手写声明没有保留。
-- 生产运行与类型依赖在 `dependencies`，构建配置没有用来隐藏错误依赖分层；锁文件与导入一致。
-- 工具、生命周期、错误传播、取消、配置与资源路径符合宿主语义，没有把 Cursor 抽象原样套到 DSH。
+### 3.3 通过
 
-发现未决设计选择时，回到对应候选与决策证据；已经形成长期取舍的改动按 `docs/decisions/AGENTS.md` 提出记录要求。
+所有 `active` EXT 测试和 FIX replay 通过、core 需求逐项覆盖、无开放 finding 时，设 `phase: doc`。保持 core blocker，下一步 `/pstack-port doc`。
 
-完成标准：每个宿主交互都有最贴近当前 DSH 公共能力的实现依据；每项自行实现的逻辑都有 DSH 无法直接覆盖的具体证据。
+完成标准：全量测试与 replay 有实际结果；每个 EXT/FIX 异常都有规定的状态、finding 或 blocker；通过时 `phase: doc`，未通过时不进入 doc；报告含唯一完整下一步命令。
 
-## 3. 审查权限与安全边界
+## 4. 审查 EXT 或 Issue 实现（S-21）
 
-列出每个模型可见工具和脚本入口的完整副作用，沿调用链检查到实际执行点：进程、文件、网络、安装、远程操作、后台任务和清理。确认副作用进入对应 DSH sandbox、审批与生命周期执行面，并核验拒绝后未执行、批准后仅执行所批准范围。
+读取当前 EXT/FIX、Issue 映射和 `required_behavior`。核对验收测试、真实安装验证、权限与共享回归，并用 `git diff --name-only` 确认没有 port 基线路径。审查中不改实现或测试。
 
-重点检查直接 `spawn`、shell、任意路径、环境继承、外部命令和插件进程内权限。按契约核验实际权限执行；边界未证实的项目记为高优先级阻断，退回 `implement`。
+- **不通过**：在 EXT 工作文件或 FIX 记录写 finding 与证据，状态回到 implement；Issue 工作文件同步 `stage: implement`，从 blocker 移除 `issue #编号`。下一步 `/pstack-port implement EXT-ID` 或 `/pstack-port implement #编号`。
+- **`review #编号` 通过**：Issue 工作文件保持 `status: open`，写 `stage: passed`；bug 的 FIX 保持 `active`。确保 blocker 允许 `issue #编号`，下一步 `/pstack-port issue #编号`。
+- **有关联 Issue 的本地 EXT 通过**：EXT 恢复 `active`，工作文件写 `passed`；blocker 的 `active_item` 改为对应 `#编号`，保留 `mode: issue` 与 `resume_route`，`allowed_routes` 设为 `[issue #编号]`，下一步 `/pstack-port issue #编号`。
+- **无 Issue 的本地 EXT 通过且有 blocker**：EXT 恢复 `active`，工作文件写 `passed`，清 blocker，按 `resume_route` 报告 `/pstack-port implement port`、`/pstack-port review port`、`/pstack-port doc` 或 idle。
+- **无 blocker 的独立本地 EXT 通过**：EXT 恢复或转为 `active`，记录验证，本轮结束，无下一步。
 
-完成标准：每个副作用都有执行面与拒绝/批准验证；没有模型可控的未授权旁路；残余限制明确到接口或场景。
-
-## 4. 审查最小性、共享影响与残留
-
-按“删除后是否影响当前范围验收”审查每个新增文件、导出、工具、依赖、配置行、适配层、兼容分支、文档段和测试辅助设施。保留项必须对应当前能力、既定适配或安全要求。
-
-检查重复 DSH 能力、未引用文件、空实现、旧路径、旧工具名、重复类型、被替代依赖、调试产物、临时脚本、测试残留、过期注释与生成/手写边界错位。生成树只由生成器维护；目录或构建链路漂移交回 `prepare`，本轮仍活跃时先结束或由用户明确放弃并由 `audit` 重置，再进入 `prepare`，不在活跃轮次中直接改结构；runtime 行为偏差交回 `implement`，删除建议解析到具体路径与引用证据。
-
-共享实现发生变化时，审查受影响的移植与其他 EXT 回归。发现必须改变另一范围的行为时，将其记为当前范围的阻断，并请求用户显式切换范围处理；不直接修改另一范围的需求、状态或工作文件。
-
-完成标准：每个保留项都有当前消费者或验收依据；每个冗余项都有可执行删除建议；没有无归属文件、过期实现残留或未审查的跨范围退化。
-
-## 5. 验证并更新当前审查台账
-
-选择能反驳审查发现的现有测试或只读检查；实现与测试保持原状。需要新增回归验证才能证明问题时，把它列为 `implement` 的明确补修项。
-
-按严重度报告：安全/权限阻断、行为或公共 API 错误、非最小实现、冗余残留、验证缺口、决策/依赖阻断。每项包含范围、能力/EXT 编号、文件/行、证据、影响和退回阶段；没有发现时逐项明确写“无”。
-
-更新当前范围的审查工作文件：
-
-- 保留同一工作轮次内此前各次审查的 findings、修复与关闭记录，追加本轮编号、本仓提交、受审文件清单及内容哈希；把 `审查对象` 更新为当前受审提交或明确变更范围。
-- `fixed-pending-review` 验证通过改为 `closed`，未通过改为 `reopened`；新发现从 `open` 开始。
-- 需要用户决策、缺少 DSH 公共能力、外部依赖或许可证的 finding 标为 `blocked`，并把原因、证据、影响、可选处置写入 `阻断摘要`。
-- 存在可修复的 `open`/`reopened`/`fixed-pending-review` findings、安全/行为阻断或可修复问题时，置 `审查状态：阻断-可修复`。
-- 仅剩 `blocked` findings 且没有可修复项时，置 `审查状态：阻断-待决策`。
-- 全部 `closed` 且必要验收通过时，置 `审查状态：通过`。
-- `port` 同时更新 README 的审查状态区；`EXT-*` 同时更新该条目的实现与验证记录。
-
-当前范围实现与必要验收完成，且不存在 `open`/`reopened`/`fixed-pending-review`/`blocked` findings、安全/权限阻断、行为错误和必要验收缺口时：
-
-- `port` 建议进入 `doc`。
-- `EXT-*` 建议进入 `issue <关联Issue编号>` 最终验收。
-
-`审查状态：阻断-待决策` 时，报告阻断原因、证据与可选处置：
-
-- `port`：由 `doc` 按部分/未实现模式更新适配文档并记录 `阻断摘要`；`轮次：#编号` 再由 `issue` 询问用户、记录 `用户确认` 后发布结论，`轮次：baseline` 由 `doc` 展示 `阻断摘要` 与拟结论并取得用户确认。`port` 不进入正常完整模式。
-- 映射为 `EXT-*`：由 `issue` 发布结论，并记录 `用户确认`。
-
-下一步路由：
-
-- 存在 `open`/`reopened`/`fixed-pending-review` findings：退回 `/pstack-port implement <范围或关联Issue编号>` 增量修复。
-- 仅有 `blocked` findings：按 `阻断-待决策` 处理，不退回实现。
-- 仅有已关闭 findings 但实现未完成：继续 `implement`。
-- 非阻断的最小性与冗余问题单独列出，由用户决定本轮清理或后续维护。
-
-当前工作文件在修复与审查期间保留，由对应 `doc` 或 `issue` 成功后重置或清理；其他范围的工作文件保持原状。报告后结束本分支。
-
-完成标准：当前范围台账已更新，finding 状态与报告一致；通过或退回的下一步唯一。
+完成标准：审查证据与 finding 一致；失败回到实现且不能验收；通过后只有规定的 Issue 验收或恢复路由；报告含完整下一步命令，独立 EXT 完成时写“本轮结束，无下一步”。
