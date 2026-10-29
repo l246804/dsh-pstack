@@ -329,7 +329,7 @@
 | OPT-05 | `@deepseek-ai/dsh-experimental-terminal-bundle` | 默认关闭；实验性；显式挂载终端 bundle | `SKL-18`、`SKL-19` 的 CLI 或 TUI 驱动部分 | 支持六个持久终端工具，跨调用保持 shell 与 REPL 状态，支持后台 send 和 owner 隔离。缺口是只覆盖终端，不覆盖 GUI，不提供视频 | [packages/experimental/terminal-bundle/README.md#L8-L20](../upstream/deepseek-harness/packages/experimental/terminal-bundle/README.md#L8-L20) · [E17](../upstream/deepseek-harness/packages/experimental/tool-terminal/README.md#L10-L30) |
 | OPT-06 | `@deepseek-ai/dsh-experimental-session-search` | 默认关闭；实验性；Plugins 中启用，或加入 `dsh.profile.bundles` | `PATH-05`、`SKL-08`、`SKL-27`、`SKL-29`、`SKL-30`、`PB-12`、`PB-19`、`PB-22` 的历史读取 | 支持五个只读工具搜索、追踪、读取会话事件；跨会话要求精确 `cwd` 相同。缺口是没有 Cursor 的原始 `.jsonl` 路径；`session_search` 不含调用者会话，当前会话用 `session_event_search`；子代理转写覆盖深度未证实 | [E18](../upstream/deepseek-harness/packages/experimental/session-search/README.md#L8-L20) · [packages/experimental/tool-session-query/README.md#L12-L53](../upstream/deepseek-harness/packages/experimental/tool-session-query/README.md#L12-L53) |
 | OPT-07 | `@deepseek-ai/dsh-mcp-client` | 无默认服务器；稳定可选插件；每个 server 一条 client 配置 | `SKL-06`、`SKL-07` 的 MCP 证据源 | 支持每个 MCP server 的工具以 `mcp__<server>__<tool>` 形式出现，`mcp-resources` 列出有资源的 server。缺口是没有自动类别发现；每个 server 要用户配置；没有 server 时无工具 | [E19](../upstream/deepseek-harness/packages/mcp/mcp-client/README.md#L10-L24) · [packages/mcp/mcp-resources/README.md#L38-L40](../upstream/deepseek-harness/packages/mcp/mcp-resources/README.md#L38-L40) |
-| OPT-08 | `@deepseek-ai/dsh-experimental-agent-team-profile` | 默认关闭；实验性；显式启用 Agent Teams profile | `PB-16` 至 `PB-18` 的多代理协作部分 | 支持 Lead 与 teammate、共享任务板、九个团队工具、Web roster。缺口是没有 pstack 的 PR frontier、ledger、stack verdict；会替换普通 `interrupt_agent`、`list_agents`、`send_message`，两者不能同时启用 | [packages/experimental/agent-team-profile/README.md#L5-L20](../upstream/deepseek-harness/packages/experimental/agent-team-profile/README.md#L5-L20) · [E26](../upstream/deepseek-harness/packages/experimental/tool-agent-team/README.md#L10-L32) |
+| OPT-08 | `@deepseek-ai/dsh-experimental-agent-team-profile` | 默认关闭；实验性；显式启用 Agent Teams profile | `PB-16` 至 `PB-18` 的多代理协作部分 | 支持 Lead 与 teammate、共享任务板、九个团队工具、Web roster。缺口是没有 pstack 的 PR frontier、ledger、stack verdict；会禁用 `subagent` 与 `subagent_fork`，并替换全局 child controls，不能与 `pstack_subagent` 同时启用 | [packages/experimental/agent-team-profile/README.md#L5-L20](../upstream/deepseek-harness/packages/experimental/agent-team-profile/README.md#L5-L20) · [E26](../upstream/deepseek-harness/packages/experimental/tool-agent-team/README.md#L10-L32) |
 | OPT-09 | `@deepseek-ai/dsh-experimental-ralph-bundle` | 默认关闭；实验性；显式挂载 | `PB-15` 的 fresh-agent 循环部分 | 支持固定 foreground 循环，每轮 fresh child，结构化交接。缺口是同一 Session 的常驻循环、事件 watcher，不替代 pstack 的 goal 与 decision log | [packages/experimental/ralph-bundle/README.md#L8-L20](../upstream/deepseek-harness/packages/experimental/ralph-bundle/README.md#L8-L20) · [packages/experimental/tool-ralph/README.md#L10-L30](../upstream/deepseek-harness/packages/experimental/tool-ralph/README.md#L10-L30) |
 
 ### 3.4 缺口记录
@@ -518,7 +518,7 @@
 - **内容**：根 `src/` 注册四个工具行和两个 agent preset。`pstack_skill` 通过 `ctx.skills.get()` 按名称加载 pstack 技能与相对资源；`pstack_models` 只读枚举 `ctx.llm` 的 provider、model、effort；`pstack_subagent` 按 `role` 解析 `provider/model [effort]`，把 `agent` 映射到 `poteto-agent` 或 `comment-sicko` preset；`pstack_script` 以封闭 `id` 运行随包 Node 脚本；`comment-sicko` 的只读约束由 preset 内 `dsh-tool-fs` 关闭 `write` 与 `edit` 实现。
 - **能力范围**：`TOOL-04b`、`MOD-01`、`MOD-04`、`MOD-06`、`SET-01`、`SET-02`、`SET-04`、`SET-06`、`SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SCR-01` 至 `SCR-05`，以及依赖这些能力的 `SKL-01`、`SKL-02`、`SKL-05`、`SKL-06`、`SKL-07`、`SKL-11` 至 `SKL-14`、`SKL-24`、`SKL-27`、`SKL-29`、`SKL-30` 与相应 playbook。
 - **验收行为**：隐藏技能仍可被 pstack 路由但不进入普通模型目录；未知技能名返回明确错误；角色文件格式为 `$DSH_HOME/poteto-models.mdc`，重跑幂等，退役角色删除，缺失文件回退 `inherit-parent`，格式错误按行号报告；`pstack_subagent` 的 `general` 不挂 preset，两个命名 agent 走各自 preset；`pstack_script` 的 id 集合与 `src/internal/script-registry.ts` 一致；`comment-sicko` 的写工具被静态移除。
-- **源码核验位置**：`src/*.ts`、`cordis.patch.yml`、`tests/**/*.test.ts`（模块职责见 [docs/architecture.md#L9-L21](../docs/architecture.md#L9-L21)；具体实现已由 `implement` 核对，待 `review` 复核）。
+- **源码核验位置**：`src/*.ts`、`cordis.patch.yml`、`tests/**/*.test.ts`（模块职责见 [docs/architecture.md#L9-L21](../docs/architecture.md#L9-L21)；实现与 review 均已通过）。
 - **已知代价**：`pstack_script` 不经过 bash 审批与文件系统沙箱，这是 Desktop Electron 运行时的已接受代价；插件组合变更需要改 `cordis.patch.yml` 并重新安装。
 
 ### 6.2 AD-02 脚本 Node 运行时与随包替换
@@ -588,162 +588,168 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 
 ## 8. 分阶段状态
 
-下表逐项记录实现、审查、文档与最终覆盖状态。`实现` 列的 `已实现` 表示该能力按第 2～4 节分类的映射、标准模式、可选插件或插件内路径已落地并核验；`不适用（平台排除）` 表示按上游排除基线不实现。审查、文档与最终覆盖留给后续阶段；`implement`、`review`、`doc` 按契约只更新所属能力行，不得用一段汇总文字代替逐项状态。
+下表逐项记录实现、审查、文档与最终覆盖状态。`实现` 列的 `已实现` 表示该能力按第 2～4 节分类的映射、标准模式、可选插件或插件内路径已落地并核验；`不适用（平台排除）` 表示按上游排除基线不实现。`文档` 列定位实际适配产物；`最终覆盖` 区分完整、已覆盖（有适配语义差异）、条件覆盖、部分覆盖和平台排除，括号内列出外部条件、剩余差异或对应缺口。
 
 ### 8.1 模板、脚本与路径
 
 | 能力 ID | 实现 | 审查 | 文档 | 最终覆盖 |
 |---|---|---|---|---|
-| TOOL-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| TOOL-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| TOOL-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| TOOL-04a | 已实现 | 通过 | 待执行 | 待执行 |
-| TOOL-04b | 已实现 | 通过 | 待执行 | 待执行 |
-| TOOL-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-06 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-07 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-08 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-09 | 已实现 | 通过 | 待执行 | 待执行 |
-| SUB-10 | 已实现 | 通过 | 待执行 | 待执行 |
-| AGT-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| AGT-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| MOD-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| MOD-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| MOD-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| MOD-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| MOD-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| MOD-06 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-06 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-07 | 已实现 | 通过 | 待执行 | 待执行 |
-| SET-08 | 已实现 | 通过 | 待执行 | 待执行 |
-| PATH-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| PATH-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| PATH-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| PATH-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| PATH-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| PATH-06 | 已实现 | 通过 | 待执行 | 待执行 |
-| SCR-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| SCR-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| SCR-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| SCR-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| SCR-05 | 已实现 | 通过 | 待执行 | 待执行 |
+| TOOL-01 | 已实现 | 通过 | 已记录（§2.1；dsh.md Tools） | 完整（pstack_subagent） |
+| TOOL-02 | 已实现 | 通过 | 已记录（§2.1；dsh.md Tools） | 完整（live root；无 answerer 时纯文本提问） |
+| TOOL-03 | 已实现 | 通过 | 已记录（§2.1；dsh.md Tools） | 已覆盖（skip 用 completed 加原因前缀；G-11） |
+| TOOL-04a | 已实现 | 通过 | 已记录（§2.1；dsh.md Tools） | 完整（用户 /name 入口） |
+| TOOL-04b | 已实现 | 通过 | 已记录（§2.1；dsh.md Tools） | 完整（PI-01） |
+| TOOL-05 | 已实现 | 通过 | 已记录（§2.1；dsh.md Tools） | 完整 |
+| SUB-01 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整（pstack_subagent general） |
+| SUB-02 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整（PI-08） |
+| SUB-03 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 已覆盖（comment-sicko 静态只读；其他 brief 靠约束与 git status） |
+| SUB-04 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整 |
+| SUB-05 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields、OPT-01） | 条件覆盖（OPT-01 或 git worktree；云能力按 EXCL-03 排除） |
+| SUB-06 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整 |
+| SUB-07 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields、OPT-01） | 条件覆盖（本地 ref；不 fetch；OPT-01 或 bash） |
+| SUB-08 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整 |
+| SUB-09 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整（send_message） |
+| SUB-10 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 已覆盖（prompt 中的路径，不传附件块） |
+| AGT-01 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整（PI-08；父级传绝对路径） |
+| AGT-02 | 已实现 | 通过 | 已记录（§2.2；dsh.md Subagent fields） | 完整（PI-08；静态禁用 write/edit） |
+| MOD-01 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 已覆盖（PI-02；无 Cursor slug 与 -fast） |
+| MOD-02 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（继承父级路由） |
+| MOD-03 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整 |
+| MOD-04 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（PI-02） |
+| MOD-05 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（provider/model [effort]） |
+| MOD-06 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（PI-02 角色清单） |
+| SET-01 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
+| SET-02 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
+| SET-03 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
+| SET-04 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；按模型目录校验 effort） |
+| SET-05 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
+| SET-06 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（$DSH_HOME/poteto-models.mdc；PI-02） |
+| SET-07 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（角色面板扇出） |
+| SET-08 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
+| PATH-01 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |
+| PATH-02 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 已覆盖（DSH 包与 profile；无 Cursor 缓存，G-13） |
+| PATH-03 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 已覆盖（AGENTS.md 加 PI-02；.mdc 不自动加载） |
+| PATH-04 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |
+| PATH-05 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths、OPT-06） | 条件覆盖（OPT-06；无 Cursor .jsonl，G-03） |
+| PATH-06 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |
+| SCR-01 | 已实现 | 通过 | 已记录（§2.6；dsh.md Paths 的 pstack_script） | 完整（PI-03） |
+| SCR-02 | 已实现 | 通过 | 已记录（§2.6；dsh.md Paths、OPT-02） | 条件覆盖（PI-05；宿主需 gh） |
+| SCR-03 | 已实现 | 通过 | 已记录（§2.6；dsh.md Paths、OPT-06） | 条件覆盖（PI-06；聊天占用需 OPT-06，否则 unknown-usage） |
+| SCR-04 | 已实现 | 通过 | 已记录（§2.6；dsh.md Paths 的 pstack_script） | 完整（PI-07） |
+| SCR-05 | 已实现 | 通过 | 已记录（§2.6；dsh.md Paths 的 pstack_script） | 条件覆盖（PI-09；宿主需 TLC、Java、mise） |
 
 ### 8.2 技能
 
 | 能力 ID | 实现 | 审查 | 文档 | 最终覆盖 |
 |---|---|---|---|---|
-| SKL-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-06 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-07 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-08 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-09 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-10 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-11 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-12 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-13 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-14 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-15 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-16 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-17 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-18 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-19 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-20 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-21 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-22 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-23 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-24 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-25 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-26 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-27 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-28 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-29 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-30 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-31 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| SKL-32 | 已实现 | 通过 | 待执行 | 待执行 |
-| SKL-33 | 已实现 | 通过 | 待执行 | 待执行 |
+| SKL-01 | 已实现 | 通过 | 已记录（§2.7；dsh.md Tools、Models、Subagent fields） | 完整（PI-01、PI-02、PI-08；skip 映射见 G-11） |
+| SKL-02 | 已实现 | 通过 | 已记录（§2.7；dsh.md Models） | 完整（PI-01、PI-02；无常驻 Custom Mode，G-08） |
+| SKL-03 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-04 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-05 | 已实现 | 通过 | 已记录（§2.7；dsh.md Subagent fields） | 完整（PI-02、PI-08） |
+| SKL-06 | 已实现 | 通过 | 已记录（§2.7；dsh.md Models、OPT-07） | 条件覆盖（PI-02；MCP 证据需 OPT-07，G-06） |
+| SKL-07 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-07） | 条件覆盖（PI-02；MCP 与图像生成依赖外部条件，G-06、G-15） |
+| SKL-08 | 已实现 | 通过 | 已记录（§2.7；dsh.md Paths、OPT-06） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
+| SKL-09 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整（图像显示取决于宿主渲染） |
+| SKL-10 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-11 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-01） | 条件覆盖（PI-02；隔离需 OPT-01 或 bash，G-05） |
+| SKL-12 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-01） | 条件覆盖（PI-02；每候选工作树需 OPT-01 或 bash，G-05） |
+| SKL-13 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-01、OPT-08） | 条件覆盖（PI-02；本地 worker、工作树与容量配置，G-05、G-09） |
+| SKL-14 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-01） | 条件覆盖（PI-02；独立工作树需 OPT-01 或 bash，G-05） |
+| SKL-15 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-16 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-17 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-18 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-03～OPT-05） | 条件覆盖（UI 驱动需 OPT-03～OPT-05；视频需外部工具，G-04、G-15） |
+| SKL-19 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-03～OPT-05） | 条件覆盖（UI 驱动需 OPT-03～OPT-05；视频需外部工具，G-04、G-15） |
+| SKL-20 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整（验证工具由项目安装） |
+| SKL-21 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整（验证工具由项目安装） |
+| SKL-22 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-23 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-24 | 已实现 | 通过 | 已记录（§2.7；dsh.md Subagent fields） | 完整（PI-08） |
+| SKL-25 | 已实现 | 通过 | 已记录（§2.7；手动 /typescript-best-practices） | 部分（需手动 /typescript-best-practices；paths 不自动挂载，G-14） |
+| SKL-26 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-27 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-06） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
+| SKL-28 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
+| SKL-29 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-06） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
+| SKL-30 | 已实现 | 通过 | 已记录（§2.7；dsh.md Paths、OPT-06） | 条件覆盖（PI-02、PI-07；转写审计需 OPT-06，G-03） |
+| SKL-31 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4；dsh.md Cursor-only features） | 按上游平台排除（EXCL-01；跳过并继续） |
+| SKL-32 | 已实现 | 通过 | 已记录（§2.7；外部视频工具边界） | 部分（文本与幻灯片规划可用；mp4 与逐帧核验需外部 ffmpeg，G-15） |
+| SKL-33 | 已实现 | 通过 | 已记录（§2.7；dsh.md Paths 的 pstack_script） | 条件覆盖（PI-09；TLC、Java、mise 与首次联网安装，G-15） |
 
 ### 8.3 Playbook 与 principle
 
 | 能力 ID | 实现 | 审查 | 文档 | 最终覆盖 |
 |---|---|---|---|---|
-| PB-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-06 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-07 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-08 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-09 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-10 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-11 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-12 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-13 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-14 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-15 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-16 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-17 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-18 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-19 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-20 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-21 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-22 | 已实现 | 通过 | 待执行 | 待执行 |
-| PB-23 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-01 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-02 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-03 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-04 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-05 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-06 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-07 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-08 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-09 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-10 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-11 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-12 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-13 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-14 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-15 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-16 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-17 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-18 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-19 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-20 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-21 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-22 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-23 | 已实现 | 通过 | 待执行 | 待执行 |
-| PRIN-24 | 已实现 | 通过 | 待执行 | 待执行 |
+| PB-01 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整（PI-02） |
+| PB-02 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02；UI 复现需 OPT-03～OPT-05，G-04） |
+| PB-03 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02；界面 trace 需 OPT-03～OPT-05，G-04） |
+| PB-04 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02；历史审计需 OPT-06，G-03） |
+| PB-05 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（运行界面控制需 OPT-03～OPT-05，G-04） |
+| PB-06 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整 |
+| PB-07 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02；工作树需 OPT-01 或 bash，G-05） |
+| PB-08 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整 |
+| PB-09 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（截图需 OPT-03～OPT-05，G-04） |
+| PB-10 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（真实截图需 OPT-03～OPT-05，G-04） |
+| PB-11 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整（writing-for-agents 替代 create-skill） |
+| PB-12 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02；转写核验需 OPT-06，G-03） |
+| PB-13 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-05；需 gh，Bugbot 启动等按 EXCL-02 排除） |
+| PB-14 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-05；需 gh，G-07） |
+| PB-15 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（create_goal 加 schedule 或 watcher；forge 事件用轮询，G-10） |
+| PB-16 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（OPT-08 或 pstack_subagent；工作树与深度配置；EXCL-04） |
+| PB-17 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02、PI-05；本地工作树与 gh；云 VM 排除） |
+| PB-18 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02、PI-05；本地工作树与 gh；云 VM 排除） |
+| PB-19 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（OPT-06；git 状态用 bash，G-03） |
+| PB-20 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整 |
+| PB-21 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整（PI-03） |
+| PB-22 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-06；聊天占用需 OPT-06，G-03） |
+| PB-23 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整（需宿主 gh；deslop 缺失时用普通语言要求） |
+| PRIN-01 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-02 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-03 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-04 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-05 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-06 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-07 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-08 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-09 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-10 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-11 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-12 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-13 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-14 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-15 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-16 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-17 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-18 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-19 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-20 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-21 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-22 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-23 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
+| PRIN-24 | 已实现 | 通过 | 已记录（§2.9；技能原文） | 完整 |
 
 ### 8.4 平台排除
 
 | 能力 ID | 实现 | 审查 | 文档 | 最终覆盖 |
 |---|---|---|---|---|
-| AUT-01 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| AUT-02 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| AUT-03 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| AUT-04 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| AUT-05 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| AUT-06 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| EXCL-01 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| EXCL-02 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| EXCL-03 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| EXCL-04 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| EXCL-05 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
-| EXCL-06 | 不适用（平台排除） | 通过（平台排除） | 待执行 | 待执行 |
+| AUT-01 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.1；dsh.md Cursor-only features） | 按上游平台排除（Cursor Automations；跳过并继续） |
+| AUT-02 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.1；dsh.md Cursor-only features） | 按上游平台排除（Cursor Automations；跳过并继续） |
+| AUT-03 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.1；dsh.md Cursor-only features） | 按上游平台排除（Cursor Automations；跳过并继续） |
+| AUT-04 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.1；dsh.md Cursor-only features） | 按上游平台排除（Cursor Automations；跳过并继续） |
+| AUT-05 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.1；dsh.md Cursor-only features） | 按上游平台排除（Cursor Automations；跳过并继续） |
+| AUT-06 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.1；dsh.md Cursor-only features） | 按上游平台排除（Cursor Automations；跳过并继续） |
+| EXCL-01 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.2；dsh.md Cursor-only features） | 按上游平台排除（跳过并继续） |
+| EXCL-02 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.2；dsh.md Cursor-only features） | 按上游排除启动与配置；普通 PR 评论仍用 gh 或 OPT-02 |
+| EXCL-03 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.2；dsh.md Cursor-only features） | 按上游平台排除（跳过并继续） |
+| EXCL-04 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.2；dsh.md Cursor-only features） | 按上游平台排除（跳过并继续） |
+| EXCL-05 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.2；dsh.md Cursor-only features） | 按上游平台排除（跳过并继续） |
+| EXCL-06 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4.2；dsh.md Cursor-only features） | 按上游平台排除（跳过并继续） |
+
+### 8.5 文档产物与覆盖口径
+
+主适配文档是 [pstack/harness/docs/harness/dsh.md](harness/docs/harness/dsh.md)，生成副本是 [pstack/pstack/docs/harness/dsh.md](pstack/docs/harness/dsh.md)。它保留上游模板的六个章节，并增加 [Optional plugins](harness/docs/harness/dsh.md#optional-plugins)，逐项覆盖 OPT-01 至 OPT-09 的包名、启用能力与未启用 fallback。技能、playbook、reference 与 principle 正文保持上游原文，由生成器在需要 Cursor 名称映射的技能中加入适配文档指针。
+
+最终覆盖以固定上游提交和本轮测试为限。完整覆盖不排除技能本身声明的通用外部前提；条件覆盖必须启用括号中的插件或安装外部工具；部分覆盖仍有明确语义差异；平台排除按上游规则输出跳过行并继续，不计为通过。六项未决证据保留在 9.3，不因文档完成而核销。
 
 ## 9. 文档追踪与未决证据
 
