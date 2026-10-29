@@ -31,7 +31,7 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { isAbsolute, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -194,7 +194,7 @@ function directorySize(root: string): number {
     const current = pending.pop() as string;
     let details;
     try {
-      details = statSync(current, { throwIfNoEntry: false });
+      details = lstatSync(current, { throwIfNoEntry: false });
     } catch {
       continue;
     }
@@ -202,7 +202,10 @@ function directorySize(root: string): number {
     // `blocks` is absent on some platforms (notably Windows); fall back to the
     // apparent size there so the column stays populated instead of reading 0.
     total += details.blocks === undefined ? details.size : details.blocks * 512;
-    if (!details.isDirectory()) continue;
+    // `du` without `-L` counts the link itself and never follows it. Following a
+    // directory link both over-counts shared content and can recurse forever when
+    // the link points at one of its own ancestors.
+    if (details.isSymbolicLink() || !details.isDirectory()) continue;
 
     let names: string[];
     try {

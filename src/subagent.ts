@@ -669,7 +669,7 @@ export async function startPlannedChildren(
           `child ${activation.childId} has no live local Agent handle, so it cannot change its own reasoning effort with \`${SET_EFFORT_TOOL}\`. It runs at ${child.effort === undefined ? "the adapter default" : `"${child.effort}"`} for its whole life.`,
         );
       } else {
-        installEffortControl(target, runtime.llm, child.effort as ReasoningEffortId | undefined);
+        installEffortControl(target, runtime.llm);
       }
 
       started.push({

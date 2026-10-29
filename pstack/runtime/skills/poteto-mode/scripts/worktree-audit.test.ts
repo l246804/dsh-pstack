@@ -1,6 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 
-import { ageColumn, bucketFor, dirtyColumn, formatSize, lastChatColumn, mergedColumn, prColumn, remoteColumn, renderTable, sortRows, type AuditRow } from "./worktree-audit.ts";
+import { ageColumn, bucketFor, dirtyColumn, formatSize, lastChatColumn, mergedColumn, prColumn, remoteColumn, renderTable, sizeColumn, sortRows, type AuditRow } from "./worktree-audit.ts";
 import { expect } from "./support.ts";
 
 const now = Date.UTC(2026, 9, 28, 12, 0, 0) / 1000;
@@ -74,4 +77,29 @@ test("never marks an unknown usage signal safe", () => {
       usedRecently: true,
     }),
   ).toBe("verify-recent-chat");
+});
+
+const sizeInBytes = (text: string): number => {
+  const match = /^([\d.]+)([BKMGTP]?)$/.exec(text);
+  if (match === null) throw new Error(`cannot read size ${text}`);
+  const power = { "": 0, B: 0, K: 1, M: 2, G: 3, T: 4, P: 5 }[match[2] as string] ?? 0;
+  return Number(match[1]) * 1024 ** power;
+};
+
+test("counts a directory symlink as its own entry and never traverses it", () => {
+  const root = mkdtempSync(join(tmpdir(), "worktree-audit-size-"));
+  try {
+    const external = join(root, "external");
+    mkdirSync(external);
+    writeFileSync(join(external, "big.bin"), Buffer.alloc(2 * 1024 * 1024, 1));
+    const worktree = join(root, "worktree");
+    mkdirSync(worktree);
+    writeFileSync(join(worktree, "small.txt"), "small");
+    symlinkSync(external, join(worktree, "external-link"), "dir");
+
+    expect(sizeInBytes(sizeColumn(external)) >= 2 * 1024 * 1024).toBe(true);
+    expect(sizeInBytes(sizeColumn(worktree)) < 1024 * 1024).toBe(true);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });

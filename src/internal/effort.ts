@@ -14,7 +14,6 @@ import type {
   Agent,
   AgentOptions,
   JsonSchemaNode,
-  LlmCallConfig,
   LlmHost,
   ReasoningEffortId,
   ToolDefinition,
@@ -94,41 +93,17 @@ export async function validateEffortFor(
 /**
  * Install the effort control on one live child.
  *
- * Registration is child-scoped, so both the waterfall and the tool dispose with the
- * child. The waterfall re-states the current effort on every request and never rewrites
- * a request already in flight.
+ * Registration is child-scoped, so the tool disposes with the child. A successful
+ * call records the choice through `agent.model.select()`, which DSH applies when
+ * it prepares the next step. `agent/request` is deliberately not used: DSH
+ * deprecated it for model and effort changes and rejects a request that disagrees
+ * with the selection fixed during step preparation.
  */
-export function installEffortControl(
-  child: Agent,
-  llm: LlmHost,
-  initialEffort: ReasoningEffortId | undefined,
-): () => void {
-  let current = initialEffort;
-
-  const disposeListener = child.ctx.on("agent/request", async (_payload, next) => {
-    const config = await next();
-    return current === undefined
-      ? config
-      : ({ ...config, reasoningEffort: current } satisfies LlmCallConfig);
-  });
-
-  const disposeTool = child.ctx.tools.register(
-    defineSetEffortTool(child, llm, (effort) => {
-      current = effort;
-    }),
-  );
-
-  return () => {
-    disposeTool();
-    disposeListener();
-  };
+export function installEffortControl(child: Agent, llm: LlmHost): () => void {
+  return child.ctx.tools.register(defineSetEffortTool(child, llm));
 }
 
-function defineSetEffortTool(
-  child: Agent,
-  llm: LlmHost,
-  apply: (effort: ReasoningEffortId) => void,
-): ToolDefinition {
+function defineSetEffortTool(child: Agent, llm: LlmHost): ToolDefinition {
   const outputSchema: JsonSchemaNode = { type: "string" };
 
   return {
@@ -139,11 +114,16 @@ function defineSetEffortTool(
       "The change applies from your next step; a request already in flight is unaffected, and it lasts for the rest of this child's life.",
     ].join(" "),
     parameters: {
-      effort: {
-        type: "string",
-        description:
-          "The reasoning effort to use from your next step onward. Use one of the values this model advertises; the call rejects an unknown one and lists the real values.",
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        effort: {
+          type: "string",
+          description:
+            "The reasoning effort to use from your next step onward. Use one of the values this model advertises; the call rejects an unknown one and lists the real values.",
+        },
       },
+      required: ["effort"],
     },
     output: {
       schema: outputSchema,
@@ -161,7 +141,8 @@ function defineSetEffortTool(
         );
       }
 
-      const target = resolveEffortTarget(exec.agent ?? child);
+      const agent = exec.agent ?? child;
+      const target = resolveEffortTarget(agent);
       if (target === undefined) {
         throw new Error(
           "this child has no resolved provider/model route, so reasoning effort cannot be validated against the live adapter metadata",
@@ -188,7 +169,11 @@ function defineSetEffortTool(
         );
       }
 
-      apply(value as ReasoningEffortId);
+      agent.model.select({
+        provider: target.provider,
+        model: target.model,
+        reasoningEffort: value as ReasoningEffortId,
+      });
       return `reasoning effort set to "${value}". It applies from your next step; the request already in flight is unaffected.`;
     },
   };

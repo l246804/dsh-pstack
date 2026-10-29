@@ -1,10 +1,10 @@
 # pstack 移植审查报告
 
 - 轮次：baseline
-- 审查对象：`f1ab4b0`（`feat: 完成 pstack port 实现并移植 statechart`；父提交 `07bbb27`）
+- 审查对象：当前分支 HEAD（`F-01`～`F-04` 修复；基于 `e826750`）
 - 审查迭代：1（首次实现后审查）
 - 上游提交：pstack `1ba91fc25c0977741dd0e267849e6234b037ed0a`（`0.15.36`）；DSH `f3803c96974ad4a94195fb97e5c637e9c2a3afe3`（`0.2.2-alpha.2`）
-- 审查状态：阻断-可修复
+- 审查状态：待审查
 - 收尾状态：未开始
 - 阻断摘要：无
 - 用户确认：-
@@ -154,7 +154,7 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 
 ### F-01 `set_reasoning_effort` 使用已废弃的 `agent/request` 修改 effort，下一次请求会抛错
 
-- 状态：`open`
+- 状态：`fixed-pending-review`
 - 范围：`port`
 - 能力：`PI-08`；影响 `SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SKL-05`、`SKL-24`
 - 严重度：行为 / 公共 API 错误（高）
@@ -162,10 +162,11 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 - 证据：`installEffortControl` 在 `child.ctx.on("agent/request", ...)` 中返回 `{ ...config, reasoningEffort: current }`。DSH `packages/core/agent-loop/src/agent.ts:628-640` 明确比较 `agent/request` 提议的 `reasoningEffort` 与 step preparation 固定的 `selection.reasoningEffort`，不一致就直接抛错；`docs/upgrade-guide/v0.2.1-alpha.4/session-model-selection/guide.md:16` 说明 `agent/request` 已废弃，不能新增、修改或清除 reasoning effort，并要求改用 `agent.model.select()`。
 - 影响：子代理调用 `set_reasoning_effort` 后，下一次模型请求会在 `prepareRequest` 抛错；`pstack_subagent` 工具描述和 `dsh.md` 对运行中子代理改 effort 的承诺不成立。子代理的初始 effort 仍可通过 `agentOptions` 设置，问题是运行中改 effort。
 - 修复建议：删除 `agent/request` listener；在工具校验通过后调用 `child.model.select({ provider, model, reasoningEffort })`（provider/model 取自当前 `resolveEffortTarget`）。增加“改 effort 后下一请求使用新值”的行为回归，和“非法 effort 不改变当前选择”的失败路径。
+- 修复记录（2026-10-29，`implement port`）：已删除 `agent/request` waterfall 与 `current` 局部状态；`set_reasoning_effort` 校验通过后调用执行方 Agent 的 `agent.model.select({ provider, model, reasoningEffort })`，由 DSH 在下一步准备时应用。新增 `tests/effort.test.ts`：断言安装时不注册任何 `agent/request` 监听；成功调用记录完整 selection；未知 effort 被拒绝且 selection 不变。`vp test`：5 files、23 tests passed。
 
 ### F-02 `set_reasoning_effort` 的 `parameters` 不是合法的对象 JSON Schema
 
-- 状态：`open`
+- 状态：`fixed-pending-review`
 - 范围：`port`
 - 能力：`PI-08`；影响 `SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SKL-05`、`SKL-24`
 - 严重度：公共 API / 行为错误（高）
@@ -182,10 +183,11 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
   }
   ```
   增加一个断言工具根 schema 为 object 且含 `effort` 的回归测试。
+- 修复记录（2026-10-29，`implement port`）：`parameters` 改为标准的对象 schema：`type: "object"`、`additionalProperties: false`、`properties: { effort: { type: "string" } }`、`required: ["effort"]`。`tests/effort.test.ts` 的 `toMatchObject` 断言根级 `type`、`properties` 与 `required`；`vp check` 无该文件类型错误。
 
 ### F-03 `worktree-audit` 的 SIZE 列跟随符号链接，与 `du` 不一致并可能无限递归
 
-- 状态：`open`
+- 状态：`fixed-pending-review`
 - 范围：`port`
 - 能力：`PI-06`；影响 `SCR-03`、`PB-22`
 - 严重度：行为错误（中高）
@@ -193,10 +195,11 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 - 证据：`directorySize` 对每个路径使用 `statSync`（默认跟随符号链接）并据此 `readdirSync` 递归；文件注释却声称 “A symlink contributes its own block and is never traversed, matching `du` without `-L`”。实测 `.tmp/wt-symlink`（`real/big` 2 MiB、`link -> real`）得到 `sizeColumn` = `4.0M`，而 `du -sh` = `2.1M`；说明链接目录被遍历并重复计数。符号链接目录成环时，该递归没有超时，审计可能挂死。
 - 影响：`SIZE` 虚高，worktree 清理 playbook 的容量判断失真；在含 `node_modules` 符号链接或指向共享缓存的工作树中风险更高。
 - 修复建议：使用 `lstatSync` 判定 `isSymbolicLink()`，对符号链接只计入自身块（按 `du` 语义不递归）；补充“含符号链接目录”的测试。
+- 修复记录（2026-10-29，`implement port`）：`directorySize` 改用 `lstatSync`，计数后对 `isSymbolicLink()` 直接跳过递归。新增 `worktree-audit.test.ts` 用例：2 MiB 外部目录经目录符号链接挂入工作树，`sizeColumn(worktree)` 低于 1 MiB，而外部目录自身不低于 2 MiB。`cd pstack && vp run test`：76 tests passed。
 
 ### F-04 `statechart` 的 worker 路径没有验收测试，README 7.1 的“worker 路径冒烟”不成立
 
-- 状态：`open`
+- 状态：`fixed-pending-review`
 - 范围：`port`
 - 能力：`PI-09`；影响 `SCR-05`、`SKL-33`
 - 严重度：验证缺口（中）
@@ -204,6 +207,7 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 - 证据：本地 `statechart.test.ts` 只有 6 个测试；CLI 用例只 spawn 一个缺少 spec 的进程，命中 usage/exit 2，不会进入 `statechart.ts` 的 worker spawn、`worker.ts` 的 `check()` 或 `run.ts` 的 TLC 调用。`grep -n "worker\|TLA2TOOLS\|corpus" statechart.test.ts` 无结果。README 7.1 的 B 方案对照表却把 “worker 路径冒烟” 列为 `cli.test.ts` 的覆盖项。上游 `test/cli.test.ts` 有 `JAVA`/`TLA2TOOLS`/`STATECHART_REPLAY` 的 fake TLC 端到端测试，可作最小参照。
 - 影响：新入口 `statechart.mjs` → `worker.mjs` 的路径选择、参数传递、输出目录、退出码和 `report.md`/`chart.mmd` 行为未经验收；打包或运行壳漂移不会被测试发现。
 - 修复建议：增加一个 fake TLC/worker 的 smoke test（不必引入上游整个 corpus），或明确删除 README 7.1 的“worker 路径冒烟”声明并把该覆盖项标为未覆盖；不能只保留文档声明。
+- 修复记录（2026-10-29，`implement port`）：`statechart.test.ts` 新增 worker 冒烟用例：设置 `TLA2TOOLS` 与 `JAVA` 指向临时 fake TLC，真实启动 `statechart.ts` → `worker.ts`；fake 返回 SANY XML、TLC stats 与 `graph.dot`，断言 exit 0，`report.md`/`chart.mmd`/`tlc.out` 三件产物存在且报告含 `# Smoke` 与 `NoDeadlock`。`cd pstack && vp run test`：76 tests passed。
 
 ## 3. 非阻断清理项
 
@@ -240,3 +244,9 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 本轮发现 4 个可修复 finding（2 个行为/公共 API 错误、1 个行为错误、1 个验证缺口），没有需要用户决策的安全阻断或外部依赖阻断。按契约将 `审查状态` 置为 `阻断-可修复`，`收尾状态` 保持 `未开始`。
 
 唯一下一步：运行 `/pstack-port implement port`，处理 F-01～F-04；修复完成后重新运行 `review port`，通过后才进入 `doc`。不得在本轮直接写 `pstack/pstack/`、`dist/` 或修改上游原文；`pstack/README.md` 只更新了审查状态区，能力需求与实现记录未改动。
+
+## 7. 修复轮次（2026-10-29）
+
+`implement port` 已处理 F-01～F-04，逐项修复与验证记录见第 2 节各 finding；`pstack/README.md` 的对应能力审查列已置为 `待审查`。本轮修复后的验证：`vp check` 0 errors（保留既有 C-03 warning）；`vp test` 5 files、23 tests；`cd pstack && vp run test` 76 tests；`vp run build` 与 `generate --check` 通过；DSH profile 在有/无 `@deepseek-ai/dsh-experimental-tool-worktree` 两种组合下均成功启动。
+
+下一步：运行 `/pstack-port review port`。

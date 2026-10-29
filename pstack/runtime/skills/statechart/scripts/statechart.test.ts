@@ -1,5 +1,15 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { inspect } from "node:util";
@@ -108,4 +118,54 @@ test("the CLI rejects a missing spec with usage and exit 2", () => {
   assert.equal(result.status, 2);
   assert.match(result.stderr, /Give one SPEC\.tla\./);
   assert.match(result.stderr, /Usage: statechart SPEC\.tla/);
+});
+
+test("the CLI runs the worker against TLC and writes the report, chart, and tlc.out", () => {
+  const root = mkdtempSync(join(tmpdir(), "statechart-worker-"));
+  try {
+    const caseDir = join(root, "case");
+    mkdirSync(caseDir);
+    writeFileSync(join(caseDir, "Smoke.tla"), "---- MODULE Smoke ----\n====\n");
+    writeFileSync(join(caseDir, "Smoke.cfg"), "INIT Init\nNEXT Next\n");
+
+    const fakeJava = join(root, "fake-java.mjs");
+    writeFileSync(
+      fakeJava,
+      String.raw`#!/usr/bin/env node
+import fs from "node:fs";
+const args = process.argv.slice(2);
+if (args.includes("tla2sany.xml.XMLExporter")) {
+  process.stdout.write('<modules><context><entry><UID>1</UID><OpDeclNode><uniquename>x</uniquename><kind>3</kind></OpDeclNode></entry><entry><UID>2</UID><ModuleNode><uniquename>Smoke</uniquename><OpDeclNodeRef><UID>1</UID></OpDeclNodeRef></ModuleNode></entry></context><RootModule>Smoke</RootModule></modules>');
+  process.exit(0);
+}
+const dump = args.indexOf("-dump");
+if (dump !== -1) {
+  fs.writeFileSync(args[dump + 2] + ".dot", [
+    "strict digraph DiskGraph {",
+    '1 [label="/\\\\ x = 0",style = filled]',
+    '2 [label="/\\\\ x = 1"]',
+    '1 -> 2 [label="Next"];',
+    "}",
+  ].join("\n"));
+}
+process.stdout.write("@!@!@STARTMSG 2199:0 @!@!@\n2 distinct states found.\n@!@!@ENDMSG 2199 @!@!@\n");
+process.exit(0);
+`,
+    );
+    chmodSync(fakeJava, 0o755);
+
+    const here = import.meta.dirname;
+    const entry = join(here, import.meta.url.endsWith(".ts") ? "statechart.ts" : "statechart.mjs");
+    const out = join(root, "out");
+    const result = spawnSync(process.execPath, [entry, join(caseDir, "Smoke.tla"), "--out", out], {
+      encoding: "utf8",
+      env: { ...process.env, JAVA: fakeJava, TLA2TOOLS: "tla2tools.jar" },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(readdirSync(out).sort(), ["chart.mmd", "report.md", "tlc.out"]);
+    assert.match(readFileSync(join(out, "report.md"), "utf8"), /# Smoke[\s\S]*NoDeadlock/);
+    assert.match(readFileSync(join(out, "chart.mmd"), "utf8"), /stateDiagram/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 });
