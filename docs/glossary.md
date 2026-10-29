@@ -47,3 +47,7 @@
 上游 pstack 未声明、由 DSH 版插件独立维护的产品能力；在 `docs/extensions.md` 以 `EXT-*` 编号登记需求、DSH 依赖与验收，区别于 README 中的上游移植能力。
 
 反例：不要把 Cursor 已有但 DSH 尚未完整覆盖的移植缺口叫作本地扩展。
+
+## 审查 finding 状态（finding status）
+
+技能审查工作文件中的 finding 状态：`open`（待修复）、`reopened`（重新打开）、`fixed-pending-review`（修复待复核）、`closed`（关闭）、`blocked`（需用户决策或缺少公共能力，不参与普通修复，汇总到 `阻断摘要`）。
