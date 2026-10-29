@@ -1,0 +1,8 @@
+schema: 1
+port:
+  state: idle
+  round: baseline
+  phase: done
+  started_at: "2026-10-29T00:00:00+08:00"
+  updated_at: "2026-10-29T20:20:00+08:00"
+blocker: null
