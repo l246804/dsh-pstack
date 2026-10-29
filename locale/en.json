@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "pstack",
+    "description": "Rigorous agent workflows for DeepSeek Harness, ported from Cursor's pstack.",
+    "detail": "README.md"
+  }
+}

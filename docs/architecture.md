@@ -6,7 +6,7 @@
 
 | 模块 | 目录与入口 | 职责 |
 |---|---|---|
-| 根打包 | 根 `vite.config.ts`、根 `package.json` | 用 vite-plus 打包 `src/*.ts`，并把生成树与技能复制进 `dist/`；npm 只发布 `dist/`、`assets/`、`cordis.patch.yml` |
+| 根打包 | 根 `vite.config.ts`、根 `package.json` | 用 vite-plus 打包 `src/*.ts`，并把生成树与技能复制进 `dist/`；npm 发布 `dist/`、`assets/`、`cordis.patch.yml`、`locale/` 与双语 README |
 | 插件入口 | 根 `src/*.ts`、`cordis.patch.yml` | `pstack` 行注册 bundle 技能 provider 与 `pstack_skill`；`cordis.patch.yml` 另声明 `pstack-models`、`pstack-subagent`、`pstack-script` 三行及 `poteto-agent`、`comment-sicko` 两个 agent preset |
 | 插件内部 | 根 `src/internal/*.ts` | 宿主契约、技能索引与角色配置：`host-contract.ts` 只从 `@deepseek-ai/*` 导入类型，`skill-provider.ts` 建 bundle 技能目录，`role-config.ts` 与 `role-manifest.ts` 解析角色文件，`effort.ts` 校验 effort，`script-registry.ts` 列随包脚本，`paths.ts` 定资源根，`frontmatter.ts` 读上游 frontmatter，`audit-context.ts` 注入 `.audit` 约定 |
 | 插件验证 | 根 `tests/**/*.test.ts` | 驱动插件公共行为：隐藏技能加载、模型目录、角色文件解析与 preset 选择 |
@@ -44,7 +44,7 @@ skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
 - **DSH 文本差异**：只写 `pstack/harness/<生成树相对路径>`；主适配器是 `docs/harness/dsh.md`（替换上游 `claude-code.md`），其他上游 harness 附件按上游相对路径与文件名建同名文件。上游页面、技能、playbook、reference 保持原文，不写覆盖层、不改上游内容；生成器渲染时本地适配树优先于上游。不要直接改 `pstack/pstack/`。
 - **新增技能**：随包手写技能放 `skills/authored/<名>/SKILL.md`，仅供维护本仓的技能放根 `.agents/skills/<名>/SKILL.md`；第三方随包技能把 `source` 与技能名加进 `skills/package.json` 的 `skills` 数组，跑 `skills experimental_sync`，哈希与提交号自动记入 `skills/skills-lock.json`。仓库里没有 `skills/vendored` 目录或符号链接：`vp pack` 的清理步骤会顺着指向 `.agents/skills` 的符号链接删掉源文件，拷贝步骤又会把链接按本机绝对路径写进产物；所以构建直接从 `.agents/skills` 拷贝并 `rename` 成 `vendored`。
 - **新增或修改脚本**：改 `pstack/runtime/skills/<技能>/scripts/`，并把技能名加入 `pstack/scripts/replace-scripts.mjs` 的 `REPLACED` 列表。模型通过 `pstack_script` 的 `id` 调用，不直接拼路径；新增脚本必须同步 `src/internal/script-registry.ts` 的 `SCRIPT_ENTRIES`。
-- **新增或修改插件工具**：改 `src/*.ts`，在 `cordis.patch.yml` 增加对应 `dsh-pstack/<入口>` 行；`package.json` 的 `exports` 必须暴露同一入口。插件只从 `@deepseek-ai/*` 导入类型，运行时保持自包含。
+- **新增或修改插件工具**：改 `src/*.ts`，在 `cordis.patch.yml` 增加对应 `dsh-pstack/<入口>` 行；`package.json` 的 `exports` 由 `vite.config.ts` 的 `pack.exports` 生成，新增入口要同时改这两处，非入口资源（如 `./locale/*.json`）用 `customExports` 声明，不要手写进 `package.json`。插件只从 `@deepseek-ai/*` 导入类型，运行时保持自包含。
 
 ## 已知缺口
 

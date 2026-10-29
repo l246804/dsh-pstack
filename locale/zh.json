@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "pstack 工作流",
+    "description": "把 pstack 的严格代理工作流带进 DeepSeek Harness。",
+    "detail": "README.zh.md"
+  }
+}

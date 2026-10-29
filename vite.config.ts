@@ -11,7 +11,11 @@ export default defineConfig({
       { from: "skills/authored", to: "dist/skills" },
       { from: "skills/.agents/skills", to: "dist/skills", rename: "vendored" },
     ],
-    exports: true,
+    exports: {
+      customExports: {
+        "./locale/*.json": "./locale/*.json",
+      },
+    },
   },
   test: {
     include: ["tests/**/*.test.ts"],
