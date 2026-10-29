@@ -39,3 +39,4 @@ dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。仓库�
 - 改动某个模块前读 `docs/architecture.md`；模块边界或入口点变化时同步更新它。
 - 命名概念前读 `docs/glossary.md`；引入新概念时补充术语。
 - 写、更新或评审决策记录前读 `docs/decisions/AGENTS.md`，按其格式、状态与检索约定执行。
+- 重构 `pstack-port` 技能前读 `.agents/skills/pstack-port/SPEC.md`；该文件是用户锁定的场景与要求基线，任何 agent 不得修改，只能由用户明确要求追加。
