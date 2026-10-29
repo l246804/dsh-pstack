@@ -119,6 +119,8 @@
 | 不兼容、不迁移已有的 `poteto-models.mdc`；旧文件不再读取，按缺失配置处理 | `SET-02`、`SET-06` | 只认新文件名，旧文件视为缺失并回退 `inherit-parent` |
 | 格式错误仍按行号报告 | `SET-06`、`PI-02` | 保持现有按行号诊断，不变 |
 
+`doc` 最终覆盖（2026-10-30）：四条 `required_behavior` 全部完整覆盖。读写路径为 `$DSH_HOME/pstack-models.mdc`，`SET-02`、`SET-06`、`PI-02` 已按此复审通过；根 `README.md`、`README.zh.md`、`docs/glossary.md`、`pstack/harness/docs/harness/dsh.md` 与测试同步为上游同名；旧 `poteto-models.mdc` 不迁移，按缺失回退 `inherit-parent`；格式错误仍按行号报告。`MOD-04` 与 `AD-01` 的关联字段保留，能力状态见 8.1。
+
 ## 2. 完整能力表
 
 本节按模板覆盖域列出上游需求与 DSH 对应项。每行给出能力编号、上游期待、DSH 实际、审查结论和证据。只有 `标准 · 部分` 和 `可选 · 部分` 的剩余缺口进入第 3.4 节。
@@ -630,11 +632,11 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | MOD-05 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（provider/model [effort]） |
 | MOD-06 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（PI-02 角色清单） |
 | SET-01 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
-| SET-02 | 已实现（本轮 #1） | 通过 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：读取 `$DSH_HOME/pstack-models.mdc`；PI-02） |
+| SET-02 | 已实现（本轮 #1） | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；读取 `$DSH_HOME/pstack-models.mdc`，旧 `poteto-models.mdc` 按缺失回退 `inherit-parent`） |
 | SET-03 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | SET-04 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；按模型目录校验 effort） |
 | SET-05 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
-| SET-06 | 已实现（本轮 #1） | 通过 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：写入 `$DSH_HOME/pstack-models.mdc`；PI-02） |
+| SET-06 | 已实现（本轮 #1） | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；写入 `$DSH_HOME/pstack-models.mdc`，重跑幂等，格式错误按行号报告） |
 | SET-07 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（角色面板扇出） |
 | SET-08 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | PATH-01 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |
