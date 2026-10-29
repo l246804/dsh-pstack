@@ -45,27 +45,34 @@
   <a href="#compatibility">Compatibility</a>
 </p>
 
-`dsh-pstack` ports [pstack](https://github.com/cursor/plugins/tree/main/pstack) to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It keeps the upstream pstack skills, playbooks, and reference documents, maps Cursor's tool names, subagent fields, model slugs, and paths to DSH, and fills the interfaces DSH lacks with four native tools.
+`dsh-pstack` ports [pstack](https://github.com/cursor/plugins/tree/main/pstack) to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It keeps the upstream pstack skills, playbooks, and reference documents. Four native tools replace the interfaces that DSH lacks, while an adaptation layer maps Cursor's tool names, subagent fields, model slugs, and paths to DSH.
 
-Most upstream pstack skills declare `disable-model-invocation: true`. `poteto-mode` needs to route to those hidden skills by name, while DSH's `skill` tool only exposes the model-visible catalog. Cursor's model slugs, `subagent_type`, `readonly`, and Bun scripts have no DSH equivalents either. dsh-pstack keeps those differences in the plugin layer, so you can start from entries such as `/poteto-mode` right after installation.
+Most upstream pstack skills declare `disable-model-invocation: true`. `poteto-mode` routes to those hidden skills by name, but DSH's `skill` tool only exposes the model-visible catalog. DSH also has no equivalents for Cursor's model slugs, `subagent_type`, `readonly`, and Bun scripts. dsh-pstack handles those differences in the plugin layer. You can start with `/poteto-mode` after installation.
 
 See [`pstack/README.md`](./pstack/README.md) for the full capability map, gaps, and acceptance status.
 
+> [!IMPORTANT]
+> This release only supports DSH `0.2.2-alpha.2` and requires Node.js `>=24.21.1`. The `engines.dsh` field requires an exact DSH version match. See [Compatibility](#compatibility) before installing or upgrading.
+
 ## Quick start
 
-```sh
-dsh plugin --profile web add dsh-pstack
-```
+1. Install the plugin:
 
-You can also install it from the Plugins page in Web or Desktop. After installation, restart the profile or open a new Session.
+   ```sh
+   dsh plugin --profile web add dsh-pstack
+   ```
 
-Run this once before first use:
+   You can also install it from the Plugins page in Web or Desktop.
 
-```text
-/setup-pstack
-```
+2. Restart the profile or open a new Session.
 
-It reads the providers, models, and reasoning efforts the current deployment actually offers and writes them to `$DSH_HOME/poteto-models.mdc`. When the file is missing, every role inherits the parent's routing.
+3. Before first use, run:
+
+   ```text
+   /setup-pstack
+   ```
+
+   This command reads the providers, models, and reasoning efforts available in the current deployment. It writes them to `$DSH_HOME/poteto-models.mdc`. Without this file, every role inherits the parent's routing.
 
 ### Common entry points
 
@@ -91,11 +98,11 @@ It reads the providers, models, and reasoning efforts the current deployment act
 | `pstack_subagent` | Reads `$DSH_HOME/poteto-models.mdc` per role, parses `provider/model [effort]`, selects a preset by `agent`, and can start several subagents at once. |
 | `pstack_script` | Runs bundled Node scripts by fixed id without Bun or shell scripts. |
 
-The `poteto-agent` and `comment-sicko` presets handle implementation delegation and read-only comment review. `pstack_script` can run five bundled scripts—`check-plan`, `watch-pr`, `worktree-audit`, `log`, and `statechart`—whose ids are a closed enum and cannot be used to build arbitrary paths.
+The `poteto-agent` and `comment-sicko` presets handle implementation delegation and read-only comment review. `pstack_script` can run five bundled scripts: `check-plan`, `watch-pr`, `worktree-audit`, `log`, and `statechart`. The script ids form a closed enum and cannot be used to build arbitrary paths.
 
 ## Skills directory
 
-`skills/` is not an upstream pstack directory. It only collects skills that pstack does not provide but real project development needs. The source directories are `skills/authored/` and `skills/.agents/skills/`; after the build they are published to `dist/skills/authored/` and `dist/skills/vendored/`. `vendored` preserves open-source upstreams verbatim, while `authored` is maintained in this repository. pstack skills only reference them; that usage does not change the inclusion criteria.
+`skills/` is not an upstream pstack directory. It contains skills that pstack does not provide but real projects need. The source directories are `skills/authored/` and `skills/.agents/skills/`. The build publishes them to `dist/skills/authored/` and `dist/skills/vendored/`. `vendored` preserves open-source upstreams verbatim, while this repository maintains `authored`. References from pstack skills do not change these inclusion criteria.
 
 | Source | Skill | Purpose | Engineering capability added |
 |---|---|---|---|
@@ -105,17 +112,20 @@ The `poteto-agent` and `comment-sicko` presets handle implementation delegation 
 | `authored` | `decision-audit` | Read-only audit of decision-record routing, status, scope, anchors, and supersession relationships. | Keeps decision records searchable and reviewable over time. |
 | `authored` | `setup-project-docs` | Sets up architecture, glossary, decisions, and the root `AGENTS.md` pointers, and can be run repeatedly to fill gaps. | Gives a new project a sustainable documentation entry point. |
 
-`vendored` skills come from `mattpocock/skills@59db609eb1e18aaf59b63284d0e52255aff0c63c`; sources, paths, and hashes are recorded in [`skills/skills-lock.json`](./skills/skills-lock.json). Both skill trees ship with the package, but they do not correspond to upstream pstack versions.
+`vendored` skills come from `mattpocock/skills@59db609eb1e18aaf59b63284d0e52255aff0c63c`. [`skills/skills-lock.json`](./skills/skills-lock.json) records their sources, paths, and hashes. Both skill trees ship with the package, but they do not correspond to upstream pstack versions.
 
 ## Optional DSH plugins
 
-The following plugins ship with DSH and are disabled by default; they are not installation dependencies of dsh-pstack. They determine whether some pstack flows can run end to end. To enable one, enter its package name in **Add plugin** on the Plugins page, or run `dsh plugin --profile <profile> add <package>`, then restart the profile.
+DSH ships with the following plugins, which are disabled by default. dsh-pstack does not require them during installation. Some pstack flows need these plugins to run end to end. To enable a plugin, enter its package name in **Add plugin** on the Plugins page. Alternatively, run `dsh plugin --profile <profile> add <package>`, then restart the profile.
+
+> [!NOTE]
+> Without an optional plugin, the pstack skills still load. Steps that need the plugin print `Skipped in DeepSeek Harness: <step>. <reason>.` and continue. Missing `gh`, Java/TLC, or video tools also cause the corresponding steps to report blocked or degrade to screenshots. dsh-pstack never marks an unrun step as passed.
 
 ### Sessions and isolation
 
 | Plugin | Capability when enabled | Boundaries and conflicts |
 |---|---|---|
-| `@deepseek-ai/dsh-experimental-session-search` | Five read-only tools—`session_search`, `session_event_search`, `session_trace`, `session_event_trace`, and `session_event_read`—search and trace historical sessions, serving `/recall`, `/reflect`, and `/show-me-your-work`. | Matches only sessions with the same `cwd`; use `session_event_search` for the current session; there is no Cursor `.jsonl` transcript path. |
+| `@deepseek-ai/dsh-experimental-session-search` | Five read-only tools search and trace historical Sessions for `/recall`, `/reflect`, and `/show-me-your-work`: `session_search`, `session_event_search`, `session_trace`, `session_event_trace`, and `session_event_read`. | Matches only Sessions with the same `cwd`; use `session_event_search` for the current Session; there is no Cursor `.jsonl` transcript path. |
 | `@deepseek-ai/dsh-experimental-worktree`<br />`@deepseek-ai/dsh-experimental-tool-worktree` | `create_worktree` creates a local branch and worktree and switches the current Session directory, isolating parallel candidates for `/arena`, `/swarm`, and `/architect`. | `from` reads only local refs and does not fetch; there is no cloud VM; creating worktrees repeatedly changes `cwd`; it does not automatically give each subagent its own tree. |
 | `@deepseek-ai/dsh-experimental-forge-bundle` | PR panel, checks, review, mark ready, merge, and Session binding, plus starting a Session from the composer with a new worktree, serving `/babysit`, `/shipping`, and `/autopilot-*`. | GitHub only, requires `gh` login; there is no take tool on the model side; there is no stack verdict; it can coexist with the worktree bundle. |
 
@@ -134,8 +144,11 @@ Choose one of three browser providers: `@deepseek-ai/dsh-experimental-browser-us
 
 | Plugin | Capability when enabled | Boundaries and conflicts |
 |---|---|---|
-| `@deepseek-ai/dsh-experimental-agent-team-profile` | Lead and teammate roles, a shared task board, nine team tools, and a Web roster, serving `/orchestrate` and `/autopilot-*`. | Hard conflict: disables `subagent` and `subagent_fork`; forms two entry points with `pstack_subagent`, so keep only one per profile. |
+| `@deepseek-ai/dsh-experimental-agent-team-profile` | Lead and teammate roles, a shared task board, nine team tools, and a Web roster, serving `/orchestrate` and `/autopilot-*`. | Disables `subagent` and `subagent_fork`. Conflicts with `pstack_subagent`. See the warning below. |
 | `@deepseek-ai/dsh-experimental-ralph-bundle` | Global `ralph`, a foreground loop with a fresh child each round, serving `/autonomous-run`. | Not a persistent loop in the same Session; no event watcher; does not replace goals, heartbeats, or the decision log. |
+
+> [!WARNING]
+> Do not enable `@deepseek-ai/dsh-experimental-agent-team-profile` and `pstack_subagent` in the same profile. The agent team plugin disables `subagent` and `subagent_fork`, and provides a second delegation entry point. Use only one subagent system per profile.
 
 ## Compatibility
 
@@ -146,17 +159,18 @@ Choose one of three browser providers: `@deepseek-ai/dsh-experimental-browser-us
 | Node.js | `>=24.21.1` | Runtime requirement |
 | Cordis | `~4.0.6-alpha.1` | Peer dependency |
 
-`engines.dsh` accepts only this DSH version. After upgrading DSH, experimental plugin package names, tool names, and configuration may change; verify in a test profile first. Upgrading upstream pstack requires regenerating the tree and rechecking the adaptation table.
+Before upgrading DSH, verify experimental plugin package names, tool names, and configuration in a test profile. Upgrading upstream pstack requires regenerating the tree and rechecking the adaptation table.
 
-`pstack_script` runs on the Host's Node, bypassing bash approval and the filesystem sandbox, and is treated as a trusted entry point. A worktree session's `cwd` differs from the original session; session-search matches exact `cwd`, so search old sessions from their original directory.
+> [!CAUTION]
+> `pstack_script` runs on the Host's Node and bypasses bash approval and the filesystem sandbox. Treat it as a trusted entry point.
 
-When optional plugins are not enabled, pstack skills still load. Steps that need a plugin print `Skipped in DeepSeek Harness: <step>. <reason>.` and continue. Without `gh`, Java/TLC, or video tools, the corresponding steps report blocked or degrade to screenshots; they do not mark an unrun step as passed.
+A worktree Session has a different `cwd` from the original Session. The session-search plugin only matches the exact `cwd`, so search for old Sessions from their original directory.
 
 ## How it works
 
-Upstream pstack adapts Claude Code with `docs/harness/claude-code.md`. Skill bodies are not rewritten; a separate host adaptation table maps `Task`, `AskQuestion`, todo, model slugs, and paths to the target host item by item. The generator only inserts a one-line DSH adaptation note at the start of skills that need Cursor names mapped; capabilities the platform does not support are skipped with `Skipped in Claude Code: <step>. <reason>.`
+Upstream pstack adapts Claude Code with `docs/harness/claude-code.md`. It preserves the skill bodies. A separate host adaptation table maps `Task`, `AskQuestion`, todo, model slugs, and paths to the target host. The generator adds a one-line Claude Code adaptation note to skills that use Cursor names. Unsupported capabilities report `Skipped in Claude Code: <step>. <reason>.`
 
-dsh-pstack follows the same approach. The main adaptation document becomes [`pstack/harness/docs/harness/dsh.md`](./pstack/harness/docs/harness/dsh.md), covering six domains: Tools, Subagent fields, Models, setup-pstack, Paths, and Cursor-only features. Fields DSH lacks are filled by `pstack_*` tools, agent presets, and Node scripts. At build time, upstream pstack and the local adaptation tree are rendered into `pstack/pstack/`, then packaged with `src/*.ts` and `skills/` into `dist/`.
+dsh-pstack follows the same approach. The main adaptation document is [`pstack/harness/docs/harness/dsh.md`](./pstack/harness/docs/harness/dsh.md). It covers Tools, Subagent fields, Models, setup-pstack, Paths, and Cursor-only features. The `pstack_*` tools, agent presets, and Node scripts replace fields that DSH lacks. At build time, upstream pstack and the local adaptation tree are rendered into `pstack/pstack/`, then packaged with `src/*.ts` and `skills/` into `dist/`.
 
 ## Credits
 

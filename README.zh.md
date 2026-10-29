@@ -45,27 +45,34 @@
   <a href="#兼容性">兼容性</a>
 </p>
 
-`dsh-pstack` 是 [pstack](https://github.com/cursor/plugins/tree/main/pstack) 的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）移植。它保留上游 pstack 的技能、playbook 与参考文档，把 Cursor 的工具名、子代理字段、模型 slug 和路径映射到 DSH，再用 4 个原生工具补齐 DSH 缺少的接口。
+`dsh-pstack` 是 [pstack](https://github.com/cursor/plugins/tree/main/pstack) 的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）移植。它保留上游 pstack 的技能、playbook 与参考文档。4 个原生工具替代 DSH 缺少的接口，适配层则把 Cursor 的工具名、子代理字段、模型 slug 和路径映射到 DSH。
 
-上游 pstack 的技能大多声明 `disable-model-invocation: true`。`poteto-mode` 需要按名称路由到这些隐藏技能，而 DSH 的 `skill` 工具只暴露模型可见目录。Cursor 的模型 slug、`subagent_type`、`readonly` 和 Bun 脚本在 DSH 也没有对等物。dsh-pstack 把这些差异收在插件层，安装后可以直接从 `/poteto-mode` 等入口开始工作。
+上游 pstack 的技能大多声明 `disable-model-invocation: true`。`poteto-mode` 按名称路由到这些隐藏技能，但 DSH 的 `skill` 工具只暴露模型可见目录。DSH 也没有与 Cursor 的模型 slug、`subagent_type`、`readonly` 和 Bun 脚本对等的接口。dsh-pstack 在插件层处理这些差异，安装后可以从 `/poteto-mode` 开始工作。
 
 完整能力映射、缺口和验收状态见 [`pstack/README.md`](./pstack/README.md)。
 
+> [!IMPORTANT]
+> 此版本仅支持 DSH `0.2.2-alpha.2`，并要求 Node.js `>=24.21.1`。`engines.dsh` 要求 DSH 版本精确匹配。安装或升级前请先查看 [兼容性](#兼容性)。
+
 ## 快速开始
 
-```sh
-dsh plugin --profile web add dsh-pstack
-```
+1. 安装插件：
 
-在 Web 或 Desktop 的 Plugins 页面也能安装。安装后重启对应的 profile，或新开一个 Session。
+   ```sh
+   dsh plugin --profile web add dsh-pstack
+   ```
 
-第一次使用先运行：
+   也可以在 Web 或 Desktop 的 Plugins 页面安装。
 
-```text
-/setup-pstack
-```
+2. 重启对应的 profile，或新开一个 Session。
 
-它会读取当前部署真实提供的 provider、model 与 reasoning effort，写入 `$DSH_HOME/poteto-models.mdc`。缺少这个文件时，所有角色继承父级路由。
+3. 首次使用前运行：
+
+   ```text
+   /setup-pstack
+   ```
+
+   该命令读取当前部署提供的 provider、model 与 reasoning effort，并写入 `$DSH_HOME/poteto-models.mdc`。缺少这个文件时，所有角色继承父级路由。
 
 ### 常用入口
 
@@ -109,7 +116,10 @@ dsh plugin --profile web add dsh-pstack
 
 ## 可选 DSH 插件
 
-以下插件都随 DSH 提供，默认关闭，不是 dsh-pstack 的安装依赖。它们决定部分 pstack 流程能不能完整执行。启用方式：在 Plugins 页面用 **Add plugin** 输入包名，或运行 `dsh plugin --profile <profile> add <package>`，然后重启 profile。
+以下插件随 DSH 提供，默认关闭。安装 dsh-pstack 时不要求安装这些插件，但部分 pstack 流程需要它们才能完整执行。要启用插件，在 Plugins 页面用 **Add plugin** 输入包名。也可以运行 `dsh plugin --profile <profile> add <package>`，然后重启 profile。
+
+> [!NOTE]
+> 未启用可选插件时，pstack 技能仍可加载。需要插件的步骤会输出 `Skipped in DeepSeek Harness: <step>. <reason>.` 后继续。缺少 `gh`、Java/TLC 或视频工具时，对应步骤会报告 blocked 或降级为截图。dsh-pstack 不会把未运行的步骤标记为通过。
 
 ### 会话与隔离
 
@@ -134,8 +144,11 @@ dsh plugin --profile web add dsh-pstack
 
 | 插件 | 打开后的能力 | 边界与冲突 |
 |---|---|---|
-| `@deepseek-ai/dsh-experimental-agent-team-profile` | Lead / teammate、共享任务板、9 个团队工具和 Web roster，服务 `/orchestrate`、`/autopilot-*`。 | 硬冲突：禁用 `subagent` / `subagent_fork`；与 `pstack_subagent` 形成两套入口，同一 profile 只留一套。 |
+| `@deepseek-ai/dsh-experimental-agent-team-profile` | Lead / teammate、共享任务板、9 个团队工具和 Web roster，服务 `/orchestrate`、`/autopilot-*`。 | 禁用 `subagent` 和 `subagent_fork`，与 `pstack_subagent` 冲突。见下方警告。 |
 | `@deepseek-ai/dsh-experimental-ralph-bundle` | 全局 `ralph`，每轮 fresh child 的 foreground 循环，服务 `/autonomous-run`。 | 不是同一 Session 常驻循环；无事件 watcher；不替代 goal、心跳和 decision log。 |
+
+> [!WARNING]
+> 不要在同一 profile 中同时启用 `@deepseek-ai/dsh-experimental-agent-team-profile` 和 `pstack_subagent`。agent team 插件会禁用 `subagent` 和 `subagent_fork`，并提供另一套委派入口。每个 profile 只使用一套子代理系统。
 
 ## 兼容性
 
@@ -146,17 +159,18 @@ dsh plugin --profile web add dsh-pstack
 | Node.js | `>=24.21.1` | 运行时要求 |
 | Cordis | `~4.0.6-alpha.1` | peer dependency |
 
-`engines.dsh` 只接受这个 DSH 版本。升级 DSH 后，实验性插件的包名、工具名和配置可能变化，先在测试 profile 验证。升级 pstack 上游则需要重新生成树并复核适配表。
+升级 DSH 前，先在测试 profile 中验证实验性插件的包名、工具名和配置。升级上游 pstack 需要重新生成树并复核适配表。
 
-`pstack_script` 用 Host 的 Node 运行，不经过 bash 审批和文件系统沙箱，按受信入口处理。worktree 会话的 `cwd` 与原会话不同，session-search 只匹配精确 `cwd`，旧会话要在原目录搜索。
+> [!CAUTION]
+> `pstack_script` 使用 Host 的 Node 运行，会绕过 bash 审批和文件系统沙箱。请将其视为受信入口。
 
-未启用可选插件时，pstack 技能仍可加载。需要插件的步骤会输出 `Skipped in DeepSeek Harness: <step>. <reason>.` 后继续。没有 `gh`、Java/TLC 或视频工具时，对应步骤报告 blocked 或降级为截图，不把未运行写成通过。
+worktree Session 的 `cwd` 与原 Session 不同。session-search 插件只匹配完全相同的 `cwd`，因此要在原目录搜索旧 Session。
 
 ## 实现方式
 
-pstack 上游用 `docs/harness/claude-code.md` 给 Claude Code 做适配。技能正文不被改写，另写一份宿主适配表，把 `Task`、`AskQuestion`、todo、模型 slug 和路径逐项映射到目标宿主。生成器只在需要映射 Cursor 名字的技能开头插入一行 DSH 适配提示，平台不支持的能力用 `Skipped in Claude Code: <step>. <reason>.` 跳过。
+上游 pstack 用 `docs/harness/claude-code.md` 适配 Claude Code。它保留技能正文，另用宿主适配表把 `Task`、`AskQuestion`、todo、模型 slug 和路径映射到目标宿主。生成器为使用 Cursor 名称的技能添加一行 Claude Code 适配提示。不支持的能力会报告 `Skipped in Claude Code: <step>. <reason>.`
 
-dsh-pstack 沿用这套做法。主适配文档换成 [`pstack/harness/docs/harness/dsh.md`](./pstack/harness/docs/harness/dsh.md)，覆盖 Tools、Subagent fields、Models、setup-pstack、Paths 和 Cursor-only features 六个域。DSH 没有的字段由 `pstack_*` 工具、agent preset 和 Node 脚本补齐。构建时把上游 pstack 与本地适配树渲染成 `pstack/pstack/`，再和 `src/*.ts`、`skills/` 一起打包到 `dist/`。
+dsh-pstack 沿用这套做法。主适配文档是 [`pstack/harness/docs/harness/dsh.md`](./pstack/harness/docs/harness/dsh.md)，覆盖 Tools、Subagent fields、Models、setup-pstack、Paths 和 Cursor-only features。`pstack_*` 工具、agent preset 和 Node 脚本替代 DSH 缺少的字段。构建时，上游 pstack 与本地适配树被渲染到 `pstack/pstack/`，再与 `src/*.ts`、`skills/` 一起打包到 `dist/`。
 
 ## 鸣谢
 
