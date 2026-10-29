@@ -17,4 +17,5 @@ export const SCRIPT_ENTRIES: readonly ScriptEntry[] = [
   { id: "watch-pr", assetPath: "skills/poteto-mode/scripts/watch-pr/watch-pr.mjs" },
   { id: "worktree-audit", assetPath: "skills/poteto-mode/scripts/worktree-audit.mjs" },
   { id: "log", assetPath: "skills/show-me-your-work/scripts/log.mjs" },
+  { id: "statechart", assetPath: "skills/statechart/scripts/statechart.mjs" },
 ];

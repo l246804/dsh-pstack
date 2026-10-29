@@ -31,7 +31,7 @@ const BUILT = join("dist", "runtime", "skills");
 const SHIPPED_SKILLS = join("dist", "pstack", "skills");
 
 /** The skills whose scripts the runtime replaces. */
-const REPLACED = ["poteto-mode", "show-me-your-work"];
+const REPLACED = ["poteto-mode", "show-me-your-work", "statechart"];
 
 if (!existsSync(BUILT)) {
   console.error(`replace:scripts: ${BUILT} is missing; run \`vp run build:runtime\` first`);

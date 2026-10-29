@@ -1,6 +1,6 @@
 import { test } from "node:test";
 
-import { ageColumn, bucketFor, dirtyColumn, formatSize, mergedColumn, prColumn, remoteColumn, renderTable, sortRows, type AuditRow } from "./worktree-audit.ts";
+import { ageColumn, bucketFor, dirtyColumn, formatSize, lastChatColumn, mergedColumn, prColumn, remoteColumn, renderTable, sortRows, type AuditRow } from "./worktree-audit.ts";
 import { expect } from "./support.ts";
 
 const now = Date.UTC(2026, 9, 28, 12, 0, 0) / 1000;
@@ -14,8 +14,7 @@ test("renders the documented worktree columns", () => {
       dirty: "clean",
       remote: "pushed",
       pr: "#12/OPEN",
-      lastChat: "2026-10-28T10:00:00Z",
-      pinned: "unknown",
+      lastChat: "2026-10-28",
       bucket: "hold-open-pr",
       worktree: "/repo/wt-a",
     },
@@ -27,14 +26,13 @@ test("renders the documented worktree columns", () => {
       remote: "ahead1",
       pr: "-",
       lastChat: "-",
-      pinned: "unknown",
       bucket: "hold-wip",
       worktree: "/repo/wt-b",
     },
   ];
   const table = renderTable(sortRows(rows), "origin/main");
   expect(table.split("\n")[0]).toBe("# base: origin/main");
-  expect(table).toContain("SIZE\tAGE\tMERGED\tDIRTY\tREMOTE\tPR\tLAST_CHAT\tPINNED\tBUCKET\tWORKTREE");
+  expect(table).toContain("SIZE\tAGE\tMERGED\tDIRTY\tREMOTE\tPR\tLAST_CHAT\tBUCKET\tWORKTREE");
   expect(table).toContain("/repo/wt-a");
   expect(table).toContain("/repo/wt-b");
 });
@@ -52,6 +50,9 @@ test("classifies the individual columns", () => {
   expect(remoteColumn({ branch: "feature/x", hasRemote: false, remoteSha: undefined, head: "def", aheadCount: 2 })).toBe("no-remote");
   expect(remoteColumn({ branch: undefined, hasRemote: true, remoteSha: "abc", head: "abc", aheadCount: 0 })).toBe("detached");
   expect(prColumn("feature/x", [{ number: 12, head: "feature/x", state: "OPEN" }])).toBe("#12/OPEN");
+  expect(lastChatColumn({ sessionId: "s-1", lastEventTime: Date.UTC(2026, 9, 27, 23, 30) / 1000 })).toBe("2026-10-27");
+  expect(lastChatColumn({ sessionId: "s-1" })).toBe("-");
+  expect(lastChatColumn(undefined)).toBe("-");
 });
 
 test("never marks an unknown usage signal safe", () => {

@@ -12,7 +12,7 @@
  * the columns:
  *
  * - The header is `# base: <ref>` then one TSV header line, written once.
- * - Columns are SIZE, AGE, MERGED, DIRTY, REMOTE, PR, LAST_CHAT, PINNED, BUCKET,
+ * - Columns are SIZE, AGE, MERGED, DIRTY, REMOTE, PR, LAST_CHAT, BUCKET,
  *   WORKTREE, in that order.
  * - The main worktree is never a candidate. Only `git worktree list` provides
  *   paths; nothing is hand-typed.
@@ -22,8 +22,7 @@
  *   with `clean` for neither.
  * - `REMOTE` is `pushed`, `ahead<n>`, `detached`, or `no-remote`.
  * - `PR` is `#<number>/<state>` from the forge, or `-`.
- * - `PINNED` is always `unknown`: this host exposes no pinned-state source, so the
- *   user's own set decides and the script says so instead of guessing.
+ * - `LAST_CHAT` is the UTC date of the newest supplied session in the worktree, or `-`.
  * - `BUCKET` is `hold-wip`, `hold-open-pr`, `unknown-usage`, `verify-recent-chat`,
  *   `safe`, or `review`. An unknown usage signal never reaches `safe`.
  * - Rows are sorted by SIZE descending, then kept in the order they were produced.
@@ -45,7 +44,6 @@ export interface AuditRow {
   readonly remote: string;
   readonly pr: string;
   readonly lastChat: string;
-  readonly pinned: string;
   readonly bucket: string;
   /** Why the usage signal is unknown, when it is. Absent once a session matched. */
   readonly note?: string;
@@ -71,8 +69,6 @@ export interface AuditInput {
   readonly now: number;
 }
 
-export const PINNED = "unknown";
-
 export const HEADER = [
   "SIZE",
   "AGE",
@@ -81,7 +77,6 @@ export const HEADER = [
   "REMOTE",
   "PR",
   "LAST_CHAT",
-  "PINNED",
   "BUCKET",
   "WORKTREE",
 ] as const;
@@ -320,9 +315,11 @@ export function lastSession(
   ];
 }
 
-/** `LAST_CHAT` for one worktree. */
+/** `LAST_CHAT` for one worktree: the UTC date of its newest supplied session. */
 export function lastChatColumn(session: SessionInput | undefined): string {
-  return session === undefined ? "-" : (session.sessionId ?? "unknown");
+  const time = session?.lastEventTime ?? 0;
+  if (!(time > 0)) return "-";
+  return new Date(time * 1000).toISOString().slice(0, 10);
 }
 
 /** Whether a session counts as recent for the bucket decision. */
@@ -541,7 +538,6 @@ export function buildRow(worktree: string, context: AuditContext): AuditRow {
     remote,
     pr,
     lastChat: lastChatColumn(session),
-    pinned: PINNED,
     bucket,
     note: usageNote({ usageKnown, sessionsProvided }),
     worktree,
@@ -597,7 +593,6 @@ export function renderTable(rows: readonly AuditRow[], base: string): string {
         row.remote,
         row.pr,
         row.lastChat,
-        row.pinned,
         row.bucket,
         row.worktree,
       ].join("\t"),
@@ -704,8 +699,6 @@ export const USAGE = [
   "  -s takes a JSON array you build from DSH session search results, of",
   '  {"sessionId","cwd","lastEventTime"}. This script never reads the session',
   '  store, so without it LAST_CHAT is "-" and the bucket is unknown-usage.',
-  '  PINNED is always "unknown": this host exposes no pinned-state source, so the',
-  "  user's own set decides.",
   "",
 ].join("\n");
 

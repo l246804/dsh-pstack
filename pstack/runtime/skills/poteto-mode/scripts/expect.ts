@@ -8,8 +8,8 @@
  * port auditable against the calls that actually exist.
  *
  * Covered: `toBe`, `toEqual`, `toContain`, `toMatch`, `toThrow`, `toBeNull`,
- * `toBeInstanceOf`, `toHaveLength`, `toEndWith`, `toMatchObject`, `.not` on each,
- * and `rejects` / `resolves` for promises.
+ * `toBeUndefined`, `toBeInstanceOf`, `toHaveLength`, `toEndWith`, `toMatchObject`,
+ * `.not` on each, and `rejects` / `resolves` for promises.
  *
  * Two differences from `bun:test`, stated so a failure is not misread:
  *
@@ -113,6 +113,7 @@ export interface Matchers {
   toMatch(expected: RegExp | string): void;
   toThrow(expected?: RegExp | string | (new (...args: never[]) => Error)): void;
   toBeNull(): void;
+  toBeUndefined(): void;
   toBeInstanceOf(expected: new (...args: never[]) => unknown): void;
   toHaveLength(expected: number): void;
   toEndWith(expected: string): void;
@@ -144,6 +145,7 @@ export interface AsyncMatchers {
   toMatch(expected: RegExp | string): Promise<void>;
   toThrow(expected?: RegExp | string | (new (...args: never[]) => Error)): Promise<void>;
   toBeNull(): Promise<void>;
+  toBeUndefined(): Promise<void>;
   toBeInstanceOf(expected: new (...args: never[]) => unknown): Promise<void>;
   toHaveLength(expected: number): Promise<void>;
   toEndWith(expected: string): Promise<void>;
@@ -213,6 +215,9 @@ function buildMatchers(actual: unknown, negate: boolean): ResolvedMatchers {
     },
     toBeNull() {
       checkPlain(actual === null, "toBeNull");
+    },
+    toBeUndefined() {
+      checkPlain(actual === undefined, "toBeUndefined");
     },
     toBeInstanceOf(expected) {
       check(actual instanceof expected, "toBeInstanceOf", expected);
@@ -322,6 +327,10 @@ function buildAsyncMatchers(
       buildMatchers(subject, false).toBeNull();
       return;
     }
+    if (name === "toBeUndefined") {
+      buildMatchers(subject, false).toBeUndefined();
+      return;
+    }
     const matchers = buildMatchers(subject, false) as unknown as Record<
       string,
       (value: unknown) => void
@@ -340,6 +349,7 @@ function buildAsyncMatchers(
     toMatch: (expected: unknown) => wrap("toMatch", expected),
     toThrow: (expected?: unknown) => wrap("toThrow", expected),
     toBeNull: () => wrap("toBeNull"),
+    toBeUndefined: () => wrap("toBeUndefined"),
     toBeInstanceOf: (expected: unknown) => wrap("toBeInstanceOf", expected),
     toHaveLength: (expected: unknown) => wrap("toHaveLength", expected),
     toEndWith: (expected: unknown) => wrap("toEndWith", expected),

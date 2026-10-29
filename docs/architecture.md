@@ -49,8 +49,6 @@ skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
 ## 已知缺口
 
 - vendored 技能来源记在 `skills/skills-lock.json`，不存在单独的 `skills/sources.yml`。
-- `statechart` 技能的脚本尚未做 Node 等价移植：`pstack/runtime` 没有对应镜像，随包树原样发布上游 `.ts` 与 `sh` 启动器（`statechart/scripts` 约 4MB、405 个文件，含测试语料）；由 `implement` 决定移植方式与是否裁剪测试语料。
-- `poteto-mode` 的 `check-plan`、`watch-pr`、`worktree-audit` 上游脚本在 `d1453c1..1ba91fc` 间有改动，本地 `pstack/runtime` 移植尚未同步，交 `implement`。
-- 本地适配树只有主适配器 `docs/harness/dsh.md`；其内容仍把 `pstack_script` 的 `orch` id 列在脚本清单里，而上游已删除 orch 脚本，需在 `doc` 阶段更新适配文档。
+- 本地适配树只有主适配器 `docs/harness/dsh.md`；其内容仍把 `pstack_script` 的 `orch` id 列在脚本清单里，且尚未映射 `statechart`，需在 `doc` 阶段更新适配文档。
 
 本节记录的是当前事实；缺口修复或消失后同步更新。

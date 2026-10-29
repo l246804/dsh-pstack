@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
-import { parseDelegationArgs, planDelegation, type SubagentRuntime } from "../src/subagent.ts";
+import {
+  parseDelegationArgs,
+  planDelegation,
+  startPlannedChildren,
+  type SubagentRuntime,
+} from "../src/subagent.ts";
 
 const directories: string[] = [];
 
@@ -68,6 +73,32 @@ describe("pstack_subagent planning", () => {
     });
   });
 
+  it("starts one child per automatic panel entry", () => {
+    const dshHome = homeWithRoles(
+      "arena runners: cpa/workbuddy/deepseek-v4.1-flash [high], cpa/workbuddy/minimax-m3.1-flash [low]\n",
+    );
+    const plan = planDelegation(args({ role: "arena runners" }), runtime(dshHome));
+    expect(plan.children).toHaveLength(2);
+    expect(plan.children.map((child) => child.routeLabel)).toEqual([
+      "cpa/workbuddy/deepseek-v4.1-flash [high]",
+      "cpa/workbuddy/minimax-m3.1-flash [low]",
+    ]);
+    expect(plan.children.map((child) => child.label)).toEqual([
+      "inspect the parser [arena runners 1/2]",
+      "inspect the parser [arena runners 2/2]",
+    ]);
+  });
+
+  it("selects one entry from a list role with roleIndex", () => {
+    const dshHome = homeWithRoles(
+      "swarm workers: cpa/workbuddy/deepseek-v4.1-flash [high], cpa/workbuddy/minimax-m3.1-flash [low]\n",
+    );
+    const plan = planDelegation(args({ role: "swarm workers", roleIndex: 1 }), runtime(dshHome));
+    expect(plan.children).toHaveLength(1);
+    expect(plan.children[0]!.routeLabel).toBe("cpa/workbuddy/minimax-m3.1-flash [low]");
+    expect(plan.diagnostics.join("\n")).toMatch(/entry 2 was selected/);
+  });
+
   it("falls back to the parent route when the file or role line is missing", () => {
     const missing = planDelegation(args({ role: "bug-fix" }), runtime(homeWithRoles(undefined)));
     expect(missing.children[0]!.route).toEqual({ kind: "inherit" });
@@ -84,5 +115,45 @@ describe("pstack_subagent planning", () => {
     const dshHome = homeWithRoles("bug-fix: not-a-route\n");
     const plan = planDelegation(args({ role: "bug-fix" }), runtime(dshHome));
     expect(plan.diagnostics.join("\n")).toMatch(/poteto-models\.mdc:1: bug-fix: .* is not a route/);
+  });
+});
+
+describe("pstack_subagent execution", () => {
+  it("starts a poteto-agent child with its preset and injected instruction path", async () => {
+    const dshHome = homeWithRoles(undefined);
+    const starts: unknown[] = [];
+    const provider = {
+      capabilities: { agentOptions: true, agentPreset: true, depthLimit: true },
+    };
+    const live = {
+      ...runtime(dshHome),
+      subagents: {
+        getProvider: () => provider,
+        list: () => ["spawn"],
+        resolveMaxDepth: () => undefined,
+        startActivation: async (spec: unknown) => {
+          starts.push(spec);
+          return { childId: "child-1" };
+        },
+      },
+      workingDirectory: { ensure: async () => "/session" },
+    } as unknown as SubagentRuntime;
+
+    const plan = planDelegation(args(), live);
+    const result = await startPlannedChildren(
+      {} as never,
+      plan,
+      live,
+      { provider: "spawn", maxDepth: 2 },
+      new AbortController().signal,
+    );
+
+    expect(result.children[0]!.childId).toBe("child-1");
+    expect(result.children[0]!.agent).toBe("poteto-agent");
+    expect(starts).toHaveLength(1);
+    const request = (starts[0] as { request: { agentPreset?: string; prompt: { text: string }[] } })
+      .request;
+    expect(request.agentPreset).toBe("poteto-agent");
+    expect(request.prompt[0]!.text).toContain("poteto-mode");
   });
 });

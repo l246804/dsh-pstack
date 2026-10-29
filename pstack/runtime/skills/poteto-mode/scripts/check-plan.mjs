@@ -17,7 +17,8 @@ const SUB_BLOCKS = [
 	"Merge.",
 ];
 const PROGRAM_H3 = ["Arm the program", "Spawn owners", "PR mechanics", "Verdict and merge", "Boot recipe"];
-const PROGRAM_MARKERS = ["create_goal", "schedule_create", "status message"];
+const PROGRAM_MARKERS = ["git show origin/main:", "status message"];
+const TICK_MARKERS = ["create_goal", "schedule_create"];
 const HOW_TO_READ_MARKERS = [
 	"One box is one unit of work",
 	"names the evidence",
@@ -72,7 +73,7 @@ for (let i = start; i < raw.length; i++) {
 	lines.push({ n, text, code });
 	if (code) continue;
 	const prose = text
-		.replace(/`[^`]*`/g, "`")
+		.replace(/(?<!`)(`+)(?!`)(.*?)(?<!`)\1(?!`)/g, "`")
 		.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
 		.replace(/\]\([^)]*\)/g, "]");
 	if (/[\u2013\u2014]/.test(prose)) fail(n, "long dash");
@@ -115,6 +116,13 @@ else {
 	}
 	for (const marker of PROGRAM_MARKERS) {
 		if (!bodyText(program).includes(marker)) fail(program.n, `Program checklist lacks "${marker}"`);
+	}
+	// Upstream's plan names the Cursor tick `/loop 1h`; the DSH adapter replaces that
+	// tick with a goal plus a scheduled follow-up, so a plan written from the DSH
+	// adapter names both tools instead. Either spelling satisfies the check.
+	const programText = bodyText(program);
+	if (!programText.includes("/loop 1h") && !TICK_MARKERS.every((marker) => programText.includes(marker))) {
+		fail(program.n, `Program checklist lacks "/loop 1h" or both "create_goal" and "schedule_create"`);
 	}
 }
 
