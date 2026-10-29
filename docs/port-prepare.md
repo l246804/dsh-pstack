@@ -68,4 +68,3 @@
 
 - 主适配器 `pstack/harness/docs/harness/dsh.md` 内容仍是旧版：脚本清单还列 `orch` id，且需补 statechart、ketchup-video 与新增 playbook 的映射。内容更新由 `doc` 阶段处理（`audit` 先重建需求基线）。
 - `pstack/README.md` 审查基线仍记 `d1453c1` / `0.15.29` 与旧 `orch` 实现范围，须由下一次 `audit` 重建。
-- `docs/extensions.md` 的 `EXT-001`、`EXT-002` 保留 `proposed`，本轮不改动。

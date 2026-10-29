@@ -43,12 +43,7 @@
 
 ### 1.4 独立保留范围
 
-`docs/extensions.md` 中 `proposed` 与 `active` 的条目是 DSH 版本地扩展，不是上游 pstack 能力，不混入本表的原子能力编号。本轮保留：
-
-| 编号 | 状态 | 保留范围 |
-|---|---|---|
-| EXT-001 | proposed | 移植问题反馈：版本、环境、最小复现、预期/实际、证据、Issue 与回归验证。 |
-| EXT-002 | proposed | `poteto-models.mdc` 可视化：读取、编辑、校验、保存、错误展示、外部修改刷新。 |
+`docs/extensions.md` 中 `proposed` 与 `active` 的条目是 DSH 版本地扩展，不是上游 pstack 能力，不混入本表的原子能力编号。本轮没有独立保留条目。
 
 ### 1.5 分类口径
 
@@ -548,7 +543,6 @@
 ### 6.5 AD-05 非 pstack 上游的已接受决策
 
 - [docs/decisions/2026-10-28-decision-skill-lifecycle.md](../docs/decisions/2026-10-28-decision-skill-lifecycle.md#L1-L39)（Status: accepted）：约束本仓 `decision-write`/`decision-audit` 的状态更新与落地锚点。适用能力：无；不属于 pstack 上游移植范围，不进入本 README 的能力编号。
-- `docs/extensions.md` 的 `EXT-001`、`EXT-002` 保持 `proposed`，见 1.4；它们是 DSH 版本地扩展，不进入上游能力编号，也不改写 README 的移植状态。
 
 ## 7. 实现建议选择
 
