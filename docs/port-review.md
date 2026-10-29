@@ -1,10 +1,10 @@
 # pstack 移植审查报告
 
 - 轮次：baseline
-- 审查对象：当前分支 HEAD（`F-01`～`F-04` 修复；基于 `e826750`）
-- 审查迭代：1（首次实现后审查）
+- 审查对象：`66a705ae5cbca5b8947821b23dbee7e3435d867e`（`F-01`～`F-04` 修复；父提交 `e826750`）
+- 审查迭代：2（第二轮：`F-01`～`F-04` 修复复核）
 - 上游提交：pstack `1ba91fc25c0977741dd0e267849e6234b037ed0a`（`0.15.36`）；DSH `f3803c96974ad4a94195fb97e5c637e9c2a3afe3`（`0.2.2-alpha.2`）
-- 审查状态：待审查
+- 审查状态：通过
 - 收尾状态：未开始
 - 阻断摘要：无
 - 用户确认：-
@@ -134,10 +134,10 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 | 审查类别 | 结论 |
 |---|---|
 | 安全 / 权限阻断 | 无新增阻断。`pstack_script` 不经过审批与文件系统沙箱是 `AD-01` 已接受的代价，见第 4 节；其余模型工具均经 DSH 服务面执行。 |
-| 行为或公共 API 错误 | F-01、F-02、F-03。 |
+| 行为或公共 API 错误 | F-01、F-02、F-03（第一轮发现；均已修复并通过第二轮复核，见第 2、8 节）。 |
 | 非最小实现 | 无（新增文件均有当前范围消费者或验收依据；`pstack_skill`、`pstack_models`、`pstack_script`、`pstack_subagent` 分别对应 README PI-01、PI-02、PI-08 与脚本范围）。 |
-| 冗余残留 | C-01、C-02、C-03（非阻断清理项）。 |
-| 验证缺口 | F-04。 |
+| 冗余残留 | C-01、C-02、C-03（第一轮）、C-04、C-05（第二轮）；均为非阻断清理项。 |
+| 验证缺口 | F-04（第一轮发现；已修复并通过第二轮复核，见第 2、8 节）。 |
 | 决策 / 依赖阻断 | 无。没有待选择实现方案；`set_reasoning_effort` 可用 DSH `Agent.model.select()` 公共 API 修复，不属于外部依赖阻断。 |
 
 ### 1.4 模型可见工具与脚本入口的副作用
@@ -148,13 +148,13 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 | `pstack_models` | 读取 `ctx.llm` 的 live provider/model/effort 元数据；不写文件、不联网（adapter 自身的发现调用除外）。 | DSH LLM 服务；调用随 `exec.signal` 取消。 |
 | `pstack_script` | 以 `process.execPath` 启动随包 Node 脚本；脚本可读写文件、启动 `git`/`gh`/`mise`/Java 等外部命令、联网；`background: true` 注册 `ctx.jobs` 后台任务。 | 前景直接 `spawn`；后台经 `ctx.jobs.start`，owner 为调用 Session；不经过 bash 审批与文件系统沙箱（AD-01 已接受）。 |
 | `pstack_subagent` | 读取 `$DSH_HOME/poteto-models.mdc`；通过 `ctx.subagents.startActivation` 启动一个或多个子 Agent；向子 Agent 注入 poteto-mode 绝对路径；启动后可能在子 Agent 上注册 `set_reasoning_effort`。 | DSH subagent 服务管理子 Agent 生命周期；`cwd` 仅允许会话目录内或带 `.git` 的目录；子 Agent 的工具面由 agent preset 静态组合。 |
-| `set_reasoning_effort`（子 Agent 工具） | 设计上改变子 Agent 后续模型请求的 reasoning effort；不写文件、不联网。 | 应由子 Agent 的 `Agent.model.select()` 执行；当前 F-01/F-02 证明该实现不成立，不进入 DSH 权限面。 |
+| `set_reasoning_effort`（子 Agent 工具） | 改变子 Agent 后续模型请求的 reasoning effort；只追加 DSH session 的 `model/selection` 事件，不写文件、不联网。 | 由子 Agent 的 `Agent.model.select()` 执行（F-01/F-02 已修复，见第 2、8 节）；工具随子 Agent 的 scope 释放，不经过文件或网络权限面。 |
 
 ## 2. 审查发现
 
 ### F-01 `set_reasoning_effort` 使用已废弃的 `agent/request` 修改 effort，下一次请求会抛错
 
-- 状态：`fixed-pending-review`
+- 状态：`closed`
 - 范围：`port`
 - 能力：`PI-08`；影响 `SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SKL-05`、`SKL-24`
 - 严重度：行为 / 公共 API 错误（高）
@@ -163,10 +163,11 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 - 影响：子代理调用 `set_reasoning_effort` 后，下一次模型请求会在 `prepareRequest` 抛错；`pstack_subagent` 工具描述和 `dsh.md` 对运行中子代理改 effort 的承诺不成立。子代理的初始 effort 仍可通过 `agentOptions` 设置，问题是运行中改 effort。
 - 修复建议：删除 `agent/request` listener；在工具校验通过后调用 `child.model.select({ provider, model, reasoningEffort })`（provider/model 取自当前 `resolveEffortTarget`）。增加“改 effort 后下一请求使用新值”的行为回归，和“非法 effort 不改变当前选择”的失败路径。
 - 修复记录（2026-10-29，`implement port`）：已删除 `agent/request` waterfall 与 `current` 局部状态；`set_reasoning_effort` 校验通过后调用执行方 Agent 的 `agent.model.select({ provider, model, reasoningEffort })`，由 DSH 在下一步准备时应用。新增 `tests/effort.test.ts`：断言安装时不注册任何 `agent/request` 监听；成功调用记录完整 selection；未知 effort 被拒绝且 selection 不变。`vp test`：5 files、23 tests passed。
+- 关闭记录（2026-10-29，`review port` 第二轮）：复核 `src/internal/effort.ts:93-104,172-176`，`agent/request` listener 已删除，选择通过 `agent.model.select()` 记录；DSH `packages/core/agent/src/runtime-types.ts:54-72` 的 `Model.select` 契约、`packages/core/agent/src/model-selection.ts:112-115` 的 `model/selection` 追加、`packages/core/agent-loop/src/agent.ts:288,447` 的下一步 `model.current()` 选择链均成立。`tests/effort.test.ts` 三条回归通过，确认安装时无 listener、成功调用记录完整 selection、未知 effort 不改变 selection。验证通过，关闭。
 
 ### F-02 `set_reasoning_effort` 的 `parameters` 不是合法的对象 JSON Schema
 
-- 状态：`fixed-pending-review`
+- 状态：`closed`
 - 范围：`port`
 - 能力：`PI-08`；影响 `SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SKL-05`、`SKL-24`
 - 严重度：公共 API / 行为错误（高）
@@ -184,10 +185,11 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
   ```
   增加一个断言工具根 schema 为 object 且含 `effort` 的回归测试。
 - 修复记录（2026-10-29，`implement port`）：`parameters` 改为标准的对象 schema：`type: "object"`、`additionalProperties: false`、`properties: { effort: { type: "string" } }`、`required: ["effort"]`。`tests/effort.test.ts` 的 `toMatchObject` 断言根级 `type`、`properties` 与 `required`；`vp check` 无该文件类型错误。
+- 关闭记录（2026-10-29，`review port` 第二轮）：复核 `src/internal/effort.ts:116-127` 为完整对象 schema；`tests/effort.test.ts:52-66` 的断言覆盖根级 `type`、`additionalProperties`、`properties` 与 `required`。DSH `ToolSchema.parameters` 仍以对象 JSON Schema 为契约（`packages/llm/llm/src/types.ts:517-528`），`projectToolSchema` 原样投影（`packages/core/tools/src/schema.ts:641-645`）。验证通过，关闭。
 
 ### F-03 `worktree-audit` 的 SIZE 列跟随符号链接，与 `du` 不一致并可能无限递归
 
-- 状态：`fixed-pending-review`
+- 状态：`closed`
 - 范围：`port`
 - 能力：`PI-06`；影响 `SCR-03`、`PB-22`
 - 严重度：行为错误（中高）
@@ -196,10 +198,11 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 - 影响：`SIZE` 虚高，worktree 清理 playbook 的容量判断失真；在含 `node_modules` 符号链接或指向共享缓存的工作树中风险更高。
 - 修复建议：使用 `lstatSync` 判定 `isSymbolicLink()`，对符号链接只计入自身块（按 `du` 语义不递归）；补充“含符号链接目录”的测试。
 - 修复记录（2026-10-29，`implement port`）：`directorySize` 改用 `lstatSync`，计数后对 `isSymbolicLink()` 直接跳过递归。新增 `worktree-audit.test.ts` 用例：2 MiB 外部目录经目录符号链接挂入工作树，`sizeColumn(worktree)` 低于 1 MiB，而外部目录自身不低于 2 MiB。`cd pstack && vp run test`：76 tests passed。
+- 关闭记录（2026-10-29，`review port` 第二轮）：复核 `pstack/runtime/skills/poteto-mode/scripts/worktree-audit.ts:190-219`，`lstatSync` 在计数后对 `isSymbolicLink()` 直接 `continue`，不再跟随目录链接；`worktree-audit.test.ts:89-104` 的符号链接目录回归通过，`sizeColumn(worktree)` 未计入外部 2 MiB 内容。按 `du` 无 `-L` 语义验证通过，关闭。
 
 ### F-04 `statechart` 的 worker 路径没有验收测试，README 7.1 的“worker 路径冒烟”不成立
 
-- 状态：`fixed-pending-review`
+- 状态：`closed`
 - 范围：`port`
 - 能力：`PI-09`；影响 `SCR-05`、`SKL-33`
 - 严重度：验证缺口（中）
@@ -208,6 +211,7 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 - 影响：新入口 `statechart.mjs` → `worker.mjs` 的路径选择、参数传递、输出目录、退出码和 `report.md`/`chart.mmd` 行为未经验收；打包或运行壳漂移不会被测试发现。
 - 修复建议：增加一个 fake TLC/worker 的 smoke test（不必引入上游整个 corpus），或明确删除 README 7.1 的“worker 路径冒烟”声明并把该覆盖项标为未覆盖；不能只保留文档声明。
 - 修复记录（2026-10-29，`implement port`）：`statechart.test.ts` 新增 worker 冒烟用例：设置 `TLA2TOOLS` 与 `JAVA` 指向临时 fake TLC，真实启动 `statechart.ts` → `worker.ts`；fake 返回 SANY XML、TLC stats 与 `graph.dot`，断言 exit 0，`report.md`/`chart.mmd`/`tlc.out` 三件产物存在且报告含 `# Smoke` 与 `NoDeadlock`。`cd pstack && vp run test`：76 tests passed。
+- 关闭记录（2026-10-29，`review port` 第二轮）：复核 `statechart.test.ts:123-169`，用例通过 `TLA2TOOLS`/`JAVA` 临时 fake 真正进入 `statechart.ts` 的 worker spawn 与 `worker.ts` 的 `check()` 路径；`cd pstack && vp run test` 的 76 tests 中含该 7 个状态图测试并通过；单独运行编译产物 `pstack/dist/runtime/skills/statechart/scripts/statechart.test.mjs` 也通过（`statechart.mjs` → `worker.mjs` 路径）。README 7.1 的“worker 路径冒烟”已有对应覆盖，关闭。
 
 ## 3. 非阻断清理项
 
@@ -218,6 +222,8 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 | C-01 | 过期注释 | `src/internal/role-config.ts:2` | 注释写成 `$DSH_HOME/pstack-models.md`，实际 `PSTACK_MODELS_FILENAME` 是 `poteto-models.mdc`；改为与 README 6.1、`docs/glossary.md` 一致。 |
 | C-02 | 冗余残留 | `src/internal/paths.ts:38,60-62` | `AGENTS_ROOT` 与 `agentPreamblePath` 没有任何消费者；删除，或让 `pstack_subagent` 真正使用生成的 `agents/*.md` 并补测试。 |
 | C-03 | lint warning | `pstack/scripts/generate-pstack-harness-tree.mjs:204` | 为 `.sort()` 提供 compare，消掉 `vp check` 的 `require-array-sort-compare` warning。 |
+| C-04 | 冗余残留（第二轮） | `src/internal/host-contract.ts:18,66` | F-01 删除 `agent/request` waterfall 后，`LlmCallConfig` 已无消费者；删除该 type import 与 re-export，或将其保留理由写成具体消费者。 |
+| C-05 | 过期注释（第二轮） | `src/internal/host-contract.ts:2` | 注释写“DSH 0.2.1-rc.3”，而 `package.json` 的 `engines.dsh` 是 `0.2.2-alpha.2`；更新为当前绑定版本或改为不写具体版本。 |
 
 ## 4. 已接受风险与残余限制
 
@@ -227,7 +233,7 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 - `statechart` 依赖外部 `mise`/Java/TLC，且编排器使用 `/bin/sh`；Windows 没有 `/bin/sh` 时该路径不可用。README 已按 `G-15` 记录外部依赖，不属于本插件实现的宿主能力。
 - `dsh.md` 仍把已退役的 `orch` 列在脚本清单中，且尚未映射 `statechart`；README 第 9 节已把它列为留给 `doc` 的适配文档修订，不作为本轮 finding。
 
-## 5. 能力状态映射
+## 5. 第一轮能力状态映射（历史）
 
 本轮 README 审查状态区按以下口径更新：
 
@@ -239,7 +245,7 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 
 平台排除项按排除基线不实现；其余 112 项通过。没有 `blocked` finding，不需要用户作实现/范围决策。
 
-## 6. 结论与下一步
+## 6. 第一轮结论与下一步（历史）
 
 本轮发现 4 个可修复 finding（2 个行为/公共 API 错误、1 个行为错误、1 个验证缺口），没有需要用户决策的安全阻断或外部依赖阻断。按契约将 `审查状态` 置为 `阻断-可修复`，`收尾状态` 保持 `未开始`。
 
@@ -250,3 +256,58 @@ f330e0a3b0a9f8181c2e52252c4a47db3f0a64f79a7cca5490263e33a5f13c72  skills/statech
 `implement port` 已处理 F-01～F-04，逐项修复与验证记录见第 2 节各 finding；`pstack/README.md` 的对应能力审查列已置为 `待审查`。本轮修复后的验证：`vp check` 0 errors（保留既有 C-03 warning）；`vp test` 5 files、23 tests；`cd pstack && vp run test` 76 tests；`vp run build` 与 `generate --check` 通过；DSH profile 在有/无 `@deepseek-ai/dsh-experimental-tool-worktree` 两种组合下均成功启动。
 
 下一步：运行 `/pstack-port review port`。
+
+## 8. 第二轮审查（2026-10-29，F-01～F-04 修复复核）
+
+- 本仓提交：`66a705ae5cbca5b8947821b23dbee7e3435d867e`（`fix: 修复 pstack port 审查发现 F-01～F-04`；父提交 `e826750`）
+- 审查对象：第 7 节修复提交的 6 个增量文件、受影响调用链、`cordis.patch.yml` 组合行与必要验收门禁
+- 审查迭代：2
+
+### 8.1 受审增量文件与内容哈希
+
+上一轮 1.1 的 72 个文件除下列 6 个外均未变化，继续沿用原哈希；本轮 `tests/**` 增加 1 个文件（共 5 个）：
+
+```text
+c823f28f2872ed4b391c41e532cf79db55806da2960c8e331a6fa512e04b36bb  src/internal/effort.ts
+3e0b594558dec8b20b9da5ffcdb02ba51a35106f2b3a67722d568a372a9c0ff7  src/subagent.ts
+99050a7d1757b725c13271bbb4a3cbbb9fcdcaff2b9013e66c59c0468ccb13ff  tests/effort.test.ts
+b04e934c68b3605f6edda08c6c82a431d2bbad813885a5eb5280c694b4ca5f68  pstack/runtime/skills/poteto-mode/scripts/worktree-audit.ts
+56daac002d6c5bba925e5df55a49d28a10ef58f32bc4e473677989c54940cc4e  pstack/runtime/skills/poteto-mode/scripts/worktree-audit.test.ts
+96e6fc65966781e95813581746ebdf40b2e1d15f45ce40c26df38697d240e890  pstack/runtime/skills/statechart/scripts/statechart.test.ts
+```
+
+### 8.2 逐项复核
+
+| Finding | 结论 | 复核证据 |
+|---|---|---|
+| F-01 | `closed` | `src/internal/effort.ts:93-104,172-176` 已无 `agent/request` listener，成功后调用 `agent.model.select()`。DSH `packages/core/agent/src/runtime-types.ts:54-72` 定义 `Model.current/select`；`packages/core/agent/src/model-selection.ts:112-115` 追加 `model/selection`；`packages/core/agent-loop/src/agent.ts:288,447` 在下一步 `preStep` 读取并使用该选择。`tests/effort.test.ts:53-88` 三条回归通过。 |
+| F-02 | `closed` | `src/internal/effort.ts:116-127` 为完整对象 schema（`type`、`additionalProperties`、`properties`、`required`）；`tests/effort.test.ts:53-66` 覆盖根级字段。DSH `packages/llm/llm/src/types.ts:517-528` 的 `ToolSchema.parameters` 契约与 `packages/core/tools/src/schema.ts:641-645` 的原样投影不变。 |
+| F-03 | `closed` | `pstack/runtime/skills/poteto-mode/scripts/worktree-audit.ts:190-219` 使用 `lstatSync`，对 `isSymbolicLink()` 计数后跳过递归；`worktree-audit.test.ts:89-104` 的目录符号链接回归通过，未计入外部 2 MiB 内容。 |
+| F-04 | `closed` | `pstack/runtime/skills/statechart/scripts/statechart.test.ts:123-169` 通过临时 `TLA2TOOLS`/`JAVA` fake 真正进入 `statechart.ts` 的 worker spawn 与 `worker.ts` 的 `check()`；`cd pstack && vp run test` 的 76 tests 含该 7 个状态图测试并通过；单独运行编译产物 `statechart.test.mjs` 的 7 tests 也通过（后者走 `statechart.mjs` → `worker.mjs`）。 |
+
+### 8.3 必要验收门禁
+
+| 命令 | 结果 |
+|---|---|
+| `vp check` | 39 个文件格式正确，0 errors；保留既有 C-03 warning（`generate-pstack-harness-tree.mjs:204` 的 `require-array-sort-compare`） |
+| `vp test` | 5 个测试文件、23 tests passed |
+| `cd pstack && vp run test` | 76 tests passed |
+| `node pstack/dist/runtime/skills/statechart/scripts/statechart.test.mjs` | 7 tests passed（编译后的 `statechart.mjs` → `worker.mjs` 路径） |
+| `vp run build` | 通过；5/5 tasks successful，产物含 `dist/pstack`、`dist/skills` 与五个入口 `.mjs` |
+| `cd pstack && vp run generate --check` | `pstack/pstack is up to date.` |
+| `DSH_HOME=.tmp/dsh-home-review dsh --profile pstack-verify --no-open --port 0` | 启动成功并打印 Web URL；`--dump-config` 含 `pstack`、`pstack-models`、`pstack-subagent`、`pstack-script` 四行与 `preset-poteto-agent`、`preset-comment-sicko` 两个 preset |
+
+### 8.4 权限与共享影响复核
+
+- `set_reasoning_effort` 现在只通过 DSH `Agent.model.select()` 追加 `model/selection` 会话事件；没有新增进程、文件或网络副作用，工具仍随子 Agent 的 scope 释放。
+- `worktree-audit` 仍只读；`lstatSync` 只改变 SIZE 列计算，不增加删除、写入或命令执行。
+- `cordis.patch.yml`、包清单、`script-registry`、发布入口与生成树均未改动；`pstack/README.md` 只更新审查状态区。
+- 共享实现只影响 `pstack_subagent` 的能力行；未修改其他范围（`EXT-*`、Issue）的需求或工作文件。
+
+### 8.5 结论
+
+F-01～F-04 全部验证通过并关闭；没有 `open`/`reopened`/`fixed-pending-review`/`blocked` finding，也没有安全、行为/公共 API 或必要验收缺口。`审查状态` 置为 `通过`，`收尾状态` 保持 `未开始`。
+
+README 审查状态区：122 项 `通过`（含本轮关闭的 10 项 `SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SKL-05`、`SKL-24`、`SCR-03`、`SCR-05`、`SKL-33`、`PB-22`），13 项 `通过（平台排除）`，无 `待审查` 或 `阻断` 行。
+
+非阻断清理项 C-04、C-05 见第 3 节，不影响本轮通过。唯一下一步：运行 `/pstack-port doc`。
