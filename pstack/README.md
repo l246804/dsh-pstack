@@ -630,11 +630,11 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | MOD-05 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（provider/model [effort]） |
 | MOD-06 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（PI-02 角色清单） |
 | SET-01 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
-| SET-02 | 已实现（本轮 #1） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：读取 `$DSH_HOME/pstack-models.mdc`；PI-02） |
+| SET-02 | 已实现（本轮 #1） | 通过 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：读取 `$DSH_HOME/pstack-models.mdc`；PI-02） |
 | SET-03 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | SET-04 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；按模型目录校验 effort） |
 | SET-05 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
-| SET-06 | 已实现（本轮 #1） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：写入 `$DSH_HOME/pstack-models.mdc`；PI-02） |
+| SET-06 | 已实现（本轮 #1） | 通过 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：写入 `$DSH_HOME/pstack-models.mdc`；PI-02） |
 | SET-07 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（角色面板扇出） |
 | SET-08 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | PATH-01 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |
