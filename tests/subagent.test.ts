@@ -15,7 +15,7 @@ const directories: string[] = [];
 function homeWithRoles(text: string | undefined): string {
   const directory = mkdtempSync(join(tmpdir(), "pstack-roles-"));
   directories.push(directory);
-  if (text !== undefined) writeFileSync(join(directory, "poteto-models.mdc"), text);
+  if (text !== undefined) writeFileSync(join(directory, "pstack-models.mdc"), text);
   return directory;
 }
 
@@ -111,10 +111,22 @@ describe("pstack_subagent planning", () => {
     expect(empty.children[0]!.routeLabel).toBe("inherit-parent");
   });
 
+  it("ignores a retired poteto-models.mdc and treats the role file as missing", () => {
+    const directory = mkdtempSync(join(tmpdir(), "pstack-roles-"));
+    directories.push(directory);
+    writeFileSync(
+      join(directory, "poteto-models.mdc"),
+      "bug-fix: cpa/workbuddy/deepseek-v4.1-flash [high]\n",
+    );
+    const plan = planDelegation(args({ role: "bug-fix" }), runtime(directory));
+    expect(plan.children[0]!.route).toEqual({ kind: "inherit" });
+    expect(plan.diagnostics.join("\n")).toMatch(/has no line/);
+  });
+
   it("reports malformed role lines with their line number", () => {
     const dshHome = homeWithRoles("bug-fix: not-a-route\n");
     const plan = planDelegation(args({ role: "bug-fix" }), runtime(dshHome));
-    expect(plan.diagnostics.join("\n")).toMatch(/poteto-models\.mdc:1: bug-fix: .* is not a route/);
+    expect(plan.diagnostics.join("\n")).toMatch(/pstack-models\.mdc:1: bug-fix: .* is not a route/);
   });
 });
 

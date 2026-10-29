@@ -4,7 +4,7 @@
 - target: core
 - status: open
 - port_round: "#1"
-- stage: implement
+- stage: review
 - 公开状态: open（2026-10-29 创建，标题与正文经用户确认）
 
 ## required_behavior

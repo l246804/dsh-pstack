@@ -72,7 +72,7 @@
    /setup-pstack
    ```
 
-   该命令读取当前部署提供的 provider、model 与 reasoning effort，并写入 `$DSH_HOME/poteto-models.mdc`。缺少这个文件时，所有角色继承父级路由。
+   该命令读取当前部署提供的 provider、model 与 reasoning effort，并写入 `$DSH_HOME/pstack-models.mdc`。缺少这个文件时，所有角色继承父级路由。
 
 ### 常用入口
 
@@ -95,7 +95,7 @@
 |---|---|
 | `pstack_skill` | 按名称加载本插件注册的隐藏技能，也能读取技能目录内的相对资源。 |
 | `pstack_models` | 只读列出 DSH 实际提供的 provider、model 和 effort，供 `/setup-pstack` 使用。 |
-| `pstack_subagent` | 按角色读取 `$DSH_HOME/poteto-models.mdc`，解析 `provider/model [effort]`，按 `agent` 选择 preset，一次可启动多个子代理。 |
+| `pstack_subagent` | 按角色读取 `$DSH_HOME/pstack-models.mdc`，解析 `provider/model [effort]`，按 `agent` 选择 preset，一次可启动多个子代理。 |
 | `pstack_script` | 用固定 id 运行随包 Node 脚本，不依赖 Bun 或 shell 脚本。 |
 
 `poteto-agent` 和 `comment-sicko` 两个 preset 分别负责实现型委派与只读评论审查。`pstack_script` 可以运行 `check-plan`、`watch-pr`、`worktree-audit`、`log`、`statechart` 五个随包脚本，脚本 id 是封闭枚举，不能拼任意路径。

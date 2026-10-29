@@ -72,7 +72,7 @@ See [`pstack/README.md`](./pstack/README.md) for the full capability map, gaps, 
    /setup-pstack
    ```
 
-   This command reads the providers, models, and reasoning efforts available in the current deployment. It writes them to `$DSH_HOME/poteto-models.mdc`. Without this file, every role inherits the parent's routing.
+   This command reads the providers, models, and reasoning efforts available in the current deployment. It writes them to `$DSH_HOME/pstack-models.mdc`. Without this file, every role inherits the parent's routing.
 
 ### Common entry points
 
@@ -95,7 +95,7 @@ See [`pstack/README.md`](./pstack/README.md) for the full capability map, gaps, 
 |---|---|
 | `pstack_skill` | Loads a hidden skill registered by this plugin by name, and reads relative resources inside the skill directory. |
 | `pstack_models` | Read-only list of the providers, models, and efforts DSH actually offers, used by `/setup-pstack`. |
-| `pstack_subagent` | Reads `$DSH_HOME/poteto-models.mdc` per role, parses `provider/model [effort]`, selects a preset by `agent`, and can start several subagents at once. |
+| `pstack_subagent` | Reads `$DSH_HOME/pstack-models.mdc` per role, parses `provider/model [effort]`, selects a preset by `agent`, and can start several subagents at once. |
 | `pstack_script` | Runs bundled Node scripts by fixed id without Bun or shell scripts. |
 
 The `poteto-agent` and `comment-sicko` presets handle implementation delegation and read-only comment review. `pstack_script` can run five bundled scripts: `check-plan`, `watch-pr`, `worktree-audit`, `log`, and `statechart`. The script ids form a closed enum and cannot be used to build arbitrary paths.

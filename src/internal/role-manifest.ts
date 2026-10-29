@@ -22,12 +22,11 @@ export interface RoleSpec {
 /**
  * File name the role configuration lives under inside `$DSH_HOME`.
  *
- * Upstream calls the file `pstack-models.mdc` under `.cursor/rules`. The DSH port keeps
- * the `.mdc` suffix so a reader moving from the Cursor docs recognizes it, but stores it
- * directly under `$DSH_HOME`; DSH does not load `.mdc` files on its own, and
- * `pstack_subagent` is the only reader.
+ * It keeps the upstream name `pstack-models.mdc`, so a reader moving from the Cursor docs
+ * recognizes it, but stores it directly under `$DSH_HOME`; DSH does not load `.mdc` files
+ * on its own, and `pstack_subagent` is the only reader.
  */
-export const PSTACK_MODELS_FILENAME = "poteto-models.mdc";
+export const PSTACK_MODELS_FILENAME = "pstack-models.mdc";
 
 /** Values that resolve to "send no `agentOptions` and inherit the parent route". */
 export const INHERIT_PARENT_ALIASES: readonly string[] = ["inherit-parent", "auto"];

@@ -15,7 +15,7 @@ pstack 的上游技能大多声明 `disable-model-invocation: true`，`poteto-mo
 插件入口在根 `src/`，由 `cordis.patch.yml` 声明为四个工具行与两个 agent preset：
 
 - `pstack_skill` 通过 `ctx.skills.get()` 按名称加载 pstack 技能，可读取技能目录内的相对资源；它绕过模型目录策略，但只能访问本插件注册的 provider。
-- `pstack_models` 只读枚举 `ctx.llm` 的实际 provider/model/effort；`/setup-pstack` 把角色写入 `$DSH_HOME/poteto-models.mdc`，`pstack_subagent` 每次委派重读该文件。
+- `pstack_models` 只读枚举 `ctx.llm` 的实际 provider/model/effort；`/setup-pstack` 把角色写入 `$DSH_HOME/pstack-models.mdc`（2026-10-29 起与上游同名，此前为 `poteto-models.mdc`），`pstack_subagent` 每次委派重读该文件。
 - `pstack_subagent` 按 `role` 解析 `provider/model [effort]`，并把 `agent` 映射到 `poteto-agent` 或 `comment-sicko` 的 preset id；`general` 不加 preset。
 - `pstack_script` 以封闭的 `id` 枚举运行随包 Node 脚本，使用 `process.execPath` 与 Electron 的 `ELECTRON_RUN_AS_NODE=1`。
 - `comment-sicko` 的只读约束由 preset 内的 `dsh-tool-fs` 关闭 `write`/`edit` 实现，而不是单次调用的 `readonly` 字段。

@@ -528,7 +528,7 @@
 - **决策**：[docs/decisions/2026-10-28-pstack-plugin-tools.md](../docs/decisions/2026-10-28-pstack-plugin-tools.md#L1-L35)（Status: accepted，2026-10-28）。
 - **内容**：根 `src/` 注册四个工具行和两个 agent preset。`pstack_skill` 通过 `ctx.skills.get()` 按名称加载 pstack 技能与相对资源；`pstack_models` 只读枚举 `ctx.llm` 的 provider、model、effort；`pstack_subagent` 按 `role` 解析 `provider/model [effort]`，把 `agent` 映射到 `poteto-agent` 或 `comment-sicko` preset；`pstack_script` 以封闭 `id` 运行随包 Node 脚本；`comment-sicko` 的只读约束由 preset 内 `dsh-tool-fs` 关闭 `write` 与 `edit` 实现。
 - **能力范围**：`TOOL-04b`、`MOD-01`、`MOD-04`、`MOD-06`、`SET-01`、`SET-02`、`SET-04`、`SET-06`、`SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SCR-01` 至 `SCR-05`，以及依赖这些能力的 `SKL-01`、`SKL-02`、`SKL-05`、`SKL-06`、`SKL-07`、`SKL-11` 至 `SKL-14`、`SKL-24`、`SKL-27`、`SKL-29`、`SKL-30` 与相应 playbook。
-- **验收行为**：隐藏技能仍可被 pstack 路由但不进入普通模型目录；未知技能名返回明确错误；角色文件格式为 `$DSH_HOME/pstack-models.mdc`（本轮 core Issue #1 起与上游同名，决策记录随 `implement` 同步），重跑幂等，退役角色删除，缺失文件回退 `inherit-parent`，格式错误按行号报告；`pstack_subagent` 的 `general` 不挂 preset，两个命名 agent 走各自 preset；`pstack_script` 的 id 集合与 `src/internal/script-registry.ts` 一致；`comment-sicko` 的写工具被静态移除。
+- **验收行为**：隐藏技能仍可被 pstack 路由但不进入普通模型目录；未知技能名返回明确错误；角色文件格式为 `$DSH_HOME/pstack-models.mdc`（本轮 core Issue #1 起与上游同名；决策记录已同步），重跑幂等，退役角色删除，缺失文件回退 `inherit-parent`，格式错误按行号报告；`pstack_subagent` 的 `general` 不挂 preset，两个命名 agent 走各自 preset；`pstack_script` 的 id 集合与 `src/internal/script-registry.ts` 一致；`comment-sicko` 的写工具被静态移除。
 - **源码核验位置**：`src/*.ts`、`cordis.patch.yml`、`tests/**/*.test.ts`（模块职责见 [docs/architecture.md#L9-L21](../docs/architecture.md#L9-L21)；实现与 review 均已通过）。
 - **已知代价**：`pstack_script` 不经过 bash 审批与文件系统沙箱，这是 Desktop Electron 运行时的已接受代价；插件组合变更需要改 `cordis.patch.yml` 并重新安装。
 
@@ -630,11 +630,11 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | MOD-05 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（provider/model [effort]） |
 | MOD-06 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（PI-02 角色清单） |
 | SET-01 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
-| SET-02 | 待实现（本轮 #1 重开） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：读取 `$DSH_HOME/pstack-models.mdc`；PI-02） |
+| SET-02 | 已实现（本轮 #1） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：读取 `$DSH_HOME/pstack-models.mdc`；PI-02） |
 | SET-03 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | SET-04 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；按模型目录校验 effort） |
 | SET-05 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
-| SET-06 | 待实现（本轮 #1 重开） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：写入 `$DSH_HOME/pstack-models.mdc`；PI-02） |
+| SET-06 | 已实现（本轮 #1） | 待复核 | 待更新（§2.4；dsh.md setup-pstack） | 待定（目标：写入 `$DSH_HOME/pstack-models.mdc`；PI-02） |
 | SET-07 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（角色面板扇出） |
 | SET-08 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | PATH-01 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |

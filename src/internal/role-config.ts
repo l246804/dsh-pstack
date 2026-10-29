@@ -1,5 +1,5 @@
 /**
- * The pstack role configuration: `$DSH_HOME/pstack-models.md`.
+ * The pstack role configuration: `$DSH_HOME/pstack-models.mdc`.
  *
  * `pstack_subagent` reads this file again on every delegation, so a change reaches the
  * next child and never a child that already started.

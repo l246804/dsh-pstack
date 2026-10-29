@@ -34,8 +34,8 @@
 
 ## 角色文件（role file）
 
-`$DSH_HOME/poteto-models.mdc`：`/setup-pstack` 写入、`pstack_subagent` 每次委派重读的角色到 `provider/model [effort]` 映射；缺失表示全部角色继承父级路由。
-反例：不是 DSH 的 `AGENTS.md`；也不是上游 Cursor 的 `pstack-models.mdc`，DSH 版文件名固定为 `poteto-models.mdc`。
+`$DSH_HOME/pstack-models.mdc`：`/setup-pstack` 写入、`pstack_subagent` 每次委派重读的角色到 `provider/model [effort]` 映射；缺失表示全部角色继承父级路由。
+反例：不是 DSH 的 `AGENTS.md`；与上游 Cursor 的 `pstack-models.mdc` 同名，但位于 `$DSH_HOME`，且只有 `pstack_subagent` 读取。
 
 ## 上游（upstream）
 
