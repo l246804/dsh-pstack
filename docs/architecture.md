@@ -49,6 +49,5 @@ skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
 ## 已知缺口
 
 - vendored 技能来源记在 `skills/skills-lock.json`，不存在单独的 `skills/sources.yml`。
-- 本地适配树只有主适配器 `docs/harness/dsh.md`；其内容仍把 `pstack_script` 的 `orch` id 列在脚本清单里，且尚未映射 `statechart`，需在 `doc` 阶段更新适配文档。
 
 本节记录的是当前事实；缺口修复或消失后同步更新。
