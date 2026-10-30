@@ -143,6 +143,24 @@ describe("role configuration page", () => {
     for (const key of keys) expect(zh[key]).not.toBe("");
   });
 
+  it("explains that effort is a baseline with floating rules in English", () => {
+    const html = render(undefined);
+    expect(html).toContain("Effort is a baseline, not a fixed value");
+    expect(html).toContain("low → medium → high");
+    expect(html).toContain("pstack_subagent");
+    expect(html).toContain("set_reasoning_effort");
+    expect(html).toContain("nothing floats");
+  });
+
+  it("explains the baseline and floating rules in Chinese", () => {
+    const html = render(undefined, tZh);
+    expect(html).toContain("推理强度是基准值，不是固定值");
+    expect(html).toContain("low → medium → high");
+    expect(html).toContain("pstack_subagent");
+    expect(html).toContain("运行中的子代理");
+    expect(html).toContain("不浮动");
+  });
+
   it("renders the configuration page in Chinese", () => {
     const html = render("feature, refactoring: cpa/model-a [high]\n", tZh);
     expect(html).toContain("角色模型配置");

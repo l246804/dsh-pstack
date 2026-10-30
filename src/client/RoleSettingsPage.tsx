@@ -366,6 +366,34 @@ function RoleCard(props: {
   );
 }
 
+function RoleEffortNote({ t }: { readonly t: Translate }): ReactElement {
+  return (
+    <section
+      style={{
+        border: `1px solid ${COLOR_BORDER}`,
+        borderRadius: 12,
+        padding: "12px 14px",
+        display: "grid",
+        gap: 6,
+        background: COLOR_SURFACE,
+        color: COLOR_SECONDARY,
+        fontSize: 12,
+        lineHeight: 1.5,
+      }}
+    >
+      <strong style={{ color: COLOR_TEXT, fontSize: 13 }}>{t("effortBaselineTitle")}</strong>
+      <p style={{ margin: 0 }}>{t("effortBaselineIntro")}</p>
+      <ul style={{ margin: 0, paddingInlineStart: 18, display: "grid", gap: 4 }}>
+        <li>{t("effortRuleRange")}</li>
+        <li>{t("effortRuleUp")}</li>
+        <li>{t("effortRuleDown")}</li>
+        <li>{t("effortRuleTrigger")}</li>
+        <li>{t("effortRuleBoundary")}</li>
+      </ul>
+    </section>
+  );
+}
+
 /** Pure view: all rendering decisions are explicit props. */
 export function RoleSettingsView(props: RoleSettingsViewProps): ReactElement {
   const { snapshot, catalogue, drafts, busyKey, messages, loadError, onRetry, t } = props;
@@ -377,6 +405,8 @@ export function RoleSettingsView(props: RoleSettingsViewProps): ReactElement {
           {t("subtitle")}
         </p>
       </header>
+
+      <RoleEffortNote t={t} />
 
       {snapshot === null ? (
         <div style={{ display: "flex", gap: 10, alignItems: "center", color: COLOR_SECONDARY }}>

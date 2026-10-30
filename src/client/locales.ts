@@ -28,6 +28,18 @@ export const en = {
   effort: "Effort",
   effortUnset: "not set",
   effortDefault: "default ({effort})",
+  effortBaselineTitle: "Effort is a baseline, not a fixed value",
+  effortBaselineIntro:
+    "The effort you choose here is the level this role starts at. It is not fixed: a delegated run can move above or below it.",
+  effortRuleRange:
+    "Movement stays inside the ladder the selected model declares — the same tokens this dropdown lists (for example low → medium → high) — with no fixed numeric step.",
+  effortRuleUp:
+    "Raise it when the task is harder than the role preset, such as complex design, concurrency, or algorithm work.",
+  effortRuleDown: "Lower it when the remaining work turns mechanical or routine.",
+  effortRuleTrigger:
+    "A single delegation overrides it with pstack_subagent's reasoningEffort; a running subagent adjusts it with set_reasoning_effort, effective from the next step.",
+  effortRuleBoundary:
+    'If the model declares no effort, nothing floats. "Not set" means the adapter default.',
   addRoute: "Add route",
   removeRoute: "Remove route",
   save: "Save",
@@ -76,6 +88,16 @@ export const zh: Record<PstackRolesLocaleKey, string> = {
   effort: "推理强度",
   effortUnset: "未指定",
   effortDefault: "默认（{effort}）",
+  effortBaselineTitle: "推理强度是基准值，不是固定值",
+  effortBaselineIntro:
+    "这里选择的推理强度是该角色的起步值，不是固定值：一次委派可以在它之上或之下浮动。",
+  effortRuleRange:
+    "只在该模型声明的强度阶梯内上下移动——即这个下拉列出的那组 token（例如 low → medium → high），没有固定的数值幅度。",
+  effortRuleUp: "任务比角色预设更难时上调，例如复杂设计、并发或算法工作。",
+  effortRuleDown: "剩余工作转为机械、常规时下调。",
+  effortRuleTrigger:
+    "单次委派用 pstack_subagent 的 reasoningEffort 覆盖；运行中的子代理用 set_reasoning_effort 调整，从下一步生效。",
+  effortRuleBoundary: "模型未声明任何 effort 时不浮动；「未指定」即适配器默认。",
   addRoute: "添加路由",
   removeRoute: "删除路由",
   save: "保存",

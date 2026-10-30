@@ -4,7 +4,7 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: implement
+- stage: review
 - EXT: EXT-003
 - 公开状态: open（2026-10-30 创建；2026-10-30 分诊为 EXT-003 的补充文案事项）
 - 分诊证据提交: 本仓 `32a5464c19bd5828d22e6d1d694c1000e78656a2` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
@@ -39,7 +39,10 @@
 
 ## 实现
 
-待实现（下一步 `/pstack-port implement #8`）。
+- 落点：`extension`（EXT-003 页面文案补充）。实现文件：`src/client/locales.ts`（`pstackRoles` 新增 7 个说明键，`en` / `zh` 键集合一致）、`src/client/RoleSettingsPage.tsx`（新增 `RoleEffortNote` 说明区块）、`tests/role-page.test.tsx`（中英渲染断言）。详见 [EXT-003 工作文件](../../extensions/EXT-003/review.md)。
+- 行为：页面在 `en` / `zh` 两版说明推理强度是基准值（起步值）而非固定值，并给出浮动规则：只在模型声明的强度阶梯内移动、更难时上调、转机械时下调、单次委派用 `pstack_subagent` 的 `reasoningEffort` 覆盖、运行中用 `set_reasoning_effort` 从下一步生效、未声明 effort 时不浮动且「未指定」为适配器默认。未新增后端字段，未改保存/校验行为。
+- 验证：`vp test tests/role-page.test.tsx` 8 passed；`vp test` 97 passed；`vp check` exit 0；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` 输出 up to date，exit 0。
+- 范围：`git diff --name-only` 仅上述三文件，无 port 基线路径。
 
 ## 审查
 
