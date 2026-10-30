@@ -1,6 +1,6 @@
 # EXT-003：pstack 角色模型配置页
 
-- status: review
+- status: passed
 - repair_target: extension
 - Issue: [#2](https://github.com/l246804/dsh-pstack/issues/2)
 - 建立：2026-10-30（Issue #2 首次分诊）
@@ -33,4 +33,10 @@
 
 ## 审查证据
 
-待审查。
+审查（2026-10-30，`review #2`）：通过。
+
+- 对象：本仓 `289bced0358c09fbb93094b576f1d802a0a3a72f`（实现提交，基线 `e7b69ea`）；DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`。
+- 范围：`git diff --name-only e7b69ea..289bced` 仅涉及根 `src/`、`src/client/`、`tests/`、构建配置、`cordis.patch.yml`、README 与文档；未改 `pstack/pstack`、`pstack/harness`、`docs/harness-doc.yaml`、`pstack/README.md` 等 port 基线路径。
+- 自动化：`vp check` exit 0（63 个文件格式通过，0 error，仅既有 `require-array-sort-compare` 警告）；`vp test` exit 0（13 个文件 / 75 个用例通过，含 `tests/role-editor.test.ts` 16 项、`tests/roles-service.test.ts` 4 项、`tests/role-page.test.tsx` 5 项、`tests/role-state.test.ts` 6 项、`tests/roles-remote.test.ts` 4 项、`tests/client-plugin.test.ts` 1 项）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0（无 active FIX）；`vp run @internal/pstack#check:harness-doc` exit 0（2/2 成功）；`vp run build` exit 0。
+- 真实安装（独立复核）：临时 `$DSH_HOME` 安装 `pnpm pack` 产物后启动 `dsh web --port 3199`；boot graph 含 `{"id":"dsh-pstack","url":"plugins/??dsh-pstack/client.js&rev=..."}`，client combo 返回 200 且包含 `plugins.bundle.config`；RPC `pstackRoles/status` 返回 `ok: true`、绝对路径与 17 个角色，`pstackRoles/catalogue` 返回 `ok: true`；`pstackRoles/save` 在缺失文件上创建 `pstack-models.mdc` 并写入 `bug-fix: inherit-parent`；列表角色保存 `auto, inherit-parent` 两条 route 时完整写回；非法 provider 保存被拒绝且文件哈希不变；未知角色行按第 4 行报告且原行保留。
+- 结论：`required_behavior` 均有实现、自动化测试或真实安装/API 证据；未发现需回到实现的 finding。页面视觉未由真实浏览器查看，页面结构由 `react-dom/server` 静态渲染测试覆盖，与实现记录一致。

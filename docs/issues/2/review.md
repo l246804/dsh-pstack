@@ -4,9 +4,9 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: review
+- stage: passed
 - EXT: EXT-003
-- 公开状态: open（2026-10-30 创建；标题、正文与“每个角色增加重置为 `inherit-parent` 的按钮”经用户确认；2026-10-30 分诊为 EXT-003）
+- 公开状态: open（2026-10-30 创建；标题、正文与“每个角色增加重置为 `inherit-parent` 的按钮”经用户确认；2026-10-30 分诊为 EXT-003；2026-10-30 实现审查通过）
 - 分诊证据提交: 本仓 `7716c06b9e46dd33067cc7c7784f4dcab9977324` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
 
 ## 复核
@@ -48,3 +48,9 @@
 - 验证：`vp check` exit 0（仅既有 `require-array-sort-compare` 警告）；`vp test` 13 个文件 / 75 个用例通过；`generate-pstack-harness-tree.mjs --check` exit 0；`port-fixes.mjs replay` 通过；`check:harness-doc` exit 0。
 - 真实 Web profile：临时 `$DSH_HOME` 安装 tarball 后启动 `dsh web --port 3199`；boot graph 含 `dsh-pstack`，`client.js` combo 200 且包含 `plugins.bundle.config`；`/api/pstackRoles/status` 与 `/api/pstackRoles/catalogue` 均返回 `ok: true`。页面视觉未由真实浏览器查看，由 `react-dom/server` 测试覆盖。
 - 下一步：`/pstack-port review #2`。
+
+## 审查
+
+- 审查（2026-10-30，`review #2`）：实现 `289bced0358c09fbb93094b576f1d802a0a3a72f` 通过。`vp check` exit 0（仅既有 `require-array-sort-compare` 警告）；`vp test` exit 0（13 个文件 / 75 个用例）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0；`vp run @internal/pstack#check:harness-doc` exit 0；`vp run build` exit 0。
+- 真实安装复核：临时 `$DSH_HOME` 安装 `pnpm pack` 产物并启动 `dsh web --port 3199`；boot graph 含 `dsh-pstack`，client combo 200 且包含 `plugins.bundle.config`；`pstackRoles/status` 返回 17 个角色与绝对路径，`catalogue` 返回 `ok: true`，`save` 创建/写回角色文件，非法 provider 被拒绝且文件不变，未知角色行按行号报告。
+- 结论：EXT-003 工作文件写 `passed`，登记表恢复 `active`；未发现 finding。下一步 `/pstack-port issue #2`。
