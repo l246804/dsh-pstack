@@ -21,5 +21,5 @@
 - 范围：dsh-pstack bundle 详情页的“推荐插件”区；默认推荐 OPT-01 与 OPT-06，OPT-02 标注 GitHub 建议，OPT-03/04/05/07/09 按任务分组，OPT-08 仅冲突警告；读取 pluginManager 的 bundle 状态；单项开关与“一键启用推荐项”；首次启用 dsh-pstack 后的 plugins.bundle.activation 引导；不自动启用、不复制官方可选插件组合。
 - 验收：见 `docs/extensions/EXT-004/review.md` 的 `required_behavior`（与 Issue #4 的验收行为一致）。
 - DSH 公共接口与兼容版本：0.2.2-alpha.2；`plugins.bundle.config`、`plugins.bundle.activation`、`pluginManager.listBundles`、`pluginManager.setBundleEnabled`（通过插件管理器 Remote）。
-- 实现与验证：已实现，待审查（Issue #4，2026-10-30）；实现与测试证据见 [docs/extensions/EXT-004/review.md](extensions/EXT-004/review.md)。
+- 实现与验证：已实现，审查未通过（Issue #4，2026-10-30）；待按审查 finding F-EXT-004-01 补齐推荐插件页的独立 locale 分层；实现与测试证据见 [docs/extensions/EXT-004/review.md](extensions/EXT-004/review.md)。
 - Issue：[#4](https://github.com/l246804/dsh-pstack/issues/4)

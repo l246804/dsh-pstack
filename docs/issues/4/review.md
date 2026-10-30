@@ -4,9 +4,9 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: review
+- stage: implement
 - EXT: EXT-004
-- 公开状态: open（2026-10-30 创建；标题、正文与“A+B、默认推荐 OPT-01 + OPT-06、OPT-02 标注 GitHub 建议、逐项开关 + 一键启用推荐项”经用户确认；2026-10-30 分诊为 EXT-004）
+- 公开状态: open（2026-10-30 创建；标题、正文与“A+B、默认推荐 OPT-01 + OPT-06、OPT-02 标注 GitHub 建议、逐项开关 + 一键启用推荐项”经用户确认；2026-10-30 分诊为 EXT-004；2026-10-30 实现审查未通过，待修复 locale 分层）
 - 分诊证据提交: 本仓 `d92376bac594b54d13660a5825f356bb5227cd21` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
 
 ## 复核
@@ -27,6 +27,7 @@
 - 首次启用 dsh-pstack 后，通过 `plugins.bundle.activation` 显示一次引导：“还有 N 个推荐插件未开启”，点击可打开推荐区；不重复打扰。
 - 打开页面只读，不自动修改 profile；所有变更由用户点击触发。
 - `dsh-mcp-client` 这类非 bundle 项不提供开关，只给文档指引；包缺失时显示 `missing` 而非报错。
+- 推荐插件页与角色模型配置页使用独立的 locale 命名空间与完整 `en` / `zh` 词典；不同能力之间不共享命名空间或同义键。
 - `pstack` 既有技能、工具、agent preset 与测试不回退；新增 UI 行为有自动化测试覆盖。
 
 ## 映射
@@ -49,4 +50,11 @@
 
 ## 审查
 
-待审查。
+审查（2026-10-30，`review #4`）：未通过。
+
+- 对象：实现提交 `6c89da0b9e53c04fc8dac7cdad93baaf7d7f5e90`；当前 HEAD `9c3e556180073a5bf32b0d26eceb6e0c1d08a74e`；DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`。
+- 范围：`git diff --name-only 1c2f12d..6c89da0` 未涉及 port 基线路径；实现只改根 README、`docs/`、`package.json`、`src/client/`、`src/internal/optional-plugins.ts` 与 `tests/`。
+- 门禁：`vp check` exit 0（0 errors，仅既有 warning）；`vp test` exit 0（15 个文件 / 93 个用例）；`vp run @internal/pstack#check:harness-doc` exit 0；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0；`vp run build` exit 0。
+- 真实安装：临时 `$DSH_HOME` 安装 `pnpm pack` 产物并启动 `dsh --profile ext004 --port 3199 --no-open`；boot 模块图含 `dsh-pstack/client.js` 且 combo HTTP 200，包含 `plugins.bundle.config` 与 `plugins.bundle.activation` 注册；`pluginManager/listBundles` 返回 `ok: true`（含 `off` 与 `unsupported-platform` 状态），`setBundleEnabled` 返回 `applied` 并持久化到 profile `package.json`。未用真实浏览器查看视觉；页面结构由 `react-dom/server` 静态渲染测试覆盖。
+- Finding F-EXT-004-01（open）：推荐插件页 locale 未按能力分层。`docs/decisions/2026-10-30-pstack-config-page-bilingual.md:17` 要求推荐插件页使用独立 `pstackPlugins` 命名空间与完整 `en` / `zh` 词典；现状是 `src/client/locales.ts:3` 只有 `pstackRoles`，`src/client/index.ts:56` 只注册一份字典，`src/client/index.ts:92-114` 两个 slot 都使用 `pstackRoles`，`src/client/OptionalPluginsPage.tsx:31` 仍引用 `PstackRolesLocaleKey`，且没有 `pstackPlugins` 或独立词典文件；测试未校验命名空间隔离与跨能力键集合无交集。详见 [EXT-004 审查证据](../../extensions/EXT-004/review.md#审查证据)。
+- 结论：其余 `required_behavior` 均有实现、自动化测试或实现层证据；真实安装覆盖 HMR 的 `applied` 与持久化，未覆盖无 HMR 的 `restart-required` 和真实浏览器视觉。locale 分层未实现，回到 implement，`stage: implement`。

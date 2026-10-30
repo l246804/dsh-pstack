@@ -1,6 +1,6 @@
 # EXT-004：pstack 推荐可选插件启用页
 
-- status: review
+- status: implement
 - repair_target: extension
 - Issue: [#4](https://github.com/l246804/dsh-pstack/issues/4)
 - 建立：2026-10-30（Issue #4 创建）
@@ -16,6 +16,7 @@
 - 首次启用 dsh-pstack 后，通过 `plugins.bundle.activation` 显示一次引导：“还有 N 个推荐插件未开启”，点击可打开推荐区；不重复打扰。
 - 打开页面只读，不自动修改 profile；所有变更由用户点击触发。
 - `dsh-mcp-client` 这类非 bundle 项不提供开关，只给文档指引；包缺失时显示 `missing` 而非报错。
+- 推荐插件页与角色模型配置页使用独立的 locale 命名空间与完整 `en` / `zh` 词典；不同能力之间不共享命名空间或同义键。
 - `pstack` 既有技能、工具、agent preset 与测试不回退；新增 UI 行为有自动化测试覆盖。
 
 ## 实现与验证
@@ -30,4 +31,12 @@
 
 ## 审查证据
 
-待审查。
+审查（2026-10-30，`review #4`）：未通过。
+
+- 对象：本仓实现提交 `6c89da0b9e53c04fc8dac7cdad93baaf7d7f5e90`；当前 HEAD `9c3e556180073a5bf32b0d26eceb6e0c1d08a74e`（决策记录更新）；DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`。
+- 范围：`git diff --name-only 1c2f12d..6c89da0` 只涉及根 README、`docs/`、`package.json`、`src/client/`、`src/internal/optional-plugins.ts` 与 `tests/`；未修改 `pstack/pstack/`、`pstack/runtime/`、`pstack/harness/`、`pstack/README.md` 等 port 基线路径。
+- 自动化：`vp check` exit 0（69 个文件格式通过，0 errors，仅保留 `pstack/scripts/generate-pstack-harness-tree.mjs:204` 既有 `require-array-sort-compare` warning）；`vp test` exit 0（15 个文件 / 93 个用例通过，含 `tests/optional-plugins.test.ts` 11 例、`tests/optional-plugins-page.test.tsx` 6 例、`tests/client-plugin.test.ts` 1 例）；`vp run @internal/pstack#check:harness-doc` exit 0（2/2）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0（无 active FIX）；`vp run build` exit 0。
+- 真实安装（独立复核）：临时 `$DSH_HOME` 安装 `pnpm pack` 产物并启动 `dsh --profile ext004 --port 3199 --no-open`；boot HTML 的模块图包含 `dsh-pstack/client.js`（combo HTTP 200，66,287 bytes），bundle 同时包含 `plugins.bundle.config` 与 `plugins.bundle.activation` 注册；RPC `pluginManager/listBundles` 返回 `ok: true`，`@deepseek-ai/dsh-experimental-tool-worktree` 与 `@deepseek-ai/dsh-experimental-session-search` 为 `off`，`@deepseek-ai/dsh-cua-bundle` 返回 `error.code = "unsupported-platform"`；`pluginManager/setBundleEnabled(tool-worktree, true)` 返回 `{ changed: true, application: "applied" }`，profile `package.json` 的 bundle 列表持久化该选择，重新读取 `listBundles` 为 `enabled: true`。未用真实浏览器查看视觉；页面结构由 `react-dom/server` 静态渲染测试覆盖。
+- **Finding F-EXT-004-01（open）：推荐插件页 locale 未按能力分层。** 决策记录 `docs/decisions/2026-10-30-pstack-config-page-bilingual.md:17` 要求角色模型配置页使用 `pstackRoles`、推荐插件页使用 `pstackPlugins`，且不同能力不得共享命名空间、词典或复用同义键；当前 `src/client/locales.ts:3` 只有 `export const NS = "pstackRoles"`，`src/client/index.ts:56` 只注册这一份字典，`src/client/index.ts:92-114` 两个 slot 都使用 `locale: NS`，`src/client/OptionalPluginsPage.tsx:31` 仍从 `locales.ts` 取 `PstackRolesLocaleKey`，仓库中不存在 `pstackPlugins` 命名空间或独立词典。`tests/optional-plugins-page.test.tsx:11` 也从角色词典取文案，`tests/client-plugin.test.ts:61-66` 断言两个 slot 的 locale 都是 `pstackRoles`，没有覆盖命名空间隔离或跨能力键集合无交集。影响：推荐插件页的文案与角色模型配置页共用一套键空间，违反「每个插件配置能力独立命名空间与词典」的当前契约，后续新增能力时存在键覆盖风险。
+- 修复方向：把推荐插件页文案拆到 `src/client/optional-plugins-locales.ts`（`NS = "pstackPlugins"`，完整 `en` / `zh`），在 `apply` 中分别注册 `pstackRoles` 与 `pstackPlugins` 并用独立 translator 注入推荐区/activation；同步更新页面测试和 `docs/architecture.md`、`docs/glossary.md`。
+- 结论：除 F-EXT-004-01 外，其余 `required_behavior` 均有实现、自动化测试或实现层证据；真实安装覆盖 HMR 的 `applied` 与 profile 持久化，未覆盖无 HMR 的 `restart-required` 和真实浏览器视觉。审查不通过，回到 implement。
