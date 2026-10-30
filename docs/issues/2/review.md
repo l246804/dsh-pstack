@@ -4,7 +4,7 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: implement
+- stage: review
 - EXT: EXT-003
 - 公开状态: open（2026-10-30 创建；标题、正文与“每个角色增加重置为 `inherit-parent` 的按钮”经用户确认；2026-10-30 分诊为 EXT-003）
 - 分诊证据提交: 本仓 `7716c06b9e46dd33067cc7c7784f4dcab9977324` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
@@ -40,3 +40,11 @@
 - 候选实现面：`package.json`（`dsh.client`、`./client` 与 `./remote` 出口）、`vite.config.ts`（client entry 与 pack exports）、`src/`（Host Remote：status/read/save，复用 `role-config.ts` 与 `collectCatalogue`）、`src/client/`（配置页、字典、17 行表单与重置按钮）、`cordis.patch.yml`（Client/Remote 行）、`tests/`（解析、校验、写回、幂等、重置、行保留、UI 行为）、`docs/architecture.md`、`README.md` / `README.zh.md`。
 - 数据约束：manifest 中 `arena runners`、`arena cross-judge pool`、`swarm workers`、`architect runners`、`interrogate reviewers` 是列表角色，可持有多条 route；UI 必须显示完整现值，保存单个角色时不得静默丢弃未展示的 route。
 - 实现前置：本仓当前用 vite-plus 打包，没有 Typert 生成链；实现阶段需先确定 `@deepseek-ai/dsh-typert-generator`（或手写 `TypertRemoteInfo`）产出 `./remote`/`./typert` 的可行路径，并用真实 DSH 0.2.2-alpha.2 Web profile 验证 Plugins 页挂载。
+
+## 实现
+
+- 结论：选择“手写 `TypertRemoteInfo`”路径，不引入 Typert 生成链。`src/remote.ts` 提供 3 个 strict 描述符，Client 用 `ctx.remote.$mount()` 挂载，Host 用 `ctx.typert.register()` 注册同一描述符；无 `./typert` 生成产物。
+- 文件：`src/roles.ts`、`src/remote.ts`、`src/internal/role-editor.ts`、`src/internal/role-wire.ts`、`src/internal/role-config.ts`、`src/client/{index.ts,RoleSettingsPage.tsx,locales.ts,state.ts}`、`vite.config.ts`、`package.json`、`cordis.patch.yml`、`tests/{role-editor,roles-service,roles-remote,role-page,role-state,client-plugin}.test.{ts,tsx}`。
+- 验证：`vp check` exit 0（仅既有 `require-array-sort-compare` 警告）；`vp test` 13 个文件 / 75 个用例通过；`generate-pstack-harness-tree.mjs --check` exit 0；`port-fixes.mjs replay` 通过；`check:harness-doc` exit 0。
+- 真实 Web profile：临时 `$DSH_HOME` 安装 tarball 后启动 `dsh web --port 3199`；boot graph 含 `dsh-pstack`，`client.js` combo 200 且包含 `plugins.bundle.config`；`/api/pstackRoles/status` 与 `/api/pstackRoles/catalogue` 均返回 `ok: true`。页面视觉未由真实浏览器查看，由 `react-dom/server` 测试覆盖。
+- 下一步：`/pstack-port review #2`。

@@ -3,6 +3,8 @@
 # `pstack` registers the bundled skill provider and `pstack_skill`, the trusted loader
 # that can reach skills hidden with `disable-model-invocation`.
 # `pstack-models` registers the read-only model/effort directory used by `/setup-pstack`.
+# `pstack-roles` exposes the same role file to the Plugins configuration page through a
+# Typert Remote service; its browser half is declared by `dsh.client` in package.json.
 # `pstack-subagent` registers `pstack_subagent`, which re-reads the role file on every
 # delegation and selects one of the pstack agent presets below.
 # `pstack-script` registers `pstack_script`, the only supported way to run the bundled
@@ -17,6 +19,8 @@
       name: dsh-pstack
     - id: pstack-models
       name: dsh-pstack/models
+    - id: pstack-roles
+      name: dsh-pstack/roles
     - id: pstack-subagent
       name: dsh-pstack/subagent
       config:

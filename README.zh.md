@@ -72,7 +72,7 @@
    /setup-pstack
    ```
 
-   该命令读取当前部署提供的 provider、model 与 reasoning effort，并写入 `$DSH_HOME/pstack-models.mdc`。缺少这个文件时，所有角色继承父级路由。
+   该命令读取当前部署提供的 provider、model 与 reasoning effort，并写入 `$DSH_HOME/pstack-models.mdc`。缺少这个文件时，所有角色继承父级路由。初始化后可在 **Plugins → Installed plugins → dsh-pstack** 查看和编辑同一份配置。
 
 ### 常用入口
 
@@ -99,6 +99,10 @@
 | `pstack_script` | 用固定 id 运行随包 Node 脚本，不依赖 Bun 或 shell 脚本。 |
 
 `poteto-agent` 和 `comment-sicko` 两个 preset 分别负责实现型委派与只读评论审查。`pstack_script` 可以运行 `check-plan`、`watch-pr`、`worktree-audit`、`log`、`statechart` 五个随包脚本，脚本 id 是封闭枚举，不能拼任意路径。
+
+### 角色模型配置页
+
+打开 **Plugins → Installed plugins → dsh-pstack**，无需手写文件即可查看和编辑 `$DSH_HOME/pstack-models.mdc`。页面显示文件绝对路径与 `missing` / `loaded` / `unreadable` 状态，按 manifest 顺序列出全部 17 个角色，并从 `pstack_models` 的实时目录选择每个角色的 provider、model 与该模型声明的 effort。`inherit-parent` 与 `auto` 仍可选择，每个角色都有重置按钮，列表角色保留全部 route。保存只改该角色行；其他角色、`# budget` 行以及未知或格式错误行保持不变。该文件与 `/setup-pstack` 共用，下一次 `pstack_subagent` 委派会重新读取，无需重启。
 
 ## skills 目录
 

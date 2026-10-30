@@ -37,10 +37,13 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./models": "./dist/models.mjs",
+    "./remote": "./dist/remote.mjs",
+    "./roles": "./dist/roles.mjs",
     "./script": "./dist/script.mjs",
     "./skill": "./dist/skill.mjs",
     "./subagent": "./dist/subagent.mjs",
     "./package.json": "./package.json",
+    "./client": "./dist/client.mjs",
     "./locale/*.json": "./locale/*.json"
   },
   "scripts": {
@@ -58,13 +61,24 @@
     "@deepseek-ai/dsh-subagent": "catalog:types",
     "@deepseek-ai/dsh-system-prompt": "catalog:types",
     "@deepseek-ai/dsh-tools": "catalog:types",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.2-alpha.2",
     "@deepseek-ai/dsh-working-directory": "catalog:types",
     "commander": "catalog:inlined"
   },
   "devDependencies": {
+    "@deepseek-ai/dsh-api-gateway": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-client-ui-plugin-manager": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-client-ui-slots": "0.2.2-alpha.2",
+    "@deepseek-ai/dsh-typert-registry": "0.2.2-alpha.2",
     "@types/node": "catalog:types",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "~18.3.0",
     "bumpp": "catalog:cli",
     "js-yaml": "catalog:testing",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "skills": "catalog:agentic",
     "typescript": "catalog:cli",
     "vite-plus": "catalog:cli"
@@ -93,6 +107,15 @@
     "manifestVersion": 1,
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-api-gateway",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
     }
   },
   "skills": [

@@ -1,6 +1,6 @@
 # EXT-003：pstack 角色模型配置页
 
-- status: implement
+- status: review
 - repair_target: extension
 - Issue: [#2](https://github.com/l246804/dsh-pstack/issues/2)
 - 建立：2026-10-30（Issue #2 首次分诊）
@@ -22,7 +22,14 @@
 
 ## 实现与验证
 
-待实现（下一步 `/pstack-port implement #2`）。
+实现（2026-10-30）：
+
+- Host：`src/roles.ts` 的 `PstackRolesService`（Cordis 服务 `pstackRoles`）提供 `status`、`catalogue`、`save` 三个方法；`Service.init` 用 `ctx.typert.register()` 注册 `src/remote.ts` 手写 strict `TypertRemoteInfo`，无 Typert 生成链。`catalogue` 与保存校验复用 `collectCatalogue`，写回复用 `readRoleConfiguration` 并新增 `src/internal/role-editor.ts`。
+- Client：`package.json` 增加 `dsh.client`（`platform: "web"`）与 `./client`、`./remote`、`./roles` 出口；`vite.config.ts` 第二个 pack 配置把 `src/client/index.ts` 包成 `window.__ModuleLoader__.load({ id: "dsh-pstack", factory })`，React 与平台模块保持 external；`src/client/` 的配置页按 manifest 顺序渲染 17 个角色、多 route 列表、provider/model/effort 选择、逐角色保存与重置，并按行号显示未知/格式错误行。
+- 写入语义：只替换目标角色的最后一行，其他角色行、`# budget` 行、未知行与格式错误行原样保留；文件缺失时创建，不可读时拒绝覆盖；同值连续保存结果一致。
+- 测试：`tests/role-editor.test.ts`（快照、单行写回、重置、幂等、列表 route、拒绝时不改文件、不可读不覆盖）、`tests/roles-service.test.ts`（真实 Cordis + Typert registry 注册与保存/读取）、`tests/roles-remote.test.ts`（描述符与线解析）、`tests/role-page.test.tsx`（17 角色顺序、状态、行号、多 route、禁用态）、`tests/role-state.test.ts`（草稿与选择）、`tests/client-plugin.test.ts`（浏览器半挂载 Remote 与注册 slot）。
+- 门禁：`vp check` exit 0（仅既有 `require-array-sort-compare` 警告）；`vp test` 13 个文件 / 75 个用例通过；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` 通过；`vp run @internal/pstack#check:harness-doc` exit 0。
+- 真实 DSH 0.2.2-alpha.2 Web profile：用临时 `$DSH_HOME` 安装打包 tarball 并启动 `dsh web --port 3199`；boot graph 含 `id: dsh-pstack`，其 `client.js` combo 返回 200 且包含 `plugins.bundle.config` 注册；`POST /api/pstackRoles/status` 返回 `ok: true`、绝对角色文件路径与 17 个角色，`POST /api/pstackRoles/catalogue` 返回 `ok: true`。未用真实浏览器查看页面视觉；页面行为由 `react-dom/server` 静态渲染测试覆盖。
 
 ## 审查证据
 

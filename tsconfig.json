@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": ["esnext"],
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "jsx": "react-jsx",
     "moduleDetection": "force",
     "module": "nodenext",
     "moduleResolution": "nodenext",
