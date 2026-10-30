@@ -4,5 +4,12 @@ port:
   round: baseline
   phase: done
   started_at: "2026-10-30T11:56:52+08:00"
-  updated_at: "2026-10-30T14:17:06+08:00"
-blocker: null
+  updated_at: "2026-10-30T14:24:48+08:00"
+blocker:
+  active_item: "#4"
+  mode: issue
+  allowed_routes:
+    - "implement #4"
+    - "review #4"
+  resume_route: "idle"
+  reason: "Issue #4 已分诊为 EXT-004（extension）；待实现与审查"
