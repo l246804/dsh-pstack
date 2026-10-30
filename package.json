@@ -44,7 +44,7 @@
     "./locale/*.json": "./locale/*.json"
   },
   "scripts": {
-    "prepare": "skills experimental_sync -y -a universal",
+    "prepare": "vp config && skills experimental_sync -y -a universal",
     "prerelease": "vp run -r test",
     "release": "bumpp",
     "prepublishOnly": "vp run build"
