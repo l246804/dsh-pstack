@@ -34,9 +34,12 @@ export default defineConfig({
       build: {
         command: "vp run replace:scripts",
       },
-      check: {
+      "check:harness-doc": {
         command: "node scripts/check-harness-doc.mjs",
         dependsOn: ["generate:check"],
+      },
+      check: {
+        command: "vp run check:harness-doc",
       },
       test: {
         command: "node --test 'dist/runtime/**/*.test.mjs'",
