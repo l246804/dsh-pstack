@@ -8,16 +8,16 @@
 
 - 审查对象是 `upstream/cursor-plugins/pstack` 在固定提交下的完整可移植需求，不是本仓现有实现的功能清单。现有生成树、旧 README、测试和构建产物只证明各自直接表达的事实，不作为产品能力依据。
 - 审查采用「先排除、再分层」：先读上游 `docs/harness/claude-code.md` 的 `Cursor-only features`，舍弃依赖 Cursor 平台的完整能力；剩余需求拆成原子能力，每项只归入映射、标准模式、可选插件中的一层。
-- 本文的「插件」一律指本仓 `dsh-pstack`；「可选插件」一律指 DSH 随安装提供、默认未启用的插件或 bundle。
+- 本文的「插件」一律指本仓 `dsh-pstack`；「可选插件」一律指 DSH 官方提供、默认未启用的插件或 bundle。
 - 「当前提交未证实」表示在固定提交与本次调查范围内找不到足够源码证据，不表示该能力在别的 DSH 版本也不存在。
-- 本轮是 core 轮次 `#1`，唯一输入是 GitHub Issue #1（角色配置文件名 `poteto-models.mdc` 与上游 `pstack-models.mdc` 不一致）。上一轮 `baseline` 的 135 项能力表沿用；本轮只重审 Issue #1 触及的 `SET-02`、`SET-06`、`MOD-04`、`PI-02` 与 `AD-01`，其余能力行不变。逐条映射见 1.8。
+- 本轮是 `baseline` 轮次，没有 core Issue 或 EXT 输入。`docs/port-prepare.md` 确认 pstack 子树在 `1ba91fc..4dd1d05` 间没有文件变化（树哈希同为 `4719e1c`），因此沿用上一轮冻结的 135 项原子能力；DSH 侧按 `ce7073d` 重新取证，不沿用旧提交的 README 行号。差异影响见 1.8。
 
 ### 1.2 上游提交与版本
 
 | 上游 | 检出路径 | 提交 | 版本 |
 |---|---|---|---|
-| pstack | `upstream/cursor-plugins/pstack` | `1ba91fc25c0977741dd0e267849e6234b037ed0a` | `0.15.36`（`plugin.json`） |
-| DSH | `upstream/deepseek-harness` | `f3803c96974ad4a94195fb97e5c637e9c2a3afe3` | `0.2.2-alpha.2`（根 `package.json`） |
+| pstack | `upstream/cursor-plugins/pstack` | `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe` | `0.15.36`（`plugin.json`） |
+| DSH | `upstream/deepseek-harness` | `ce7073d51254c26cd63b22a60835b8f948deb447` | `0.2.2-alpha.2`（根 `package.json`） |
 
 证据：[pstack plugin.json](../upstream/cursor-plugins/pstack/plugin.json#L1-L21) · [DSH package.json](../upstream/deepseek-harness/package.json#L1-L12)。
 
@@ -81,45 +81,44 @@
 | 代号 | 主题 | DSH 证据 |
 |---|---|---|
 | E01 | 技能根目录与格式 | [docs/subsystems/skills.md#L64-L89](../upstream/deepseek-harness/docs/subsystems/skills.md#L64-L89) · [packages/skill/skill-filesystem/README.md#L36-L56](../upstream/deepseek-harness/packages/skill/skill-filesystem/README.md#L36-L56) |
-| E02 | 技能目录与会话加载 | [docs/subsystems/skills.md#L227-L233](../upstream/deepseek-harness/docs/subsystems/skills.md#L227-L233) · [docs/tool-catalog.md#L1852-L1877](../upstream/deepseek-harness/docs/tool-catalog.md#L1852-L1877) |
+| E02 | 技能目录与会话加载 | [docs/subsystems/skills.md#L227-L233](../upstream/deepseek-harness/docs/subsystems/skills.md#L227-L233) · [docs/tool-catalog.md#L1733-L1758](../upstream/deepseek-harness/docs/tool-catalog.md#L1733-L1758) |
 | E03 | 用户 `/name` 调用与隐藏技能边界 | [packages/skill/tool-skill/README.md#L54-L56](../upstream/deepseek-harness/packages/skill/tool-skill/README.md#L54-L56) · [packages/skill/tool-skill/README.md#L89](../upstream/deepseek-harness/packages/skill/tool-skill/README.md#L89) |
-| E04 | `subagent` 工具 schema | [docs/tool-catalog.md#L2181-L2211](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
+| E04 | `subagent` 工具 schema | [docs/tool-catalog.md#L2062-L2092](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) |
 | E05 | 子代理服务、预设与恢复 | [docs/subsystems/subagent.md#L70-L130](../upstream/deepseek-harness/docs/subsystems/subagent.md#L70-L130) · [packages/subagent/subagent/README.md#L28-L65](../upstream/deepseek-harness/packages/subagent/subagent/README.md#L28-L65) |
 | E06 | 子代理模型选择策略 | [packages/subagent/tool-subagent/README.md#L45-L79](../upstream/deepseek-harness/packages/subagent/tool-subagent/README.md#L45-L79) |
 | E07 | `ask_user_question` | [docs/tool-catalog.md#L546-L616](../upstream/deepseek-harness/docs/tool-catalog.md#L546-L616) · [docs/subsystems/user-questions.md#L280-L293](../upstream/deepseek-harness/docs/subsystems/user-questions.md#L280-L293) |
-| E08 | `todo_write` | [docs/tool-catalog.md#L2653-L2699](../upstream/deepseek-harness/docs/tool-catalog.md#L2653-L2699) |
-| E09 | `workflow` | [docs/tool-catalog.md#L2755-L2848](../upstream/deepseek-harness/docs/tool-catalog.md#L2755-L2848) |
-| E10 | `schedule_*` | [docs/tool-catalog.md#L1480-L1607](../upstream/deepseek-harness/docs/tool-catalog.md#L1480-L1607) |
-| E11 | `create_goal` 与 `update_goal` | [docs/tool-catalog.md#L1386-L1476](../upstream/deepseek-harness/docs/tool-catalog.md#L1386-L1476) |
+| E08 | `todo_write` | [docs/tool-catalog.md#L2534-L2580](../upstream/deepseek-harness/docs/tool-catalog.md#L2534-L2580) |
+| E09 | `workflow` | [docs/tool-catalog.md#L2636-L2729](../upstream/deepseek-harness/docs/tool-catalog.md#L2636-L2729) |
+| E10 | `schedule_*` | [docs/tool-catalog.md#L1503-L1653](../upstream/deepseek-harness/docs/tool-catalog.md#L1503-L1653) |
+| E11 | `create_goal` 与 `update_goal` | [docs/tool-catalog.md#L1407-L1497](../upstream/deepseek-harness/docs/tool-catalog.md#L1407-L1497) |
 | E12 | `bash` 与后台 job | [docs/tool-catalog.md#L695-L735](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735) · [docs/subsystems/jobs.md#L1-L31](../upstream/deepseek-harness/docs/subsystems/jobs.md#L1-L31) |
-| E13 | `create_worktree` | [docs/tool-catalog.md#L2727-L2753](../upstream/deepseek-harness/docs/tool-catalog.md#L2727-L2753) · [docs/subsystems/worktrees.md#L5-L18](../upstream/deepseek-harness/docs/subsystems/worktrees.md#L5-L18) |
-| E14 | forge 变更请求 | [docs/subsystems/forge.md#L5-L18](../upstream/deepseek-harness/docs/subsystems/forge.md#L5-L18) · [docs/subsystems/forge.md#L222-L247](../upstream/deepseek-harness/docs/subsystems/forge.md#L222-L247) |
+| E13 | `create_worktree` | [docs/tool-catalog.md#L2608-L2634](../upstream/deepseek-harness/docs/tool-catalog.md#L2608-L2634) · [docs/subsystems/worktrees.md#L5-L18](../upstream/deepseek-harness/docs/subsystems/worktrees.md#L5-L18) |
+| E14 | forge 变更请求 | [docs/subsystems/forge.md#L5-L18](../upstream/deepseek-harness/docs/subsystems/forge.md#L5-L18) · [docs/subsystems/forge.md#L226-L283](../upstream/deepseek-harness/docs/subsystems/forge.md#L226-L283) |
 | E15 | 浏览器控制 | [docs/subsystems/browser-use.md#L9-L15](../upstream/deepseek-harness/docs/subsystems/browser-use.md#L9-L15) |
 | E16 | 计算机控制 | [docs/subsystems/computer-use.md#L9-L27](../upstream/deepseek-harness/docs/subsystems/computer-use.md#L9-L27) |
 | E17 | 持久终端 | [packages/experimental/tool-terminal/README.md#L10-L30](../upstream/deepseek-harness/packages/experimental/tool-terminal/README.md#L10-L30) |
 | E18 | 会话历史搜索 | [packages/experimental/session-search/README.md#L8-L20](../upstream/deepseek-harness/packages/experimental/session-search/README.md#L8-L20) · [packages/experimental/tool-session-query/README.md#L8-L20](../upstream/deepseek-harness/packages/experimental/tool-session-query/README.md#L8-L20) |
 | E19 | MCP client | [packages/mcp/mcp-client/README.md#L10-L24](../upstream/deepseek-harness/packages/mcp/mcp-client/README.md#L10-L24) |
 | E20 | 指令文件加载 | [packages/context/agent-instructions/README.md#L30-L40](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L30-L40) · [packages/context/agent-instructions/README.md#L219-L223](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L219-L223) |
-| E21 | 标准预设组成 | [packages/bundle/web-app/presets/standard.patch.yml#L4-L127](../upstream/deepseek-harness/packages/bundle/web-app/presets/standard.patch.yml#L4-L127) |
+| E21 | 标准预设组成 | [packages/bundle/web-app/presets/standard.patch.yml#L4-L130](../upstream/deepseek-harness/packages/bundle/web-app/presets/standard.patch.yml#L4-L130) |
 | E22 | Agent 预设与 persona | [packages/preset/agent-preset/README.md#L28-L48](../upstream/deepseek-harness/packages/preset/agent-preset/README.md#L28-L48) · [packages/preset/persona/README.md#L28-L40](../upstream/deepseek-harness/packages/preset/persona/README.md#L28-L40) |
 | E23 | 子代理深度与并发 | [packages/subagent/subagent/README.md#L49-L55](../upstream/deepseek-harness/packages/subagent/subagent/README.md#L49-L55) |
-| E24 | LLM 模型目录 | [packages/llm/llm/README.md#L28-L28](../upstream/deepseek-harness/packages/llm/llm/README.md#L28-L28) · [packages/llm/llm/README.md#L87-L87](../upstream/deepseek-harness/packages/llm/llm/README.md#L87-L87) |
+| E24 | LLM 模型目录 | [packages/llm/llm/README.md#L28-L28](../upstream/deepseek-harness/packages/llm/llm/README.md#L28-L28) · [packages/llm/llm/README.md#L89-L89](../upstream/deepseek-harness/packages/llm/llm/README.md#L89-L89) |
 | E25 | 技能调用策略 | [docs/subsystems/skills.md#L128-L128](../upstream/deepseek-harness/docs/subsystems/skills.md#L128-L128) |
 | E26 | Agent Teams | [packages/experimental/tool-agent-team/README.md#L10-L32](../upstream/deepseek-harness/packages/experimental/tool-agent-team/README.md#L10-L32) |
 | E27 | 技能目录格式 | [packages/skill/skill-filesystem/README.md#L36-L38](../upstream/deepseek-harness/packages/skill/skill-filesystem/README.md#L36-L38) |
 
-### 1.8 本轮 core 输入（Issue #1）
+### 1.8 本轮输入与差异影响
 
-本轮唯一 core 输入是 GitHub Issue #1：DSH 把上游角色文件 `pstack-models.mdc` 改名成 `poteto-models.mdc`，要求改回上游命名。逐条 `required_behavior` 映射到能力行如下；`implement` 与 `review` 按这些行验证，`doc` 写最终覆盖。
+本轮没有 core `required_behavior`。输入是 `docs/port-prepare.md` 的结构基线与两个固定提交；差异只来自 DSH 参考实现，pstack 上游需求不变。
 
-| required_behavior | 主要能力行 | 本轮处理 |
+| 事实 | 观察 | 对本轮影响 |
 |---|---|---|
-| 新写入和读取的角色文件路径为 `$DSH_HOME/pstack-models.mdc`，与上游命名一致 | `SET-02`（读取）、`SET-06`（写入）、`PI-02` | 角色文件名从 `poteto-models.mdc` 改为 `pstack-models.mdc` |
-| 用户文档、DSH 适配文档、术语表和测试中的 DSH 角色文件名与上游一致 | `SET-06`、`AD-01`（`dsh.md`、根 README、`docs/glossary.md`、`tests/**`） | 同步文档与测试里的文件名 |
-| 不兼容、不迁移已有的 `poteto-models.mdc`；旧文件不再读取，按缺失配置处理 | `SET-02`、`SET-06` | 只认新文件名，旧文件视为缺失并回退 `inherit-parent` |
-| 格式错误仍按行号报告 | `SET-06`、`PI-02` | 保持现有按行号诊断，不变 |
-
-`doc` 最终覆盖（2026-10-30）：四条 `required_behavior` 全部完整覆盖。读写路径为 `$DSH_HOME/pstack-models.mdc`，`SET-02`、`SET-06`、`PI-02` 已按此复审通过；根 `README.md`、`README.zh.md`、`docs/glossary.md`、`pstack/harness/docs/harness/dsh.md` 与测试同步为上游同名；旧 `poteto-models.mdc` 不迁移，按缺失回退 `inherit-parent`；格式错误仍按行号报告。`MOD-04` 与 `AD-01` 的关联字段保留，能力状态见 8.1。
+| pstack 子树 | `git diff --stat 1ba91fc..4dd1d05 -- pstack` 为空，树哈希同为 `4719e1c4b4c43bac85d4206a8b41dd2899769c1c` | 135 项能力、上游证据和编号沿用上一轮，没有新增或删除能力行 |
+| DSH 提交 | `f3803c9..ce7073d` 有 351 个提交，包版本仍为 `0.2.2-alpha.2` | 全部 DSH 证据按 `ce7073d` 重新定位，不能沿用旧行号 |
+| DSH 调度工具 | `schedule_create`、`schedule_edit`、`schedule_list`、`schedule_view` 取代旧的 reminder API，支持 RFC 5545 重复规则和 `this_session`、`new_once`、`new` 目标 | `PB-15` 与 G-10 的支持描述更新；DSH 仍无 CI、merge 或 ref 事件订阅 |
+| DSH forge 服务 | forge provider 增加 `submitReview` 与 `fetchChecks`，forge bundle 的 GUI 可发布 review；bundle README 明确模型侧仍无变更请求工具 | `OPT-02` 补足 GUI review 与完整检查详情；G-07 的模型侧缺口不变 |
+| DSH CUA 分发 | `@deepseek-ai/dsh-cua-bundle` 从可选 bundle 列表移到 on-demand catalog，仍默认关闭、仅 macOS | `OPT-04` 的启用路径改为按需安装后启用，覆盖结论不变 |
 
 ## 2. 完整能力表
 
@@ -129,27 +128,27 @@
 
 | 编号 | 上游期待 | DSH 对应项或缺失 | 审查结论 | 证据 |
 |---|---|---|---|---|
-| TOOL-01 | `Task` 启动子代理，按 `subagent_type` 选择代理 | `subagent` 启动受管子代理并立即返回 child id，完成通知回传结果；`subagent_fork` 提供继承对话的变体 | 映射 · 完整。名称从 `Task` 换成 `subagent`，异步启动、后台完成和结果回传语义一致 | [claude-code L9](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L9) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) · [E05](../upstream/deepseek-harness/docs/subsystems/subagent.md#L70-L130) |
+| TOOL-01 | `Task` 启动子代理，按 `subagent_type` 选择代理 | `subagent` 启动受管子代理并立即返回 child id，完成通知回传结果；`subagent_fork` 提供继承对话的变体 | 映射 · 完整。名称从 `Task` 换成 `subagent`，异步启动、后台完成和结果回传语义一致 | [claude-code L9](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L9) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) · [E05](../upstream/deepseek-harness/docs/subsystems/subagent.md#L70-L130) |
 | TOOL-02 | `AskQuestion` 向用户提问；`-p` 模式没有该工具时改用纯文本 | `ask_user_question` 支持单问题、多问题、选项、`multi_select` 和自由输入；只有 live root 能获得人类回答 | 映射 · 完整。主会话行为一致；被委派子代理没有人可回答，见 `SUB-01` | [claude-code L10](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L10) · [E07](../upstream/deepseek-harness/docs/tool-catalog.md#L546-L616) |
-| TOOL-03 | 打开 todo list；跳过的步骤留在列表里并带 `skip: <reason>` | `todo_write` 整表替换，只有 `pending`、`in_progress`、`completed` 三种状态，没有独立的 `skip` 状态 | 映射 · 部分（G-11）。可以用 `content: "skip: <reason> - <step>"` 加 `completed` 保留可见性，但状态语义与上游不同 | [claude-code L11](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L11) · [E08](../upstream/deepseek-harness/docs/tool-catalog.md#L2653-L2699) |
+| TOOL-03 | 打开 todo list；跳过的步骤留在列表里并带 `skip: <reason>` | `todo_write` 整表替换，只有 `pending`、`in_progress`、`completed` 三种状态，没有独立的 `skip` 状态 | 映射 · 部分（G-11）。可以用 `content: "skip: <reason> - <step>"` 加 `completed` 保留可见性，但状态语义与上游不同 | [claude-code L11](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L11) · [E08](../upstream/deepseek-harness/docs/tool-catalog.md#L2534-L2580) |
 | TOOL-04a | 用户输入 `/name` 或说「the **name** skill」运行另一个 pstack 技能 | `/name` token 会注入对应 user-invocable 技能的完整内容；这是 `disable-model-invocation` 技能唯一的用户入口 | 映射 · 完整（用户显式调用路径）。前缀差异不影响语义 | [claude-code L12](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L12) · [E03](../upstream/deepseek-harness/packages/skill/tool-skill/README.md#L54-L56) · [E25](../upstream/deepseek-harness/docs/subsystems/skills.md#L128-L128) |
 | TOOL-04b | pstack 技能内部路由到另一个技能，例如 `/how`、`/why`、`/architect` | `skill` 工具只加载 model-invocable 技能；pstack 的大部分技能声明 `disable-model-invocation: true`，模型无法通过 `skill` 工具自动加载 | 标准 · 部分（G-02）。需要技能加载器或改写 frontmatter，进入 `PI-01` | [claude-code L12](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L12) · [E02](../upstream/deepseek-harness/docs/subsystems/skills.md#L227-L233) · [E25](../upstream/deepseek-harness/docs/subsystems/skills.md#L128-L128) |
-| TOOL-05 | `Grep`/`Glob` 搜索内容与文件 | `grep`/`glob` 工具，ripgrep 实现，支持路径、include 过滤和超限落盘 | 映射 · 完整 | [claude-code L13](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L13) · [docs/tool-catalog.md#L1163-L1219](../upstream/deepseek-harness/docs/tool-catalog.md#L1163-L1219) |
+| TOOL-05 | `Grep`/`Glob` 搜索内容与文件 | `grep`/`glob` 工具，ripgrep 实现，支持路径、include 过滤和超限落盘 | 映射 · 完整 | [claude-code L13](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L13) · [docs/tool-catalog.md#L1184-L1240](../upstream/deepseek-harness/docs/tool-catalog.md#L1184-L1240) |
 
 ### 2.2 子代理字段与代理定义
 
 | 编号 | 上游期待 | DSH 对应项或缺失 | 审查结论 | 证据 |
 |---|---|---|---|---|
-| SUB-01 | `subagent_type: generalPurpose` 使用通用子代理 | `subagent` 的 `spawn` 后端默认创建独立本地子代理，继承父级 preset 和工具 | 映射 · 完整（名称改为普通 `subagent`） | [claude-code L19](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L19) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
-| SUB-02 | `subagent_type: poteto-agent`、`comment-sicko` 使用 pstack 自带命名代理 | DSH 没有 `subagent_type` 字段；`subagent` 只有可选的 `agent_preset`，且需要 `allowedAgentPresets` 或默认 preset 配置 | 标准 · 部分（G-12）。Agent 预设能表达 persona 和工具限制，但标准预设不带这两个 id；进入 `PI-08` | [claude-code L20](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L20) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) · [E22](../upstream/deepseek-harness/packages/preset/agent-preset/README.md#L28-L48) |
-| SUB-03 | `readonly: true` 使用只读代理；保留 Bash，但要求不编辑文件并在事后检查 `git status` | DSH 没有 per-call `readonly` 字段；可以用 agent preset 去掉 `write`/`edit` 工具，保留 `bash`，再加提示和 `git status` 检查 | 标准 · 部分（G-12）。工具限制是组合级配置，不是单次调用字段；进入 `PI-08` | [claude-code L21](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L21) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) · [E22](../upstream/deepseek-harness/packages/preset/agent-preset/README.md#L28-L48) |
+| SUB-01 | `subagent_type: generalPurpose` 使用通用子代理 | `subagent` 的 `spawn` 后端默认创建独立本地子代理，继承父级 preset 和工具 | 映射 · 完整（名称改为普通 `subagent`） | [claude-code L19](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L19) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) |
+| SUB-02 | `subagent_type: poteto-agent`、`comment-sicko` 使用 pstack 自带命名代理 | DSH 没有 `subagent_type` 字段；`subagent` 只有可选的 `agent_preset`，且需要 `allowedAgentPresets` 或默认 preset 配置 | 标准 · 部分（G-12）。Agent 预设能表达 persona 和工具限制，但标准预设不带这两个 id；进入 `PI-08` | [claude-code L20](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L20) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) · [E22](../upstream/deepseek-harness/packages/preset/agent-preset/README.md#L28-L48) |
+| SUB-03 | `readonly: true` 使用只读代理；保留 Bash，但要求不编辑文件并在事后检查 `git status` | DSH 没有 per-call `readonly` 字段；可以用 agent preset 去掉 `write`/`edit` 工具，保留 `bash`，再加提示和 `git status` 检查 | 标准 · 部分（G-12）。工具限制是组合级配置，不是单次调用字段；进入 `PI-08` | [claude-code L21](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L21) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) · [E22](../upstream/deepseek-harness/packages/preset/agent-preset/README.md#L28-L48) |
 | SUB-04 | `readonly: false` 使用普通代理并保留会话的 MCP 服务器 | 本地子代理加入父级当前 preset，继承工具注册与 MCP 工具 | 映射 · 完整 | [claude-code L22](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L22) · [E05](../upstream/deepseek-harness/docs/subsystems/subagent.md#L70-L130) |
-| SUB-05 | `environment: "cloud"` 使用隔离的工作树或云代理，并指定分支或提交 | DSH 没有云代理；可选 Git worktree bundle 能创建本地分支和检出目录，但不会自动给每个子代理分配独立 VM | 可选 · 部分（G-05）。云能力按 `EXCL-03` 排除；本地替代见 `OPT-01` | [claude-code L23](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L23) · [E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2727-L2753) |
-| SUB-06 | `environment: "local"` 省略隔离参数 | `subagent` 省略 `cwd` 时继承父级当前目录 | 映射 · 完整 | [claude-code L24](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L24) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
-| SUB-07 | `cloud_base_branch: <b>` 要求 worker 先检出 `<b>` | `create_worktree({ from })` 从本地分支创建新工作树；子代理用 `cwd` 指向该路径 | 可选 · 部分（G-05）。`from` 只解析本地 ref，不 fetch；不会自动把多个子代理隔离到不同工作树 | [claude-code L25](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L25) · [E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2727-L2753) · [packages/experimental/tool-worktree/README.md#L26-L34](../upstream/deepseek-harness/packages/experimental/tool-worktree/README.md#L26-L34) |
-| SUB-08 | `run_in_background: true` 省略，因为子代理默认后台运行 | `subagent` 启动后立即返回，完成通知另行到达 | 映射 · 完整 | [claude-code L26](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L26) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
-| SUB-09 | `resume` 恢复先前子代理 | `send_message` 向空闲的 continuable child 发消息会冷恢复；运行中的 child 在下一步边界接收 steer | 映射 · 完整，且恢复路径比新建并粘贴更直接 | [claude-code L27](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L27) · [docs/tool-catalog.md#L2260-L2281](../upstream/deepseek-harness/docs/tool-catalog.md#L2260-L2281) · [E05](../upstream/deepseek-harness/docs/subsystems/subagent.md#L130-L180) |
-| SUB-10 | `file_attachments` 在任务说明里列出文件路径 | `subagent` 的 `prompt` 是字符串，文件以路径形式写入任务说明；与上游 Claude Code 适配的降级一致 | 映射 · 完整（附件的模型级块不传递，路径仍可读） | [claude-code L28](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L28) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
+| SUB-05 | `environment: "cloud"` 使用隔离的工作树或云代理，并指定分支或提交 | DSH 没有云代理；可选 Git worktree bundle 能创建本地分支和检出目录，但不会自动给每个子代理分配独立 VM | 可选 · 部分（G-05）。云能力按 `EXCL-03` 排除；本地替代见 `OPT-01` | [claude-code L23](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L23) · [E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2608-L2634) |
+| SUB-06 | `environment: "local"` 省略隔离参数 | `subagent` 省略 `cwd` 时继承父级当前目录 | 映射 · 完整 | [claude-code L24](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L24) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) |
+| SUB-07 | `cloud_base_branch: <b>` 要求 worker 先检出 `<b>` | `create_worktree({ from })` 从本地分支创建新工作树；子代理用 `cwd` 指向该路径 | 可选 · 部分（G-05）。`from` 只解析本地 ref，不 fetch；不会自动把多个子代理隔离到不同工作树 | [claude-code L25](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L25) · [E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2608-L2634) · [packages/experimental/tool-worktree/README.md#L26-L34](../upstream/deepseek-harness/packages/experimental/tool-worktree/README.md#L26-L34) |
+| SUB-08 | `run_in_background: true` 省略，因为子代理默认后台运行 | `subagent` 启动后立即返回，完成通知另行到达 | 映射 · 完整 | [claude-code L26](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L26) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) |
+| SUB-09 | `resume` 恢复先前子代理 | `send_message` 向空闲的 continuable child 发消息会冷恢复；运行中的 child 在下一步边界接收 steer | 映射 · 完整，且恢复路径比新建并粘贴更直接 | [claude-code L27](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L27) · [docs/tool-catalog.md#L2141-L2162](../upstream/deepseek-harness/docs/tool-catalog.md#L2141-L2162) · [E05](../upstream/deepseek-harness/docs/subsystems/subagent.md#L130-L180) |
+| SUB-10 | `file_attachments` 在任务说明里列出文件路径 | `subagent` 的 `prompt` 是字符串，文件以路径形式写入任务说明；与上游 Claude Code 适配的降级一致 | 映射 · 完整（附件的模型级块不传递，路径仍可读） | [claude-code L28](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L28) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) |
 | AGT-01 | `poteto-agent` 在开始任何工作前完整读取 `poteto-mode` 的 `SKILL.md`，包括 inline principles index | Agent preset 可以用 `persona` 放入同样要求；父级提示可以传绝对路径，DSH 子代理用 `read` 读取 | 标准 · 部分（G-12）。没有自动读取技能文件的代理类型，只有 persona 提示；进入 `PI-08` | [agents/poteto-agent.md#L1-L9](../upstream/cursor-plugins/pstack/agents/poteto-agent.md#L1-L9) · [E22](../upstream/deepseek-harness/packages/preset/persona/README.md#L28-L40) |
 | AGT-02 | `comment-sicko` 是只读的评论审查者；保留许可证、公共 API doc comment、外部依赖约束等少量例外 | Agent preset 可以只挂只读工具并写 persona；`comment-sicko` 的完整规则可作为 preset 的 persona | 标准 · 部分（G-12）。只读可做到，但没有 `subagent_type` 直选；进入 `PI-08` | [agents/comment-sicko.md#L1-L32](../upstream/cursor-plugins/pstack/agents/comment-sicko.md#L1-L32) · [E22](../upstream/deepseek-harness/packages/preset/persona/README.md#L28-L40) |
 
@@ -158,7 +157,7 @@
 | 编号 | 上游期待 | DSH 对应项或缺失 | 审查结论 | 证据 |
 |---|---|---|---|---|
 | MOD-01 | `claude-<family>-<version>-<effort>[-fast]` 解析为模型 slug 加 effort | DSH 用 `provider`、`model`、`reasoning_effort` 三段，effort 的可用值由模型目录决定；没有 family 前缀解析和 `-fast` 后缀 | 映射 · 部分（G-01）。技能文本必须按 DSH 的 provider 与 model 重写，不能沿用 Cursor slug | [claude-code L34](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L34) · [E06](../upstream/deepseek-harness/packages/subagent/tool-subagent/README.md#L45-L79) · [E24](../upstream/deepseek-harness/packages/llm/llm/README.md#L28-L28) |
-| MOD-02 | 非 Claude 的 `grok-*`、`gpt-*` 等 slug 省略 `model`，使用会话模型 | DSH 省略 `provider` 和 `model` 时子代理继承父级路由 | 映射 · 完整 | [claude-code L35](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L35) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
+| MOD-02 | 非 Claude 的 `grok-*`、`gpt-*` 等 slug 省略 `model`，使用会话模型 | DSH 省略 `provider` 和 `model` 时子代理继承父级路由 | 映射 · 完整 | [claude-code L35](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L35) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) |
 | MOD-03 | `auto` 或 `inherit-parent` 省略 `model` | DSH 省略 `provider` 和 `model` 即继承父级当前路由；`reasoning_effort` 也按 route 继承规则处理 | 映射 · 完整 | [claude-code L36](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L36) · [E06](../upstream/deepseek-harness/packages/subagent/tool-subagent/README.md#L77-L79) |
 | MOD-04 | `pstack-models.mdc` 规则文件为每个角色提供模型；角色行如 `feature, refactoring: grok-4.7-xhigh-fast` | DSH 没有等价的角色到模型规则文件；`AGENTS.md` 只加载为指令，不解析角色行；`subagentModelSelection` 是会话级 allowlist，不是角色表 | 标准 · 部分（G-01）。进入 `PI-02` | [claude-code L37](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L37) · [E06](../upstream/deepseek-harness/packages/subagent/tool-subagent/README.md#L45-L79) · [E20](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L219-L223) |
 | MOD-05 | 角色值 `<model> <effort>` 解析为模型和 effort | DSH 的 `model` 与 `reasoning_effort` 是两个独立字段，技能文本可以拆分 | 映射 · 完整 | [claude-code L38](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L38) · [E06](../upstream/deepseek-harness/packages/subagent/tool-subagent/README.md#L45-L79) |
@@ -168,13 +167,13 @@
 
 | 编号 | 上游期待 | DSH 对应项或缺失 | 审查结论 | 证据 |
 |---|---|---|---|---|
-| SET-01 | 枚举当前会话 `Task` 子代理可用的模型 slug | `list_subagent_models` 只有在 `modelDiscovery` 开启时存在；没有 Session policy 时只返回当前父级路由，不能枚举全部可用模型 | 标准 · 部分（G-01）。插件需要调用 `ctx.llm.listProviders()` 与 `listModels()`；进入 `PI-02` | [setup-pstack L12-L15](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L12-L15) · [E06](../upstream/deepseek-harness/packages/subagent/tool-subagent/README.md#L77-L79) · [E24](../upstream/deepseek-harness/packages/llm/llm/README.md#L87-L87) |
+| SET-01 | 枚举当前会话 `Task` 子代理可用的模型 slug | `list_subagent_models` 只有在 `modelDiscovery` 开启时存在；没有 Session policy 时只返回当前父级路由，不能枚举全部可用模型 | 标准 · 部分（G-01）。插件需要调用 `ctx.llm.listProviders()` 与 `listModels()`；进入 `PI-02` | [setup-pstack L12-L15](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L12-L15) · [E06](../upstream/deepseek-harness/packages/subagent/tool-subagent/README.md#L77-L79) · [E24](../upstream/deepseek-harness/packages/llm/llm/README.md#L89-L89) |
 | SET-02 | 读取已有 `pstack-models.mdc`，保留用户改过的角色，丢弃已退役角色 | DSH 没有该文件或等价角色配置；`AGENTS.md` 不提供结构化角色解析 | 标准 · 部分（G-01）。进入 `PI-02` | [setup-pstack L16-L19](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L16-L19) · [E20](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L219-L223) |
 | SET-03 | 用 `AskQuestion` 询问 `unlimited`、`large`、`medium`、`small` 四档预算 | `ask_user_question` 支持带描述的选项和单选；技能文本可以照搬四档标签 | 映射 · 完整 | [setup-pstack L20-L28](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L20-L28) · [E07](../upstream/deepseek-harness/docs/tool-catalog.md#L546-L616) |
-| SET-04 | 按预算改写每个真实 slug 的 effort token，处理 `max`、`xhigh`、`high`、`medium`、`low` 阶梯和 `-fast` 后缀 | DSH 没有内建预算换算；`reasoning_effort` 的允许值由模型目录决定，非法值会被 adapter 拒绝 | 标准 · 部分（G-01）。预算映射逻辑进入 `PI-02`，并按 `ctx.llm.resolveModelInfo` 校验 | [setup-pstack L29-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L29-L31) · [E24](../upstream/deepseek-harness/packages/llm/llm/README.md#L87-L87) |
+| SET-04 | 按预算改写每个真实 slug 的 effort token，处理 `max`、`xhigh`、`high`、`medium`、`low` 阶梯和 `-fast` 后缀 | DSH 没有内建预算换算；`reasoning_effort` 的允许值由模型目录决定，非法值会被 adapter 拒绝 | 标准 · 部分（G-01）。预算映射逻辑进入 `PI-02`，并按 `ctx.llm.resolveModelInfo` 校验 | [setup-pstack L29-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L29-L31) · [E24](../upstream/deepseek-harness/packages/llm/llm/README.md#L89-L89) |
 | SET-05 | 展示每个角色和模型，标出不可用项，询问是否修改 | `ask_user_question` 可以逐项确认；展示表格由技能文本负责 | 映射 · 完整 | [setup-pstack L31-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L31) · [E07](../upstream/deepseek-harness/docs/tool-catalog.md#L546-L616) |
-| SET-06 | 把结果写入 `~/.cursor/rules/pstack-models.mdc`，覆盖整个文件，保持幂等，删除退役角色 | DSH 没有 `.cursor/rules`；可以写 `$DSH_HOME/pstack-models.mdc`（本轮 core Issue #1 起与上游同名），但没有任何 DSH 机制自动读取并应用 | 标准 · 部分（G-01）。写入格式和位置进入 `PI-02` | [setup-pstack L37-L66](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L37-L66) · [E20](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L30-L40) |
-| SET-07 | 面板角色的列表长度决定子代理数量；`swarm workers` 是默认 worker 模型 | 技能文本可以对每个列表项发一次 `subagent` 调用；`swarm workers` 需要按角色表解析 | 映射 · 完整（面板扇出部分） | [setup-pstack L31-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L31) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2181-L2211) |
+| SET-06 | 把结果写入 `~/.cursor/rules/pstack-models.mdc`，覆盖整个文件，保持幂等，删除退役角色 | DSH 没有 `.cursor/rules`；可以写 `$DSH_HOME/pstack-models.mdc`（Issue #1 已验收，与上游同名），但没有任何 DSH 机制自动读取并应用 | 标准 · 部分（G-01）。写入格式和位置进入 `PI-02` | [setup-pstack L37-L66](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L37-L66) · [E20](../upstream/deepseek-harness/packages/context/agent-instructions/README.md#L30-L40) |
+| SET-07 | 面板角色的列表长度决定子代理数量；`swarm workers` 是默认 worker 模型 | 技能文本可以对每个列表项发一次 `subagent` 调用；`swarm workers` 需要按角色表解析 | 映射 · 完整（面板扇出部分） | [setup-pstack L31-L31](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L31) · [E04](../upstream/deepseek-harness/docs/tool-catalog.md#L2062-L2092) |
 | SET-08 | 首次检测项目是否已有验证技能和形式验证技能，必要时各询问一次 | `create-verification-skill` 与 `create-formal-verification-skill` 文本可移植；技能创建结果写项目技能目录 | 映射 · 完整 | [setup-pstack L72-L78](../upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#L72-L78) · [E01](../upstream/deepseek-harness/docs/subsystems/skills.md#L64-L89) |
 
 ### 2.5 路径
@@ -197,10 +196,10 @@
 | SCR-03 | `skills/poteto-mode/scripts/worktree-audit.sh [-b <ref>] [repo-path]` | Bash；`git`、`jq`、`rg`、`du`、`stat`、`date`、`awk`、`sed`、`xargs`；读取 `~/.cursor/projects/<slug>/agent-transcripts` | TSV 列 `SIZE`、`AGE`、`MERGED`、`DIRTY`、`REMOTE`、`PR`、`LAST_CHAT`、`BUCKET`、`WORKTREE`；只读，不删除；退出 0（成功）、1（不在 git 仓库或无 base）、2（参数错误） | 标准 `bash` 可运行 git、jq、rg，但 Cursor 转写路径不存在，聊天列需 DSH 会话搜索或标 unknown；进入 `PI-06` | `标准 · 部分`；[worktree-audit.sh#L1-L134](../upstream/cursor-plugins/pstack/skills/poteto-mode/scripts/worktree-audit.sh#L1-L134) |
 | SCR-04 | `skills/show-me-your-work/scripts/log.sh <logfile> <phase> <decision> <why> <evidence> <result>` | Bash `set -euo pipefail`；`date`、`tr`、`printf` | 首次写入 TSV header，UTC ISO8601 时间戳，清理 tab、换行、CR，转义 `=`、`+`、`-`、`@` 前缀，追加一行；参数数不为 6 退出 1 | DSH `bash` 可直接运行，但 Windows 与 Electron 运行时和 `pstack_script` 统一 Node 方案要求等价重写；进入 `PI-07` | `标准 · 部分`；[log.sh#L1-L42](../upstream/cursor-plugins/pstack/skills/show-me-your-work/scripts/log.sh#L1-L42) |
 | SCR-05 | `skills/statechart/scripts/statechart SPEC.tla [--config FILE] [--view FILE] [--out DIR]`，入口 `statechart.ts` 经 `worker.ts` 调用 `run.ts` 与 `pipeline.ts` | 启动器检测 Node 22.18 或 23.6 以上、Bun 1.1.5 以上、Deno 2.0 以上；实际运行 TypeScript；外部 `mise` 安装 TLC 与 Java，首次运行需要网络；TLC 与 TLA+ 工具链 | 读 TLA+ spec、cfg、view；写 `report.md`、`chart.mmd`、`tlc.out`、每个失败规则的 `tlc-RULE.out`；退出 0（全部规则成立）、1（有规则破坏）、2（TLC 错误、信号或无法运行）、130 或 143（SIGINT 或 SIGTERM）；只有 0 和 1 写输出 | DSH 标准模式只有 `bash`，不保证 Node、Java、mise、TLC；没有随包脚本 id；进入 `PI-09` | `标准 · 部分`；[statechart#L1-L29](../upstream/cursor-plugins/pstack/skills/statechart/scripts/statechart#L1-L29) · [statechart.ts#L1-L164](../upstream/cursor-plugins/pstack/skills/statechart/scripts/statechart.ts#L1-L164) |
-| SCR-06 | `skills/poteto-mode/scripts/orch/{orch,store}.ts` | 上游在 `1ba91fc` 已删除；本地旧镜像随之删除 | 无调用点 | 无 | `无调用点（已删除）`；[prepare §3](../docs/port-prepare.md#L33-L33) |
-| SCR-07 | `skills/poteto-mode/scripts/bootstrap.ts`、`package.json`、`bun.lock`、`check-plan.test.ts`、`watch-pr/*.test.ts`、`statechart/scripts/test/**` | Bun 或 pnpm 安装与测试资产；`bootstrap.ts` 只服务 watch-pr 自装依赖 | 不对外暴露入口 | 不单独移植；构建由本仓 pnpm 与 profile 负责；测试用例作为行为验收参考 | `资产，不单独成项`；[prepare §4](../docs/port-prepare.md#L36-L47) |
+| SCR-06 | `skills/poteto-mode/scripts/orch/{orch,store}.ts` | 上游在 `1ba91fc` 已删除；本地旧镜像随之删除 | 无调用点 | 无 | `无调用点（已删除）`；[prepare §3](../docs/port-prepare.md#L34-L39) |
+| SCR-07 | `skills/poteto-mode/scripts/bootstrap.ts`、`package.json`、`bun.lock`、`check-plan.test.ts`、`watch-pr/*.test.ts`、`statechart/scripts/test/**` | Bun 或 pnpm 安装与测试资产；`bootstrap.ts` 只服务 watch-pr 自装依赖 | 不对外暴露入口 | 不单独移植；构建由本仓 pnpm 与 profile 负责；测试用例作为行为验收参考 | `资产，不单独成项`；[prepare §4](../docs/port-prepare.md#L45-L60) |
 
-本轮上游在 `d1453c1..1ba91fc` 间改动了 `poteto-mode` 的 `check-plan`、`watch-pr`、`worktree-audit` 脚本，并新增了 `statechart` 全套脚本。第 2.6 节的 SCR 行为以本轮上游为准；差异与移植方式留给 `implement`。`SCR-06` 与 `SCR-07` 只作脚本去向记录，不进入 135 个原子能力编号和分阶段状态表。
+`docs/port-prepare.md` 已确认 pstack 子树在 `1ba91fc..4dd1d05` 间无文件差异，树哈希一致。第 2.6 节的 SCR 行为继续以上游 `4dd1d05` 为准；`SCR-06` 与 `SCR-07` 只作脚本去向记录，不进入 135 个原子能力编号和分阶段状态表。
 
 ### 2.7 技能（33 项；`setup-pstack` 见 2.4）
 
@@ -260,7 +259,7 @@
 | PB-12 | Eval：盲化候选、同 prompt、独立 sanitized 目录、单 judge、读转写核 chain | [playbooks/eval.md#L1-L25](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/eval.md#L1-L25) | 子代理可跑；多模型角色依赖 G-01，转写核验依赖 G-03 | 部分（G-01、G-03） |
 | PB-13 | Babysit：驱动 PR 或 stack 到 merge-ready，按 conflicts、threads、CI 顺序处理 | [playbooks/babysit.md#L1-L23](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/babysit.md#L1-L23) | 标准 shell 可跑 `gh`；Bugbot 专属部分被排除，`watch-pr` 进入 `PI-05` | 部分（G-07、EXCL-02、PI-05） |
 | PB-14 | Shipping：每个 PR 独立验证，只落地从底部连续的 verified run | [playbooks/shipping.md#L1-L12](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/shipping.md#L1-L12) | 标准 shell `gh` 加子代理；queued watcher 依赖 `PI-05`，`origin` 用 `gh` 替代 | 部分（G-07、PI-05） |
-| PB-15 | Autonomous run：先写可检查的 exit predicate，再按事件或心跳驱动到完成 | [playbooks/autonomous-run.md#L1-L13](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/autonomous-run.md#L1-L13) | `create_goal` 自动续轮，`schedule_*` 做心跳，后台 job 完成通知做事件唤醒；无 `/loop` 命令 | 部分（G-10） |
+| PB-15 | Autonomous run：先写可检查的 exit predicate，再按事件或心跳驱动到完成 | [playbooks/autonomous-run.md#L1-L13](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/autonomous-run.md#L1-L13) | `create_goal` 自动续轮，`schedule_*` 按 RFC 5545 做定时心跳，后台 job 完成通知做事件唤醒；无 `/loop` 命令 | 部分（G-10） |
 | PB-16 | Orchestrate：多日、多个 stacked PR、协调者、子协调者、worker 三级 | [playbooks/orchestrate.md#L1-L25](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/orchestrate.md#L1-L25) | 子代理默认深度 1、容量 8；Project tracker 与 PR 事件订阅缺失；云 worker 被排除 | 部分（G-01、G-03、G-05、G-09、EXCL-04） |
 | PB-17 | Autopilot-full：每个 PR 一个 owner，swarm 验证后由 owner merge | [playbooks/autopilot-full.md#L1-L25](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/autopilot-full.md#L1-L25) | 本地 owner 可跑；云 VM、深度、forge 状态需配置或排除 | 部分（G-01、G-05、G-07、G-09） |
 | PB-18 | Autopilot-stack：同样 owner 循环，但只交付线性 stack 给操作者落地 | [playbooks/autopilot-stack.md#L1-L8](../upstream/cursor-plugins/pstack/skills/poteto-mode/playbooks/autopilot-stack.md#L1-L8) | 同 `PB-17`，但不需要 merge 权限 | 部分（G-01、G-05、G-07、G-09） |
@@ -331,14 +330,14 @@
 
 ### 3.3 可选插件覆盖
 
-以下插件都由 DSH 随安装提供，但默认未启用或需要显式 composition。只有明确启用后才算数。实验性状态取自各包 README 的标注。
+以下插件由 DSH 官方发布，默认未启用；多数随安装提供，CUA 通过 on-demand catalog 安装。只有明确启用后才算数。实验性状态取自各包 README 的标注。
 
 | 编号 | 可选插件 ID | 默认状态、实验性、启用条件 | 覆盖能力 | 支持范围与缺口 | 证据 |
 |---|---|---|---|---|---|
-| OPT-01 | `@deepseek-ai/dsh-experimental-tool-worktree`，配套 `@deepseek-ai/dsh-experimental-worktree` | 默认关闭；实验性；在 Plugins 的 Git worktrees 打开，或显式挂载两行 | `SUB-05`、`SUB-07`、`SKL-11`、`SKL-12`、`SKL-13`、`PB-07`、`PB-16` 至 `PB-18` 的本地隔离部分 | 支持创建新分支和检出目录，`from` 指定本地 ref，改变当前 Session 目录。缺口是无云 VM，不自动为每个子代理开工作树，`from` 不 fetch，多个候选要自己用 shell 建树 | [packages/experimental/tool-worktree/README.md#L5-L34](../upstream/deepseek-harness/packages/experimental/tool-worktree/README.md#L5-L34) · [E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2727-L2753) |
-| OPT-02 | `@deepseek-ai/dsh-experimental-forge-bundle` | 默认关闭；实验性；启用 Change requests and worktrees；需要宿主 `gh` 登录 | `PB-13`、`PB-14`、`PB-17`、`PB-18`、`PB-23` 的 GitHub 状态展示 | 支持 PR 状态轮询、检查汇总、review、mark ready、merge、Session 绑定和面板。缺口是模型侧没有 take 变更请求的工具，只有面板；没有 pstack 的 stack 或 queued-stack verdict；没有 `origin` CLI | [packages/experimental/forge-bundle/README.md#L5-L20](../upstream/deepseek-harness/packages/experimental/forge-bundle/README.md#L5-L20) · [E14](../upstream/deepseek-harness/docs/subsystems/forge.md#L5-L18) |
+| OPT-01 | `@deepseek-ai/dsh-experimental-tool-worktree`，配套 `@deepseek-ai/dsh-experimental-worktree` | 默认关闭；实验性；在 Plugins 的 Git worktrees 打开，或显式挂载两行 | `SUB-05`、`SUB-07`、`SKL-11`、`SKL-12`、`SKL-13`、`PB-07`、`PB-16` 至 `PB-18` 的本地隔离部分 | 支持创建新分支和检出目录，`from` 指定本地 ref，改变当前 Session 目录。缺口是无云 VM，不自动为每个子代理开工作树，`from` 不 fetch，多个候选要自己用 shell 建树 | [packages/experimental/tool-worktree/README.md#L5-L34](../upstream/deepseek-harness/packages/experimental/tool-worktree/README.md#L5-L34) · [E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2608-L2634) |
+| OPT-02 | `@deepseek-ai/dsh-experimental-forge-bundle` | 默认关闭；实验性；在 Plugins 启用 Change requests and worktrees；需要宿主 `gh` 登录 | `PB-13`、`PB-14`、`PB-17`、`PB-18`、`PB-23` 的 GitHub 状态展示 | 支持 PR 状态轮询、按需读取完整 checks、面板侧行内评论与 review 提交、mark ready、merge、Session 绑定和工作树选项。缺口是模型侧没有变更请求工具，只有面板；没有 pstack 的 stack 或 queued-stack verdict；没有 `origin` CLI | [packages/experimental/forge-bundle/README.md#L10-L65](../upstream/deepseek-harness/packages/experimental/forge-bundle/README.md#L10-L65) · [packages/experimental/client-ui-forge/README.md#L28-L40](../upstream/deepseek-harness/packages/experimental/client-ui-forge/README.md#L28-L40) · [E14](../upstream/deepseek-harness/docs/subsystems/forge.md#L5-L18) |
 | OPT-03 | `@deepseek-ai/dsh-browser-use` 加 `@deepseek-ai/dsh-experimental-browser-use-stagehand-native`、`@deepseek-ai/dsh-experimental-browser-use-playwright-mcp` 或 `@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp` | 默认关闭；provider 实验性；显式挂载 `dsh-browser-use` 加一个 provider | `SKL-18`、`SKL-19`、`PB-02`、`PB-03`、`PB-05`、`PB-09`、`PB-10` 的浏览器驱动 | 支持导航、点击、输入、截图、ARIA snapshot。缺口是没有视频录制；Stagehand 原生 provider 需要 Chromium 和独立模型；不同 provider 的 selector 与工具不同；单 provider 槽互斥 | [E15](../upstream/deepseek-harness/docs/subsystems/browser-use.md#L9-L15) · [packages/experimental/browser-use-stagehand-native/README.md#L9-L20](../upstream/deepseek-harness/packages/experimental/browser-use-stagehand-native/README.md#L9-L20) |
-| OPT-04 | `@deepseek-ai/dsh-cua-bundle` | 默认关闭；实验性；仅 macOS PTC；显式挂载 `dsh-computer-use` 加一个 provider | `SKL-18`、`SKL-19`、`PB-02`、`PB-05`、`PB-09`、`PB-10` 的桌面应用驱动 | 支持 macOS 应用点击、输入、截图，权限页和会话级授权。缺口是仅 macOS，Windows 未完成；没有视频录制；只在 PTC session；单 provider 槽互斥 | [packages/experimental/cua-bundle/README.md#L8-L22](../upstream/deepseek-harness/packages/experimental/cua-bundle/README.md#L8-L22) · [E16](../upstream/deepseek-harness/docs/subsystems/computer-use.md#L9-L27) |
+| OPT-04 | `@deepseek-ai/dsh-cua-bundle` | 按需安装、默认关闭；实验性；仅 macOS PTC；在 Plugins 安装并启用 bundle | `SKL-18`、`SKL-19`、`PB-02`、`PB-05`、`PB-09`、`PB-10` 的桌面应用驱动 | 支持 macOS 应用点击、输入、截图，权限页和会话级授权。缺口是仅 macOS，Windows 未完成；没有视频录制；只在 PTC session；单 provider 槽互斥 | [packages/experimental/cua-bundle/README.md#L10-L20](../upstream/deepseek-harness/packages/experimental/cua-bundle/README.md#L10-L20) · [E16](../upstream/deepseek-harness/docs/subsystems/computer-use.md#L9-L27) |
 | OPT-05 | `@deepseek-ai/dsh-experimental-terminal-bundle` | 默认关闭；实验性；显式挂载终端 bundle | `SKL-18`、`SKL-19` 的 CLI 或 TUI 驱动部分 | 支持六个持久终端工具，跨调用保持 shell 与 REPL 状态，支持后台 send 和 owner 隔离。缺口是只覆盖终端，不覆盖 GUI，不提供视频 | [packages/experimental/terminal-bundle/README.md#L8-L20](../upstream/deepseek-harness/packages/experimental/terminal-bundle/README.md#L8-L20) · [E17](../upstream/deepseek-harness/packages/experimental/tool-terminal/README.md#L10-L30) |
 | OPT-06 | `@deepseek-ai/dsh-experimental-session-search` | 默认关闭；实验性；Plugins 中启用，或加入 `dsh.profile.bundles` | `PATH-05`、`SKL-08`、`SKL-27`、`SKL-29`、`SKL-30`、`PB-12`、`PB-19`、`PB-22` 的历史读取 | 支持五个只读工具搜索、追踪、读取会话事件；跨会话要求精确 `cwd` 相同。缺口是没有 Cursor 的原始 `.jsonl` 路径；`session_search` 不含调用者会话，当前会话用 `session_event_search`；子代理转写覆盖深度未证实 | [E18](../upstream/deepseek-harness/packages/experimental/session-search/README.md#L8-L20) · [packages/experimental/tool-session-query/README.md#L12-L53](../upstream/deepseek-harness/packages/experimental/tool-session-query/README.md#L12-L53) |
 | OPT-07 | `@deepseek-ai/dsh-mcp-client` | 无默认服务器；稳定可选插件；每个 server 一条 client 配置 | `SKL-06`、`SKL-07` 的 MCP 证据源 | 支持每个 MCP server 的工具以 `mcp__<server>__<tool>` 形式出现，`mcp-resources` 列出有资源的 server。缺口是没有自动类别发现；每个 server 要用户配置；没有 server 时无工具 | [E19](../upstream/deepseek-harness/packages/mcp/mcp-client/README.md#L10-L24) · [packages/mcp/mcp-resources/README.md#L38-L40](../upstream/deepseek-harness/packages/mcp/mcp-resources/README.md#L38-L40) |
@@ -383,7 +382,7 @@
 
 #### G-05 工作树与云隔离
 
-- **支持什么**：`create_worktree` 从本地 commit、branch 或 tag 创建新分支和目录，改变当前 Session 目录；子代理接受 `cwd`；标准 shell 可以用 `git worktree add`。[E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2727-L2753)
+- **支持什么**：`create_worktree` 从本地 commit、branch 或 tag 创建新分支和目录，改变当前 Session 目录；子代理接受 `cwd`；标准 shell 可以用 `git worktree add`。[E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2608-L2634)
 - **不支持什么**：没有云 VM；没有自动为每个并行子代理分配独立工作树；`create_worktree` 的 `from` 只用本地 ref，不 fetch；调用后父 Session 目录改变，连续创建多个候选会以新目录为源。
 - **场景示例**：`/arena this, 5 candidates` 期望每个候选在独立工作树或目录（`SKL-12`）；DSH 默认所有子代理继承父级目录，必须由技能先 `git worktree add` 或逐个 `create_worktree` 加 `cwd`，否则会互相覆盖。
 - **建议**：在 `arena`、`swarm`、`autopilot` 技能文本里用标准 shell 建树并给每个子代理 `cwd`；`OPT-01` 只作为单树替代；`environment:"cloud"` 的云能力按 `EXCL-03` 排除。
@@ -399,8 +398,8 @@
 
 #### G-07 GitHub 与 forge 工具链
 
-- **支持什么**：标准 `bash` 可以运行 `gh`；可选 forge bundle 提供 PR 状态、检查、review、mark ready、merge 和面板；`gh` 是默认路径。[E12](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735) · [E14](../upstream/deepseek-harness/docs/subsystems/forge.md#L5-L18)
-- **不支持什么**：没有内置 PR 工具；没有 `origin` CLI；forge bundle 默认关闭且实验性，模型侧没有 take 变更请求工具；没有 pstack 的 `watch-pr` stack 或 queued-stack 判定。
+- **支持什么**：标准 `bash` 可以运行 `gh`；可选 forge bundle 提供 PR 状态轮询、完整 checks 详情、面板侧行内评论与 review 提交、mark ready、merge、Session 绑定和工作树选项；`gh` 是默认路径。[E12](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735) · [E14](../upstream/deepseek-harness/docs/subsystems/forge.md#L5-L18) · [packages/experimental/forge-bundle/README.md#L51-L65](../upstream/deepseek-harness/packages/experimental/forge-bundle/README.md#L51-L65)
+- **不支持什么**：没有模型侧 PR 或变更请求工具；没有 `origin` CLI；forge bundle 默认关闭且实验性；没有 pstack 的 `watch-pr` stack 或 queued-stack 判定。面板能发 review，不等于模型能在技能步骤中调用 review。
 - **场景示例**：`/babysit this pr. get it green.`（`PB-13`）在宿主没有 `gh` 时无法读 PR；有 `gh` 但没启用 forge bundle 时只能靠 shell 输出；`origin pr ...` 分支不存在。
 - **建议**：把 `gh` 作为 pstack profile 的运行前提；在技能里把 `origin` 分支统一改写为 `gh`；需要面板或轮询时启用 `OPT-02`；`watch-pr` 的具体判定由 `PI-05` 保证。
 - **涉及能力**：`PB-13`、`PB-14`、`PB-17`、`PB-18`、`PB-23`。
@@ -423,15 +422,15 @@
 
 #### G-10 `/loop` 事件唤醒
 
-- **支持什么**：`create_goal` 让同一 Session 跨自动续轮保持目标；`schedule_create` 做固定间隔或日历提醒；`bash run_in_background` 完成后由 job 通知唤醒父级。[E10](../upstream/deepseek-harness/docs/tool-catalog.md#L1480-L1607) · [E11](../upstream/deepseek-harness/docs/tool-catalog.md#L1386-L1476) · [E12](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735)
-- **不支持什么**：没有名为 `/loop` 的命令；`schedule_create` 最小间隔 60 秒；没有统一的监听 CI、merge、ref 前进的事件 watcher；后台 job 的完成通知不是通用事件总线。
-- **场景示例**：`/autonomous-run` 的 wake 规则是 CI 或 merge 事件，长心跳兜底（`PB-15`）；DSH 只能创建 goal 加定时提醒或后台 watcher job，不能直接订阅 forge 事件。
+- **支持什么**：`create_goal` 让同一 Session 跨自动续轮保持目标；`schedule_create` 接受一段 `DTSTART` 加 `RRULE` 的 RFC 5545 重复规则，并可投递到 `this_session`、`new_once` 或 `new`；`bash run_in_background` 完成后由 job 通知唤醒父级。[E10](../upstream/deepseek-harness/docs/tool-catalog.md#L1503-L1653) · [E11](../upstream/deepseek-harness/docs/tool-catalog.md#L1407-L1497) · [E12](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735)
+- **不支持什么**：没有名为 `/loop` 的命令；`schedule_*` 只按时间触发，不能订阅 CI、merge 或 ref 前进；没有统一的 forge 事件 watcher；后台 job 的完成通知不是通用事件总线。
+- **场景示例**：`/autonomous-run` 的 wake 规则是 CI 或 merge 事件，长心跳兜底（`PB-15`）；DSH 只能创建 goal 加 `schedule_create` 定时任务，或用后台 `bash` watcher 轮询，不能直接订阅 forge 事件。
 - **建议**：把 `autonomous-run` 映射到 `create_goal` 加定时 `schedule_create` 或后台 `bash` watcher；在技能里写清事件不可订阅时用轮询加 goal 续轮；`/loop` 字样改为 DSH 术语。
 - **涉及能力**：`PB-15`。
 
 #### G-11 todo 的 skip 状态
 
-- **支持什么**：`todo_write` 可以整表替换并显示三种状态。[E08](../upstream/deepseek-harness/docs/tool-catalog.md#L2653-L2699)
+- **支持什么**：`todo_write` 可以整表替换并显示三种状态。[E08](../upstream/deepseek-harness/docs/tool-catalog.md#L2534-L2580)
 - **不支持什么**：没有 `skip` 状态；无法在 tool schema 层表达这条步骤有意不做及原因。
 - **场景示例**：`/poteto-mode` 匹配 Bug fix playbook，某个步骤不适用（`SKL-01`），期望列表保留 `skip: <reason>`；DSH 只能把它写成 `completed` 的 content，状态语义变成已完成而不是跳过。
 - **建议**：在技能文本里规定 `skip: <reason> - <step>` 前缀，仍标 `completed` 以保持列表可见；不改 DSH todo 工具。
@@ -447,7 +446,7 @@
 
 #### G-13 Cursor 插件清单与缓存路径
 
-- **支持什么**：DSH 用 profile、bundle 和 `cordis.patch.yml` 安装；`bundledSkillDir` 可以指向包内技能根。[E01](../upstream/deepseek-harness/docs/subsystems/skills.md#L64-L89) · [E21](../upstream/deepseek-harness/packages/bundle/web-app/presets/standard.patch.yml#L4-L127)
+- **支持什么**：DSH 用 profile、bundle 和 `cordis.patch.yml` 安装；`bundledSkillDir` 可以指向包内技能根。[E01](../upstream/deepseek-harness/docs/subsystems/skills.md#L64-L89) · [E21](../upstream/deepseek-harness/packages/bundle/web-app/presets/standard.patch.yml#L4-L130)
 - **不支持什么**：没有 `.cursor-plugin/plugin.json`、`~/.cursor/plugins/` 缓存目录或 Cursor 插件版本选择逻辑。
 - **场景示例**：`poteto-agent` 说搜索 `~/.cursor/plugins/` 找 `skills/poteto-mode/SKILL.md`，多个副本按 `.cursor-plugin/plugin.json` 版本取最高（`AGT-01`、`PATH-02`）；DSH 没有这些路径。
 - **建议**：由父级在 prompt 里传 DSH 技能资源路径；插件安装时通过 `bundledSkillDir` 或自定义 provider 暴露技能；`poteto-agent` 的搜索逻辑改为使用父级给的绝对路径。
@@ -463,7 +462,7 @@
 
 #### G-15 外部工具链、视频与图像生成
 
-- **支持什么**：标准 `bash` 可以调用宿主已安装的 `node`、`java`、`mise`、`ffmpeg` 等命令；`read_image` 支持 PNG、JPEG、WebP、GIF。[E12](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735) · [docs/tool-catalog.md#L1110-L1127](../upstream/deepseek-harness/docs/tool-catalog.md#L1110-L1127)
+- **支持什么**：标准 `bash` 可以调用宿主已安装的 `node`、`java`、`mise`、`ffmpeg` 等命令；`read_image` 支持 PNG、JPEG、WebP、GIF。[E12](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735) · [docs/tool-catalog.md#L1131-L1148](../upstream/deepseek-harness/docs/tool-catalog.md#L1131-L1148)
 - **不支持什么**：DSH 没有内置的视频渲染、录屏、图像生成、TLA+、TLC、Java、mise 工具；这些命令是否安装、版本是否满足要求不由 DSH 保证；`ketchup-video` 的帧级自检和 `statechart` 的首次联网安装尤其依赖外部环境。
 - **场景示例**：`/statechart` 首次运行需要 `mise` 安装 TLC 与 Java 并联网（`SKL-33`、`SCR-05`）；`/ketchup-video` 需要渲染 mp4 并逐帧核对字幕（`SKL-32`）；`/teach` 在空间概念上要求生成图片（`SKL-07`）。
 - **建议**：`PI-09` 保留 TLC、Java、mise 的外部前提并做启动前探测；视频和图片生成降级为 mermaid 或截图，或明确要求宿主安装 ffmpeg 与图像生成服务，未满足时在回复中标注当前提交未证实。
@@ -530,7 +529,7 @@
 - **决策**：[docs/decisions/2026-10-28-pstack-plugin-tools.md](../docs/decisions/2026-10-28-pstack-plugin-tools.md#L1-L35)（Status: accepted，2026-10-28）。
 - **内容**：根 `src/` 注册四个工具行和两个 agent preset。`pstack_skill` 通过 `ctx.skills.get()` 按名称加载 pstack 技能与相对资源；`pstack_models` 只读枚举 `ctx.llm` 的 provider、model、effort；`pstack_subagent` 按 `role` 解析 `provider/model [effort]`，把 `agent` 映射到 `poteto-agent` 或 `comment-sicko` preset；`pstack_script` 以封闭 `id` 运行随包 Node 脚本；`comment-sicko` 的只读约束由 preset 内 `dsh-tool-fs` 关闭 `write` 与 `edit` 实现。
 - **能力范围**：`TOOL-04b`、`MOD-01`、`MOD-04`、`MOD-06`、`SET-01`、`SET-02`、`SET-04`、`SET-06`、`SUB-02`、`SUB-03`、`AGT-01`、`AGT-02`、`SCR-01` 至 `SCR-05`，以及依赖这些能力的 `SKL-01`、`SKL-02`、`SKL-05`、`SKL-06`、`SKL-07`、`SKL-11` 至 `SKL-14`、`SKL-24`、`SKL-27`、`SKL-29`、`SKL-30` 与相应 playbook。
-- **验收行为**：隐藏技能仍可被 pstack 路由但不进入普通模型目录；未知技能名返回明确错误；角色文件格式为 `$DSH_HOME/pstack-models.mdc`（本轮 core Issue #1 起与上游同名；决策记录已同步），重跑幂等，退役角色删除，缺失文件回退 `inherit-parent`，格式错误按行号报告；`pstack_subagent` 的 `general` 不挂 preset，两个命名 agent 走各自 preset；`pstack_script` 的 id 集合与 `src/internal/script-registry.ts` 一致；`comment-sicko` 的写工具被静态移除。
+- **验收行为**：隐藏技能仍可被 pstack 路由但不进入普通模型目录；未知技能名返回明确错误；角色文件格式为 `$DSH_HOME/pstack-models.mdc`（Issue #1 已验收，与上游同名；决策记录已同步），重跑幂等，退役角色删除，缺失文件回退 `inherit-parent`，格式错误按行号报告；`pstack_subagent` 的 `general` 不挂 preset，两个命名 agent 走各自 preset；`pstack_script` 的 id 集合与 `src/internal/script-registry.ts` 一致；`comment-sicko` 的写工具被静态移除。
 - **源码核验位置**：`src/*.ts`、`cordis.patch.yml`、`tests/**/*.test.ts`（模块职责见 [docs/architecture.md#L9-L21](../docs/architecture.md#L9-L21)；实现与 review 均已通过）。
 - **已知代价**：`pstack_script` 不经过 bash 审批与文件系统沙箱，这是 Desktop Electron 运行时的已接受代价；插件组合变更需要改 `cordis.patch.yml` 并重新安装。
 
@@ -632,11 +631,11 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | MOD-05 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（provider/model [effort]） |
 | MOD-06 | 已实现 | 通过 | 已记录（§2.3；dsh.md Models） | 完整（PI-02 角色清单） |
 | SET-01 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02） |
-| SET-02 | 已实现（本轮 #1） | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；读取 `$DSH_HOME/pstack-models.mdc`，旧 `poteto-models.mdc` 按缺失回退 `inherit-parent`） |
+| SET-02 | 已实现（Issue #1） | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；读取 `$DSH_HOME/pstack-models.mdc`，旧 `poteto-models.mdc` 按缺失回退 `inherit-parent`） |
 | SET-03 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | SET-04 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；按模型目录校验 effort） |
 | SET-05 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
-| SET-06 | 已实现（本轮 #1） | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；写入 `$DSH_HOME/pstack-models.mdc`，重跑幂等，格式错误按行号报告） |
+| SET-06 | 已实现（Issue #1） | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（PI-02；写入 `$DSH_HOME/pstack-models.mdc`，重跑幂等，格式错误按行号报告） |
 | SET-07 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整（角色面板扇出） |
 | SET-08 | 已实现 | 通过 | 已记录（§2.4；dsh.md setup-pstack） | 完整 |
 | PATH-01 | 已实现 | 通过 | 已记录（§2.5；dsh.md Paths） | 完整 |
@@ -707,7 +706,7 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | PB-12 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02；转写核验需 OPT-06，G-03） |
 | PB-13 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-05；需 gh，Bugbot 启动等按 EXCL-02 排除） |
 | PB-14 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-05；需 gh，G-07） |
-| PB-15 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（create_goal 加 schedule 或 watcher；forge 事件用轮询，G-10） |
+| PB-15 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（create_goal 加 RFC 5545 schedule 或 watcher；forge 事件用轮询，G-10） |
 | PB-16 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（OPT-08 或 pstack_subagent；工作树与深度配置；EXCL-04） |
 | PB-17 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02、PI-05；本地工作树与 gh；云 VM 排除） |
 | PB-18 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02、PI-05；本地工作树与 gh；云 VM 排除） |
@@ -831,11 +830,11 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 
 | 编号 | 未决问题 | 当前证据与影响 |
 |---|---|---|
-| U-01 | DSH 是否有稳定的屏幕视频录制工具链 | 当前工具目录只有 `read_image`（PNG、JPEG、WebP、GIF）和 browser 或 CUA 截图能力，没有视频录制或视频渲染工具。pstack 的 benny control-adapter 要求 recording；非 benny 的 verification skill 多数只需要截图。若必须视频，需要外部 ffmpeg 或系统录制，标为未证实。[docs/tool-catalog.md#L1110-L1127](../upstream/deepseek-harness/docs/tool-catalog.md#L1110-L1127) |
+| U-01 | DSH 是否有稳定的屏幕视频录制工具链 | 当前工具目录只有 `read_image`（PNG、JPEG、WebP、GIF）和 browser 或 CUA 截图能力，没有视频录制或视频渲染工具。pstack 的 benny control-adapter 要求 recording；非 benny 的 verification skill 多数只需要截图。若必须视频，需要外部 ffmpeg 或系统录制，标为未证实。[docs/tool-catalog.md#L1131-L1148](../upstream/deepseek-harness/docs/tool-catalog.md#L1131-L1148) |
 | U-02 | DSH `ask_user_question` 在 headless 或非交互 profile 的实际回答者 | `user-questions` 服务只在 live root 有 answerer；无 answerer 时 `ask` 会失败或阻塞。pstack 的 Claude Code 适配在 `-p` 模式改成纯文本提问；DSH headless 的命令行行为当前提交未证实。[docs/subsystems/user-questions.md#L280-L293](../upstream/deepseek-harness/docs/subsystems/user-questions.md#L280-L293) |
 | U-03 | `@deepseek-ai/dsh-experimental-session-search` 对子代理 transcript 的覆盖深度 | `session_trace` 能追踪子代理，但 Cursor 的 `subagents/*.jsonl` 文件路径不存在；跨会话要求精确 `cwd`。`reflect` 的自审和 `show-me-your-work` 的 transcript audit 可能只能读到父会话事件。[E18](../upstream/deepseek-harness/packages/experimental/session-search/README.md#L8-L20) |
 | U-04 | DSH browser provider 的截图与 ARIA 输出是否足够 pstack 的视频或截图证据 | Stagehand、Playwright、Chrome DevTools 的 screenshot 可用，但不同 provider 的工具名、页面身份标记和清理语义未在本审查全部实测；`create-verification-skill` 里的二实例并行也依赖具体 provider。标为待实现时验证。[E15](../upstream/deepseek-harness/docs/subsystems/browser-use.md#L9-L15) |
-| U-05 | DSH `worktree` 服务能否安全支持同一 Session 连续创建多个候选工作树 | `create_worktree` 会改变当前 Session 目录；连续调用时的源仓库选择与 `from` 解析在文档中未给出多候选示例；`arena` 的每候选独立工作树需用 shell `git worktree add` 或逐次显式 `cwd` 验证。[E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2727-L2753) |
+| U-05 | DSH `worktree` 服务能否安全支持同一 Session 连续创建多个候选工作树 | `create_worktree` 会改变当前 Session 目录；连续调用时的源仓库选择与 `from` 解析在文档中未给出多候选示例；`arena` 的每候选独立工作树需用 shell `git worktree add` 或逐次显式 `cwd` 验证。[E13](../upstream/deepseek-harness/docs/tool-catalog.md#L2608-L2634) |
 | U-06 | `gh`、`git`、`node`、`java`、`mise`、`ffmpeg` 在 DSH 桌面和 headless 宿主上的可用性 | DSH 的 `bash` 工具执行 `bash -c`，但目标机器是否安装这些命令、`gh` 是否登录、Java 与 TLC 与 mise 版本是否满足 `statechart` 要求不在本仓库控制内；脚本 Node 重写只解决运行时语言，不解决外部命令。[E12](../upstream/deepseek-harness/docs/tool-catalog.md#L695-L735) |
 
 已核销的未决项：

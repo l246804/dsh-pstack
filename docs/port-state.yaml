@@ -1,8 +1,8 @@
 schema: 1
 port:
-  state: idle
-  round: "#1"
-  phase: done
-  started_at: "2026-10-29T23:08:09+08:00"
-  updated_at: "2026-10-30T11:31:30+08:00"
+  state: active
+  round: baseline
+  phase: audit
+  started_at: "2026-10-30T11:56:52+08:00"
+  updated_at: "2026-10-30T11:56:52+08:00"
 blocker: null
