@@ -28,8 +28,11 @@ import {
   type OptionalPluginStatus,
   type OptionalPluginsApi,
 } from "./optional-plugins-state.ts";
-import { NS, type PstackRolesLocaleKey } from "./locales.ts";
-import type { Translate } from "./RoleSettingsPage.tsx";
+import {
+  NS,
+  type PstackPluginsLocaleKey,
+  type PstackPluginsTranslate,
+} from "./optional-plugins-locales.ts";
 
 /** Registration face shared by the recommendation section and activation guidance. */
 export type OptionalPluginsFace = { readonly optionalPlugins: OptionalPluginsApi };
@@ -43,7 +46,7 @@ const COLOR_ERROR = "var(--dsw-alias-state-error-primary)";
 const COLOR_SUCCESS = "var(--dsw-alias-state-success-primary)";
 const COLOR_WARN = "var(--dsw-alias-state-warn-primary)";
 
-const STATUS_KEY: Record<OptionalPluginStatus, PstackRolesLocaleKey> = {
+const STATUS_KEY: Record<OptionalPluginStatus, PstackPluginsLocaleKey> = {
   enabled: "pluginStatusEnabled",
   off: "pluginStatusOff",
   missing: "pluginStatusMissing",
@@ -51,7 +54,7 @@ const STATUS_KEY: Record<OptionalPluginStatus, PstackRolesLocaleKey> = {
   error: "pluginStatusError",
 };
 
-const GROUP_KEY: Record<OptionalPluginGroup, PstackRolesLocaleKey> = {
+const GROUP_KEY: Record<OptionalPluginGroup, PstackPluginsLocaleKey> = {
   sessions: "groupSessions",
   verification: "groupVerification",
   "multi-agent": "groupMultiAgent",
@@ -59,7 +62,7 @@ const GROUP_KEY: Record<OptionalPluginGroup, PstackRolesLocaleKey> = {
 
 const COPY: Record<
   OptionalPluginId,
-  { readonly title: PstackRolesLocaleKey; readonly detail: PstackRolesLocaleKey }
+  { readonly title: PstackPluginsLocaleKey; readonly detail: PstackPluginsLocaleKey }
 > = {
   "OPT-01": { title: "opt01Title", detail: "opt01Detail" },
   "OPT-02": { title: "opt02Title", detail: "opt02Detail" },
@@ -110,7 +113,7 @@ export function isNonBundleRow(row: OptionalPluginRow): boolean {
 /** Text for one change result. */
 export function changeResultText(
   application: BundleChange["application"] | "error",
-  t: Translate,
+  t: PstackPluginsTranslate,
   reason?: string,
 ): string {
   if (application === "applied") return t("resultApplied");
@@ -142,7 +145,7 @@ export interface OptionalPluginsViewProps {
   readonly onToggle: (id: OptionalPluginId, enabled: boolean) => void;
   readonly onEnableRecommended: () => void;
   readonly onRetry: () => void;
-  readonly t: Translate;
+  readonly t: PstackPluginsTranslate;
 }
 
 /** Render the recommendation section; all decisions come from props. */
@@ -243,7 +246,7 @@ function OptionalPluginCard(props: {
   readonly busy: boolean;
   readonly message: { readonly tone: "ok" | "error"; readonly text: string } | undefined;
   readonly onToggle: (id: OptionalPluginId, enabled: boolean) => void;
-  readonly t: Translate;
+  readonly t: PstackPluginsTranslate;
 }): ReactElement {
   const { row, busy, message, onToggle, t } = props;
   const { definition } = row;
@@ -451,7 +454,7 @@ export function OptionalPluginsActivationView(props: {
   readonly count: number;
   readonly onOpen: () => void;
   readonly onDismiss: () => void;
-  readonly t: Translate;
+  readonly t: PstackPluginsTranslate;
 }): ReactElement {
   const { count, onOpen, onDismiss, t } = props;
   return (

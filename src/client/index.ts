@@ -16,13 +16,15 @@ import type {} from "@deepseek-ai/dsh-client-ui-plugin-manager/client";
 import type {} from "@deepseek-ai/dsh-client-ui-renderer/client";
 import type {} from "@deepseek-ai/dsh-client-ui-slots";
 import type { PstackRolesLocaleKey } from "./locales.ts";
+import type { PstackPluginsLocaleKey } from "./optional-plugins-locales.ts";
 
 import { pstackRolesRemote, type PstackRolesNamespace } from "../remote.ts";
 import { OptionalPluginsActivation } from "./OptionalPluginsPage.tsx";
 import { PstackBundleConfigPage } from "./PstackBundleConfigPage.tsx";
 import type { PstackRolesApi } from "./RoleSettingsPage.tsx";
 import type { BundleChange, BundleSnapshot, OptionalPluginsApi } from "./optional-plugins-state.ts";
-import { NS, en, zh } from "./locales.ts";
+import { NS as ROLES_NS, en as rolesEn, zh as rolesZh } from "./locales.ts";
+import { NS as PLUGINS_NS, en as pluginsEn, zh as pluginsZh } from "./optional-plugins-locales.ts";
 
 /** The public `pluginManager` Remote methods this page reads, in the Gateway's result envelope. */
 interface PluginManagerRemote {
@@ -41,8 +43,10 @@ interface PluginManagerRemote {
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
-    /** dsh-pstack bundle page copy (role editor and recommended plugins). */
+    /** dsh-pstack role model configuration page copy. */
     pstackRoles: PstackRolesLocaleKey;
+    /** dsh-pstack recommended optional plugins page copy. */
+    pstackPlugins: PstackPluginsLocaleKey;
   }
 }
 
@@ -53,7 +57,14 @@ export const inject = ["remote", "slots", "locale", "remote.pluginManager"];
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(pstackRolesRemote);
 
-  ctx.effect(() => ctx.locale.register(NS, { en, zh }), "pstack-roles.locale");
+  ctx.effect(
+    () => ctx.locale.register(ROLES_NS, { en: rolesEn, zh: rolesZh }),
+    "pstack-roles.locale",
+  );
+  ctx.effect(
+    () => ctx.locale.register(PLUGINS_NS, { en: pluginsEn, zh: pluginsZh }),
+    "pstack-plugins.locale",
+  );
 
   const namespace = (ctx.remote as unknown as PstackRolesNamespace).pstackRoles;
   const api: PstackRolesApi = {
@@ -94,8 +105,8 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       {
         name: "plugins.bundle.config",
         key: "dsh-pstack",
-        locale: NS,
-        inject: () => ({ api, optionalPlugins }),
+        locale: ROLES_NS,
+        inject: () => ({ api, optionalPlugins, pluginsT: ctx.locale.bind(PLUGINS_NS) }),
       },
       PstackBundleConfigPage,
     ),
@@ -106,7 +117,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       {
         name: "plugins.bundle.activation",
         key: "dsh-pstack",
-        locale: NS,
+        locale: PLUGINS_NS,
         inject: () => ({ optionalPlugins }),
       },
       OptionalPluginsActivation,

@@ -8,12 +8,16 @@ import {
   OptionalPluginsView,
 } from "../src/client/OptionalPluginsPage.tsx";
 import { optionalPluginRows } from "../src/client/optional-plugins-state.ts";
-import { en, zh, type PstackRolesLocaleKey } from "../src/client/locales.ts";
-import type { Translate } from "../src/client/RoleSettingsPage.tsx";
+import {
+  en,
+  zh,
+  type PstackPluginsLocaleKey,
+  type PstackPluginsTranslate,
+} from "../src/client/optional-plugins-locales.ts";
 
-function translator(dictionary: Record<PstackRolesLocaleKey, string>): Translate {
+function translator(dictionary: Record<PstackPluginsLocaleKey, string>): PstackPluginsTranslate {
   return (key, vars) => {
-    let value = dictionary[key];
+    let value = (dictionary as Record<string, string>)[key] ?? key;
     for (const [name, replacement] of Object.entries(vars ?? {})) {
       value = value.replaceAll(`{${name}}`, String(replacement));
     }
@@ -51,7 +55,7 @@ const bundles: readonly BundleSnapshot[] = [
   }),
 ];
 
-function render(translate: Translate = t): string {
+function render(translate: PstackPluginsTranslate = t): string {
   return renderToStaticMarkup(
     <OptionalPluginsView
       rows={optionalPluginRows(bundles)}

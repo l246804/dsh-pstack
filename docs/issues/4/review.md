@@ -4,9 +4,9 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: implement
+- stage: review
 - EXT: EXT-004
-- 公开状态: open（2026-10-30 创建；标题、正文与“A+B、默认推荐 OPT-01 + OPT-06、OPT-02 标注 GitHub 建议、逐项开关 + 一键启用推荐项”经用户确认；2026-10-30 分诊为 EXT-004；2026-10-30 实现审查未通过，待修复 locale 分层）
+- 公开状态: open（2026-10-30 创建；标题、正文与“A+B、默认推荐 OPT-01 + OPT-06、OPT-02 标注 GitHub 建议、逐项开关 + 一键启用推荐项”经用户确认；2026-10-30 分诊为 EXT-004；2026-10-30 实现审查未通过，待修复 locale 分层；2026-10-30 完成 F-EXT-004-01 修复，待复核）
 - 分诊证据提交: 本仓 `d92376bac594b54d13660a5825f356bb5227cd21` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
 
 ## 复核
@@ -42,10 +42,11 @@
 
 ## 实现
 
-- 扩展实现：`src/internal/optional-plugins.ts`、`src/client/optional-plugins-state.ts`、`src/client/OptionalPluginsPage.tsx`、`src/client/PstackBundleConfigPage.tsx`、`src/client/index.ts`、`src/client/locales.ts`。
+- 扩展实现：`src/internal/optional-plugins.ts`、`src/client/optional-plugins-state.ts`、`src/client/OptionalPluginsPage.tsx`、`src/client/PstackBundleConfigPage.tsx`、`src/client/index.ts`、`src/client/locales.ts`、`src/client/optional-plugins-locales.ts`。
 - 页面行为：bundle 详情页顶部提供“推荐插件”区，按任务场景分组显示 `OPT-01` 至 `OPT-09` 的状态、包名、推荐/GitHub 建议/冲突标签；`OPT-01` 与 `OPT-06` 为默认推荐，一键启用按顺序执行并汇总结果；`OPT-08` 不提供开关，`OPT-03`、`OPT-07` 等非 bundle 项只给文档指引。
+- Locale 分层：`src/client/optional-plugins-locales.ts` 以 `NS = "pstackPlugins"` 提供推荐插件区与启用引导的完整 `en` / `zh` 词典；`src/client/locales.ts` 只保留角色模型配置页的 `pstackRoles`；`apply` 分别注册两个命名空间并注入推荐区 translator，`plugins.bundle.activation` 使用 `pstackPlugins`。
 - 启用引导：注册 `plugins.bundle.activation`（key `dsh-pstack`），首次启用 dsh-pstack 后显示“还有 N 个推荐插件未开启”，点击打开 bundle 详情页；`localStorage` 标记已读，不重复打扰。
-- 文档与验证：根 `README.md` / `README.zh.md` 增加推荐插件页说明，`docs/architecture.md` 与 `docs/glossary.md` 同步；`vp check`、`vp test`（93 例）、`vp run @internal/pstack#check:harness-doc`、`node pstack/scripts/generate-pstack-harness-tree.mjs --check` 见 EXT 工作文件。
+- 文档与验证：根 `README.md` / `README.zh.md` 增加推荐插件页说明，`docs/architecture.md` 与 `docs/glossary.md` 同步；`vp check`（0 errors）、`vp test`（16 个文件 / 95 个用例，含 `tests/bundle-config-page.test.tsx` 2 例）、`vp run @internal/pstack#check:harness-doc`、`node pstack/scripts/generate-pstack-harness-tree.mjs --check`、`node pstack/scripts/port-fixes.mjs replay` 与 `vp run build` 均通过；详见 EXT 工作文件。
 - 范围：未修改 port 基线路径（`pstack/runtime/`、`pstack/harness/`、`pstack/README.md`）。
 
 ## 审查
