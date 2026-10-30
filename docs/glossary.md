@@ -52,6 +52,11 @@
 Plugins → dsh-pstack bundle 页中的 Client 配置页：读取角色文件的状态与 17 个角色值，按 `pstack_models` 实时目录选择 `provider/model [effort]`，单角色保存或重置回 `inherit-parent`。Host 侧服务是 `pstackRoles`（`src/roles.ts`），Client 侧是 `src/client/` 与手写的 `src/remote.ts`。
 反例：不是 `pstack_models` 工具（只读目录），也不是角色文件本身；页面只编辑角色文件，不改变 port 基线。
 
+## 推荐插件页（recommended plugins page）
+
+Plugins → dsh-pstack bundle 页顶部的“推荐插件”区，以及 dsh-pstack 首次启用后经 `plugins.bundle.activation` 出现的一次性引导：按 `OPT-01` 至 `OPT-09` 展示可选 DSH 插件的分组、当前 bundle 状态、平台与冲突限制。默认推荐 `OPT-01` 与 `OPT-06`；逐项开关与“一键启用推荐项”都通过 `pluginManager` Remote 由用户点击触发。目录唯一来源是 `src/internal/optional-plugins.ts`。
+反例：不是 README 的“可选 DSH 插件”说明表（只描述能力），也不是 port 基线能力；页面不自动启用任何插件。
+
 ## 上游（upstream）
 
 `upstream/cursor-plugins`（生成树来源）与 `upstream/deepseek-harness`（DSH 宿主参考）两个 git 子模块。

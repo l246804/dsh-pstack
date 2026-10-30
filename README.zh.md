@@ -104,6 +104,10 @@
 
 打开 **Plugins → Installed plugins → dsh-pstack**，无需手写文件即可查看和编辑 `$DSH_HOME/pstack-models.mdc`。页面显示文件绝对路径与 `missing` / `loaded` / `unreadable` 状态，按 manifest 顺序列出全部 17 个角色，并从 `pstack_models` 的实时目录选择每个角色的 provider、model 与该模型声明的 effort。`inherit-parent` 与 `auto` 仍可选择，每个角色都有重置按钮，列表角色保留全部 route。保存只改该角色行；其他角色、`# budget` 行以及未知或格式错误行保持不变。该文件与 `/setup-pstack` 共用，下一次 `pstack_subagent` 委派会重新读取，无需重启。
 
+### 推荐插件页
+
+同一个 bundle 页顶部是 **推荐插件** 区，覆盖 `OPT-01` 至 `OPT-09`。每行显示任务场景分组、包名、实时 `enabled` / `off` / `missing` / `unsupported-platform` / `error` 状态，以及平台或冲突说明。`OPT-01` 与 `OPT-06` 组成默认推荐集；**一键启用推荐项** 按此顺序启用并汇总 `applied`、`restart-required`、`failed` 结果。打开页面只读取 bundle 列表，任何 profile 变更都需要点击。`@deepseek-ai/dsh-mcp-client` 这类非 bundle 项只给文档指引，`OPT-08` 只提示与 `pstack_subagent` 的冲突；dsh-pstack 首次启用后，`plugins.bundle.activation` 会用一次性提示说明还有多少推荐插件未开启，并链接回本区。
+
 ## skills 目录
 
 `skills/` 不是 pstack 上游目录。它只收 pstack 没提供、真实项目开发中又需要的技能。源目录是 `skills/authored/` 和 `skills/.agents/skills/`，构建后分别发布到 `dist/skills/authored/` 和 `dist/skills/vendored/`。`vendored` 逐字保留开源上游，`authored` 由本仓维护。pstack 技能对它们的引用只是使用关系，不改变收录标准。

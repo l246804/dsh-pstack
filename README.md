@@ -104,6 +104,10 @@ The `poteto-agent` and `comment-sicko` presets handle implementation delegation 
 
 Open **Plugins → Installed plugins → dsh-pstack** to view and edit `$DSH_HOME/pstack-models.mdc` without hand-writing the file. The page shows the absolute file path and its `missing` / `loaded` / `unreadable` state, lists all 17 roles in manifest order, and offers the live `pstack_models` directory for each role's provider, model, and declared effort. `inherit-parent` and `auto` remain selectable, each role has a reset button, and list roles keep every route. Saving changes only that role's line; other roles, the `# budget` line, and unknown or malformed lines stay untouched. The same file is shared with `/setup-pstack` and is re-read by the next `pstack_subagent` delegation without a restart.
 
+### Recommended plugins page
+
+The same bundle page starts with a **Recommended plugins** section covering `OPT-01` through `OPT-09`. Each row shows its task-scenario group, package names, live `enabled` / `off` / `missing` / `unsupported-platform` / `error` status, and platform or conflict notes. `OPT-01` and `OPT-06` form the default set; **Enable recommended plugins** enables them in that order and reports `applied`, `restart-required`, and `failed` outcomes. Opening the page only reads the bundle list, and every profile change needs a click. Non-bundle entries such as `@deepseek-ai/dsh-mcp-client` show documentation guidance instead of a switch, `OPT-08` only warns about the `pstack_subagent` conflict, and after dsh-pstack is first switched on a one-time `plugins.bundle.activation` notice tells you how many recommended plugins are still off and links back to this section.
+
 ## Skills directory
 
 `skills/` is not an upstream pstack directory. It contains skills that pstack does not provide but real projects need. The source directories are `skills/authored/` and `skills/.agents/skills/`. The build publishes them to `dist/skills/authored/` and `dist/skills/vendored/`. `vendored` preserves open-source upstreams verbatim, while this repository maintains `authored`. References from pstack skills do not change these inclusion criteria.

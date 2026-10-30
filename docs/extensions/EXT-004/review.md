@@ -1,6 +1,6 @@
 # EXT-004：pstack 推荐可选插件启用页
 
-- status: implement
+- status: review
 - repair_target: extension
 - Issue: [#4](https://github.com/l246804/dsh-pstack/issues/4)
 - 建立：2026-10-30（Issue #4 创建）
@@ -20,7 +20,13 @@
 
 ## 实现与验证
 
-待实现（下一步 `/pstack-port implement #4`）。
+- 目录：`src/internal/optional-plugins.ts` 为 `OPT-01` 至 `OPT-09` 的唯一目录，记录分组、包名、可切换 bundle 与默认推荐集；`tests/optional-plugins.test.ts` 对账 `pstack/harness/docs/harness/dsh.md` 的每个 OPT 行与包名，并核对两版 README 覆盖全部包名。
+- 状态与开关：`src/client/optional-plugins-state.ts` 将 `BundleInfo` 映射为 `enabled` / `off` / `missing` / `unsupported-platform` / `error`；只对 `off` 或 `enabled` 的 bundle 行提供开关。`OPT-08` 固定 `switchable: false`；`OPT-03`、`OPT-07` 等非 bundle 项只给文档指引。
+- 页面：`src/client/OptionalPluginsPage.tsx` 的推荐区按“会话与隔离 / 验证与证据 / 多代理”分组，显示推荐、GitHub 建议与冲突标签；`src/client/PstackBundleConfigPage.tsx` 把它放在角色模型配置页之前。打开页面只调用 `pluginManager.listBundles()`，不修改 profile。
+- 一键启用：`enableRecommendedPlugins()` 按 `OPT-01`、`OPT-06` 顺序逐项调用 `pluginManager.setBundleEnabled(name, true)`，失败后继续并汇总 `applied` / `restart-required` / `failed` / `skipped`；`tests/optional-plugins.test.ts` 覆盖顺序、失败继续与缺失跳过。
+- 启用引导：`plugins.bundle.activation` 注册以 `dsh-pstack` 为 key 的一次性提示，显示未开启推荐项数量，点击打开 bundle 详情页；`GuidanceStorage` 使用 `localStorage` 标记已读，`tests/optional-plugins.test.ts` 覆盖 dismissal。
+- 验证：`vp check` 通过（0 errors，仅保留 `pstack/scripts/generate-pstack-harness-tree.mjs` 既有 warning）；`vp test` 15 个文件 93 个用例通过，其中新增 `tests/optional-plugins.test.ts` 11 例、`tests/optional-plugins-page.test.tsx` 6 例；`vp run @internal/pstack#check:harness-doc`、`node pstack/scripts/generate-pstack-harness-tree.mjs --check` 与 `vp run build` 均通过。
+- 范围：未改 `pstack/runtime/`、`pstack/harness/`、`pstack/README.md` 或 port 能力；新增代码只使用 Client 侧 `pluginManager` 公共 Remote 与现有 slot，不新增 Host 服务。
 
 ## 审查证据
 

@@ -1,11 +1,12 @@
 /**
- * Browser half of dsh-pstack: the role model configuration page on the
- * Plugins → dsh-pstack bundle detail.
+ * Browser half of dsh-pstack: the role model configuration page and the
+ * recommended optional plugins on the Plugins → dsh-pstack bundle detail.
  *
  * The browser bundle is loaded by `dsh-client-modules` as a classic script and
- * registers the page through the `plugins.bundle.config` slot. Its Remote
- * contribution is hand-written in `../remote.ts`; no Typert generation chain is
- * required at build time.
+ * registers the page through the `plugins.bundle.config` slot and the one-time
+ * guidance through `plugins.bundle.activation`. Its Remote contribution is
+ * hand-written in `../remote.ts`; no Typert generation chain is required at
+ * build time.
  */
 
 import type { Context } from "@deepseek-ai/cordis";
@@ -17,20 +18,38 @@ import type {} from "@deepseek-ai/dsh-client-ui-slots";
 import type { PstackRolesLocaleKey } from "./locales.ts";
 
 import { pstackRolesRemote, type PstackRolesNamespace } from "../remote.ts";
-import { RoleSettingsPage, type PstackRolesApi } from "./RoleSettingsPage.tsx";
+import { OptionalPluginsActivation } from "./OptionalPluginsPage.tsx";
+import { PstackBundleConfigPage } from "./PstackBundleConfigPage.tsx";
+import type { PstackRolesApi } from "./RoleSettingsPage.tsx";
+import type { BundleChange, BundleSnapshot, OptionalPluginsApi } from "./optional-plugins-state.ts";
 import { NS, en, zh } from "./locales.ts";
+
+/** The public `pluginManager` Remote methods this page reads, in the Gateway's result envelope. */
+interface PluginManagerRemote {
+  listBundles(): Promise<
+    | { readonly ok: true; readonly value: readonly BundleSnapshot[] }
+    | { readonly ok: false; readonly error: unknown }
+  >;
+  setBundleEnabled(
+    name: string,
+    enabled: boolean,
+  ): Promise<
+    | { readonly ok: true; readonly value: BundleChange }
+    | { readonly ok: false; readonly error: unknown }
+  >;
+}
 
 declare module "@deepseek-ai/dsh-client-ui-slots" {
   interface LocaleNamespaceMap {
-    /** Role model configuration page copy. */
+    /** dsh-pstack bundle page copy (role editor and recommended plugins). */
     pstackRoles: PstackRolesLocaleKey;
   }
 }
 
 /** Browser services this plugin needs before `apply` runs. */
-export const inject = ["remote", "slots", "locale"];
+export const inject = ["remote", "slots", "locale", "remote.pluginManager"];
 
-/** Mount the Remote contribution and register the configuration page. */
+/** Mount the Remote contribution and register the bundle page and activation guidance. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(pstackRolesRemote);
 
@@ -55,15 +74,42 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     },
   };
 
+  const pluginManager = (ctx.remote as unknown as { readonly pluginManager: PluginManagerRemote })
+    .pluginManager;
+  const optionalPlugins: OptionalPluginsApi = {
+    listBundles: async () => {
+      const result = await pluginManager.listBundles();
+      if (!result.ok) throw result.error;
+      return result.value;
+    },
+    setBundleEnabled: async (name, enabled) => {
+      const result = await pluginManager.setBundleEnabled(name, enabled);
+      if (!result.ok) throw result.error;
+      return result.value;
+    },
+  };
+
   ctx.slots.inject("plugins.bundle.config", () =>
     ctx.slots.register(
       {
         name: "plugins.bundle.config",
         key: "dsh-pstack",
         locale: NS,
-        inject: () => ({ api }),
+        inject: () => ({ api, optionalPlugins }),
       },
-      RoleSettingsPage,
+      PstackBundleConfigPage,
+    ),
+  );
+
+  ctx.slots.inject("plugins.bundle.activation", () =>
+    ctx.slots.register(
+      {
+        name: "plugins.bundle.activation",
+        key: "dsh-pstack",
+        locale: NS,
+        inject: () => ({ optionalPlugins }),
+      },
+      OptionalPluginsActivation,
     ),
   );
 
