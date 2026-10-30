@@ -1,0 +1,12 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+
+# The playground runs a built artifact and start.mjs rewrites profile files on
+# every launch. HMR watches those files and can reload/dispose plugins mid
+# startup (observed as "HMR is disposed" and client plugins failing to
+# activate), so the playground disables live reload.
+- id: hmr
+  disabled: true
+- id: client-hmr
+  disabled: true

@@ -45,3 +45,4 @@ dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。仓库�
 ## Local scratch
 
 - 本地验证的临时文件一律写仓库 `.tmp/`（已 gitignore，`vp check` 不扫描）；Bash 每次调用是独立沙箱，`/tmp` 不跨调用保留，不要用它承载后续步骤要读的文件。
+- 真实插件运行测试统一走 `playground/`（见 `docs/decisions/2026-10-30-playground-real-plugin-testing.md`）：不要在 `~/.dsh` 或 `.tmp` 下另建测试用 home/profile；能用 `dsh` 命令判定的检查也在 playground 内跑。启动用 `vp run playground`（task 在根 `vite.config.ts`）。

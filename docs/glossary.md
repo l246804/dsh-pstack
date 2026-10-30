@@ -76,3 +76,8 @@ Plugins → dsh-pstack bundle 页顶部的“推荐插件”区，以及 dsh-pst
 ## 审查 finding 状态（finding status）
 
 技能审查工作文件中的 finding 状态：`open`（待修复）、`reopened`（重新打开）、`fixed-pending-review`（修复待复核）、`closed`（关闭）、`blocked`（需用户决策或缺少公共能力，不参与普通修复，汇总到 `阻断摘要`）。
+
+## 真实插件测试场（playground）
+
+`playground/`：开发期唯一的真实运行测试环境。提交的 `playground/profile/` 是从随附 `web` 模板复制后加入 `dsh-pstack` 的可移植 profile；运行期 DSH home 固定为 `playground/.dsh`（由 `playground/.gitignore` 忽略，不提交），启动端口固定 `17353`。`playground/` 是 vite-plus 子包 `@internal/playground`；`start.mjs` 每次启动前同步 profile、宿主凭据与模型配置并安装本仓插件（宿主模型更新后自动跟随），由根 `vite.config.ts` 的 `playground` task（`vp run playground`）启动；验证在终端直接对 `playground/.dsh` 与 profile 跑 `dsh` 命令，不内置断言脚本；UI 与真实会话行为由用户交互确认。
+反例：不是 `tests/` 的 vitest（mock 宿主的单元测试）；也不是宿主 `~/.dsh` 或 `.tmp` 下的一次性测试环境。

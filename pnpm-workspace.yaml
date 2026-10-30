@@ -8,6 +8,7 @@ shellEmulator: true
 packages:
   - pstack
   - skills
+  - playground
 
 allowBuilds:
   simple-git-hooks: true
