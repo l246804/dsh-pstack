@@ -51,6 +51,6 @@
 
 ## 审查
 
-- 审查（2026-10-30，`review #2`）：实现 `289bced0358c09fbb93094b576f1d802a0a3a72f` 通过。`vp check` exit 0（仅既有 `require-array-sort-compare` 警告）；`vp test` exit 0（13 个文件 / 75 个用例）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0；`vp run @internal/pstack#check:harness-doc` exit 0；`vp run build` exit 0。
+- 审查（2026-10-30，`review #2`）：实现 `289bced0358c09fbb93094b576f1d802a0a3a72f` 通过。`vp check` exit 0（仅既有 `require-array-sort-compare` 警告）；`vp test` exit 0（13 个文件 / 76 个用例）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0；`vp run @internal/pstack#check:harness-doc` exit 0；`vp run build` exit 0。
 - 真实安装复核：临时 `$DSH_HOME` 安装 `pnpm pack` 产物并启动 `dsh web --port 3199`；boot graph 含 `dsh-pstack`，client combo 200 且包含 `plugins.bundle.config`；`pstackRoles/status` 返回 17 个角色与绝对路径，`catalogue` 返回 `ok: true`，`save` 创建/写回角色文件，非法 provider 被拒绝且文件不变，未知角色行按行号报告。
 - 结论：EXT-003 工作文件写 `passed`，登记表恢复 `active`；未发现 finding。下一步 `/pstack-port issue #2`。

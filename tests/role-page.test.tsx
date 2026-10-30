@@ -7,15 +7,20 @@ import { snapshotFromConfiguration } from "../src/internal/role-editor.ts";
 import type { CatalogueResult } from "../src/models.ts";
 import { RoleSettingsView, type Translate } from "../src/client/RoleSettingsPage.tsx";
 import { draftsFromSnapshot } from "../src/client/state.ts";
-import { en, type PstackRolesLocaleKey } from "../src/client/locales.ts";
+import { en, zh, type PstackRolesLocaleKey } from "../src/client/locales.ts";
 
-const t: Translate = (key, vars) => {
-  let value = en[key] as string;
-  for (const [name, replacement] of Object.entries(vars ?? {})) {
-    value = value.replaceAll(`{${name}}`, String(replacement));
-  }
-  return value;
-};
+function translator(dictionary: Record<PstackRolesLocaleKey, string>): Translate {
+  return (key, vars) => {
+    let value = dictionary[key];
+    for (const [name, replacement] of Object.entries(vars ?? {})) {
+      value = value.replaceAll(`{${name}}`, String(replacement));
+    }
+    return value;
+  };
+}
+
+const t = translator(en);
+const tZh = translator(zh);
 
 const catalogue: CatalogueResult = {
   truncated: false,
@@ -33,7 +38,7 @@ const catalogue: CatalogueResult = {
 
 const noop = (): void => {};
 
-function render(text: string | undefined): string {
+function render(text: string | undefined, translate: Translate = t): string {
   const path = "/home/user/.dsh/pstack-models.mdc";
   const configuration =
     text === undefined
@@ -52,7 +57,7 @@ function render(text: string | undefined): string {
       onRemoveRoute={noop}
       onSave={noop}
       onReset={noop}
-      t={t}
+      t={translate}
     />,
   );
 }
@@ -134,5 +139,18 @@ describe("role configuration page", () => {
   it("uses the declared dictionary key for every English string", () => {
     const keys = Object.keys(en) as PstackRolesLocaleKey[];
     expect(keys.length).toBeGreaterThan(20);
+    expect(Object.keys(zh).sort()).toEqual([...keys].sort());
+    for (const key of keys) expect(zh[key]).not.toBe("");
+  });
+
+  it("renders the configuration page in Chinese", () => {
+    const html = render("feature, refactoring: cpa/model-a [high]\n", tZh);
+    expect(html).toContain("角色模型配置");
+    expect(html).toContain("已加载");
+    expect(html).toContain("提供方");
+    expect(html).toContain("模型");
+    expect(html).toContain("推理强度");
+    expect(html).toContain("继承父级（inherit-parent）");
+    expect(html).toContain(">保存<");
   });
 });
