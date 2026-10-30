@@ -513,6 +513,8 @@
 
 `PI-04 orch CLI` 已随上游 `1ba91fc` 删除 `orch.ts` 与 `store.ts` 而退役，本轮不再进入插件实现范围；本地旧镜像由 `prepare` 删除。
 
+本轮 `implement port` 复核结论：上表 8 项均保留现有实现，没有新增、修改或删除的代码；各项实现位置、公共接口依据与验证用例记录在 `docs/port-review.md` 的「实现记录」。
+
 不属于插件内实现：
 
 - `AUT-01` 至 `AUT-06`、`EXCL-01` 至 `EXCL-06`、`SKL-31` 的 Cursor 专属部分：平台排除。
