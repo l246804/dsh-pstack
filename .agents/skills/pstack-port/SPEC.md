@@ -291,7 +291,7 @@ blocker:
 - **期望行为**：
   1. 按上游 `claude-code.md` 的英文模板结构写本地适配树的适配文档，按 R-07、R-11、R-12 完成插件降级、运行期替代与对账。
   2. 按 R-08 用中文并保持 `pstack/README.md` 的可读结构，用简体中文更新文档状态与最终覆盖。
-  3. 按 R-01 核对并同步根 `README.md`，双语时同步所有语言版本。
+  3. 按 R-01 核对并同步根 `README.md`，多语言时同步所有语言版本。
   4. 执行 S-19 compact，按 S-28 完成整文档审查。
   5. 清空 `docs/port-review.md` 正文，并设置 port 状态。
 - **状态与文件变化**：`pstack/harness/`、`pstack/README.md`、根 `README.md` 更新；`docs/port-review.md` 只留完成头部；无 blocker 时 `port.state: idle`；有 core issue 待验收时 `port.state: done`。
@@ -496,7 +496,7 @@ blocker:
 
 - 写入根 README 前，先按 R-08 的 `technical-writing` 与 `unslop` 写法整理要写入的内容。
 - 根 README 的主语言不固定：可能是英文主文件加中文版，也可能是中文主文件加英文版；先识别实际文件，不假定 `README.md` 是中文。
-- 根 README 如果是双语，同步更新所有语言版本。语言版本可能是同一文件内的双语段落，也可能是 `README*.md` 多文件；先识别实际结构，再按段落一一对应替换。
+- 根 README 如果是多语言，同步更新所有语言版本。语言版本可能是同一文件内的多语言段落，也可能是 `README*.md` 多文件；先识别实际结构，再按段落一一对应替换。
 - 不能同步所有语言版本时，在 `doc` 报告中列出缺失的语言和段落，不静默只改一种语言。
 - 可选插件清单与 `pstack/README.md` 中当前的可选插件条目一一对应；新增或删除插件时同步增删。
 - 每项写清包名、默认状态、是否实验性、启用条件、能力、边界与冲突。
