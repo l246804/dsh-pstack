@@ -50,6 +50,8 @@
             name: "@deepseek-ai/dsh-tool-fs"
           - id: tool-fs-search
             name: "@deepseek-ai/dsh-tool-fs-search"
+            config:
+              sampleOverCapGlobResults: false
           - id: tool-todo
             name: "@deepseek-ai/dsh-tool-todo"
             config:
@@ -111,3 +113,5 @@
               edit: false
           - id: tool-fs-search
             name: "@deepseek-ai/dsh-tool-fs-search"
+            config:
+              sampleOverCapGlobResults: false

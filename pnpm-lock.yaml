@@ -167,6 +167,10 @@ catalogs:
     skills:
       specifier: ^1.7.4
       version: 1.7.4
+  browser:
+    agent-browser:
+      specifier: 0.41.0
+      version: 0.41.0
   cli:
     bumpp:
       specifier: ^12.3.0
@@ -322,6 +326,9 @@ importers:
       '@types/react-dom':
         specifier: catalog:ui
         version: 18.3.7(@types/react@18.3.31)
+      agent-browser:
+        specifier: catalog:browser
+        version: 0.41.0
       bumpp:
         specifier: catalog:cli
         version: 12.3.0
@@ -346,6 +353,8 @@ importers:
       vite-plus:
         specifier: catalog:cli
         version: 1.4.0(@types/node@24.19.2)(@vitest/ui@5.0.5)(jiti@2.7.0)(typescript@7.0.2)(yaml@2.9.1)
+
+  playground: {}
 
   pstack:
     dependencies:
@@ -1326,6 +1335,11 @@ packages:
 
   '@yuku-toolchain/types@0.19.0':
     resolution: {integrity: sha512-tFkNbsP4WXX9UMUC5syJGdK9dPMLK0PPaIuXCcCYH75sZ8MrebfBZ2XvCILRTw8AgLivSSCfDa4R67iYBDa4Kg==}
+
+  agent-browser@0.41.0:
+    resolution: {integrity: sha512-XJtBouE5+gGUKyZU1COSmnxU6MKIlmLE2oEyHzl0ohLVOhuRjx9kqQ9vOqxiiW/Gbvi4JPF4Oz777Mn3FGiHAA==}
+    engines: {node: '>=24.0.0', pnpm: '>=11.0.0'}
+    hasBin: true
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -2629,6 +2643,8 @@ snapshots:
     optional: true
 
   '@yuku-toolchain/types@0.19.0': {}
+
+  agent-browser@0.41.0: {}
 
   ansi-regex@5.0.1: {}
 

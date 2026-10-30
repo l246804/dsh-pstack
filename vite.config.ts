@@ -66,6 +66,18 @@ export default defineConfig({
         command: "vp pack",
         dependsOn: ["@internal/pstack#build"],
       },
+      playground: {
+        command: "node playground/start.mjs",
+      },
+      "playground:reset": {
+        command: "node playground/start.mjs --reset",
+      },
+      "playground:reinstall": {
+        command: "node playground/start.mjs --reinstall",
+      },
+      "playground:browser": {
+        command: "node playground/browser.mjs",
+      },
     },
   },
   lint: {

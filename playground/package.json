@@ -1,0 +1,6 @@
+{
+  "name": "@internal/playground",
+  "private": true,
+  "description": "Real-plugin runtime playground for dsh-pstack (fixed port 17353).",
+  "type": "module"
+}

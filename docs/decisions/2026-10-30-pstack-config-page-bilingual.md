@@ -1,10 +1,11 @@
 # 决定：插件配置页默认提供中英双语
 
-Status: proposed
+Status: superseded
 Date: 2026-10-30
 Scope: src/client/**, tests/**, locale/**
 Implemented-by: -
 Review: 2027-04-30
+Superseded-by: docs/decisions/2026-10-30-pstack-config-page-i18n.md — 改为通用 locale 目录，不再把支持语言写死为固定一对
 
 ## 背景
 

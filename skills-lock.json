@@ -1,6 +1,13 @@
 {
   "version": 1,
   "skills": {
+    "agent-browser": {
+      "source": "agent-browser",
+      "sourceType": "node_modules",
+      "skillPath": "skills/agent-browser/SKILL.md",
+      "version": "0.41.0",
+      "computedHash": "dd491d53824ad9286ec950aee667098446332429a6d41fe28b4ba11f1959264c"
+    },
     "decision-audit": {
       "source": "./skills/authored/decision-audit",
       "sourceType": "local",
