@@ -1,14 +1,8 @@
 schema: 1
 port:
-  state: done
+  state: idle
   round: "#1"
   phase: done
   started_at: "2026-10-29T23:08:09+08:00"
-  updated_at: "2026-10-30T00:08:28+08:00"
-blocker:
-  active_item: "#1"
-  mode: core
-  allowed_routes:
-    - "issue #1"
-  resume_route: idle
-  reason: "core Issue #1 已完成 doc，等待 issue #1 验收"
+  updated_at: "2026-10-30T11:31:30+08:00"
+blocker: null
