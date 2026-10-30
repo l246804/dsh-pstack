@@ -8,42 +8,44 @@
 
 发现 README、实现、测试或适配证据不一致时，在写入任何适配内容前停止：向 `docs/port-review.md` 追加含 `origin: doc`、`status: open`、`required_behavior`、`evidence` 的 finding，把 `phase` 置回 `review`，不标任何能力通过。下一步 `/pstack-port review port`。
 
-完成标准（S-13）：不一致已转为可复核 finding 和证据，状态为 `active/review`，适配文档没有留下未经验证的内容。
+完成标准（S-13、R-09）：不一致已转为可复核 finding 和证据；状态为 `active/review`；适配文档没有留下未经验证的内容；报告含 `/pstack-port review port`。
 
-## 2. 按上游模板写适配文档
+## 2. 对账并写适配文档
 
 枚举并完整读取 `<pstack>/docs/harness/`。`claude-code.md` 映射为 `pstack/harness/docs/harness/dsh.md`，其他附件保持相对路径与文件名。逐份以英文模板的章节、表格、段落职责和顺序为骨架，只替换宿主名、字段、路径和行为。正文使用英文，保留平台排除的跳过语义。
 
-先运行 `vp run @internal/pstack#check:harness-doc`（R-12、S-27）。它按 `docs/harness-doc.yaml` 对账 README 与 `dsh.md`，检查上游模板行、章节与引用，并核对 `src/` 的参数、脚本 id 与 `OPT-*` 包名。FAIL 时按清单定位并手写修正；checker 只读，不改文档。
+先运行 `vp run @internal/pstack#check:harness-doc`（R-12、S-27）。它按 `docs/harness-doc.yaml` 对账 README 与 `dsh.md`，检查上游模板行、章节与引用，并核对 `src/` 的参数、脚本 id 与 `OPT-*` 包名。FAIL 时按清单定位并手写修正，每次修改后重跑直到退出 0。checker 只读，不改文档。
 
 `docs/harness-doc.yaml` 只存映射，不存正文。README 增删运行期替代或平台排除时，同步增删对应行；`builtins` 中出现在随包技能正文的名字必须有 `Local replacements` 映射。
 
-`dsh.md` 的 `## Local replacements` 覆盖 README 的全部运行期替代项（R-11、S-26）。逐项确认 README 记录了替代方案，且上游名字出现在随包技能、playbook 或 reference 的运行期步骤中。每个命中项写上游名字与 DSH 替代工具、技能或命令；删除 README 已无对应项的多余行。纯审查台账和 `OPT-*` 降级不写入本节。
+checker 通过后，按 R-11 与 S-26 写 `dsh.md` 的 `## Local replacements`：
 
-`## Optional plugins` 与 `## Local replacements` 是上游模板外仅有的两个固定追加小节。
+- 覆盖 README 的全部运行期替代项。逐项确认 README 记录替代方案，且上游名字出现在随包技能、playbook 或 reference 的运行期步骤中。
+- 每个命中项写上游名字与 DSH 替代工具、技能或命令；缺行补行，删除 README 已无对应项的多余行。
+- 纯审查台账、无替代的平台排除和 `OPT-*` 降级不写入本节。
 
-`dsh.md` 另设 `## Optional plugins`，覆盖 README 当前可选插件表的全部 `OPT-*`，编号集合必须一致。每行写：
+按 R-07 与 S-20 写 `## Optional plugins`：
 
-1. `OPT-*` 编号与准确插件包名。
-2. 启用后获得的能力。
-3. `When not enabled` 的替代命令、工具或路径；无替代时原样使用 `Skipped in DeepSeek Harness: <step>. <reason>.`。
-4. 未启用时不得声称对应步骤通过。可选插件是默认关闭的能力，不写成平台永久不支持。
+1. 覆盖 README 当前可选插件表的全部 `OPT-*`，编号集合与准确包名一致。
+2. 每行写启用后获得的能力与支持边界。
+3. 每行写 `When not enabled` 的替代命令、工具或路径；无替代时原样使用 `Skipped in DeepSeek Harness: <step>. <reason>.`。
+4. 至少保留一个上述跳过行。未启用时不得声称对应步骤通过，也不把默认关闭的能力写成平台永久不支持。
 
-至少保留一个上述跳过行。其他表格中的分散说明不能替代本节索引。README 文档状态区记录该产物。
+`## Optional plugins` 与 `## Local replacements` 是上游模板外仅有的两个固定追加小节。其他表格中的分散说明不能替代本节索引。README 文档状态区记录这两个产物。只编辑 `pstack/harness/` 手写源；生成树 `pstack/pstack/` 由生成器刷新。
 
-完成标准（S-20、S-26、S-27）：每个 OPT 都有启用能力、未启用 fallback/skip 与支持边界；包名、默认状态和 README 一致；`## Local replacements` 覆盖 README 的全部运行期替代项，每行有替代或合规跳过，且没有把纯台账写进本节；dsh.md 保持英文模板结构，跳过项没有写成通过。
+完成标准（S-20、S-26、S-27、R-07、R-11、R-12）：checker 退出 0；每个 OPT 都有启用能力、未启用 fallback/skip 与支持边界；`## Local replacements` 覆盖全部运行期替代项且没有混入排除或纯台账；`dsh.md` 保持英文模板结构；生成树没有手工编辑。
 
 ## 3. 更新中文审查记录
 
-写 README 前直接读取 `<pstack>/skills/technical-writing/SKILL.md` 与 `<pstack>/skills/unslop/SKILL.md`，不依赖 skill catalog。`pstack/README.md` 使用简体中文与 reference mode，先给能力结论，再给证据和缺口。每个能力 ID 的状态仍只在分阶段状态表定义一次。
+写 README 前直接读取 `<pstack>/skills/technical-writing/SKILL.md` 与 `<pstack>/skills/unslop/SKILL.md`，不依赖 skill catalog。`pstack/README.md` 使用简体中文与 reference mode，先给能力结论，再给证据和缺口。每个能力 ID 的状态只在分阶段状态表定义一次。
 
 只更新文档状态与最终覆盖相关字段，保留上游需求、分类、既定适配和实现记录。逐项写产物位置、实际覆盖与有意排除；部分或未实现项写具体缺口与证据。core Issue 的每项 `required_behavior` 都有最终覆盖结论。core EXT 的 `repair_target: port` 修复已在 `review port` 通过后恢复登记表 `active`，本阶段记录最终状态。
 
-完成标准：README 可从能力表定位每项状态与证据；core 输入没有漏项；没有重复状态表或为排版服务的重复段落；两个写作技能均已执行并做 unslop 扫描。
+完成标准（R-08）：README 可从能力表定位每项状态与证据；core 输入没有漏项；没有重复状态表或为排版服务的重复段落；两个写作技能均已执行并做 unslop 扫描。
 
 ## 4. 同步根 README 动态内容
 
-这是 agent 的完成条件，不交给用户复核。先按 R-08 的两个写作技能整理内容，识别根 README 的实际语言结构。双语段落或 `README*.md` 多文件必须逐段同步；无法同步时在报告中列出缺失语言与段落。
+这是 agent 的完成条件，不交给用户复核。先按 R-08 的两个写作技能整理内容，识别根 README 的国际化结构，不限语言数量或默认主语言。枚举当前所有语言版本，逐段同步同一文件内的多个语言段落和 `README*.md` 多文件；新增语言自动纳入同一规则。无法同步时在报告中列出缺失语言与段落。
 
 按当前结构逐项对照 `pstack/README.md` 和实现：
 
@@ -55,13 +57,13 @@
 - 版本表、冲突与降级说明。
 - 仅在架构变化时检查 `实现方式`。
 
-没有差异就不修改，并在报告中写“根 README 无差异”。有差异时，安装与使用段采用 how-to mode，所有语言版本同步对应修改。
+没有差异就不修改，并在报告中写「根 README 无差异」。有差异时，安装与使用段采用 how-to mode，所有语言版本同步对应修改。
 
-完成标准（R-01）：动态内容与当前 README 和实现一致；OPT 集合一一对应；无差异未写文件，有差异已同步全部语言或明确报告缺失。
+完成标准（R-01）：动态内容与当前 README 和实现一致；OPT 集合一一对应；无差异未写文件，有差异已同步全部语言或明确报告缺失；每个语言版本都完成对应检查。
 
 ## 5. compact、验证并收尾
 
-执行 `node pstack/scripts/port-fixes.mjs compact`。活跃台账只留 `open/active`；退役候选带 `retired_at`、`retired_reason` 移入 `docs/port-fixes-archive.yaml`。编号永不复用，replay 不读 archive。
+执行 `node pstack/scripts/port-fixes.mjs compact`。活跃台账只留 `open` 或 `active`；退役候选带 `retired_at`、`retired_reason` 移入 `docs/port-fixes-archive.yaml`。编号永不复用，replay 不读 archive（S-19）。
 
 完成「doc 自检」三项，每项记录 PASS 或具体理由（R-12）：
 
@@ -79,7 +81,9 @@ node pstack/scripts/generate-pstack-harness-tree.mjs --check
 node pstack/scripts/port-fixes.mjs replay
 ```
 
-任一必要验证失败时，先恢复本次调用写入且尚未验证的适配文档、README 动态内容和 compact 变更，只保留修复所需的已验证证据；再写 `origin: doc` finding、设 `phase: review`，不进入完成状态。五条门禁全部通过后，修复并关闭本次 core 验收回退的 documentation-only finding；若缺口已转为行为或实现问题，按第 1 节回到 `review port`。按 R-13 对 `dsh.md` 与 `pstack/README.md` 做整文档审查并修复，改完重跑五条门禁（S-28）。全部通过后清空 `docs/port-review.md` 正文，只留完成头部（含「doc 自检」三行与「整文档审查」）、round、上游提交和完成时间。
+任一必要验证失败时，先恢复本次调用写入且尚未验证的适配文档、README 动态内容和 compact 变更，只保留修复所需的已验证证据；再写 `origin: doc` finding、设 `phase: review`，不进入完成状态。五条门禁全部通过后，修复并关闭本次 core 验收回退的 documentation-only finding；若缺口已转为行为或实现问题，按第 1 节回到 `review port`。
+
+按 R-13 对 `dsh.md` 与 `pstack/README.md` 做整文档审查并修复，改完重跑 S-27 对账与五条门禁（S-28）。全部通过后清空 `docs/port-review.md` 正文，只留完成头部（含「doc 自检」三项与「整文档审查」）、round、上游提交和完成时间。
 
 按本轮来源设置状态：
 
@@ -90,6 +94,6 @@ node pstack/scripts/port-fixes.mjs replay
 | core EXT，无关联 Issue | 保持 review port 恢复的 EXT `active`，清 blocker，`port.state: idle`、`phase: done` |
 | core EXT，有关联 Issue | 保持 review port 恢复的 EXT `active`；blocker 的 `active_item` 改为 `#编号` 并允许 `issue #编号`；`port.state: done`、`phase: done` |
 
-报告逐文件产物、最终覆盖、OPT 降级表、运行期替代表、整文档审查、compact、根 README 核对和全部验证。最后按状态写 `/pstack-port issue #编号` 或“本轮结束，无下一步”。
+报告逐文件产物、最终覆盖、OPT 降级表、运行期替代表、整文档审查、compact、根 README 国际化核对和全部验证。最后按状态写 `/pstack-port issue #编号` 或「本轮结束，无下一步」。
 
-完成标准（S-01、S-14、S-18～S-20、S-26～S-28）：适配文档与中文 README 完整；OPT、运行期替代和根 README 已核对；「doc 自检」三项、整文档审查与五条门禁通过；port-review 正文已清空；FIX 台账与 archive 一致；port 状态、EXT 状态和 blocker 符合来源；报告含完整下一步命令或结束语。
+完成标准（S-01、S-14、S-18～S-20、S-26～S-28、R-09）：适配文档与中文 README 完整；OPT、运行期替代和根 README 国际化已核对；「doc 自检」三项、整文档审查与五条门禁通过；`docs/port-review.md` 正文已清空；FIX 台账与 archive 一致；port 状态、EXT 状态和 blocker 符合来源；报告含完整下一步命令或结束语。
