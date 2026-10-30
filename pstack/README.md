@@ -520,7 +520,7 @@
 - `AUT-01` 至 `AUT-06`、`EXCL-01` 至 `EXCL-06`、`SKL-31` 的 Cursor 专属部分：平台排除。
 - `TOOL-01` 至 `TOOL-05`、`SUB-01` 至 `SUB-10`、`MOD-01` 至 `MOD-06`、`SET-03` 至 `SET-08`、`PATH-01` 至 `PATH-06` 中已由映射或标准模式覆盖的部分：无需插件代码。
 - `bootstrap.ts` 的依赖自装：DSH 用 profile 的 pnpm 安装，不需要移植；`package.json`、`bun.lock` 和测试属于脚本实现资产，不作为独立能力。
-- `deslop`、`control-cli`、`control-ui` 是 `cursor-team-kit` 外部插件；Cursor `create-skill`、`/loop`、`/automate` 是 Cursor 内置能力。它们按上游 README 的 not shipped here 处理，不进入本插件实现范围。
+- `/deslop`、`control-cli`、`control-ui` 是 `cursor-team-kit` 外部插件；Cursor `create-skill`、`/loop`、`/automate`、`/visualize` 是 Cursor 内置能力。它们按上游 README 的 not shipped here 处理，不进入本插件实现范围。`dsh.md` 的 `Local replacements` 给出替代：`/deslop` 用 `/no-comments`，`control-ui`、`control-cli`、`cursor-team-kit` 用可选插件里的浏览器、桌面或终端 fallback，`create-skill` 与 `/automate` 用 `writing-for-agents`，`/loop` 用 `create_goal`，`/visualize` 用 Mermaid。
 
 ## 6. 本仓既定适配
 
@@ -761,7 +761,7 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 
 ### 8.5 文档产物与覆盖口径
 
-主适配文档是 [pstack/harness/docs/harness/dsh.md](harness/docs/harness/dsh.md)，生成副本是 [pstack/pstack/docs/harness/dsh.md](pstack/docs/harness/dsh.md)。它保留上游模板的六个章节，并增加 [Optional plugins](harness/docs/harness/dsh.md#optional-plugins)，逐项覆盖 OPT-01 至 OPT-09 的包名、启用能力与未启用 fallback。技能、playbook、reference 与 principle 正文保持上游原文，由生成器在需要 Cursor 名称映射的技能中加入适配文档指针。
+主适配文档是 [pstack/harness/docs/harness/dsh.md](harness/docs/harness/dsh.md)，生成副本是 [pstack/pstack/docs/harness/dsh.md](pstack/docs/harness/dsh.md)。它保留上游模板的六个章节，并增加 [Local replacements](harness/docs/harness/dsh.md#local-replacements) 与 [Optional plugins](harness/docs/harness/dsh.md#optional-plugins) 两个固定追加小节，分别覆盖运行期替代与 OPT-01 至 OPT-09 的包名、启用能力、未启用 fallback 和支持边界。技能、playbook、reference 与 principle 正文保持上游原文，由生成器在需要 Cursor 名称映射的技能中加入适配文档指针。
 
 最终覆盖以固定上游提交和本轮测试为限。完整覆盖不排除技能本身声明的通用外部前提；条件覆盖必须启用括号中的插件或安装外部工具；部分覆盖仍有明确语义差异；平台排除按上游规则输出跳过行并继续，不计为通过。六项未决证据保留在 9.3，不因文档完成而核销。
 

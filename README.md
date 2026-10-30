@@ -116,7 +116,7 @@ The `poteto-agent` and `comment-sicko` presets handle implementation delegation 
 
 ## Optional DSH plugins
 
-DSH ships with the following plugins, which are disabled by default. dsh-pstack does not require them during installation. Some pstack flows need these plugins to run end to end. To enable a plugin, enter its package name in **Add plugin** on the Plugins page. Alternatively, run `dsh plugin --profile <profile> add <package>`, then restart the profile.
+DSH ships with the following plugins, which are disabled by default. dsh-pstack does not require them during installation. Some pstack flows need these plugins to run end to end. To enable a plugin, enter its package name in **Add plugin** on the Plugins page. Alternatively, run `dsh plugin --profile <profile> add <package>`, then restart the profile. Except for `@deepseek-ai/dsh-mcp-client`, the bundles and providers here are experimental.
 
 > [!NOTE]
 > Without an optional plugin, the pstack skills still load. Steps that need the plugin print `Skipped in DeepSeek Harness: <step>. <reason>.` and continue. Missing `gh`, Java/TLC, or video tools also cause the corresponding steps to report blocked or degrade to screenshots. dsh-pstack never marks an unrun step as passed.
@@ -127,7 +127,7 @@ DSH ships with the following plugins, which are disabled by default. dsh-pstack 
 |---|---|---|
 | `@deepseek-ai/dsh-experimental-session-search` | Five read-only tools search and trace historical Sessions for `/recall`, `/reflect`, and `/show-me-your-work`: `session_search`, `session_event_search`, `session_trace`, `session_event_trace`, and `session_event_read`. | Matches only Sessions with the same `cwd`; use `session_event_search` for the current Session; there is no Cursor `.jsonl` transcript path. |
 | `@deepseek-ai/dsh-experimental-worktree`<br />`@deepseek-ai/dsh-experimental-tool-worktree` | `create_worktree` creates a local branch and worktree and switches the current Session directory, isolating parallel candidates for `/arena`, `/swarm`, and `/architect`. | `from` reads only local refs and does not fetch; there is no cloud VM; creating worktrees repeatedly changes `cwd`; it does not automatically give each subagent its own tree. |
-| `@deepseek-ai/dsh-experimental-forge-bundle` | PR panel, checks, review, mark ready, merge, and Session binding, plus starting a Session from the composer with a new worktree, serving `/babysit`, `/shipping`, and `/autopilot-*`. | GitHub only, requires `gh` login; there is no take tool on the model side; there is no stack verdict; it can coexist with the worktree bundle. |
+| `@deepseek-ai/dsh-experimental-forge-bundle` | PR panel, checks, review, mark ready, merge, and Session binding, plus starting a Session from the composer with a new worktree, serving `/babysit`, `/shipping`, and `/autopilot-*`. | GitHub only, requires `gh` login; there is no take tool on the model side; there is no stack verdict or `origin` CLI; it can coexist with the worktree bundle. |
 
 ### Verification and evidence
 
@@ -155,7 +155,7 @@ Choose one of three browser providers: `@deepseek-ai/dsh-experimental-browser-us
 | Item | Version | Notes |
 |---|---|---|
 | DSH | `>=0.2.2-alpha.2` | Baseline `0.2.2-alpha.2`; newer versions are assumed compatible until the port needs a fix |
-| pstack | `0.15.36` | Upstream baseline commit `1ba91fc` |
+| pstack | `0.15.36` | Upstream baseline commit `4dd1d05` |
 | Node.js | `>=24.21.1` | Runtime requirement |
 | Cordis | `~4.0.6-alpha.1` | Peer dependency |
 

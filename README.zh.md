@@ -116,7 +116,7 @@
 
 ## 可选 DSH 插件
 
-以下插件随 DSH 提供，默认关闭。安装 dsh-pstack 时不要求安装这些插件，但部分 pstack 流程需要它们才能完整执行。要启用插件，在 Plugins 页面用 **Add plugin** 输入包名。也可以运行 `dsh plugin --profile <profile> add <package>`，然后重启 profile。
+以下插件随 DSH 提供，默认关闭。安装 dsh-pstack 时不要求安装这些插件，但部分 pstack 流程需要它们才能完整执行。要启用插件，在 Plugins 页面用 **Add plugin** 输入包名。也可以运行 `dsh plugin --profile <profile> add <package>`，然后重启 profile。除 `@deepseek-ai/dsh-mcp-client` 外，本节列出的 bundle 与 provider 都是实验性的。
 
 > [!NOTE]
 > 未启用可选插件时，pstack 技能仍可加载。需要插件的步骤会输出 `Skipped in DeepSeek Harness: <step>. <reason>.` 后继续。缺少 `gh`、Java/TLC 或视频工具时，对应步骤会报告 blocked 或降级为截图。dsh-pstack 不会把未运行的步骤标记为通过。
@@ -127,7 +127,7 @@
 |---|---|---|
 | `@deepseek-ai/dsh-experimental-session-search` | 5 个只读工具：`session_search`、`session_event_search`、`session_trace`、`session_event_trace`、`session_event_read`，搜索和追踪历史会话，服务 `/recall`、`/reflect`、`/show-me-your-work`。 | 只匹配同一 `cwd` 的会话；当前会话用 `session_event_search`；没有 Cursor 的 `.jsonl` 转写路径。 |
 | `@deepseek-ai/dsh-experimental-worktree`<br />`@deepseek-ai/dsh-experimental-tool-worktree` | `create_worktree` 建本地分支和工作树，切换当前 Session 目录，用于 `/arena`、`/swarm`、`/architect` 的并行候选隔离。 | `from` 只读本地 ref，不 fetch；无云 VM；连续建树会改 `cwd`；不会自动给每个子代理分树。 |
-| `@deepseek-ai/dsh-experimental-forge-bundle` | PR 面板、checks、review、mark ready、merge、Session 绑定，也能从 composer 用新 worktree 启动 Session，服务 `/babysit`、`/shipping`、`/autopilot-*`。 | 仅 GitHub，需 `gh` 登录；模型侧没有 take 工具；没有 stack verdict；可与 worktree bundle 共存。 |
+| `@deepseek-ai/dsh-experimental-forge-bundle` | PR 面板、checks、review、mark ready、merge、Session 绑定，也能从 composer 用新 worktree 启动 Session，服务 `/babysit`、`/shipping`、`/autopilot-*`。 | 仅 GitHub，需 `gh` 登录；模型侧没有 take 工具；没有 stack verdict，也没有 `origin` CLI；可与 worktree bundle 共存。 |
 
 ### 验证与证据
 
@@ -155,7 +155,7 @@
 | 项目 | 版本 | 说明 |
 |---|---|---|
 | DSH | `>=0.2.2-alpha.2` | 基准 `0.2.2-alpha.2`；默认认为更高版本兼容，移植内容需要修复时再提高要求 |
-| pstack | `0.15.36` | 上游基线提交 `1ba91fc` |
+| pstack | `0.15.36` | 上游基线提交 `4dd1d05` |
 | Node.js | `>=24.21.1` | 运行时要求 |
 | Cordis | `~4.0.6-alpha.1` | peer dependency |
 
