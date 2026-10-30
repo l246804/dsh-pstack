@@ -5,14 +5,80 @@ on:
     tags:
       - "v*"
 
+# Publishes with npm trusted publishing (OIDC): no NPM_TOKEN is used.
+# The trusted publisher on npmjs.com must point at this file (release.yml)
+# in l246804/dsh-pstack, and the first publish must succeed within 2 days
+# of creating that configuration, otherwise it expires.
+permissions:
+  contents: write
+  id-token: write
+
 jobs:
   release:
-    uses: sxzz/workflows/.github/workflows/release.yml@main
-    with:
-      publish: true
-      build: |
-        git submodule update --init --recursive
-        pnpm exec vp run build
-    permissions:
-      contents: write
-      id-token: write
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Keeps the upstream/* submodules the build reads from; the original
+      # sxzz/workflows setup did this in the caller's build input.
+      - name: Sync upstream submodules
+        run: git submodule update --init --recursive
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: 12.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.22.1
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Resolve npm dist-tag
+        id: dist-tag
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$TAG_VERSION" != "$VERSION" ]; then
+            echo "::error::Tag v$TAG_VERSION does not match package.json version $VERSION"
+            exit 1
+          fi
+          if [[ "$VERSION" == *-* ]]; then
+            PRERELEASE="${VERSION#*-}"
+            TAG="${PRERELEASE%%.*}"
+          else
+            TAG="latest"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Publishing $VERSION with dist-tag: $TAG"
+
+      - name: Publish to npm
+        # `prepublishOnly` in package.json runs `vp run build` here, before the
+        # tarball is packed, so no separate build step is needed.
+        # NODE_AUTH_TOKEN must be empty so the npm CLI does not fall back to a
+        # (missing) token and skip OIDC. The registry is the default public one.
+        env:
+          NODE_AUTH_TOKEN: ""
+        run: |
+          pnpm publish \
+            --access public \
+            --no-git-checks \
+            --provenance \
+            --tag "${{ steps.dist-tag.outputs.tag }}"
+
+      # Runs only after a successful npm publish, so a failed publish no longer
+      # leaves behind a GitHub Release for a version that never reached npm.
+      - name: Generate GitHub Changelog
+        run: pnpx changelogithub
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
