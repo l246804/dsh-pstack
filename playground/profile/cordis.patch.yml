@@ -10,3 +10,9 @@
   disabled: true
 - id: client-hmr
   disabled: true
+
+# Default the playground UI to Simplified Chinese regardless of the browser
+# language. Settings → General → Language still overrides it per browser.
+- id: locale
+  config:
+    preference: zh
