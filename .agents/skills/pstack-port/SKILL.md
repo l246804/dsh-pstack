@@ -23,3 +23,5 @@ disable-model-invocation: true
 `port` 轮次从 `audit` 开始，到 `doc` 结束，链路为 `prepare → audit → implement port ⇄ review port → doc`；`upstream` 与 `prepare` 是前置。后续阶段只在用户显式调用时进入。
 
 `implement` 无参数时，请用户选择 `port`、`EXT-*` 或填写 `#编号`。可以列出本地待处理项，但不访问 GitHub 自动发现 Issue。每次报告以完整的 `/pstack-port ...` 命令给出下一步；没有下一步时写“本轮结束，无下一步”。
+
+用户要求重构本技能时，完成 `SKILL.md`、`README.md` 或 `references/*.md` 修改后，另读 [`references/refactor.md`](references/refactor.md) 执行旧脚本清理与整技能审查。该任务不是运行时分支，不启动 port 轮次。
