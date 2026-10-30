@@ -20,6 +20,22 @@ describe("pstack roles browser half", () => {
     const effects: string[] = [];
     const registrations = new Map<string, Dictionaries>();
 
+    const slotsMock = {
+      inject: (name: string, callback: () => void) => {
+        expect(["plugins.bundle.config", "plugins.bundle.activation"]).toContain(name);
+        callback();
+      },
+      register: (options: Record<string, unknown>, component: unknown) => {
+        slots.push({ name: String(options["name"]), options, component });
+        return () => {};
+      },
+    };
+    const pstackRolesNamespace = {
+      status: async () => ({ ok: true, value: {} }),
+      catalogue: async () => ({ ok: true, value: {} }),
+      save: async () => ({ ok: true, value: {} }),
+    };
+
     const ctx = {
       remote: {
         $mount: async (contribution: TypertRemoteContribution) => {
@@ -42,16 +58,12 @@ describe("pstack roles browser half", () => {
         effects.push(label);
         return callback();
       },
-      slots: {
-        inject: (name: string, callback: () => void) => {
-          expect(["plugins.bundle.config", "plugins.bundle.activation"]).toContain(name);
-          callback();
-        },
-        register: (options: Record<string, unknown>, component: unknown) => {
-          slots.push({ name: String(options["name"]), options, component });
-          return () => {};
-        },
+      inject: (deps: string[], callback: (scope: unknown) => void) => {
+        expect(deps).toEqual(["remote.pstackRoles"]);
+        callback({ remote: { pstackRoles: pstackRolesNamespace }, slots: slotsMock });
+        return () => {};
       },
+      slots: slotsMock,
     } as unknown as Context;
 
     const dispose = await apply(ctx);

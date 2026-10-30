@@ -55,6 +55,10 @@ export const inject = ["remote", "slots", "locale", "remote.pluginManager"];
 
 /** Mount the Remote contribution and register the bundle page and activation guidance. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
+  // `remote.<namespace>` only exists after this plugin mounts the contribution,
+  // so it cannot live in the top-level `inject` list (that would deadlock: the
+  // service is created by the very apply that waits for it). Mount first, then
+  // let a child scope wait for the namespace service before touching it.
   const disposeRemote = await ctx.remote.$mount(pstackRolesRemote);
 
   // Spread into a fresh literal: DSH's typed register accepts the open locale map,
@@ -64,25 +68,6 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     () => ctx.locale.register(PLUGINS_NS, { ...pluginsCatalogs }),
     "pstack-plugins.locale",
   );
-
-  const namespace = (ctx.remote as unknown as PstackRolesNamespace).pstackRoles;
-  const api: PstackRolesApi = {
-    status: async () => {
-      const result = await namespace.status();
-      if (!result.ok) throw result.error;
-      return result.value;
-    },
-    catalogue: async () => {
-      const result = await namespace.catalogue();
-      if (!result.ok) throw result.error;
-      return result.value;
-    },
-    save: async (request) => {
-      const result = await namespace.save(request);
-      if (!result.ok) return { ok: false, reason: result.error.message };
-      return result.value;
-    },
-  };
 
   const pluginManager = (ctx.remote as unknown as { readonly pluginManager: PluginManagerRemote })
     .pluginManager;
@@ -99,29 +84,50 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     },
   };
 
-  ctx.slots.inject("plugins.bundle.config", () =>
-    ctx.slots.register(
-      {
-        name: "plugins.bundle.config",
-        key: "dsh-pstack",
-        locale: ROLES_NS,
-        inject: () => ({ api, optionalPlugins, pluginsT: ctx.locale.bind(PLUGINS_NS) }),
+  ctx.inject(["remote.pstackRoles"], (scope: Context) => {
+    const namespace = (scope.remote as unknown as PstackRolesNamespace).pstackRoles;
+    const api: PstackRolesApi = {
+      status: async () => {
+        const result = await namespace.status();
+        if (!result.ok) throw result.error;
+        return result.value;
       },
-      PstackBundleConfigPage,
-    ),
-  );
+      catalogue: async () => {
+        const result = await namespace.catalogue();
+        if (!result.ok) throw result.error;
+        return result.value;
+      },
+      save: async (request) => {
+        const result = await namespace.save(request);
+        if (!result.ok) return { ok: false, reason: result.error.message };
+        return result.value;
+      },
+    };
 
-  ctx.slots.inject("plugins.bundle.activation", () =>
-    ctx.slots.register(
-      {
-        name: "plugins.bundle.activation",
-        key: "dsh-pstack",
-        locale: PLUGINS_NS,
-        inject: () => ({ optionalPlugins }),
-      },
-      OptionalPluginsActivation,
-    ),
-  );
+    scope.slots.inject("plugins.bundle.config", () =>
+      scope.slots.register(
+        {
+          name: "plugins.bundle.config",
+          key: "dsh-pstack",
+          locale: ROLES_NS,
+          inject: () => ({ api, optionalPlugins, pluginsT: ctx.locale.bind(PLUGINS_NS) }),
+        },
+        PstackBundleConfigPage,
+      ),
+    );
+
+    scope.slots.inject("plugins.bundle.activation", () =>
+      scope.slots.register(
+        {
+          name: "plugins.bundle.activation",
+          key: "dsh-pstack",
+          locale: PLUGINS_NS,
+          inject: () => ({ optionalPlugins }),
+        },
+        OptionalPluginsActivation,
+      ),
+    );
+  });
 
   return disposeRemote;
 }
