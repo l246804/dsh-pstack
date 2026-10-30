@@ -4,9 +4,9 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: review
+- stage: passed
 - EXT: EXT-004
-- 公开状态: open（2026-10-30 创建；标题、正文与“A+B、默认推荐 OPT-01 + OPT-06、OPT-02 标注 GitHub 建议、逐项开关 + 一键启用推荐项”经用户确认；2026-10-30 分诊为 EXT-004；2026-10-30 实现审查未通过，待修复 locale 分层；2026-10-30 完成 F-EXT-004-01 修复，待复核）
+- 公开状态: open（2026-10-30 创建；标题、正文与“A+B、默认推荐 OPT-01 + OPT-06、OPT-02 标注 GitHub 建议、逐项开关 + 一键启用推荐项”经用户确认；2026-10-30 分诊为 EXT-004；2026-10-30 实现审查通过）
 - 分诊证据提交: 本仓 `d92376bac594b54d13660a5825f356bb5227cd21` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
 
 ## 复核
@@ -49,7 +49,7 @@
 - 文档与验证：根 `README.md` / `README.zh.md` 增加推荐插件页说明，`docs/architecture.md` 与 `docs/glossary.md` 同步；`vp check`（0 errors）、`vp test`（16 个文件 / 95 个用例，含 `tests/bundle-config-page.test.tsx` 2 例）、`vp run @internal/pstack#check:harness-doc`、`node pstack/scripts/generate-pstack-harness-tree.mjs --check`、`node pstack/scripts/port-fixes.mjs replay` 与 `vp run build` 均通过；详见 EXT 工作文件。
 - 范围：未修改 port 基线路径（`pstack/runtime/`、`pstack/harness/`、`pstack/README.md`）。
 
-## 审查
+## 审查（未通过）
 
 审查（2026-10-30，`review #4`）：未通过。
 
@@ -59,3 +59,12 @@
 - 真实安装：临时 `$DSH_HOME` 安装 `pnpm pack` 产物并启动 `dsh --profile ext004 --port 3199 --no-open`；boot 模块图含 `dsh-pstack/client.js` 且 combo HTTP 200，包含 `plugins.bundle.config` 与 `plugins.bundle.activation` 注册；`pluginManager/listBundles` 返回 `ok: true`（含 `off` 与 `unsupported-platform` 状态），`setBundleEnabled` 返回 `applied` 并持久化到 profile `package.json`。未用真实浏览器查看视觉；页面结构由 `react-dom/server` 静态渲染测试覆盖。
 - Finding F-EXT-004-01（open）：推荐插件页 locale 未按能力分层。`docs/decisions/2026-10-30-pstack-config-page-bilingual.md:17` 要求推荐插件页使用独立 `pstackPlugins` 命名空间与完整 `en` / `zh` 词典；现状是 `src/client/locales.ts:3` 只有 `pstackRoles`，`src/client/index.ts:56` 只注册一份字典，`src/client/index.ts:92-114` 两个 slot 都使用 `pstackRoles`，`src/client/OptionalPluginsPage.tsx:31` 仍引用 `PstackRolesLocaleKey`，且没有 `pstackPlugins` 或独立词典文件；测试未校验命名空间隔离与跨能力键集合无交集。详见 [EXT-004 审查证据](../../extensions/EXT-004/review.md#审查证据)。
 - 结论：其余 `required_behavior` 均有实现、自动化测试或实现层证据；真实安装覆盖 HMR 的 `applied` 与持久化，未覆盖无 HMR 的 `restart-required` 和真实浏览器视觉。locale 分层未实现，回到 implement，`stage: implement`。
+
+## 审查
+
+- 审查（2026-10-30，`review #4`）：实现审查通过。修复提交 `9ed61907d96f0db0e16c5e13f8257c12097a1260`（审查基线 `8420b09`）；DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`。
+- Finding F-EXT-004-01 已关闭：推荐插件页使用独立 `pstackPlugins` 命名空间与完整 `en` / `zh` 词典，角色模型配置页保留 `pstackRoles`；组合页通过注入的 `pluginsT` 把两个能力各自的 translator 交给对应区块；`tests/client-plugin.test.ts` 校验命名空间注册、词典完整性与跨能力键集合无交集，`tests/bundle-config-page.test.tsx` 覆盖组合页中英各一次。
+- 门禁：`vp check` exit 0（71 个文件格式通过，0 errors，仅既有 `require-array-sort-compare` warning）；`vp test` exit 0（16 个文件 / 95 个用例）；`vp run @internal/pstack#check:harness-doc` exit 0（2/2）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0（无 active FIX）；`vp run build` exit 0。
+- 真实安装复核：`pnpm pack` 产物在临时 `$DSH_HOME` 的新 profile 安装并启动 `dsh --profile ext004 --port 3218`；boot graph 含 `{"id":"dsh-pstack","url":"plugins/??dsh-pstack/client.js&rev=1b626f386268"}`，client combo HTTP 200（66,558 bytes），bundle 同时包含 `pstackRoles` / `pstackPlugins` 两个命名空间与两个 slot 的正确 locale；未用真实浏览器查看视觉，页面结构由静态渲染测试覆盖。
+- 范围：`git diff --name-only 8420b09..9ed6190` 仅涉及 `docs/`、`src/client/` 与 `tests/`，未改 port 基线路径。
+- 结论：`required_behavior` 全部有实现或验证证据，无未解决 finding；`stage: passed`。下一步 `/pstack-port issue #4` 验收。

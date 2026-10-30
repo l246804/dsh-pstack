@@ -1,6 +1,6 @@
 # EXT-004：pstack 推荐可选插件启用页
 
-- status: review
+- status: passed
 - repair_target: extension
 - Issue: [#4](https://github.com/l246804/dsh-pstack/issues/4)
 - 建立：2026-10-30（Issue #4 创建）
@@ -44,6 +44,17 @@
 
 ## 修复记录
 
-- F-EXT-004-01（fixed-pending-review，2026-10-30）：推荐插件文案已拆到 `src/client/optional-plugins-locales.ts`（`NS = "pstackPlugins"`，完整 `en` / `zh`）；`src/client/index.ts` 的 `apply` 分别注册 `pstackRoles` 与 `pstackPlugins` 两套字典，向推荐区注入 `pluginsT`，`plugins.bundle.activation` 注册使用 `pstackPlugins`；`src/client/locales.ts` 只保留角色模型配置页文案。`tests/client-plugin.test.ts` 覆盖命名空间注册、各词典 `en` / `zh` 键集合完整与跨能力键集合无交集；`tests/bundle-config-page.test.tsx` 覆盖组合页中英各一次。
+- F-EXT-004-01（closed，2026-10-30）：推荐插件文案已拆到 `src/client/optional-plugins-locales.ts`（`NS = "pstackPlugins"`，完整 `en` / `zh`）；`src/client/index.ts` 的 `apply` 分别注册 `pstackRoles` 与 `pstackPlugins` 两套字典，向推荐区注入 `pluginsT`，`plugins.bundle.activation` 注册使用 `pstackPlugins`；`src/client/locales.ts` 只保留角色模型配置页文案。`tests/client-plugin.test.ts` 覆盖命名空间注册、各词典 `en` / `zh` 键集合完整与跨能力键集合无交集；`tests/bundle-config-page.test.tsx` 覆盖组合页中英各一次。
 - 验证：`vp check` exit 0（0 errors，仅既有 `require-array-sort-compare` warning）；`vp test` exit 0（16 文件 / 95 用例）；`vp run @internal/pstack#check:harness-doc`、`node pstack/scripts/generate-pstack-harness-tree.mjs --check`、`node pstack/scripts/port-fixes.mjs replay` 与 `vp run build` 均 exit 0。
 - 范围：只改 `src/client/`、`tests/`、`docs/architecture.md` 与 `docs/glossary.md`；未改 `pstack/runtime/`、`pstack/harness/`、`pstack/README.md`。
+
+## 复核证据
+
+复核（2026-10-30，`review #4`）：通过。
+
+- 对象：修复提交 `9ed61907d96f0db0e16c5e13f8257c12097a1260`（审查基线 `8420b09`）；DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`。
+- Finding F-EXT-004-01：已关闭。`src/client/optional-plugins-locales.ts:5` 定义独立 `pstackPlugins`，`src/client/locales.ts:3` 只保留 `pstackRoles`；`src/client/index.ts:60-67` 分别注册两套字典，`src/client/index.ts:103-125` 的 config slot 以 `pstackRoles` 注册并注入绑定 `pstackPlugins` 的 `pluginsT`，activation slot 使用 `pstackPlugins`。`tests/client-plugin.test.ts:65-76` 校验两个命名空间、完整 `en` / `zh` 键集合与跨能力键集合无交集；`tests/bundle-config-page.test.tsx` 校验组合页中英各一次。
+- 自动化：`vp check` exit 0（71 个文件格式通过，0 errors，仅保留 `pstack/scripts/generate-pstack-harness-tree.mjs:204` 既有 `require-array-sort-compare` warning）；`vp test` exit 0（16 个文件 / 95 个用例通过，含 `tests/bundle-config-page.test.tsx` 2 例、`tests/client-plugin.test.ts` 1 例、`tests/optional-plugins-page.test.tsx` 6 例）；`vp run @internal/pstack#check:harness-doc` exit 0（2/2）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0（无 active FIX）；`vp run build` exit 0。
+- 真实安装（独立复核）：用 `pnpm pack --ignore-scripts` 产物在临时 `$DSH_HOME` 的新 profile 安装并启动 `dsh --profile ext004 --port 3218 --no-open`；boot HTML 的模块图含 `{"id":"dsh-pstack","url":"plugins/??dsh-pstack/client.js&rev=1b626f386268"}`，client combo HTTP 200（66,558 bytes）；served client.js 同时定义 `pstackRoles` 与 `pstackPlugins`，`ctx.locale.register` 两次并带 `pstack-roles.locale` / `pstack-plugins.locale` 标签；config slot 的 `locale` 为 `pstackRoles` 且 `pluginsT: ctx.locale.bind(NS)` 绑定 `pstackPlugins`，activation slot 的 `locale` 为 `pstackPlugins`。未用真实浏览器查看视觉；页面结构由 `react-dom/server` 静态渲染测试覆盖。
+- 范围：`git diff --name-only 8420b09..9ed6190` 仅涉及 `docs/`、`src/client/` 与 `tests/`；未改 `pstack/pstack/`、`pstack/runtime/`、`pstack/harness/`、`pstack/README.md` 等 port 基线路径。
+- 结论：`required_behavior` 均有实现、自动化测试或真实安装证据；未发现未解决 finding。EXT-004 工作文件写 `passed`，登记表恢复 `active`；下一步 `/pstack-port issue #4`。
