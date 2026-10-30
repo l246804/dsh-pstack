@@ -4,11 +4,5 @@ port:
   round: baseline
   phase: done
   started_at: "2026-10-30T11:56:52+08:00"
-  updated_at: "2026-10-30T17:11:28+08:00"
-blocker:
-  active_item: "#8"
-  mode: issue
-  allowed_routes:
-    - "issue #8"
-  resume_route: "idle"
-  reason: "Issue #8 实现审查通过（EXT-003 补充）；待 issue #8 验收"
+  updated_at: "2026-10-30T17:16:44+08:00"
+blocker: null
