@@ -18,8 +18,9 @@
 | 生成器 | `pstack/scripts/*.mjs` | `generate`（以上游原文加本地适配树渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
 | 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加 `pstack/harness/` 渲染；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移 |
 | 技能工作区（`@internal/skills`） | `skills/package.json`、`skills/authored/`、`skills/.agents/skills/`（`skills experimental_sync` 的落盘目录） | 随包发布的非上游技能；`authored/` 手写、`.agents/skills/` 是 vendored 技能（构建时以 `vendored/` 落进 `dist/skills`），带哈希与提交号（记于 `skills/skills-lock.json`） |
-| 仓库维护技能 | 根 `.agents/skills/<名>/SKILL.md`、`README.md`、`references/` | 路由型维护技能的入口、使用说明与按分支加载的指令；不进入 `dist/` 或随包技能工作区 |
+| 仓库维护技能 | 根 `.agents/skills/<名>/SKILL.md`、`README.md`、`references/` | 维护本仓的技能的入口、使用说明与按分支加载的指令；不进入 `dist/` 或随包技能工作区 |
 | 本地扩展登记 | `docs/extensions.md` | 登记 DSH 版独立功能的 `EXT-*` 需求、DSH 依赖与验收；基线重建保留这些范围 |
+| 上游反馈记录 | `docs/upstream-discussions.md` | 记录已提交到上游 DSH 的 Discussion 标题、URL、主题和更新时间，供后续追加与查重 |
 | 上游子模块 | `upstream/cursor-plugins`、`upstream/deepseek-harness` | 生成树的来源，与 DSH 宿主的参考实现 |
 | 发布产物 | `dist/`（.gitignore） | npm 实际发布内容：`index.mjs` 与各插件入口 `.mjs`、类型声明、`pstack/`、`skills/` |
 
