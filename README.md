@@ -52,7 +52,7 @@ Most upstream pstack skills declare `disable-model-invocation: true`. `poteto-mo
 See [`pstack/README.md`](./pstack/README.md) for the full capability map, gaps, and acceptance status.
 
 > [!IMPORTANT]
-> This release only supports DSH `0.2.2-alpha.2` and requires Node.js `>=24.21.1`. The `engines.dsh` field requires an exact DSH version match. See [Compatibility](#compatibility) before installing or upgrading.
+> This release targets DSH `0.2.2-alpha.2` or newer and requires Node.js `>=24.21.1`. `engines.dsh` is the range `>=0.2.2-alpha.2`: newer DSH versions are assumed compatible, and the requirement is only raised after a fix to the port is needed. See [Compatibility](#compatibility) before installing or upgrading.
 
 ## Quick start
 
@@ -154,7 +154,7 @@ Choose one of three browser providers: `@deepseek-ai/dsh-experimental-browser-us
 
 | Item | Version | Notes |
 |---|---|---|
-| DSH | `0.2.2-alpha.2` | `engines.dsh` requires an exact match |
+| DSH | `>=0.2.2-alpha.2` | Baseline `0.2.2-alpha.2`; newer versions are assumed compatible until the port needs a fix |
 | pstack | `0.15.36` | Upstream baseline commit `1ba91fc` |
 | Node.js | `>=24.21.1` | Runtime requirement |
 | Cordis | `~4.0.6-alpha.1` | Peer dependency |

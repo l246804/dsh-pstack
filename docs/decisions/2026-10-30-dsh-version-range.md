@@ -1,0 +1,34 @@
+# 决定：DSH 兼容版本要求改用 >= 下限范围，以当前版本为基准
+
+Status: proposed
+Date: 2026-10-30
+Scope: package.json, README.md, README.zh.md
+Implemented-by: -
+Review: 2027-04-30
+
+## 背景
+
+根 `package.json` 的 `engines.dsh` 之前写成精确版本 `0.2.2-alpha.2`。DSH 在
+`packages/boot/app-boot/src/plugin-compatibility.ts` 里用
+`semver.satisfies(runtime, range, { includePrerelease: true })` 判定；精确值意味着
+只有恰好运行 `0.2.2-alpha.2` 的 DSH 才算兼容。DSH 每发一个补丁或预发布，插件都会被判为
+不兼容而拒绝安装/激活，即使移植代码并未受影响，且每次小版本更新都要改一次 `package.json`。
+
+## 决定
+
+`engines.dsh` 改为下限范围 `>=0.2.2-alpha.2`：以移植验证过的 `0.2.2-alpha.2` 为基线，
+语义上接受所有更高的稳定版与预发布版（`includePrerelease` 生效）。默认认为高版本兼容；
+只有当某个更高版本确实破坏移植内容、修复完成后，才提高该下限。
+
+## 备选方案
+
+- 保留精确版本 `0.2.2-alpha.2`：不选。每个 DSH 版本都要手动改需求，且把未受影响的高版本误判为不兼容。
+- 用 `^0.2.2-alpha.2`：不选。0.x 上等价于 `<0.3.0-0`，拒绝 0.3.0 及以上，违背“高版本默认支持”。
+- 用 `*`：不选。同时接受低于基线的 `0.2.1`、`0.2.2-alpha.1` 等未验证版本。
+- 只写 `>=0.2.2-alpha.2`：采纳。
+
+## 后果
+
+升级 DSH 不再需要同步改 `engines.dsh`，更高版本默认可用；代价是兼容性声明变宽，
+若某高版本引入不兼容变更，问题会先暴露在运行时而非安装门槛上。因此升级 DSH 后仍需在
+测试 profile 验证包名、工具名与配置；确认破坏后，修复移植内容并抬高下限。
