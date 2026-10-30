@@ -67,7 +67,3 @@ Superseded-by: <记录路径> — <一句原因>（仅 Status 为 superseded）
 - 写新记录或实质更新前：`grep -ril "<关键词>" docs/decisions/*.md`，排除 `AGENTS.md` 与 `README.md`，逐个归类为 duplicate / replaced / overlapping / unrelated，未决项带入报告。
 - 只读每条记录的头部（首个 `## ` 之前）即可判定状态与范围，需要细节再读正文。
 - 审计规则见 `decision-audit` 技能（按 `Scope`、`Implemented-by`、`Superseded-by`、`Review` 做六类检查）。
-
-## 先不做
-
-`proposed/` 与 `implemented/` 分目录、多语言三件套、归档流程、格式检查脚本、独立的 `decision-update` 技能（状态更新并入 `decision-write` 的落地模式，避免两个写侧技能在模型目录里竞争）。等记录数量与返工成本证明需要时再加。
