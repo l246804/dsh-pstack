@@ -1,0 +1,114 @@
+# dsh.md 覆盖清单：README 的机器可读投影
+#
+# 每个 `rows` 条目把 README 记录的一条「运行期替代 / 平台排除」映射到 dsh.md 的一行。
+# `check-harness-doc.mjs` 逐条核对：cursor 字面量与替代（或跳过行）必须出现在 `target`
+# 小节里的同一行；`capability` 里的能力编号必须能在 pstack/README.md 找到。
+#
+# 维护规则：
+# - README 新增或删除一条运行期替代（§4 非排除项、§5 not shipped here、§6 既定适配）时，
+#   同步增删这里的行。`builtins` 里任一名出现在随包技能正文却没有对应行，检查直接失败。
+# - `capability` 用于反查 README；平台排除必须登记 EXCL-*/AUT-* 编号。
+# - `replacement` 是 dsh.md 行内必须出现的独有子串，不是完整句子。
+schema: 1
+
+sections:
+  - Tools
+  - Subagent fields
+  - Models
+  - setup-pstack
+  - Paths
+  - Cursor-only features
+  - Local replacements
+  - Optional plugins
+
+# 出现在 dsh.md 即视为改回旧命名或旧宿主的残留。
+forbidden:
+  - poteto-models.mdc
+  - "~/.claude/"
+
+# README 认定「有替代方案」的 Cursor 原生名字。出现在随包技能正文就必须有 rows 条目。
+builtins:
+  - create-skill
+  - /deslop
+  - /loop
+  - /automate
+  - Custom Mode
+  - /visualize
+  - control-ui
+  - control-cli
+  - cursor-team-kit
+
+rows:
+  - id: LR-01
+    cursor: "create-skill"
+    target: Local replacements
+    replacement: writing-for-agents
+    capability: [SKL-27, SKL-29, PB-11]
+    source: "README §4 非排除项 / §6 AD-04"
+  - id: LR-02
+    cursor: "/deslop"
+    target: Local replacements
+    replacement: /no-comments
+    capability: [PB-23]
+    source: "README §4 非排除项 / §5 not shipped here"
+  - id: LR-03
+    cursor: "/loop"
+    target: Local replacements
+    replacement: create_goal
+    capability: [SKL-01, PB-15]
+    source: "README §4 非排除项 / G-10"
+  - id: LR-04
+    cursor: "/automate"
+    target: Local replacements
+    replacement: writing-for-agents
+    capability: [SKL-29]
+    source: "README §5 not shipped here"
+  - id: LR-05
+    cursor: "Custom Mode"
+    target: Local replacements
+    replacement: poteto-agent
+    capability: [SKL-01, SKL-02]
+    source: "README §4 非排除项 / G-08"
+  - id: LR-06
+    cursor: "/visualize"
+    target: Local replacements
+    replacement: Mermaid
+    capability: [SKL-09, SKL-32]
+    source: "README §5 not shipped here / G-15"
+  - id: LR-07
+    cursor: "`control-ui`, `control-cli`, and `cursor-team-kit`"
+    target: Local replacements
+    replacement: dsh-browser-use
+    capability: [SKL-01, SKL-02]
+    source: "README §5 not shipped here / OPT-03, OPT-04, OPT-05"
+  - id: CX-01
+    cursor: "Cursor Automations"
+    target: Cursor-only features
+    skip: true
+    capability: [AUT-01, AUT-02, AUT-03, AUT-04, AUT-05, AUT-06, EXCL-01, EXCL-05, EXCL-06]
+    source: "README §4.1、§4.2"
+  - id: CX-02
+    cursor: "Bugbot"
+    target: Cursor-only features
+    skip: true
+    capability: [EXCL-02]
+    source: "README §4.2"
+  - id: CX-03
+    cursor: "Cursor cloud agents"
+    target: Cursor-only features
+    skip: true
+    capability: [EXCL-03]
+    source: "README §4.2"
+  - id: CX-04
+    cursor: "Cursor Projects"
+    target: Cursor-only features
+    skip: true
+    capability: [EXCL-04]
+    source: "README §4.2"
+  - id: CX-05
+    cursor: "A built-in PR tool"
+    target: Cursor-only features
+    replacement: gh pr create
+    skip: false
+    capability: []
+    source: "README §4.2 / R-11 非排除"

@@ -60,7 +60,7 @@ flowchart TD
 |---|---|
 | `docs/port-state.yaml` | 唯一 port 状态与 blocker；决定可执行路由 |
 | `docs/port-review.md` | 当前 port 轮次证据；audit 重置，doc 清空正文 |
-| `docs/port-fixes.yaml` | open/active FIX；replay 只跑 active |
+| `docs/port-fixes.yaml` | open/active FIX 与待 doc compact 的退役候选；replay 只跑 active |
 | `docs/port-fixes-archive.yaml` | upstream-fixed/obsolete FIX 历史 |
 | `docs/extensions.md` | EXT 登记与 proposed/active/broken/retired 状态 |
 | `docs/extensions/<EXT-ID>/review.md` | 单个 EXT 的实现、修复落点与验收证据 |
@@ -74,15 +74,18 @@ EXT 或 FIX 失效时按修复动作落点处理：只改扩展走 EXT 修复；
 
 `audit` 与 `doc` 写 README 前读取 upstream 的 `technical-writing` 和 `unslop` 技能。`pstack/README.md` 使用简体中文；主适配器 `pstack/harness/docs/harness/dsh.md` 按上游英文模板编写。
 
-`doc` 覆盖当前全部可选插件的未启用降级说明，并核对根 README 的版本、统计、入口、能力、插件和兼容性动态内容。没有差异时不修改根 README。双语版本需要同步更新。
+`doc` 覆盖当前全部可选插件的未启用降级说明，并在 `dsh.md` 的 `## Local replacements` 补齐 README 记录的运行期替代项（R-11）；写文档前和收尾时都运行 `vp run @internal/pstack#check:harness-doc`（R-12），它按 `docs/harness-doc.yaml` 对账 README、上游模板与 `src/`。随后核对根 README 的版本、统计、入口、能力、插件和兼容性动态内容。没有差异时不修改根 README。双语版本需要同步更新。
+
+`doc` 收尾、以及本技能整体重构后，各按 R-13 用 `/writing-for-agents` 做一次整文档审查（S-28、S-29）。`SPEC.md` 平时只追加；定期自洁按 [`SPEC-HYGIENE.md`](SPEC-HYGIENE.md)（R-14）。
 
 通用门禁：
 
 ```bash
 vp check
 vp test
+vp run @internal/pstack#check:harness-doc
 node pstack/scripts/generate-pstack-harness-tree.mjs --check
 node pstack/scripts/port-fixes.mjs replay
 ```
 
-`doc` 与 Issue 验收执行全部四条。每次分支报告都会给出完整的下一条 `/pstack-port ...` 命令；没有后续动作时报告“本轮结束，无下一步”。
+`doc`、`review port` 与 Issue 验收执行全部五条。每次分支报告都会给出完整的下一条 `/pstack-port ...` 命令；没有后续动作时报告“本轮结束，无下一步”。

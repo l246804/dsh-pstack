@@ -12,6 +12,16 @@
 `pstack/harness/`：DSH 宿主适配文档，按生成树相对路径镜像；主适配器 `docs/harness/dsh.md` 替换上游 `claude-code.md`，其他上游 harness 附件保持上游相对路径与文件名。只承载适配文档，不改写上游页面、技能、playbook、reference。
 反例：不是覆盖层，不能整份替换上游正文；生成树里的结果也不叫“本地适配树”。
 
+## 运行期替代项（runtime replacement）
+
+上游 Cursor 语境有、DSH 没有同名能力，但存在可执行替代，且该名字出现在随包技能、playbook 或 reference 的运行期步骤里的项，例如 `create-skill`（替代为 `writing-for-agents`）、`/loop`（替代为 `create_goal` 加 `schedule_create`）。主适配器 `dsh.md` 的 `## Local replacements` 逐行记录这些替代。
+反例：不是平台排除（整类舍弃、没有替代），也不是纯审查台账里的缺口（`G-xx`）或插件内部实现（`PI-xx`）。
+
+## 适配文档对账（harness doc check）
+
+`pstack/scripts/check-harness-doc.mjs` 与 `docs/harness-doc.yaml`：把 README 的运行期替代项与平台排除投影成清单，逐条核对 `dsh.md`、上游 `claude-code.md` 与 `src/`，入口是 `check:harness-doc` 任务（`vp run @internal/pstack#check:harness-doc`），是 `doc` 与 `review port` 的门禁。只读对账，从不改写 `dsh.md`。
+反例：不是一类运行时能力，不产生宿主行为；也不是 `pstack/README.md` 的替代品，它只存映射不存正文。
+
 ## 随包内容（shipped payload）
 
 `dist/`：根 `vp pack` 的发布产物（`index.mjs`、`pstack/`、`skills/`），被 `.gitignore` 忽略，npm 只发它和 `assets/`、`cordis.patch.yml`。

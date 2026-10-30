@@ -36,18 +36,19 @@
 | `core` | 有 port 影响时要求 `port.state: done`、`phase: done` 且 doc 已完成，逐项核对 `required_behavior`、测试、真实安装与 README 最终覆盖；`port_round: no-impact` 时改为核对 audit 的无影响证据和公开结论，保持 `idle/done` |
 | `external` | 复现、版本、外部责任层、链接与结论齐全；只发布结论，不写内部实现记录 |
 
-运行全部四条门禁并记录实际退出码：
+运行全部五条门禁并记录实际退出码：
 
 ```bash
 vp check
 vp test
+vp run @internal/pstack#check:harness-doc
 node pstack/scripts/generate-pstack-harness-tree.mjs --check
 node pstack/scripts/port-fixes.mjs replay
 ```
 
-另运行当前 EXT 验收、FIX 测试或 core 需求测试。真实安装验证不能只以 package 安装成功代替。形成与证据一致的公开结论，展示评论、关闭或其他公开操作，取得确认后执行。
+另运行当前 EXT 验收、FIX 测试或 core 需求测试。真实安装验证不能只以 package 安装成功代替。验收中的补漏若改动 `pstack/README.md` 或 `dsh.md`，按 R-13 做一次整文档审查并重跑五条门禁（S-28）。形成与证据一致的公开结论，展示评论、关闭或其他公开操作，取得确认后执行。
 
-完成标准：验收行为、测试、真实安装和公开结论互相一致；全部四条门禁通过；没有把技术验证通过描述成用户已接受结果。
+完成标准：验收行为、测试、真实安装和公开结论互相一致；全部五条门禁通过；没有把技术验证通过描述成用户已接受结果。
 
 ## 4. 验收成功：清理并恢复
 
@@ -70,7 +71,7 @@ core Issue 验收后统一回到 `idle`，不恢复一个已经完成的 port �
 保持 Issue 打开和 blocker 非空，不写通过，不关闭 Issue。把缺口与失败证据写入 Issue、EXT review 或 FIX 记录，并按 target 回退：
 
 - **extension / bug**：从 `allowed_routes` 移除 `issue #编号`。在 Issue 工作文件把 `stage` 显式设为 `review` 或 `implement`，并同步 EXT 工作文件的 `status` 或 FIX 的审查记录；下一步分别为 `/pstack-port review #编号` 或 `/pstack-port implement #编号`。修复并通过 review 后把 `stage` 置为 `passed`，才能加回验收路由。
-- **core，有 port 影响**：从 `allowed_routes` 移除 `issue #编号`，加回对应 port 路由，并在 `docs/port-review.md` 重开一条 finding。行为或实现缺口把 `port.state` 从 `done` 改回 `active`、`phase: review`，下一步 `/pstack-port review port`。仅文档缺口且实现审查证据仍有效时设 `active/doc`，将 finding 标为 documentation-only，下一步 `/pstack-port doc`；doc 复核并关闭该 finding 后才能加回验收路由。
+- **core，有 port 影响**：从 `allowed_routes` 移除 `issue #编号`，加回对应 port 路由，并在 `docs/port-review.md` 重开一条 finding。行为或实现缺口把 `port.state` 从 `done` 改回 `active`、`phase: review`，下一步 `/pstack-port review port`。仅文档缺口且实现审查证据仍有效时设 `active/doc`，将 finding 标为 documentation-only，下一步 `/pstack-port doc`；doc 修复并关闭该 finding 后才能加回验收路由。
 - **core，no-impact**：保持 `port.state: idle`、`phase: done`，不启动 port 轮次。保留仅含 `issue #编号` 的路由，在 Issue 工作文件记录无影响证据或公开结论的缺口；补齐后重试 `/pstack-port issue #编号`。
 - **external**：保留仅含 `issue #编号` 的路由，补齐证据后重试 `/pstack-port issue #编号`。
 

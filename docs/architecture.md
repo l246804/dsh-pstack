@@ -12,6 +12,7 @@
 | 插件验证 | 根 `tests/**/*.test.ts` | 驱动插件公共行为：隐藏技能加载、模型目录、角色文件解析与 preset 选择 |
 | pstack 工作区（`@internal/pstack`） | `pstack/package.json`、`pstack/vite.config.ts` | 编译运行时脚本、生成移植树、组装 `pstack/dist/` |
 | 本地适配树 | `pstack/harness/docs/harness/dsh.md` | DSH 宿主适配文档，按生成树相对路径镜像；主适配器替换上游 `claude-code.md`，其他上游 harness 附件保持上游相对路径与文件名。上游页面、技能、playbook、reference 原文不改写 |
+| 适配文档对账 | `pstack/scripts/check-harness-doc.mjs`、`docs/harness-doc.yaml` | 按清单对账 `dsh.md` 与 README、上游 `claude-code.md`、`src/`：覆盖行、模板漂移、`OPT-*` 集合、`AUT-*`/`EXCL-*`、章节、引用与过时名字；只读对账、从不改写文档，是 `doc` 与 `review port` 的门禁，入口任务 `check:harness-doc`（`vp run @internal/pstack#check:harness-doc`） |
 | 运行时 | `pstack/runtime/skills/<技能>/scripts/**` | 可执行脚本的 TS 源码，编译成 mjs 后替换随包树里上游附带的脚本 |
 | 生成器 | `pstack/scripts/*.mjs` | `generate`（以上游原文加本地适配树渲染生成树）、`copy:pstack`（拷贝）、`replace:scripts`（替换脚本） |
 | 生成树 | `pstack/pstack/` | 由 `upstream/cursor-plugins/pstack` 加 `pstack/harness/` 渲染；每次构建整棵重建，生成结果提交进 git，`generate --check` 用它比对漂移 |
@@ -41,7 +42,7 @@ skills/authored + skills/.agents/skills ──根 vp pack──▶ dist/skills
 
 ## 扩展点
 
-- **DSH 文本差异**：只写 `pstack/harness/<生成树相对路径>`；主适配器是 `docs/harness/dsh.md`（替换上游 `claude-code.md`），其他上游 harness 附件按上游相对路径与文件名建同名文件。上游页面、技能、playbook、reference 保持原文，不写覆盖层、不改上游内容；生成器渲染时本地适配树优先于上游。不要直接改 `pstack/pstack/`。
+- **DSH 文本差异**：只写 `pstack/harness/<生成树相对路径>`；主适配器是 `docs/harness/dsh.md`（替换上游 `claude-code.md`），其他上游 harness 附件按上游相对路径与文件名建同名文件。上游页面、技能、playbook、reference 保持原文，不写覆盖层、不改上游内容；生成器渲染时本地适配树优先于上游。不要直接改 `pstack/pstack/`。`dsh.md` 在上游模板章节外只保留两个固定追加小节：`## Local replacements`（运行期替代项，R-11）与 `## Optional plugins`（可选插件降级，R-07）。两节与 README 的一致性由 `check:harness-doc` 任务（`vp run @internal/pstack#check:harness-doc`）按 `docs/harness-doc.yaml` 核对，不再靠人工记忆。
 - **新增技能**：随包手写技能放 `skills/authored/<名>/SKILL.md`，仅供维护本仓的技能放根 `.agents/skills/<名>/SKILL.md`；第三方随包技能把 `source` 与技能名加进 `skills/package.json` 的 `skills` 数组，跑 `skills experimental_sync`，哈希与提交号自动记入 `skills/skills-lock.json`。仓库里没有 `skills/vendored` 目录或符号链接：`vp pack` 的清理步骤会顺着指向 `.agents/skills` 的符号链接删掉源文件，拷贝步骤又会把链接按本机绝对路径写进产物；所以构建直接从 `.agents/skills` 拷贝并 `rename` 成 `vendored`。
 - **新增或修改脚本**：改 `pstack/runtime/skills/<技能>/scripts/`，并把技能名加入 `pstack/scripts/replace-scripts.mjs` 的 `REPLACED` 列表。模型通过 `pstack_script` 的 `id` 调用，不直接拼路径；新增脚本必须同步 `src/internal/script-registry.ts` 的 `SCRIPT_ENTRIES`。
 - **新增或修改插件工具**：改 `src/*.ts`，在 `cordis.patch.yml` 增加对应 `dsh-pstack/<入口>` 行；`package.json` 的 `exports` 由 `vite.config.ts` 的 `pack.exports` 生成，新增入口要同时改这两处，非入口资源（如 `./locale/*.json`）用 `customExports` 声明，不要手写进 `package.json`。插件只从 `@deepseek-ai/*` 导入类型，运行时保持自包含。

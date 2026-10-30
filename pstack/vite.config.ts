@@ -20,6 +20,9 @@ export default defineConfig({
       generate: {
         command: "node scripts/generate-pstack-harness-tree.mjs",
       },
+      "generate:check": {
+        command: "node scripts/generate-pstack-harness-tree.mjs --check",
+      },
       "copy:pstack": {
         command: "node scripts/copy-pstack.mjs",
         dependsOn: ["generate", "build:runtime"],
@@ -30,6 +33,10 @@ export default defineConfig({
       },
       build: {
         command: "vp run replace:scripts",
+      },
+      check: {
+        command: "node scripts/check-harness-doc.mjs",
+        dependsOn: ["generate:check"],
       },
       test: {
         command: "node --test 'dist/runtime/**/*.test.mjs'",

@@ -495,7 +495,7 @@
 | EXCL-05 | `SendToUser` secret request：把 sender key 通过 secret card 交给连接器 | 这是 Cursor Automations 的 secret 通道；DSH 没有 `SendToUser`、connector credential file 或 routine panel | [make-bot-ui L39-L51](../upstream/cursor-plugins/pstack/skills/make-bot-ui/SKILL.md#L39-L51) · [claude-code L64](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L64) |
 | EXCL-06 | routine wake：`[routine]` turn、`<webhook_event>`、`body_digest` 与 `timestamp_ms` 的解析和响应 | 这是 Cursor webhook routine 的唤醒协议；DSH 没有 `[routine]` turn，也没有 Cursor 的 automation webhook 投递 | [make-bot-ui L105-L115](../upstream/cursor-plugins/pstack/skills/make-bot-ui/SKILL.md#L105-L115) · [claude-code L64](../upstream/cursor-plugins/pstack/docs/harness/claude-code.md#L64) |
 
-**非排除项说明**：`Cursor-only features` 中的内置 PR 工具不是排除项。Claude Code 适配明确要求改用 forge 命令，例如 `gh pr create`，所以 DSH 也走 `gh` 或 forge，不写跳过行。`Custom Mode`、`/loop`、`create-skill` 不在该表里，它们在本审查中分别按 G-08、G-10、`PB-11` 与 `SKL-29` 的替代流程处理，不当作平台排除。
+**非排除项说明**：`Cursor-only features` 中的内置 PR 工具不是排除项。Claude Code 适配明确要求改用 forge 命令，例如 `gh pr create`，所以 DSH 也走 `gh` 或 forge，不写跳过行。`Custom Mode`、`/loop`、`create-skill` 不在该表里，它们在本审查中分别按 G-08、G-10、`PB-11` 与 `SKL-29` 的替代流程处理，不当作平台排除。这些替代行写在 `dsh.md` 的 `Local replacements` 小节，与可选插件降级分开维护。
 
 ## 5. 插件内实现范围
 
@@ -655,15 +655,15 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 
 | 能力 ID | 实现 | 审查 | 文档 | 最终覆盖 |
 |---|---|---|---|---|
-| SKL-01 | 已实现 | 通过 | 已记录（§2.7；dsh.md Tools、Models、Subagent fields） | 完整（PI-01、PI-02、PI-08；skip 映射见 G-11） |
-| SKL-02 | 已实现 | 通过 | 已记录（§2.7；dsh.md Models） | 完整（PI-01、PI-02；无常驻 Custom Mode，G-08） |
+| SKL-01 | 已实现 | 通过 | 已记录（§2.7；dsh.md Tools、Models、Subagent fields、Local replacements） | 完整（PI-01、PI-02、PI-08；skip 映射见 G-11） |
+| SKL-02 | 已实现 | 通过 | 已记录（§2.7；dsh.md Models、Local replacements） | 完整（PI-01、PI-02；无常驻 Custom Mode，G-08） |
 | SKL-03 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
 | SKL-04 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
 | SKL-05 | 已实现 | 通过 | 已记录（§2.7；dsh.md Subagent fields） | 完整（PI-02、PI-08） |
 | SKL-06 | 已实现 | 通过 | 已记录（§2.7；dsh.md Models、OPT-07） | 条件覆盖（PI-02；MCP 证据需 OPT-07，G-06） |
 | SKL-07 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-07） | 条件覆盖（PI-02；MCP 与图像生成依赖外部条件，G-06、G-15） |
 | SKL-08 | 已实现 | 通过 | 已记录（§2.7；dsh.md Paths、OPT-06） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
-| SKL-09 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整（图像显示取决于宿主渲染） |
+| SKL-09 | 已实现 | 通过 | 已记录（§2.7；dsh.md Local replacements、技能原文） | 完整（图像显示取决于宿主渲染） |
 | SKL-10 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
 | SKL-11 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-01） | 条件覆盖（PI-02；隔离需 OPT-01 或 bash，G-05） |
 | SKL-12 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-01） | 条件覆盖（PI-02；每候选工作树需 OPT-01 或 bash，G-05） |
@@ -681,12 +681,12 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | SKL-24 | 已实现 | 通过 | 已记录（§2.7；dsh.md Subagent fields） | 完整（PI-08） |
 | SKL-25 | 已实现 | 通过 | 已记录（§2.7；手动 /typescript-best-practices） | 部分（需手动 /typescript-best-practices；paths 不自动挂载，G-14） |
 | SKL-26 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
-| SKL-27 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-06） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
+| SKL-27 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-06、Local replacements） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
 | SKL-28 | 已实现 | 通过 | 已记录（§2.7；技能原文） | 完整 |
-| SKL-29 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-06） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
+| SKL-29 | 已实现 | 通过 | 已记录（§2.7；dsh.md OPT-06、Local replacements） | 条件覆盖（PI-02；历史读取需 OPT-06，G-03） |
 | SKL-30 | 已实现 | 通过 | 已记录（§2.7；dsh.md Paths、OPT-06） | 条件覆盖（PI-02、PI-07；转写审计需 OPT-06，G-03） |
 | SKL-31 | 不适用（平台排除） | 通过（平台排除） | 已记录（§4；dsh.md Cursor-only features） | 按上游平台排除（EXCL-01；跳过并继续） |
-| SKL-32 | 已实现 | 通过 | 已记录（§2.7；外部视频工具边界） | 部分（文本与幻灯片规划可用；mp4 与逐帧核验需外部 ffmpeg，G-15） |
+| SKL-32 | 已实现 | 通过 | 已记录（§2.7；dsh.md Local replacements、外部视频工具边界） | 部分（文本与幻灯片规划可用；mp4 与逐帧核验需外部 ffmpeg，G-15） |
 | SKL-33 | 已实现 | 通过 | 已记录（§2.7；dsh.md Paths 的 pstack_script） | 条件覆盖（PI-09；TLC、Java、mise 与首次联网安装，G-15） |
 
 ### 8.3 Playbook 与 principle
@@ -703,7 +703,7 @@ B 的关键行为对照清单（`pstack/runtime/skills/statechart/scripts/statec
 | PB-08 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整 |
 | PB-09 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（截图需 OPT-03～OPT-05，G-04） |
 | PB-10 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（真实截图需 OPT-03～OPT-05，G-04） |
-| PB-11 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 完整（writing-for-agents 替代 create-skill） |
+| PB-11 | 已实现 | 通过 | 已记录（§2.8；dsh.md Local replacements；对应技能与适配映射） | 完整（writing-for-agents 替代 create-skill） |
 | PB-12 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-02；转写核验需 OPT-06，G-03） |
 | PB-13 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-05；需 gh，Bugbot 启动等按 EXCL-02 排除） |
 | PB-14 | 已实现 | 通过 | 已记录（§2.8；对应技能与适配映射） | 条件覆盖（PI-05；需 gh，G-07） |

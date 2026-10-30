@@ -45,7 +45,7 @@
   },
   "scripts": {
     "prepare": "vp config && skills experimental_sync -y -a universal",
-    "prerelease": "vp run -r test",
+    "prerelease": "vp run -r check && vp run -r test",
     "release": "bumpp",
     "prepublishOnly": "vp run build"
   },

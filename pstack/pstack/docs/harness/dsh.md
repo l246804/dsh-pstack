@@ -65,6 +65,19 @@ DeepSeek Harness has no Cursor Automations, Bugbot, Cursor cloud agents, or buil
 | Bugbot | Bugbot comments on a GitHub PR are ordinary review threads, so triage them with the forge command that the step gives. Skip a step that starts, waits for, or configures Bugbot when the PR has no Bugbot check or comment. |
 | Cursor cloud agents | `environment: "cloud"` maps to a local worktree, as in Subagent fields. Skip a step that needs the cloud agent itself, such as its dashboard status or its own machine. |
 | A built-in PR tool | Use the forge command that the step gives, such as `gh pr create`. That is not a skip, so write no line. For PR status, checks, review, and merge through DSH, enable the experimental `@deepseek-ai/dsh-experimental-forge-bundle` (disabled by default); otherwise use `gh`. If neither is available, report the blocked forge step. |
+| Cursor Projects | Skipped in DeepSeek Harness: Run a persistent Cursor Project with cloud child agents that continue after the laptop closes. DeepSeek Harness has no Cursor Project service or cloud coordinator; local agent teams and workflows are not an equivalent replacement. |
+
+## Local replacements
+
+| Cursor | DeepSeek Harness |
+| --- | --- |
+| `create-skill` | Use `writing-for-agents` to create or review a skill, then write and validate its `SKILL.md` directly. |
+| `/deslop` | Use `/no-comments` to remove comments that restate the code or obscure its intent. |
+| `/loop` | Use `create_goal` for automatic continuation, `schedule_create` for a timed heartbeat, or a background `bash` watcher for observable events. These tools do not subscribe to forge events. |
+| `/automate` | Use `writing-for-agents` to create a personal skill from verified work patterns. When historical evidence is needed, use the session-search fallback in Optional plugins. |
+| Custom Mode | Invoke `/poteto-mode` on each task, or start a Session with the `poteto-agent` preset. Neither provides Cursor's Option+Enter mode toggle. |
+| `/visualize` | Use Mermaid for diagrams. Use host-installed image, video, or ffmpeg tools for rendered media, and report any unavailable rendering or frame-level verification separately. |
+| `control-ui`, `control-cli`, and `cursor-team-kit` | Enable `@deepseek-ai/dsh-browser-use` for browser interaction, or use the desktop and terminal fallbacks in Optional plugins when they match the required interaction. Keep unavailable GUI or video evidence marked as skipped. |
 
 ## Optional plugins
 

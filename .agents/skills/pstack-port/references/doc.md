@@ -1,6 +1,6 @@
 # doc：写适配文档并结束 port 轮次
 
-只在 `port.state: active`、`phase: doc` 且满足以下一种前置时执行：`review port` 通过且无开放 finding；或 core 验收仅发现 documentation-only 缺口，实现审查证据仍有效。无 blocker，或 core blocker 显式允许 `doc` 才可进入。`docs/port-review.md` 只保存本轮证据，不作为路由状态。
+只在 `port.state: active`、`phase: doc` 且满足以下一种前置时执行：`review port` 通过且无开放 finding；或 core 验收仅留下已登记的 documentation-only 开放 finding，实现审查证据仍有效。无 blocker，或 core blocker 显式允许 `doc` 才可进入。`docs/port-review.md` 只保存本轮证据，不作为路由状态。
 
 ## 1. 核对基线并处理不一致
 
@@ -14,6 +14,14 @@
 
 枚举并完整读取 `<pstack>/docs/harness/`。`claude-code.md` 映射为 `pstack/harness/docs/harness/dsh.md`，其他附件保持相对路径与文件名。逐份以英文模板的章节、表格、段落职责和顺序为骨架，只替换宿主名、字段、路径和行为。正文使用英文，保留平台排除的跳过语义。
 
+先运行 `vp run @internal/pstack#check:harness-doc`（R-12、S-27）。它按 `docs/harness-doc.yaml` 对账 README 与 `dsh.md`，检查上游模板行、章节与引用，并核对 `src/` 的参数、脚本 id 与 `OPT-*` 包名。FAIL 时按清单定位并手写修正；checker 只读，不改文档。
+
+`docs/harness-doc.yaml` 只存映射，不存正文。README 增删运行期替代或平台排除时，同步增删对应行；`builtins` 中出现在随包技能正文的名字必须有 `Local replacements` 映射。
+
+`dsh.md` 的 `## Local replacements` 覆盖 README 的全部运行期替代项（R-11、S-26）。逐项确认 README 记录了替代方案，且上游名字出现在随包技能、playbook 或 reference 的运行期步骤中。每个命中项写上游名字与 DSH 替代工具、技能或命令；删除 README 已无对应项的多余行。纯审查台账和 `OPT-*` 降级不写入本节。
+
+`## Optional plugins` 与 `## Local replacements` 是上游模板外仅有的两个固定追加小节。
+
 `dsh.md` 另设 `## Optional plugins`，覆盖 README 当前可选插件表的全部 `OPT-*`，编号集合必须一致。每行写：
 
 1. `OPT-*` 编号与准确插件包名。
@@ -23,13 +31,13 @@
 
 至少保留一个上述跳过行。其他表格中的分散说明不能替代本节索引。README 文档状态区记录该产物。
 
-完成标准（S-20）：每个 OPT 都有启用能力与未启用 fallback/skip；包名、默认状态和 README 一致；dsh.md 保持英文模板结构，跳过项没有写成通过。
+完成标准（S-20、S-26、S-27）：每个 OPT 都有启用能力、未启用 fallback/skip 与支持边界；包名、默认状态和 README 一致；`## Local replacements` 覆盖 README 的全部运行期替代项，每行有替代或合规跳过，且没有把纯台账写进本节；dsh.md 保持英文模板结构，跳过项没有写成通过。
 
 ## 3. 更新中文审查记录
 
 写 README 前直接读取 `<pstack>/skills/technical-writing/SKILL.md` 与 `<pstack>/skills/unslop/SKILL.md`，不依赖 skill catalog。`pstack/README.md` 使用简体中文与 reference mode，先给能力结论，再给证据和缺口。每个能力 ID 的状态仍只在分阶段状态表定义一次。
 
-只更新文档状态与最终覆盖相关字段，保留上游需求、分类、既定适配和实现记录。逐项写产物位置、实际覆盖与有意排除；部分或未实现项写具体缺口与证据。core Issue 的每项 `required_behavior` 都有最终覆盖结论。core EXT 的 `repair_target: port` 修复通过后恢复登记表 `active`。
+只更新文档状态与最终覆盖相关字段，保留上游需求、分类、既定适配和实现记录。逐项写产物位置、实际覆盖与有意排除；部分或未实现项写具体缺口与证据。core Issue 的每项 `required_behavior` 都有最终覆盖结论。core EXT 的 `repair_target: port` 修复已在 `review port` 通过后恢复登记表 `active`，本阶段记录最终状态。
 
 完成标准：README 可从能力表定位每项状态与证据；core 输入没有漏项；没有重复状态表或为排版服务的重复段落；两个写作技能均已执行并做 unslop 扫描。
 
@@ -55,16 +63,23 @@
 
 执行 `node pstack/scripts/port-fixes.mjs compact`。活跃台账只留 `open/active`；退役候选带 `retired_at`、`retired_reason` 移入 `docs/port-fixes-archive.yaml`。编号永不复用，replay 不读 archive。
 
-运行并记录全部命令的实际退出码：
+完成「doc 自检」三项，每项记录 PASS 或具体理由（R-12）：
+
+1. **能力边界**：README 可选插件表中每个 `OPT-*` 的支持范围与缺口，在 `dsh.md` 对应行均有准确限制。
+2. **措辞一致**：核对跳过行格式、`workspace` 与精确 `cwd`、默认值、随包清单（含 `agents/`、`LICENSE`），以及技能是加载还是直接读文件。
+3. **归类判断**：上游模板外的每个名字均同时有 README 替代方案，并出现在随包技能、playbook 或 reference 的运行期步骤中。
+
+运行并记录全部五条门禁的实际退出码：
 
 ```bash
 vp check
 vp test
+vp run @internal/pstack#check:harness-doc
 node pstack/scripts/generate-pstack-harness-tree.mjs --check
 node pstack/scripts/port-fixes.mjs replay
 ```
 
-任一必要验证失败时，先恢复本次调用写入且尚未验证的适配文档、README 动态内容和 compact 变更，只保留修复所需的已验证证据；再写 `origin: doc` finding、设 `phase: review`，不进入完成状态。全部通过后清空 `docs/port-review.md` 正文，只留完成头部、round、上游提交和完成时间。
+任一必要验证失败时，先恢复本次调用写入且尚未验证的适配文档、README 动态内容和 compact 变更，只保留修复所需的已验证证据；再写 `origin: doc` finding、设 `phase: review`，不进入完成状态。五条门禁全部通过后，修复并关闭本次 core 验收回退的 documentation-only finding；若缺口已转为行为或实现问题，按第 1 节回到 `review port`。按 R-13 对 `dsh.md` 与 `pstack/README.md` 做整文档审查并修复，改完重跑五条门禁（S-28）。全部通过后清空 `docs/port-review.md` 正文，只留完成头部（含「doc 自检」三行与「整文档审查」）、round、上游提交和完成时间。
 
 按本轮来源设置状态：
 
@@ -72,9 +87,9 @@ node pstack/scripts/port-fixes.mjs replay
 |---|---|
 | baseline，无 core 验收事项 | `port.state: idle`、`phase: done`，本轮结束 |
 | core Issue | 保留 blocker，`port.state: done`、`phase: done`；确保允许 `issue #编号`，下一步验收 |
-| core EXT，无关联 Issue | EXT 恢复 `active`，清 blocker，`port.state: idle`、`phase: done` |
-| core EXT，有关联 Issue | EXT 恢复 `active`；blocker 的 `active_item` 改为 `#编号` 并允许 `issue #编号`；`port.state: done`、`phase: done` |
+| core EXT，无关联 Issue | 保持 review port 恢复的 EXT `active`，清 blocker，`port.state: idle`、`phase: done` |
+| core EXT，有关联 Issue | 保持 review port 恢复的 EXT `active`；blocker 的 `active_item` 改为 `#编号` 并允许 `issue #编号`；`port.state: done`、`phase: done` |
 
-报告逐文件产物、最终覆盖、OPT 降级表、compact、根 README 核对和全部验证。最后按状态写 `/pstack-port issue #编号` 或“本轮结束，无下一步”。
+报告逐文件产物、最终覆盖、OPT 降级表、运行期替代表、整文档审查、compact、根 README 核对和全部验证。最后按状态写 `/pstack-port issue #编号` 或“本轮结束，无下一步”。
 
-完成标准（S-01、S-14、S-18、S-19）：适配文档与中文 README 完整；OPT 和根 README 已核对；四条门禁通过；port-review 正文已清空；FIX 台账与 archive 一致；port 状态、EXT 状态和 blocker 符合来源；报告含完整下一步命令或结束语。
+完成标准（S-01、S-14、S-18～S-20、S-26～S-28）：适配文档与中文 README 完整；OPT、运行期替代和根 README 已核对；「doc 自检」三项、整文档审查与五条门禁通过；port-review 正文已清空；FIX 台账与 archive 一致；port 状态、EXT 状态和 blocker 符合来源；报告含完整下一步命令或结束语。

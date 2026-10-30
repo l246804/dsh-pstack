@@ -32,11 +32,12 @@
 
 ## 3. 全量审查 port（S-08～S-12、S-23）
 
-逐项审查 README 能力、core Issue 的 `required_behavior`、公共 API、权限、最小性与共享影响。运行所有 `active` EXT 的验收测试，不抽查；运行全部 `active` FIX replay，不只看本次改动。执行并记录：
+逐项审查 README 能力、core Issue 的 `required_behavior`、公共 API、权限、最小性与共享影响。运行所有 `active` EXT 的验收测试，不抽查；运行全部 `active` FIX replay，不只看本次改动。适配文档门禁的 FAIL 记开放 finding（R-12）。执行并记录：
 
 ```bash
 vp check
 vp test
+vp run @internal/pstack#check:harness-doc
 node pstack/scripts/generate-pstack-harness-tree.mjs --check
 node pstack/scripts/port-fixes.mjs replay
 ```
@@ -55,17 +56,17 @@ node pstack/scripts/port-fixes.mjs replay
 
 ### 3.2 active FIX replay 失败
 
-- `upstream-fixed`：记录 replay FAIL 与上游修复证据，删除本地补丁、保留测试，加 `retired_at`、`retired_reason` 后移入 archive。
-- `obsolete`：记录 replay FAIL 与失效证据，删除补丁和测试，加退役字段后移入 archive。
-- `conflict`：FIX 保持 `active`，不归档。重建或更新对应 Issue/EXT 工作文件，写入 conflict finding 与 `required_behavior`，作废旧 review passed；Issue 写 `stage: implement`，EXT 写 `status: implement`，并同步 FIX 审查记录。写 `mode: issue` blocker，`active_item` 取 FIX 的 `issue` 值，`resume_route: review port`。`#编号` 允许 `[implement #编号, review #编号]`；`EXT-*` 允许 `[implement EXT-ID, review EXT-ID]`。下一步 `/pstack-port implement <active_item>`；新 review 通过前不得增加或执行 issue 验收路由。
+- `upstream-fixed`：记录 replay FAIL 与上游修复证据，删除本地补丁、保留测试，标记退役并加 `retired_at`、`retired_reason`，暂留活跃台账等待 `doc` compact。
+- `obsolete`：记录 replay FAIL 与失效证据，删除补丁和测试，标记退役并加退役字段，暂留活跃台账等待 `doc` compact。
+- `conflict`：FIX 保持 `active`，不归档。重建或更新对应 Issue/EXT 工作文件，写入 conflict finding 与 `required_behavior`，作废旧 review passed；Issue 写 `stage: implement`，EXT 写 `status: implement`，并同步 FIX 审查记录。写 `mode: issue` blocker，`active_item` 取 FIX 的 `issue` 值，`resume_route: review port`。`#编号` 允许 `[implement #编号, review #编号, issue #编号]`；`EXT-*` 允许 `[implement EXT-ID, review EXT-ID]`。下一步 `/pstack-port implement <active_item>`；新 review 通过前不得执行 issue 验收路由。
 
-退役或冲突处置写入 `docs/port-review.md`。台账只保留 `open/active`，archive 保留完整历史。`upstream-fixed` 与 `obsolete` 处置后继续 `/pstack-port review port`；冲突先完成指定工作项。
+退役或冲突处置写入 `docs/port-review.md`。退役候选由 `doc` compact 移入 archive；compact 后台账只保留 `open/active`，archive 保留完整历史。`upstream-fixed` 与 `obsolete` 处置后继续 `/pstack-port review port`；冲突先完成指定工作项。
 
 ### 3.3 通过
 
 所有 `active` EXT 测试和 FIX replay 通过、core 需求逐项覆盖、无开放 finding 时，设 `phase: doc`。保持 core blocker，下一步 `/pstack-port doc`。
 
-完成标准：全量测试与 replay 有实际结果；每个 EXT/FIX 异常都有规定的状态、finding 或 blocker；通过时 `phase: doc`，未通过时不进入 doc；报告含唯一完整下一步命令。
+完成标准：全量测试与 replay 有实际结果；`check:harness-doc` 任务退出 0；每个 EXT/FIX 异常都有规定的状态、finding 或 blocker；通过时 `phase: doc`，未通过时不进入 doc；报告含唯一完整下一步命令。
 
 ## 4. 审查 EXT 或 Issue 实现（S-21）
 

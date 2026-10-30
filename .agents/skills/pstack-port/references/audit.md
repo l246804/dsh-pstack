@@ -12,10 +12,10 @@
 
 ## 2. 清点需求并取得证据
 
-1. 枚举并读取 `<pstack>` 全部 Markdown、模板、配置与从调用点追踪到的脚本。登记来源、入口、运行时、输入输出、退出码和关键行为；每份文档都有原子能力或“无可移植能力”标记。
+1. 枚举并读取 `<pstack>` 全部 Markdown、模板、配置与从调用点追踪到的脚本。登记来源、入口、运行时、输入输出、退出码和关键行为；每份文档都有原子能力或“无可移植能力”标记。技能或工作流声明的脚本还要有测试与调用方；缺失、行为不完整或过时的脚本写入能力表（S-25）。
 2. 完整读取 `<pstack>/docs/harness/claude-code.md`，登记覆盖域、表格粒度与平台排除基线。
 3. 按 [`port-baseline.md`](port-baseline.md) 调查 `<dsh>` 的标准模式、可选插件、实验性状态、启用条件与互斥关系。每项第 2、3 层结论绑定可打开的源码证据。
-4. 读取 `docs/architecture.md`、适用 accepted 决策和 `docs/extensions.md`。保留 `proposed`、`active` 与 `broken` EXT，不把 EXT 混入上游能力。
+4. 读取 `docs/architecture.md`、适用 accepted 决策和 `docs/extensions.md`。登记并保留 `proposed`、`active`、`broken` 与 `retired` EXT，不把 EXT 混入上游能力。
 5. 逐条映射 core Issue 或 EXT 的 `required_behavior`。每项至少对应一个能力行；确无 port 影响时，保存可复核的无影响证据，不虚构能力行。
 
 完成标准：全部上游文档、脚本与 core 输入都有去向；每项能力恰有排除结论或一个主层；缺口含支持范围、缺失行为、场景、建议和证据。
@@ -26,11 +26,13 @@
 
 `pstack/README.md` 依次给出审查基线、完整能力表、标准模式与可选插件、平台排除、插件内实现范围、既定适配、必要的实现选择、分阶段状态和证据索引。每个能力 ID 的状态只在分阶段状态表定义一次；主表只保留决策所需信息。可选插件条目使用稳定 `OPT-*` 编号，并写包名、默认状态、实验性、启用条件、能力、边界与冲突。
 
+同步重建 `docs/harness-doc.yaml`，只保存 README 运行期替代与平台排除到 `dsh.md` 小节的映射，不复制正文。`builtins` 覆盖 README 认定有替代方案的上游名字；`rows` 逐项登记目标小节、替代或跳过类型及能力 ID（R-12）。
+
 重置 `docs/port-review.md` 为本轮标题、上游提交、`round`、`started_at` 和空 findings 列表。旧 findings 不继承。正常情况下写 `port.state: active`、`phase: audit`，设置本轮 `round` 与时间；blocker 保持原样。
 
 若 core Issue 确无 port 影响：在 Issue 工作文件写 `port_round: no-impact` 与证据，保持 `port.state: idle`、`phase: done`，不启动实现；把 blocker 的 `allowed_routes` 收敛为 `[issue #编号]`。EXT 的 core 修复必须实际恢复验收行为，不能用 Issue 的 no-impact 出口。
 
-完成标准（S-01、S-05、S-18）：README 能力表完整且为中文；core 需求逐行有映射或 no-impact 证据；`port-review.md` 已重置；状态、round 与 blocker 一致；未开始实现。
+完成标准（S-01、S-05、S-18、S-25）：README 能力表完整且为中文；core 需求逐行有映射或 no-impact 证据；对账清单与 README 一致；`port-review.md` 已重置；状态、round 与 blocker 一致；未开始实现。
 
 ## 4. 复核并报告
 

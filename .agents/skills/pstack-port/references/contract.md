@@ -65,7 +65,7 @@ port finding 记录 `id`、`origin`、`status`、`affected_ext`、`required_beha
 
 ## 3. FIX 台账
 
-`docs/port-fixes.yaml` 只保存 `open` 与 `active`：
+`docs/port-fixes.yaml` 保存 `open` 与 `active`；`review port` 标记的退役候选可暂留至 `doc` compact：
 
 ```yaml
 schema: 1
@@ -83,7 +83,7 @@ fixes:
     note: "..."
 ```
 
-`docs/port-fixes-archive.yaml` 使用同一记录结构，另加 `retired_at`、`retired_reason`，状态只用 `upstream-fixed | obsolete`。`FIX-*` 编号永不复用。bug 分诊创建 `open`；实现填 `files`、`test` 并转为 `active`；复核保持 `active`。退役条目移入 archive，`doc` 再执行 compact 清理遗留候选。replay 只读活跃台账中的 `status: active`。
+`docs/port-fixes-archive.yaml` 使用同一记录结构，另加 `retired_at`、`retired_reason`，状态只用 `upstream-fixed | obsolete`。`FIX-*` 编号永不复用。bug 分诊创建 `open`；实现填 `files`、`test` 并转为 `active`；复核保持 `active`。`review port` 标退役并保留退役候选，`doc` compact 将其移入 archive；compact 后活跃台账只含 `open/active`。replay 只读活跃台账中的 `status: active`。
 
 ## 4. 事实、写入与权限边界
 
@@ -95,7 +95,7 @@ fixes:
 
 当前实现、生成树、旧 README 和测试只证明各自直接表达的事实。用 `git -C <pstack> rev-parse HEAD` 与 `git -C <dsh> rev-parse HEAD` 绑定提交。只读子任务的结论须由主任务打开原证据核验。
 
-分支只写自己的产物与当前工作项所需文件。手写位置限于根 `src/`、`tests/`、`pstack/harness/`、`pstack/runtime/`、必要构建配置和上述状态文件。上游只由 `upstream` 更新；`pstack/pstack/` 与 `dist/` 只由生成器或构建改变。EXT 与 bug 工作不改 port 基线；port 工作不修改 EXT 登记，除非分支明确规定破坏或恢复状态。
+分支只写自己的产物与当前工作项所需文件。手写位置限于根 `src/`、`tests/`、`pstack/harness/`、`pstack/runtime/`、`pstack/scripts/`、`docs/harness-doc.yaml`、必要构建配置和上述状态文件。上游只由 `upstream` 更新；`pstack/pstack/` 与 `dist/` 只由生成器或构建改变。EXT 与 bug 工作不改 port 基线；port 工作不修改 EXT 登记，除非分支明确规定破坏或恢复状态。`dsh.md` 在上游模板章节之外只保留 `## Local replacements`（R-11）与 `## Optional plugins`（R-07）两个固定追加小节。
 
 模型触发的进程、文件、网络、安装和远程操作进入 DSH 对应执行面，继承 sandbox、审批、取消和生命周期。公开 GitHub 操作每次先展示目标仓库与完整内容并取得确认。
 
@@ -106,10 +106,11 @@ fixes:
 ```bash
 vp check
 vp test
+vp run @internal/pstack#check:harness-doc
 node pstack/scripts/generate-pstack-harness-tree.mjs --check
 node pstack/scripts/port-fixes.mjs replay
 ```
 
-每条命令记录实际退出码；相关测试写明文件或用例。状态验收同时给出文件字段、路由拒绝或通过的观察结果。`doc` 与 Issue 验收运行全部四条门禁。
+每条命令记录实际退出码；相关测试写明文件或用例。状态验收同时给出文件字段、路由拒绝或通过的观察结果。`doc`、`review port` 与 Issue 验收运行全部五条门禁。
 
 报告回查“需求 → 工作项 → 实现 → 验证 → 产物”。列出未覆盖、证据不足和有意跳过项；为空写“无”。报告最后给出参数齐全的 `/pstack-port ...` 下一步命令；多个选择分别说明条件；没有下一步写“本轮结束，无下一步”。
