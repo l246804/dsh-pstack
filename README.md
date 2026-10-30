@@ -72,7 +72,7 @@ See [`pstack/README.md`](./pstack/README.md) for the full capability map, gaps, 
    /setup-pstack
    ```
 
-   This command reads the providers, models, and reasoning efforts available in the current deployment. It writes them to `$DSH_HOME/pstack-models.mdc`. Without this file, every role inherits the parent's routing.
+   This command reads the providers, models, and reasoning efforts available in the current deployment. It writes them to `$DSH_HOME/pstack-models.mdc`. Without this file, every role inherits the parent's routing. After setup, the same values can be viewed and edited on **Plugins → Installed plugins → dsh-pstack**.
 
 ### Common entry points
 
@@ -99,6 +99,10 @@ See [`pstack/README.md`](./pstack/README.md) for the full capability map, gaps, 
 | `pstack_script` | Runs bundled Node scripts by fixed id without Bun or shell scripts. |
 
 The `poteto-agent` and `comment-sicko` presets handle implementation delegation and read-only comment review. `pstack_script` can run five bundled scripts: `check-plan`, `watch-pr`, `worktree-audit`, `log`, and `statechart`. The script ids form a closed enum and cannot be used to build arbitrary paths.
+
+### Role model page
+
+Open **Plugins → Installed plugins → dsh-pstack** to view and edit `$DSH_HOME/pstack-models.mdc` without hand-writing the file. The page shows the absolute file path and its `missing` / `loaded` / `unreadable` state, lists all 17 roles in manifest order, and offers the live `pstack_models` directory for each role's provider, model, and declared effort. `inherit-parent` and `auto` remain selectable, each role has a reset button, and list roles keep every route. Saving changes only that role's line; other roles, the `# budget` line, and unknown or malformed lines stay untouched. The same file is shared with `/setup-pstack` and is re-read by the next `pstack_subagent` delegation without a restart.
 
 ## Skills directory
 

@@ -23,7 +23,11 @@ import {
 
 /** One resolved child route. */
 export type Route =
-  | { readonly kind: "inherit" }
+  | {
+      readonly kind: "inherit";
+      /** The spelling the file used; `undefined` for an implicit fallback. */
+      readonly alias?: "inherit-parent" | "auto";
+    }
   | {
       readonly kind: "route";
       readonly provider: string;
@@ -207,8 +211,9 @@ export function parseRoute(raw: string): SingleRouteParse {
   const value = raw.trim();
   if (value === "") return { issue: "the value is empty" };
 
-  if (INHERIT_PARENT_ALIASES.includes(value.toLowerCase())) {
-    return { route: { kind: "inherit" } };
+  const alias = value.toLowerCase();
+  if (INHERIT_PARENT_ALIASES.includes(alias)) {
+    return { route: { kind: "inherit", alias: alias as "inherit-parent" | "auto" } };
   }
 
   // Split at the first `/`: a model id may carry its own vendor prefix, so
