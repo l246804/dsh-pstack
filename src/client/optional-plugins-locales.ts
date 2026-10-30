@@ -8,6 +8,12 @@ export const NS = "pstackPlugins";
 
 /** Source dictionary: its key set is the contract every locale must satisfy. */
 const base = {
+  configureAction: "Configure",
+  configureTitle: "Configure dsh-pstack",
+  configureSections: "Configuration sections",
+  configurePluginsSection: "Plugins",
+  configureRolesSection: "Roles",
+  configureClose: "Close",
   optionalPluginsTitle: "Recommended plugins",
   optionalPluginsSubtitle:
     "Optional DSH plugins that complete pstack flows. Nothing is enabled automatically; turn on only what you need.",
@@ -82,6 +88,12 @@ export type PstackPluginsTranslate = TranslateNS<typeof NS>;
 export const catalogs = {
   en: base,
   zh: {
+    configureAction: "配置",
+    configureTitle: "配置 dsh-pstack",
+    configureSections: "配置分区",
+    configurePluginsSection: "插件",
+    configureRolesSection: "角色",
+    configureClose: "关闭",
     optionalPluginsTitle: "推荐插件",
     optionalPluginsSubtitle:
       "补全 pstack 流程的可选 DSH 插件。页面不会自动启用任何插件，只按需开启。",

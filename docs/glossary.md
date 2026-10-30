@@ -47,20 +47,25 @@
 `$DSH_HOME/pstack-models.mdc`：`/setup-pstack` 写入、`pstack_subagent` 每次委派重读的角色到 `provider/model [effort]` 映射；缺失表示全部角色继承父级路由。
 反例：不是 DSH 的 `AGENTS.md`；与上游 Cursor 的 `pstack-models.mdc` 同名，但位于 `$DSH_HOME`，且只有 `pstack_subagent` 读取。
 
-## 角色模型配置页（role model page）
+## bundle 配置模态框（bundle config dialog）
 
-Plugins → dsh-pstack bundle 页中的 Client 配置页：读取角色文件的状态与 17 个角色值，按 `pstack_models` 实时目录选择 `provider/model [effort]`，单角色保存或重置回 `inherit-parent`。Host 侧服务是 `pstackRoles`（`src/roles.ts`），Client 侧是 `src/client/` 与手写的 `src/remote.ts`。
-反例：不是 `pstack_models` 工具（只读目录），也不是角色文件本身；页面只编辑角色文件，不改变 port 基线。
+Plugins → dsh-pstack bundle 详情页页头「配置」按钮打开的 Client 模态框：仿 Settings 的遮罩、居中圆角卡片与关闭方式，左侧为分区导航，右侧显示当前分区的表单。入口是 `plugins.detail.actions`，内部复用推荐插件区（EXT-004）与角色模型配置（EXT-003）；详情页不再通过 `plugins.bundle.config` 内联渲染配置。实现位于 `src/client/PstackBundleConfigDialog.tsx`。
+反例：不是 Settings 本身（只仿视觉与交互，不复用 `dsh-client-ui-settings` 组件），也不是 port 基线能力。
 
-## 推荐插件页（recommended plugins page）
+## 角色模型配置（role model configuration）
 
-Plugins → dsh-pstack bundle 页顶部的“推荐插件”区，以及 dsh-pstack 首次启用后经 `plugins.bundle.activation` 出现的一次性引导：按 `OPT-01` 至 `OPT-09` 展示可选 DSH 插件的分组、当前 bundle 状态、平台与冲突限制。默认推荐 `OPT-01` 与 `OPT-06`；逐项开关与“一键启用推荐项”都通过 `pluginManager` Remote 由用户点击触发。目录唯一来源是 `src/internal/optional-plugins.ts`。
-反例：不是 README 的“可选 DSH 插件”说明表（只描述能力），也不是 port 基线能力；页面不自动启用任何插件。
+bundle 配置模态框中的角色分区：读取角色文件的状态与 17 个角色值，按 `pstack_models` 实时目录选择 `provider/model [effort]`，单角色保存或重置回 `inherit-parent`。Host 侧服务是 `pstackRoles`（`src/roles.ts`），Client 侧是 `src/client/` 与手写的 `src/remote.ts`。
+反例：不是 `pstack_models` 工具（只读目录），也不是角色文件本身；该分区只编辑角色文件，不改变 port 基线。
 
-## 配置页 locale 命名空间（config locale namespace）
+## 推荐插件区（recommended plugins section）
 
-每个插件配置能力独立的文案词典命名空间：角色模型配置页用 `pstackRoles`（`src/client/locales.ts`），推荐插件页用 `pstackPlugins`（`src/client/optional-plugins-locales.ts`）。支持语言清单与通用词典类型在 `src/client/i18n.ts`；每个命名空间按该清单提供每种语言的完整词典，各语言键集合一致且不得相交；`common` 只放跨功能共享词。组合页按能力注入各自的 translator。
-反例：不是一个页面只能有一个命名空间；也不把推荐插件文案写进 `pstackRoles` 或复用同义键。
+bundle 配置模态框中的推荐插件分区，以及 dsh-pstack 首次启用后经 `plugins.bundle.activation` 出现的一次性引导：按 `OPT-01` 至 `OPT-09` 展示可选 DSH 插件的分组、当前 bundle 状态、平台与冲突限制。默认推荐 `OPT-01` 与 `OPT-06`；逐项开关与「一键启用推荐项」都通过 `pluginManager` Remote 由用户点击触发。目录唯一来源是 `src/internal/optional-plugins.ts`。
+反例：不是 README 的“可选 DSH 插件”说明表（只描述能力），也不是 port 基线能力；该分区不自动启用任何插件。
+
+## 配置 locale 命名空间（config locale namespace）
+
+每个插件配置能力独立的文案词典命名空间：角色模型配置用 `pstackRoles`（`src/client/locales.ts`），推荐插件区用 `pstackPlugins`（`src/client/optional-plugins-locales.ts`）。支持语言清单与通用词典类型在 `src/client/i18n.ts`；每个命名空间按该清单提供每种语言的完整词典，各语言键集合一致且不得相交；`common` 只放跨功能共享词。配置模态框按能力注入各自的 translator。
+反例：不是一个分区只能有一个命名空间；也不把推荐插件文案写进 `pstackRoles` 或复用同义键。
 
 ## 上游（upstream）
 

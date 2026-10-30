@@ -1,12 +1,12 @@
 /**
- * Browser half of dsh-pstack: the role model configuration page and the
- * recommended optional plugins on the Plugins → dsh-pstack bundle detail.
+ * Browser half of dsh-pstack: the bundle configuration dialog button and the
+ * one-time recommended-plugin guidance on the Plugins → dsh-pstack bundle page.
  *
  * The browser bundle is loaded by `dsh-client-modules` as a classic script and
- * registers the page through the `plugins.bundle.config` slot and the one-time
- * guidance through `plugins.bundle.activation`. Its Remote contribution is
- * hand-written in `../remote.ts`; no Typert generation chain is required at
- * build time.
+ * registers the configuration action through `plugins.detail.actions` and the
+ * one-time guidance through `plugins.bundle.activation`. Its Remote
+ * contribution is hand-written in `../remote.ts`; no Typert generation chain is
+ * required at build time.
  */
 
 import type { Context } from "@deepseek-ai/cordis";
@@ -20,7 +20,7 @@ import type { PstackPluginsLocaleKey } from "./optional-plugins-locales.ts";
 
 import { pstackRolesRemote, type PstackRolesNamespace } from "../remote.ts";
 import { OptionalPluginsActivation } from "./OptionalPluginsPage.tsx";
-import { PstackBundleConfigPage } from "./PstackBundleConfigPage.tsx";
+import { PstackBundleConfigAction } from "./PstackBundleConfigDialog.tsx";
 import type { PstackRolesApi } from "./RoleSettingsPage.tsx";
 import type { BundleChange, BundleSnapshot, OptionalPluginsApi } from "./optional-plugins-state.ts";
 import { NS as ROLES_NS, catalogs as rolesCatalogs } from "./locales.ts";
@@ -53,7 +53,7 @@ declare module "@deepseek-ai/dsh-client-ui-slots" {
 /** Browser services this plugin needs before `apply` runs. */
 export const inject = ["remote", "slots", "locale", "remote.pluginManager"];
 
-/** Mount the Remote contribution and register the bundle page and activation guidance. */
+/** Mount the Remote contribution and register the bundle configuration action and activation guidance. */
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   // `remote.<namespace>` only exists after this plugin mounts the contribution,
   // so it cannot live in the top-level `inject` list (that would deadlock: the
@@ -104,15 +104,15 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       },
     };
 
-    scope.slots.inject("plugins.bundle.config", () =>
+    scope.slots.inject("plugins.detail.actions", () =>
       scope.slots.register(
         {
-          name: "plugins.bundle.config",
-          key: "dsh-pstack",
-          locale: ROLES_NS,
-          inject: () => ({ api, optionalPlugins, pluginsT: ctx.locale.bind(PLUGINS_NS) }),
+          name: "plugins.detail.actions",
+          id: "dsh-pstack",
+          locale: PLUGINS_NS,
+          inject: () => ({ api, optionalPlugins, rolesT: ctx.locale.bind(ROLES_NS) }),
         },
-        PstackBundleConfigPage,
+        PstackBundleConfigAction,
       ),
     );
 

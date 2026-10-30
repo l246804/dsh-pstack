@@ -1,7 +1,7 @@
-/** Bundles-page configuration form for `$DSH_HOME/pstack-models.mdc`. */
+/** Role configuration section inside the bundle configuration dialog for `$DSH_HOME/pstack-models.mdc`. */
 
 import { useEffect, useState, type CSSProperties, type ReactElement } from "react";
-import type { InjectFace, PropsLocale, PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
+import type { PropsLocale } from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-plugin-manager/client";
 
 import type { CatalogueResult } from "../models.ts";
@@ -509,12 +509,13 @@ function remoteError(error: unknown): string {
   return String(error);
 }
 
-/** Slot container: owns loading, drafts, and the two Remote calls. */
-export function RoleSettingsPage(
-  props: PropsRuntime<"plugins.bundle.config"> &
-    PropsLocale<typeof NS> &
-    InjectFace<{ readonly api: PstackRolesApi }>,
-): ReactElement {
+/** Props of the role configuration section rendered inside the bundle config dialog. */
+export type RoleSettingsPageProps = PropsLocale<typeof NS> & {
+  readonly api: PstackRolesApi;
+};
+
+/** Section container: owns loading, drafts, and the two Remote calls. */
+export function RoleSettingsPage(props: RoleSettingsPageProps): ReactElement {
   const { api, t } = props;
   const [snapshot, setSnapshot] = useState<RoleFileSnapshot | null>(null);
   const [catalogue, setCatalogue] = useState<CatalogueResult | undefined>(undefined);

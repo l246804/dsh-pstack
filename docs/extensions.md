@@ -30,7 +30,7 @@
 - 状态：proposed
 - 用户场景：安装 dsh-pstack 后，在 DSH Web/Desktop 的 Plugins → dsh-pstack bundle 详情页，配置（推荐可选插件 + 角色模型配置）不再内联铺满详情页，而是通过页头右上角的「配置」按钮打开一个仿 Settings 的居中模态框；模态框左侧为分区导航、右侧显示对应表单，便于集中查看与编辑。
 - 范围：bundle 详情页页头「配置」按钮（`plugins.detail.actions`）；仿 Settings 的居中模态框（遮罩、居中卡片、可关闭）；内部左右分栏（左导航 / 右表单）；分区内容复用 EXT-003（角色模型配置）与 EXT-004（推荐可选插件）；详情页移除 `plugins.bundle.config` 内联渲染；中 / 英双语沿用现有 locale 命名空间。
-- 验收：Issue #12（待实现与验收）。
+- 验收：Issue #12（待审查与验收）。
 - DSH 公共接口与兼容版本：0.2.2-alpha.2；`plugins.detail.actions`（详情页页头控件槽）、`plugins.bundle.config`（由内联渲染改为不再使用）、`plugins.bundle.activation`；Settings 弹窗（`dsh-client-ui-settings` / `dsh-client-ui-settings-general` 的 SettingsRoot）仅作视觉参照，不复用其组件。
-- 实现与验证：待实现（Issue #12）。
+- 实现与验证：已实现，待审查（Issue #12，2026-10-31）；实现、测试与 playground 视觉证据见 [docs/extensions/EXT-005/review.md](extensions/EXT-005/review.md)。
 - Issue：[#12](https://github.com/l246804/dsh-pstack/issues/12)

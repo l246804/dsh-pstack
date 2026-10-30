@@ -1,7 +1,7 @@
 # playground：真实插件运行测试场
 
 开发期**唯一**的真实运行测试环境。`tests/` 的 vitest 用 mock 宿主契约验证公共行为；
-凡是需要真实 DSH 进程才能观察的（插件配置页渲染与交互、推荐插件页状态、真实会话里
+凡是需要真实 DSH 进程才能观察的（bundle 配置模态框渲染与交互、推荐插件区状态、真实会话里
 `pstack_skill` / `pstack_subagent` 的派发与路由），都在这里跑。
 
 - DSH home：`playground/.dsh/`（`playground/.gitignore` 忽略，不进版本库）
@@ -51,7 +51,7 @@ dsh --profile pstack-playground --dump-config-schema  # 生成配置 JSON Schema
 dsh --profile pstack-playground --help                # web app 参数（--port/--host 等）
 ```
 
-不内置断言脚本：插件当前提供哪些工具、preset、配置页内容会随插件演进变化，写死进脚本会很快
+不内置断言脚本：插件当前提供哪些工具、preset、配置模态框内容会随插件演进变化，写死进脚本会很快
 过期；需要判定什么，就在终端按当时目标直接看 `dsh` 的输出。
 
 ### 验证方式：截图/视觉用 agent-browser，真实会话由用户确认
@@ -73,11 +73,12 @@ console → screenshot 放在同一进程树（daemon 会随沙箱 shell 结束�
 
 验证清单（`agent` = agent-browser 自动跑；`user` = 用户操作并确认）：
 
-1. **插件配置页渲染**（agent 截图，用户确认视觉）：Plugins → dsh-pstack 出现「推荐插件」区与
-   「角色模型配置」区；布局、间距、禁用态正常。
-2. **角色模型配置页保存/重置**（agent 驱动，回读 `$DSH_HOME/pstack-models.mdc`；用户确认视觉）：显示
-   路径与状态、17 个角色；provider/model/effort 下拉可用；保存/重置后对应行更新或消失。
-3. **中英文本**（agent 切换截图，用户确认视觉）：切换 en/zh，两区文案完整（含推理强度「基准值而非固定值」）。
+1. **配置按钮与模态框**（agent 截图，用户确认视觉）：Plugins → dsh-pstack bundle 页页头出现「配置」
+   按钮；点击后打开仿 Settings 的居中模态框，左侧「推荐插件」/「角色模型配置」分区可切换；
+   遮罩、圆角、关闭按钮与 Escape/遮罩关闭正常，详情页不再内联铺配置块。
+2. **角色模型配置保存/重置**（agent 驱动，回读 `$DSH_HOME/pstack-models.mdc`；用户确认视觉）：模态框
+   角色分区显示路径与状态、17 个角色；provider/model/effort 下拉可用；保存/重置后对应行更新或消失。
+3. **中英文本**（agent 切换截图，用户确认视觉）：切换 en/zh，按钮、模态框与两区文案完整（含推理强度「基准值而非固定值」）。
 4. **推荐插件区**（静态状态 agent 截图；开关/一键启用 agent 驱动并回读 profile；用户确认视觉）：
    `OPT-01`..`OPT-09` 分组与 `enabled`/`off`/`missing` 状态正确；首次启用后的一次性 activation 提示出现。
 5. **真实会话派发子代理**（user 操作并确认；agent 读会话日志佐证）：用户在 17353 的会话里发一个触发

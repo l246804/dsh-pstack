@@ -22,7 +22,7 @@ describe("pstack roles browser half", () => {
 
     const slotsMock = {
       inject: (name: string, callback: () => void) => {
-        expect(["plugins.bundle.config", "plugins.bundle.activation"]).toContain(name);
+        expect(["plugins.detail.actions", "plugins.bundle.activation"]).toContain(name);
         callback();
       },
       register: (options: Record<string, unknown>, component: unknown) => {
@@ -103,9 +103,9 @@ describe("pstack roles browser half", () => {
 
     expect(slots).toHaveLength(2);
     expect(slots[0]!.options).toMatchObject({
-      name: "plugins.bundle.config",
-      key: "dsh-pstack",
-      locale: "pstackRoles",
+      name: "plugins.detail.actions",
+      id: "dsh-pstack",
+      locale: "pstackPlugins",
     });
     expect(slots[1]!.options).toMatchObject({
       name: "plugins.bundle.activation",
@@ -121,7 +121,7 @@ describe("pstack roles browser half", () => {
             listBundles: () => Promise<readonly unknown[]>;
             setBundleEnabled: (name: string, enabled: boolean) => Promise<unknown>;
           };
-          readonly pluginsT: (key: string) => string;
+          readonly rolesT: (key: string) => string;
         };
       }
     ).inject();
@@ -129,9 +129,7 @@ describe("pstack roles browser half", () => {
     expect(await configFace.optionalPlugins.setBundleEnabled("dsh-pstack", true)).toEqual({
       application: "applied",
     });
-    expect(configFace.pluginsT("optionalPluginsTitle")).toBe(
-      pluginsCatalogs[baseLocale].optionalPluginsTitle,
-    );
+    expect(configFace.rolesT("title")).toBe(rolesCatalogs[baseLocale].title);
     expect(typeof dispose).toBe("function");
   });
 });

@@ -2,11 +2,11 @@
 
 - target: extension
 - status: open
-- port_round: pending
-- stage: implement
+- port_round: no-impact
+- stage: review
 - issue: https://github.com/l246804/dsh-pstack/issues/12
 - 公开状态: OPEN（2026-10-30 创建，无评论、无标签）
-- 关联 EXT: EXT-005（`status: implement`）
+- 关联 EXT: EXT-005（`status: review`）
 - 关联能力: EXT-003（角色模型配置）、EXT-004（推荐可选插件）
 
 ## required_behavior
@@ -26,3 +26,18 @@
 - 最小复现：不适用（体验改进 / 能力变更，非缺陷）。
 - 分类结论：仅改 `src/client/` 的 Client 配置页表现层，不触 `pstack/README.md`、`docs/harness/dsh.md`、生成树或运行时脚本，不属 port 基线（`core`）；不是缺陷（`bug`）；无外部责任层（`external`）。故为 `extension`，新建 EXT-005 承载「页头入口 + 仿 Settings 模态框」容器，分区内容复用 EXT-003 / EXT-004。
 - 首次分诊后停止：不实现、不关闭 Issue。
+
+## 实现
+
+- 扩展实现：`src/client/PstackBundleConfigDialog.tsx`（新增）、`src/client/index.ts`、`src/client/RoleSettingsPage.tsx`、`src/client/optional-plugins-locales.ts`。
+- 入口变更：`client/index.ts` 从 `plugins.bundle.config` 改为 `plugins.detail.actions` 注册 `PstackBundleConfigAction`；只有 dsh-pstack bundle 详情页显示「配置」按钮。
+- 模态框：点击按钮打开 `createPortal` 到 `document.body` 的仿 Settings 居中模态框；遮罩、圆角面板、右上关闭按钮、遮罩点击与 Escape 均可关闭；左侧导航切换「推荐插件」与「角色模型配置」，右侧复用 EXT-004 的推荐区与 EXT-003 的角色编辑器。
+- 详情页：不再存在 `plugins.bundle.config` 注册或内联配置块。
+- 文案：`pstackPlugins` 增加配置按钮、模态框标题、分区导航与关闭按钮的中英词条；分区标题沿用现有词典键。
+- 测试：`tests/bundle-config-dialog.test.tsx` 覆盖按钮出现条件、两种分区与全部支持语言文案；`tests/client-plugin.test.ts` 覆盖新槽位注册与注入面。
+- 真实插件验证：playground 17353 重启后，详情页页头出现「Configure」按钮，点击打开仿 Settings 模态框；Plugins / Roles 分区切换正常，角色分区读取到 `playground/.dsh/pstack-models.mdc` 的 `loaded` 状态（17 个 `select`）；Escape 与关闭按钮均从打开变为关闭（`{ before: true, after: false }`），详情页 `[data-plugin-config]` 为 `false`，控制台无错误（截图 `.tmp/pg-dialog-final.png`、`.tmp/pg-dialog-roles-final.png`）。
+- 验证：`vp check`、`vp test`（16 个文件、95 个用例）、`vp run build`、`node pstack/scripts/generate-pstack-harness-tree.mjs --check`、`vp run @internal/pstack#check:harness-doc` 与 `node pstack/scripts/port-fixes.mjs replay` 均退出 0；未改 `pstack/runtime/`、`pstack/harness/`、`pstack/README.md` 或 port 能力。
+
+## 审查
+
+- 待审查（下一步 `/pstack-port review #12`）。

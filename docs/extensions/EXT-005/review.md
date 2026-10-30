@@ -1,6 +1,6 @@
 # EXT-005：bundle 配置模态框
 
-- status: implement
+- status: review
 - repair_target: extension
 - issue: https://github.com/l246804/dsh-pstack/issues/12
 - 关联能力: EXT-003（角色模型配置）、EXT-004（推荐可选插件）
@@ -17,7 +17,13 @@
 
 ## 实现证据
 
-- 待实现。
+- 入口：`src/client/index.ts` 改为向 `plugins.detail.actions` 注册 `PstackBundleConfigAction`（`id: dsh-pstack`，`locale: pstackPlugins`），不再注册 `plugins.bundle.config`；注入面为角色 Remote API、推荐插件 API 与 `pstackRoles` translator。
+- 页面：`src/client/PstackBundleConfigDialog.tsx` 的「配置」按钮只对 `subject.kind === "bundle" && subject.pkg.name === "dsh-pstack"` 渲染；点击后用 `createPortal` 打开仿 Settings 的居中模态框（遮罩、圆角 `--dsw-radius-panel` 卡片、右上关闭按钮、遮罩点击与 Escape 关闭），左侧 188px 分区导航在「推荐插件」与「角色模型配置」间切换，右侧渲染对应分区。
+- 分区复用：推荐分区继续使用 `OptionalPluginsSection`（EXT-004），角色分区继续使用 `RoleSettingsPage`（EXT-003）；`RoleSettingsPage` 的 props 从 `plugins.bundle.config` 槽位类型改为模态框内使用的 `RoleSettingsPageProps`，不改变表单行为。
+- 文案：`pstackPlugins` 命名空间新增 `configureAction` / `configureTitle` / `configureSections` / `configurePluginsSection` / `configureRolesSection` / `configureClose` 的中英词条；分区正文标题沿用现有 `optionalPluginsTitle` 与 `pstackRoles.title`。
+- 测试：`tests/bundle-config-dialog.test.tsx` 覆盖按钮仅对 dsh-pstack bundle 出现、两种分区在全部支持语言下的标题/内容/关闭文案；`tests/client-plugin.test.ts` 改为断言 `plugins.detail.actions` 注册与注入面，并确认不再注册 `plugins.bundle.config`。原有 `tests/role-page.test.tsx`（7 例）与 `tests/optional-plugins-page.test.tsx`（5 例）继续通过，覆盖角色表单的读取/编辑/保存/重置/校验与推荐区状态/开关/一键启用。
+- 真实插件验证：`playground`（17353）重启后，Plugins → pstack 详情页页头出现「Configure」按钮；点击打开仿 Settings 的居中模态框（截图 `.tmp/pg-dialog-final.png`、`.tmp/pg-dialog-roles-final.png`），左侧 Plugins / Roles 分区切换正常，角色分区读取 `playground/.dsh/pstack-models.mdc` 为 `loaded`（17 个 `select`）；Escape 从打开到关闭的观察结果为 `{ before: true, after: false }`，点击关闭按钮同样从 `true` 变为 `false`，控制台无错误；详情页 `[data-plugin-config]` 观察结果为 `false`。
+- 验证：`vp check` 退出 0（0 errors，保留 `pstack/scripts/generate-pstack-harness-tree.mjs` 既有 warning）；`vp test` 退出 0（16 个文件、95 个用例）；`vp run build` 退出 0；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` 退出 0；`vp run @internal/pstack#check:harness-doc` 退出 0；`node pstack/scripts/port-fixes.mjs replay` 退出 0（无活跃 FIX）。
 
 ## 审查证据
 
