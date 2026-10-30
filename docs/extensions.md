@@ -19,7 +19,7 @@
 - 状态：active
 - 用户场景：安装 dsh-pstack 后，在 DSH Web/Desktop 的 Plugins 页集中看到 pstack 推荐的可选插件、用途、当前状态与平台/冲突限制，并可直接开关；不必从 README 抄包名再到 Plugins 页逐个搜索。
 - 范围：dsh-pstack bundle 详情页的“推荐插件”区；默认推荐 OPT-01 与 OPT-06，OPT-02 标注 GitHub 建议，OPT-03/04/05/07/09 按任务分组，OPT-08 仅冲突警告；读取 pluginManager 的 bundle 状态；单项开关与“一键启用推荐项”；首次启用 dsh-pstack 后的 plugins.bundle.activation 引导；不自动启用、不复制官方可选插件组合。
-- 验收：见 `docs/extensions/EXT-004/review.md` 的 `required_behavior`（与 Issue #4 的验收行为一致）。
+- 验收：Issue #4 验收通过（2026-10-30）；验收行为、自动化测试与真实安装证据见 [Issue #4](https://github.com/l246804/dsh-pstack/issues/4) 的验收评论。
 - DSH 公共接口与兼容版本：0.2.2-alpha.2；`plugins.bundle.config`、`plugins.bundle.activation`、`pluginManager.listBundles`、`pluginManager.setBundleEnabled`（通过插件管理器 Remote）。
-- 实现与验证：已实现并通过审查（Issue #4，2026-10-30）；推荐插件页使用独立的 `pstackPlugins` locale 命名空间与完整中英词典，角色模型配置页保留 `pstackRoles`；实现、测试与审查证据见 [docs/extensions/EXT-004/review.md](extensions/EXT-004/review.md)。
+- 实现与验证：已实现、审查与验收通过（Issue #4，2026-10-30）；推荐插件页使用独立的 `pstackPlugins` locale 命名空间与完整中英词典，角色模型配置页保留 `pstackRoles`；实现文件与测试见提交历史，验证证据见 Issue #4 的验收评论。
 - Issue：[#4](https://github.com/l246804/dsh-pstack/issues/4)
