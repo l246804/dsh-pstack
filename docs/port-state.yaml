@@ -4,10 +4,10 @@ port:
   round: baseline
   phase: done
   started_at: "2026-10-30T11:56:52+08:00"
-  updated_at: "2026-10-31T00:22:53+08:00"
+  updated_at: "2026-10-31T00:38:01+08:00"
 blocker:
   active_item: "#12"
   mode: issue
-  allowed_routes: ["implement #12", "review #12", "issue #12"]
+  allowed_routes: ["issue #12"]
   resume_route: idle
-  reason: "Issue #12 已实现并完成 playground 视觉验证，待审查"
+  reason: "Issue #12 实现审查通过（EXT-005）；待 issue #12 验收"

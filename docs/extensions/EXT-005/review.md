@@ -1,6 +1,6 @@
 # EXT-005：bundle 配置模态框
 
-- status: review
+- status: passed
 - repair_target: extension
 - issue: https://github.com/l246804/dsh-pstack/issues/12
 - 关联能力: EXT-003（角色模型配置）、EXT-004（推荐可选插件）
@@ -27,7 +27,13 @@
 
 ## 审查证据
 
-- 待审查。
+- 审查（2026-10-31，`review #12`）：通过。对象为实现提交 `c73a48f134e80ce8dee6122c7560cf96bf19c267`（审查基线 `a650a12`，功能基线 `3088705`）；DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`。
+- 行为核对：`src/client/index.ts:107-117` 向 `plugins.detail.actions` 注册 `PstackBundleConfigAction`，不再注册 `plugins.bundle.config`；`src/client/PstackBundleConfigDialog.tsx:191-209` 只对 dsh-pstack bundle 渲染按钮，`230-250` 用 `createPortal` 打开模态框并在 `useEffect` 绑定 Escape，`266-318` 渲染遮罩、居中面板、左侧分区导航与右侧分区；`src/client/RoleSettingsPage.tsx:513-519` 的 `RoleSettingsPageProps` 只保留 `api` 与 translator，表单逻辑未改。七个 `required_behavior` 均有对应实现。
+- 自动化：`vp check` exit 0（78 个文件格式通过，0 errors，仅保留 `pstack/scripts/generate-pstack-harness-tree.mjs:204` 既有 `require-array-sort-compare` warning）；`vp test` exit 0（16 个文件 / 95 个用例，含 `tests/bundle-config-dialog.test.tsx` 2 例、`tests/client-plugin.test.ts` 1 例、`tests/role-page.test.tsx` 7 例、`tests/optional-plugins-page.test.tsx` 5 例）；`vp run build` exit 0；`vp run @internal/pstack#check:harness-doc` exit 0（2/2）；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0（无活跃 FIX）。
+- 真实安装（独立复核）：`pnpm pack --ignore-scripts` 生成 `dsh-pstack-0.2.0-beta.3.tgz`，在临时 `$DSH_HOME` 的新 profile `review12` 安装后 `dsh plugin --profile review12 list` 显示 `dsh-pstack@0.2.0-beta.3`；启动 `dsh --profile review12 --port 3218 --no-open` 后 boot HTML 的模块图含 `plugins/??dsh-pstack/client.js&rev=087b22070362`，安装包 `dist/client.mjs` 含 3 处 `plugins.detail.actions`、0 处 `plugins.bundle.config`，说明真实安装产物加载的是新入口。
+- 视觉：查看实现方 playground 截图 `.tmp/pg-detail.png`（页头 Configure 按钮）、`.tmp/pg-dialog-final.png`（Plugins 分区模态框）、`.tmp/pg-dialog-roles-final.png`（Roles 分区，角色文件 `loaded` 与 17 个 `select`）；遮罩、圆角居中卡片、左侧导航和关闭方式与 Settings 样式一致，控制台无错误。
+- 范围：`git diff --name-only 3088705..HEAD` 仅涉及 `README*.md`、`docs/`、`playground/README.md`、`src/client/` 与 `tests/`；未改 `pstack/pstack/`、`pstack/runtime/`、`pstack/harness/`、`pstack/README.md`、`docs/harness-doc.yaml` 等 port 基线路径。
+- 结论：`required_behavior` 均有实现、自动化测试或真实安装/视觉证据；未发现未解决 finding。EXT-005 工作文件写 `passed`，登记表恢复 `active`；下一步 `/pstack-port issue #12`。
 
 ## 验收证据
 
