@@ -23,8 +23,8 @@ import { OptionalPluginsActivation } from "./OptionalPluginsPage.tsx";
 import { PstackBundleConfigPage } from "./PstackBundleConfigPage.tsx";
 import type { PstackRolesApi } from "./RoleSettingsPage.tsx";
 import type { BundleChange, BundleSnapshot, OptionalPluginsApi } from "./optional-plugins-state.ts";
-import { NS as ROLES_NS, en as rolesEn, zh as rolesZh } from "./locales.ts";
-import { NS as PLUGINS_NS, en as pluginsEn, zh as pluginsZh } from "./optional-plugins-locales.ts";
+import { NS as ROLES_NS, catalogs as rolesCatalogs } from "./locales.ts";
+import { NS as PLUGINS_NS, catalogs as pluginsCatalogs } from "./optional-plugins-locales.ts";
 
 /** The public `pluginManager` Remote methods this page reads, in the Gateway's result envelope. */
 interface PluginManagerRemote {
@@ -57,12 +57,11 @@ export const inject = ["remote", "slots", "locale", "remote.pluginManager"];
 export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposeRemote = await ctx.remote.$mount(pstackRolesRemote);
 
+  // Spread into a fresh literal: DSH's typed register accepts the open locale map,
+  // and the catalogs already pin one complete dictionary per supported locale.
+  ctx.effect(() => ctx.locale.register(ROLES_NS, { ...rolesCatalogs }), "pstack-roles.locale");
   ctx.effect(
-    () => ctx.locale.register(ROLES_NS, { en: rolesEn, zh: rolesZh }),
-    "pstack-roles.locale",
-  );
-  ctx.effect(
-    () => ctx.locale.register(PLUGINS_NS, { en: pluginsEn, zh: pluginsZh }),
+    () => ctx.locale.register(PLUGINS_NS, { ...pluginsCatalogs }),
     "pstack-plugins.locale",
   );
 

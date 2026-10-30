@@ -7,7 +7,8 @@ import { snapshotFromConfiguration } from "../src/internal/role-editor.ts";
 import type { CatalogueResult } from "../src/models.ts";
 import { RoleSettingsView, type Translate } from "../src/client/RoleSettingsPage.tsx";
 import { draftsFromSnapshot } from "../src/client/state.ts";
-import { en, zh, type PstackRolesLocaleKey } from "../src/client/locales.ts";
+import { SUPPORTED_LOCALES } from "../src/client/i18n.ts";
+import { catalogs as rolesCatalogs, type PstackRolesLocaleKey } from "../src/client/locales.ts";
 
 function translator(dictionary: Record<PstackRolesLocaleKey, string>): Translate {
   return (key, vars) => {
@@ -19,8 +20,8 @@ function translator(dictionary: Record<PstackRolesLocaleKey, string>): Translate
   };
 }
 
-const t = translator(en);
-const tZh = translator(zh);
+const baseLocale = SUPPORTED_LOCALES[0];
+const t = translator(rolesCatalogs[baseLocale]);
 
 const catalogue: CatalogueResult = {
   truncated: false,
@@ -136,39 +137,37 @@ describe("role configuration page", () => {
     ]);
   });
 
-  it("uses the declared dictionary key for every English string", () => {
-    const keys = Object.keys(en) as PstackRolesLocaleKey[];
+  it("keeps every supported locale complete", () => {
+    const keys = Object.keys(rolesCatalogs[baseLocale]) as PstackRolesLocaleKey[];
     expect(keys.length).toBeGreaterThan(20);
-    expect(Object.keys(zh).sort()).toEqual([...keys].sort());
-    for (const key of keys) expect(zh[key]).not.toBe("");
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(Object.keys(rolesCatalogs[locale]).sort()).toEqual([...keys].sort());
+      for (const key of keys) expect(rolesCatalogs[locale][key]).not.toBe("");
+    }
   });
 
-  it("explains that effort is a baseline with floating rules in English", () => {
-    const html = render(undefined);
-    expect(html).toContain("Effort is a baseline, not a fixed value");
-    expect(html).toContain("low → medium → high");
-    expect(html).toContain("pstack_subagent");
-    expect(html).toContain("set_reasoning_effort");
-    expect(html).toContain("nothing floats");
+  it("explains the effort baseline and floating rules in every supported locale", () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      const copy = rolesCatalogs[locale];
+      const html = render(undefined, translator(copy));
+      expect(html).toContain(copy.effortBaselineTitle);
+      expect(html).toContain("low → medium → high");
+      expect(html).toContain("pstack_subagent");
+      expect(html).toContain("set_reasoning_effort");
+    }
   });
 
-  it("explains the baseline and floating rules in Chinese", () => {
-    const html = render(undefined, tZh);
-    expect(html).toContain("推理强度是基准值，不是固定值");
-    expect(html).toContain("low → medium → high");
-    expect(html).toContain("pstack_subagent");
-    expect(html).toContain("运行中的子代理");
-    expect(html).toContain("不浮动");
-  });
-
-  it("renders the configuration page in Chinese", () => {
-    const html = render("feature, refactoring: cpa/model-a [high]\n", tZh);
-    expect(html).toContain("角色模型配置");
-    expect(html).toContain("已加载");
-    expect(html).toContain("提供方");
-    expect(html).toContain("模型");
-    expect(html).toContain("推理强度");
-    expect(html).toContain("继承父级（inherit-parent）");
-    expect(html).toContain(">保存<");
+  it("renders the configuration page in every supported locale", () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      const copy = rolesCatalogs[locale];
+      const html = render("feature, refactoring: cpa/model-a [high]\n", translator(copy));
+      expect(html).toContain(copy.title);
+      expect(html).toContain(copy.statusLoaded);
+      expect(html).toContain(copy.provider);
+      expect(html).toContain(copy.model);
+      expect(html).toContain(copy.effort);
+      expect(html).toContain(copy.inheritParent);
+      expect(html).toContain(`>${copy.save}<`);
+    }
   });
 });

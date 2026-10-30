@@ -3,11 +3,14 @@ import type { Context } from "@deepseek-ai/cordis";
 import type { TypertRemoteContribution } from "@deepseek-ai/dsh-typert-protocol";
 
 import { apply, inject } from "../src/client/index.ts";
+import { SUPPORTED_LOCALES } from "../src/client/i18n.ts";
+import { catalogs as rolesCatalogs } from "../src/client/locales.ts";
+import { catalogs as pluginsCatalogs } from "../src/client/optional-plugins-locales.ts";
 
 type Dictionaries = Record<string, Record<string, string>>;
 
 function translateFrom(dictionaries: Dictionaries | undefined): (key: string) => string {
-  return (key) => dictionaries?.["en"]?.[key] ?? key;
+  return (key) => dictionaries?.[SUPPORTED_LOCALES[0]]?.[key] ?? key;
 }
 
 describe("pstack roles browser half", () => {
@@ -65,19 +68,25 @@ describe("pstack roles browser half", () => {
     expect([...registrations.keys()].sort()).toEqual(["pstackPlugins", "pstackRoles"]);
     const roles = registrations.get("pstackRoles")!;
     const plugins = registrations.get("pstackPlugins")!;
+    const baseLocale = SUPPORTED_LOCALES[0];
     for (const dictionaries of [roles, plugins]) {
-      const enKeys = Object.keys(dictionaries["en"]!).sort();
-      expect(Object.keys(dictionaries["zh"]!).sort()).toEqual(enKeys);
-      expect(enKeys.length).toBeGreaterThan(0);
-      for (const key of enKeys) {
-        expect(dictionaries["zh"]![key]).not.toBe("");
+      const baseKeys = Object.keys(dictionaries[baseLocale]!).sort();
+      expect(baseKeys.length).toBeGreaterThan(0);
+      for (const locale of SUPPORTED_LOCALES) {
+        expect(Object.keys(dictionaries[locale]!).sort()).toEqual(baseKeys);
+        for (const key of baseKeys) {
+          expect(dictionaries[locale]![key]).not.toBe("");
+        }
       }
     }
-    const roleKeys = new Set(Object.keys(roles["en"]!));
-    expect(Object.keys(plugins["en"]!).filter((key) => roleKeys.has(key))).toEqual([]);
-    expect(roles["en"]!["title"]).toBe("Role model configuration");
-    expect(plugins["en"]!["optionalPluginsTitle"]).toBe("Recommended plugins");
-    expect(plugins["zh"]!["optionalPluginsTitle"]).toBe("推荐插件");
+    const roleKeys = new Set(Object.keys(roles[baseLocale]!));
+    expect(Object.keys(plugins[baseLocale]!).filter((key) => roleKeys.has(key))).toEqual([]);
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(roles[locale]!["title"]).toBe(rolesCatalogs[locale].title);
+      expect(plugins[locale]!["optionalPluginsTitle"]).toBe(
+        pluginsCatalogs[locale].optionalPluginsTitle,
+      );
+    }
     expect(effects).toEqual(["pstack-roles.locale", "pstack-plugins.locale"]);
 
     expect(slots).toHaveLength(2);
@@ -108,7 +117,9 @@ describe("pstack roles browser half", () => {
     expect(await configFace.optionalPlugins.setBundleEnabled("dsh-pstack", true)).toEqual({
       application: "applied",
     });
-    expect(configFace.pluginsT("optionalPluginsTitle")).toBe("Recommended plugins");
+    expect(configFace.pluginsT("optionalPluginsTitle")).toBe(
+      pluginsCatalogs[baseLocale].optionalPluginsTitle,
+    );
     expect(typeof dispose).toBe("function");
   });
 });

@@ -5,8 +5,9 @@ import {
   PstackBundleConfigPage,
   type PstackBundleConfigPageProps,
 } from "../src/client/PstackBundleConfigPage.tsx";
-import { en as rolesEn, zh as rolesZh } from "../src/client/locales.ts";
-import { en as pluginsEn, zh as pluginsZh } from "../src/client/optional-plugins-locales.ts";
+import { SUPPORTED_LOCALES } from "../src/client/i18n.ts";
+import { catalogs as rolesCatalogs } from "../src/client/locales.ts";
+import { catalogs as pluginsCatalogs } from "../src/client/optional-plugins-locales.ts";
 
 function translator(
   dictionary: Record<string, string>,
@@ -37,15 +38,11 @@ function render(roles: Record<string, string>, plugins: Record<string, string>):
 }
 
 describe("bundle configuration page", () => {
-  it("renders the recommendation section and role editor in English", () => {
-    const html = render(rolesEn, pluginsEn);
-    expect(html).toContain("Loading optional plugin status…");
-    expect(html).toContain("Loading role configuration…");
-  });
-
-  it("renders the recommendation section and role editor in Chinese", () => {
-    const html = render(rolesZh, pluginsZh);
-    expect(html).toContain("正在读取可选插件状态…");
-    expect(html).toContain("正在读取角色配置…");
+  it("renders the recommendation section and role editor in every supported locale", () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      const html = render(rolesCatalogs[locale], pluginsCatalogs[locale]);
+      expect(html).toContain(pluginsCatalogs[locale].optionalLoading);
+      expect(html).toContain(rolesCatalogs[locale].loading);
+    }
   });
 });
