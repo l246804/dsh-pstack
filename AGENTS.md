@@ -41,3 +41,7 @@ dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。仓库�
 - 写、更新或评审决策记录前读 `docs/decisions/AGENTS.md`，按其格式、状态与检索约定执行。
 - 重构 `pstack-port` 技能前读 `.agents/skills/pstack-port/SPEC.md`；该文件是用户锁定的场景与要求基线，任何 agent 不得修改，只能由用户明确要求追加。
 - 改动 `pstack/harness/docs/harness/dsh.md`、`docs/harness-doc.yaml` 或 `pstack/README.md` 后，运行 `vp run @internal/pstack#check:harness-doc`；它是 `port doc` 与 `review port` 的门禁（SPEC R-12）。
+
+## Local scratch
+
+- 本地验证的临时文件一律写仓库 `.tmp/`（已 gitignore，`vp check` 不扫描）；Bash 每次调用是独立沙箱，`/tmp` 不跨调用保留，不要用它承载后续步骤要读的文件。
