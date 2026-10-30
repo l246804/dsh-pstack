@@ -9,7 +9,7 @@
 - 状态：active
 - 用户场景：安装 dsh-pstack 后，在 DSH Web/Desktop 的 Plugins 页查看并编辑 `$DSH_HOME/pstack-models.mdc`，无需手改文件或让 agent 整文件重写。
 - 范围：角色文件路径与 `missing` / `loaded` / `unreadable` 状态；17 个角色的当前路由与 `inherit-parent` 回退；单角色编辑与重置；`pstack_models` 实时目录的 provider/model/effort 校验；幂等写回与缺失创建；未知角色或格式错误按行号展示；与 `/setup-pstack` 共用同一文件。
-- 验收：见 `docs/extensions/EXT-003/review.md` 的 `required_behavior`（与 Issue #2 的验收行为一致）。
+- 验收：Issue #2 验收通过（2026-10-30）；验收行为、自动化测试与真实安装证据见 [Issue #2](https://github.com/l246804/dsh-pstack/issues/2) 的验收评论。
 - DSH 公共接口与兼容版本：0.2.2-alpha.2；`plugins.bundle.config` 配置页插槽、`dsh.client` 浏览器半、Typert Remote（`TypertRemoteService` + 手写 strict 描述符，本仓无生成链）。
-- 实现与验证：已实现并通过审查（Issue #2，2026-10-30）；实现文件、测试、门禁证据与审查证据见 `docs/extensions/EXT-003/review.md` 的“实现与验证”和“审查证据”。
+- 实现与验证：已实现、审查与验收通过（Issue #2，2026-10-30）；实现文件与测试见提交历史，验证证据见 Issue #2 的验收评论。
 - Issue：[#2](https://github.com/l246804/dsh-pstack/issues/2)
