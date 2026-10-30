@@ -75,6 +75,9 @@ export default defineConfig({
       "playground:reinstall": {
         command: "node playground/start.mjs --reinstall",
       },
+      "playground:browser": {
+        command: "node playground/browser.mjs",
+      },
     },
   },
   lint: {

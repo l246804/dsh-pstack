@@ -11,11 +11,14 @@ packages:
   - playground
 
 allowBuilds:
+  agent-browser: true
   simple-git-hooks: true
 
 catalogs:
   agentic:
     skills: ^1.7.4
+  browser:
+    agent-browser: 0.41.0
   cli:
     bumpp: ^12.3.0
     typescript: ^7.0.2

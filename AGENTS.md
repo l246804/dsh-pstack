@@ -41,8 +41,10 @@ dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。仓库�
 - 写、更新或评审决策记录前读 `docs/decisions/AGENTS.md`，按其格式、状态与检索约定执行。
 - 重构 `pstack-port` 技能前读 `.agents/skills/pstack-port/SPEC.md`；该文件是用户锁定的场景与要求基线，任何 agent 不得修改，只能由用户明确要求追加。
 - 改动 `pstack/harness/docs/harness/dsh.md`、`docs/harness-doc.yaml` 或 `pstack/README.md` 后，运行 `vp run @internal/pstack#check:harness-doc`；它是 `port doc` 与 `review port` 的门禁（SPEC R-12）。
+- 新加脚本命令前读 `docs/decisions/2026-10-30-script-commands-in-vite-config.md`：已有 `package.json` 脚本保持原样；新加的非必要命令优先定义在根 `vite.config.ts` 的 `run.tasks`。要把新命令加到 `package.json` 前必须先向用户申请确认，确认后才加；未通过就中止该任务。
 
 ## Local scratch
 
 - 本地验证的临时文件一律写仓库 `.tmp/`（已 gitignore，`vp check` 不扫描）；Bash 每次调用是独立沙箱，`/tmp` 不跨调用保留，不要用它承载后续步骤要读的文件。
 - 真实插件运行测试统一走 `playground/`（见 `docs/decisions/2026-10-30-playground-real-plugin-testing.md`）：不要在 `~/.dsh` 或 `.tmp` 下另建测试用 home/profile；能用 `dsh` 命令判定的检查也在 playground 内跑。启动用 `vp run playground`（task 在根 `vite.config.ts`）。
+- playground 验证：截图/视觉与不涉及模型的 UI 交互由 agent 用 `playground/browser.mjs` / agent-browser 自动完成；真实会话涉及用户所选模型，由用户操作并确认，agent 用 `zstdcat playground/.dsh/sessions/**/session.v4.jsonl.zstd` 佐证。

@@ -54,19 +54,34 @@ dsh --profile pstack-playground --help                # web app 参数（--port/
 不内置断言脚本：插件当前提供哪些工具、preset、配置页内容会随插件演进变化，写死进脚本会很快
 过期；需要判定什么，就在终端按当时目标直接看 `dsh` 的输出。
 
-UI 与真实会话行为仍需用户确认（agent 给清单 → 用户操作/观察 → 回报，agent 回读文件佐证）：
+### 验证方式：截图/视觉用 agent-browser，真实会话由用户确认
 
-1. **插件配置页渲染**：Plugins → dsh-pstack 出现「推荐插件」区与「角色模型配置」区；布局、
-   间距、禁用态正常。
-2. **角色模型配置页交互**：显示 `$DSH_HOME/pstack-models.mdc` 路径与状态、17 个角色；
-   provider/model/effort 下拉可用；改一个角色保存后，agent 回读该文件对应行确认；重置回
-   `inherit-parent` 后该行消失。
-3. **中英文本**：切换 en/zh，两区文案完整（含推理强度「基准值而非固定值」的说明）。
-4. **推荐插件区**：`OPT-01`..`OPT-09` 分组与 `enabled`/`off`/`missing` 等状态正确；单项开关
-   与「一键启用推荐项」顺序符合预期；首次启用后的一次性 activation 提示出现。agent 可回读
-   profile `package.json` 的 `dsh.profile.bundles` 与 plugin-manager 日志佐证。
-5. **真实会话派发子代理**：在 17353 的会话里发一个触发 `pstack_skill` / `pstack_subagent` 的
-   任务，确认隐藏技能能加载、子代理按角色/preset 路由、effort 生效、子会话可见并返回。
+- **截图 / 视觉**：`node playground/browser.mjs '<token URL>' [--click 文本] [--out .tmp/x.png]`；
+  body text 出现 `Failed to load plugins` 或 console 有 error（退出码 2）即失败。用户只需确认
+  截图里的视觉/UX 是否符合预期。
+- **UI 交互**（不涉及模型）：用 `playground/browser.mjs` 或 `node_modules/.bin/agent-browser`
+  执行 click/fill/type/press，驱动角色保存/重置、推荐插件开关/一键启用；随后回读
+  `$DSH_HOME/pstack-models.mdc`、profile `package.json`、plugin-manager 日志佐证。
+- **真实会话（涉及模型选择）**：由用户操作并确认结果，agent 不代跑——不同用户选择的模型/路由
+  可能不同，agent 无法替用户确认。用户操作后 agent 可读最新
+  `playground/.dsh/sessions/**/session.v4.jsonl.zstd`（`zstdcat`）核对 prompt、
+  `pstack_skill` / `pstack_subagent` 调用、子会话 id 与返回，作为佐证。
+
+helper 封装沙箱需要的 `--no-sandbox`、可写 HOME/XDG 与 Chrome 路径，并把 open → 交互 →
+console → screenshot 放在同一进程树（daemon 会随沙箱 shell 结束消失）。Chrome 优先用
+`~/.agent-browser/browsers` 最新版，没有则先跑 `node_modules/.bin/agent-browser install`。
+
+验证清单（`agent` = agent-browser 自动跑；`user` = 用户操作并确认）：
+
+1. **插件配置页渲染**（agent 截图，用户确认视觉）：Plugins → dsh-pstack 出现「推荐插件」区与
+   「角色模型配置」区；布局、间距、禁用态正常。
+2. **角色模型配置页保存/重置**（agent 驱动，回读 `$DSH_HOME/pstack-models.mdc`；用户确认视觉）：显示
+   路径与状态、17 个角色；provider/model/effort 下拉可用；保存/重置后对应行更新或消失。
+3. **中英文本**（agent 切换截图，用户确认视觉）：切换 en/zh，两区文案完整（含推理强度「基准值而非固定值」）。
+4. **推荐插件区**（静态状态 agent 截图；开关/一键启用 agent 驱动并回读 profile；用户确认视觉）：
+   `OPT-01`..`OPT-09` 分组与 `enabled`/`off`/`missing` 状态正确；首次启用后的一次性 activation 提示出现。
+5. **真实会话派发子代理**（user 操作并确认；agent 读会话日志佐证）：用户在 17353 的会话里发一个触发
+   `pstack_skill` / `pstack_subagent` 的任务，确认隐藏技能加载、子代理按角色/preset 路由、effort 生效、子会话返回。
 
 ## 说明
 

@@ -2,7 +2,7 @@
 
 Status: proposed
 Date: 2026-10-30
-Scope: playground/**, AGENTS.md, vite.config.ts, pnpm-workspace.yaml
+Scope: playground/**, .agents/skills/**, AGENTS.md, vite.config.ts, pnpm-workspace.yaml, package.json, skills-lock.json
 Implemented-by: -
 Review: 2027-04-30
 
@@ -13,7 +13,7 @@ Review: 2027-04-30
 约束：
 
 - 真实测试必须在真实 DSH profile 里跑，不能退回 mock。
-- 只有能用 `dsh` 命令直接判定配置正确性的部分可以自动化；其余（页面交互、UI 效果、真实会话派发子代理）必须经用户交互确认，不由 agent 自证。
+- 能用 `dsh` 命令判定的配置正确性、截图/视觉与不涉及模型的 UI 交互可以由 agent 自动化（agent-browser + 回读文件/日志）；真实会话涉及用户所选模型/路由，必须由用户操作并确认，agent 不代跑，只读会话日志佐证。
 - **playground 是开发期唯一的真实运行测试环境**：所有验证——包括能用 `dsh` 命令直接判定的那一层——都必须在 playground 内（`DSH_HOME=playground/.dsh`、`playground/` 的 profile、`start.mjs` 起的 17353 实例）跑；不得在宿主环境另建临时测试环境（宿主 `~/.dsh`、`.tmp` 下的一次性 home/profile 等）。
 - 启动端口固定且极不常用，避免与其他服务/软件冲突；不得回退 `--port 0`。
 - 端口 `17353` 被占用时属于需要用户决策的事件：先判断占用者是否已是用户手动启动的 playground；是则沿用，不是则先向用户确认「中止任务还是换端口」，确认前 agent 不得自行改端口。
@@ -28,7 +28,8 @@ Review: 2027-04-30
 - `start.mjs` 每次启动前负责：建 `playground/.dsh`、把 `profile/` 覆盖成 `$DSH_HOME/profiles/<名>`、以 `link:<仓库根>` 注入 `dsh-pstack` 依赖、复制宿主 `~/.dsh/.credentials.yaml`、从宿主 `~/.dsh/profiles/web/cordis.patch.yml` 重新生成 `agent-default-model`/`llm-pi-ai` 的 home patch；依赖缺失时才安装。宿主模型/provider 更新后 playground 每次启动自动跟随，不会用旧或不支持的模型启动。
 - `playground/` 是 vite-plus 子包 `@internal/playground`（`playground/package.json`，加入 `pnpm-workspace.yaml`）；启动命令配在根 `vite.config.ts` 的 `playground` / `playground:reset` / `playground:reinstall` task，用 `vp run playground` 启动，不直接依赖 `node` 命令。
 - 验证不内置断言脚本：playground 只负责启动与 profile；需要判定配置时，使用者在终端直接运行 `dsh` 命令，仅把 `DSH_HOME=playground/.dsh` 与 `--profile <名>` 指向 playground。不把插件当前提供的工具、preset 或配置页内容写死进脚本——插件演进会让写死的断言过期，且不属于测试场职责。
-- 交互层仍需用户确认（agent 给清单、用户操作/观察后回报，只对 17353 实例）：插件配置页渲染与交互、角色模型页保存/重置（agent 回读 `$DSH_HOME/pstack-models.mdc` 佐证）、中英文本 UI、推荐插件区与一键启用、真实会话里 `pstack_skill` / `pstack_subagent` 的派发与路由。
+- 视觉验证工具 `agent-browser` 作为根 `devDependencies`（`catalog:browser`）声明，并在根 `package.json` 的 `skills` 里以 `npm:agent-browser` 声明其技能；`vp install` 的 `prepare` 把它同步到 `.agents/skills/agent-browser`。`playground/browser.mjs` 封装沙箱需要的 `--no-sandbox`、可写 HOME/XDG 与 Chrome 路径。
+- 验证分三层：① 命令层——终端直接对 playground 跑 `dsh` 命令；② 视觉/交互层——agent 用 `playground/browser.mjs` 打开带 token 的 17353 URL，截图并读 body text/console，用 click/fill/type/press 驱动角色保存/重置与推荐插件开关/启用，随后回读 `$DSH_HOME/pstack-models.mdc`、profile `package.json`、plugin-manager 日志；③ 真实会话层——由用户操作并确认（用户所选模型/路由可能不同），agent 读 `playground/.dsh/sessions/**/session.v4.jsonl.zstd`（`zstdcat`，取最新 session）核对 prompt、`pstack_skill`/`pstack_subagent` 调用、子会话与返回作为佐证。视觉效果由用户看截图确认。
 
 ## 备选方案
 
@@ -39,6 +40,8 @@ Review: 2027-04-30
 - 内置 `verify.mjs` 对插件内容（工具行、preset、配置页元素）做断言。不选：等于把插件当前实现写死进测试场，插件一变就失效，也混淆了「环境」与「断言」的职责；验证改为在终端直接跑 `dsh` 命令。
 - 提交忠实复制当前 `~/.dsh/profiles/web` 的 profile。不选：含第三方/实验 bundle 与本机 `127.0.0.1:8317` 模型配置，换环境起不来，违背「每个环境都能启动」。
 - 只做仓库内静态检查（`--dump-config` 之类）。不选：命令只能判配置正确性，判不了 UI 效果与真实会话行为。
+- 把真实会话也交给 agent-browser 驱动并自证。不选：不同用户选择的模型/路由可能不同，真实会话结果必须由用户确认，agent 代跑无法代表用户口径；agent 只读会话日志作佐证。
+- 真实会话结论只靠会话日志、不经用户确认。不选：日志能核对调用与返回，但无法确认用户所选模型是否符合预期；结论仍需用户确认。
 - 只在 `playground/README.md` 说明端口占用处置。不选：README 不进 agent 上下文，agent 不会据此行动；长期规则须进决策记录与 `AGENTS.md`。
 - 只写 `playground/AGENTS.md`。不选：嵌套指令文件仅在会话 cwd 进入 playground 或 agent 读写该目录文件后才加载，只跑 `vp run playground` 的 agent 看不到；根 `AGENTS.md` 才是必载保障。
 - 端口被占用时自动改用备用端口。不选：违反固定端口基线，且可能与用户已手动启动的实例抢端口。
@@ -48,7 +51,7 @@ Review: 2027-04-30
 
 - 真实运行测试有了唯一、可复现入口：固定端口、独立 home、可移植 profile，不再依赖个人手工环境。
 - 开发期不再在宿主 `~/.dsh` 或 `.tmp` 下新建测试用 home/profile；终端 `dsh` 命令检查与交互验证都在 playground 上完成，证据可对照。（`tests/` 的 vitest 仍属单元测试，不是真实运行环境。）
-- 命令层由使用者/agent 在终端直接跑 `dsh` 命令判定（不内置脚本）；UI 与真实会话行为必须与用户交互确认：playground 只保证环境与 profile 一致，不对插件当前内容作断言。
+- 命令层由使用者/agent 在终端直接跑 `dsh` 命令判定（不内置脚本）；截图/视觉与不涉及模型的 UI 交互由 agent 用 `playground/browser.mjs`（agent-browser）自动跑并回读文件/日志；真实会话涉及用户所选模型，由用户操作并确认，agent 读 `.dsh/sessions` 的 session 日志佐证。playground 只保证环境与 profile 一致，不对插件当前内容作断言。
 - 每次启动重写 home 层模型配置：宿主模型/provider 更新会传导到 playground，因此不要手改 `playground/.dsh/cordis.patch.yml`，改宿主 web profile。
 - `playground/.dsh` 会持有 sessions/logs/credentials 与 `node_modules`，必须持续被忽略；`start` 首次安装依赖的 pnpm 会写默认 store home，若在沙箱下不可写，按 [pnpm 默认 store home](2026-10-30-pnpm-default-store-home.md) 申请提权或由你执行，不得改用项目内 store。
 - 依赖本仓 `dist/` 产物：改插件后需 `vp run build` 再重启 playground；若将来需要热更新，另行评估。
