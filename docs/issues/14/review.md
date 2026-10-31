@@ -4,7 +4,7 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: implement
+- stage: review
 - EXT: EXT-003
 - 公开状态: open（2026-10-31 创建，无评论、无标签）
 - 分诊证据提交: 本仓 `6686261fcd4b12bb17ae61dccef8b07dd32a371e` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
@@ -39,7 +39,10 @@
 
 ## 实现
 
-待实现（下一步 `/pstack-port implement #14`）。工作区中上一轮角色配置页的未提交改动不视为本分支实现，`implement #14` 时按 `required_behavior` 核对、补齐并提交。
+- 落点：`extension`（EXT-003 角色配置页展示补充）。实现文件：`src/client/locales.ts`（`pstackRoles` 新增 17 个角色的本地化名称与用途键及 `rolePresentation`）、`src/client/RoleSettingsPage.tsx`（角色卡片名称/原始键/用途、推理强度说明简化、provider 独占一行且 model/effort 并排）、`src/client/PstackBundleConfigDialog.tsx`（导航宽度与移除 locale 注入）、`src/client/index.ts`（移除 detail action 的 locale 注入）、`tests/role-page.test.tsx`（中英文角色覆盖与页面断言）、`docs/architecture.md`（模块说明同步）。详见 [EXT-003 工作文件](../../extensions/EXT-003/review.md)。
+- 行为：中文/英文界面按当前 UI 语言显示对应角色名称与用途，原始角色键保留；推理强度说明只保留“起步值 / 随任务难度浮动 / 非固定值”；provider 独占一行，model 与 effort 下一行并排，选择前后边框计算样式一致；未改保存/校验行为。
+- 验证：`vp check` exit 0（仅既有 `generate-pstack-harness-tree.mjs` warning）；`vp test` 16 文件 96 项通过；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` 输出 up to date；`vp run build` exit 0；playground `127.0.0.1:17353` 中文/英文实测通过，无控制台错误。
+- 范围：`git diff --name-only` 无 port 基线路径；未新增后端字段，未改列表角色与保存/校验行为。
 
 ## 审查
 

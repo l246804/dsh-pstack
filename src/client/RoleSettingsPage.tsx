@@ -21,7 +21,7 @@ import {
   saveRequestFor,
   type DraftRoute,
 } from "./state.ts";
-import { NS, type PstackRolesLocaleKey } from "./locales.ts";
+import { NS, rolePresentation, type PstackRolesLocaleKey } from "./locales.ts";
 
 /** Translation function supplied by the slot locale. */
 export type Translate = (
@@ -85,15 +85,21 @@ function buttonStyle(primary = false): CSSProperties {
   };
 }
 
-function fieldStyle(): CSSProperties {
+function fieldStyle(basis: number, fullWidth = false): CSSProperties {
   return {
+    flex: fullWidth ? "1 1 auto" : `1 1 ${basis}px`,
+    width: fullWidth ? "100%" : 0,
     minWidth: 0,
+    height: 34,
     padding: "5px 8px",
+    boxSizing: "border-box",
     border: `1px solid ${COLOR_BORDER}`,
     borderRadius: 8,
     background: COLOR_SURFACE,
     color: COLOR_TEXT,
     font: "inherit",
+    lineHeight: "22px",
+    textOverflow: "ellipsis",
   };
 }
 
@@ -142,7 +148,7 @@ function RoleRouteRow(props: {
     !efforts.includes(route.effort);
 
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+    <div style={{ display: "grid", gap: 8 }}>
       <select
         aria-label={`${role.key} ${t("provider")}`}
         value={routeSelection(route)}
@@ -161,7 +167,7 @@ function RoleRouteRow(props: {
           }
           onChange(index, next);
         }}
-        style={fieldStyle()}
+        style={fieldStyle(0, true)}
       >
         <option value="__inherit__:inherit-parent">{t("inheritParent")}</option>
         <option value="__inherit__:auto">{t("auto")}</option>
@@ -178,7 +184,7 @@ function RoleRouteRow(props: {
       </select>
 
       {route.kind === "route" ? (
-        <>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <select
             aria-label={`${role.key} ${t("model")}`}
             value={route.model}
@@ -193,7 +199,7 @@ function RoleRouteRow(props: {
                 ...(entry?.defaultEffort === undefined ? {} : { effort: entry.defaultEffort }),
               });
             }}
-            style={fieldStyle()}
+            style={fieldStyle(220)}
           >
             <option value="" disabled>
               {t("model")}
@@ -218,7 +224,7 @@ function RoleRouteRow(props: {
                 ...(effort === "" ? {} : { effort }),
               });
             }}
-            style={fieldStyle()}
+            style={fieldStyle(140)}
           >
             <option value="">{t("effortUnset")}</option>
             {efforts.map((effort) => {
@@ -232,15 +238,13 @@ function RoleRouteRow(props: {
             })}
             {effortMissing ? <option value={route.effort}>{route.effort}</option> : null}
           </select>
-        </>
-      ) : (
-        <span style={{ color: COLOR_CAPTION, font: "inherit" }}>{t("inheritsParent")}</span>
-      )}
+        </div>
+      ) : null}
 
       {routes.length > 1 ? (
         <button
           type="button"
-          style={buttonStyle()}
+          style={{ ...buttonStyle(), justifySelf: "start" }}
           onClick={() => onRemove(index)}
           disabled={readOnly}
         >
@@ -280,6 +284,7 @@ function RoleCard(props: {
     t,
   } = props;
   const issues = draftIssues(role, routes);
+  const roleText = rolePresentation(role.key, t);
   const canReset =
     routes.length !== 1 || routes[0]?.kind !== "inherit" || routes[0]?.alias !== "inherit-parent";
 
@@ -294,14 +299,19 @@ function RoleCard(props: {
         background: COLOR_SURFACE,
       }}
     >
-      <header style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
-        <strong style={{ color: COLOR_TEXT, fontSize: 14 }}>{role.key}</strong>
-        <span style={{ color: COLOR_CAPTION, fontSize: 12 }}>
-          {role.shape === "list" ? t("listRoutes") : t("singleRoute")}
-        </span>
-        <span style={{ color: COLOR_CAPTION, fontSize: 12 }}>
-          {role.configured ? t("configuredLine", { line: role.line ?? "?" }) : t("notConfigured")}
-        </span>
+      <header style={{ display: "grid", gap: 5 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+          <strong style={{ color: COLOR_TEXT, fontSize: 14 }}>{roleText.name}</strong>
+          <code style={{ color: COLOR_CAPTION, fontFamily: FONT_CODE, fontSize: 11 }}>
+            {role.key}
+          </code>
+          <span style={{ color: COLOR_CAPTION, fontSize: 12 }}>
+            {role.configured ? t("configuredLine", { line: role.line ?? "?" }) : t("notConfigured")}
+          </span>
+        </div>
+        <p style={{ margin: 0, color: COLOR_SECONDARY, fontSize: 12, lineHeight: 1.5 }}>
+          {roleText.description}
+        </p>
       </header>
       <code style={{ color: COLOR_SECONDARY, fontFamily: FONT_CODE, fontSize: 12 }}>
         {readOnly ? t("statusUnreadable") : routes.map((route) => formatRoute(route)).join(" · ")}
@@ -383,13 +393,6 @@ function RoleEffortNote({ t }: { readonly t: Translate }): ReactElement {
     >
       <strong style={{ color: COLOR_TEXT, fontSize: 13 }}>{t("effortBaselineTitle")}</strong>
       <p style={{ margin: 0 }}>{t("effortBaselineIntro")}</p>
-      <ul style={{ margin: 0, paddingInlineStart: 18, display: "grid", gap: 4 }}>
-        <li>{t("effortRuleRange")}</li>
-        <li>{t("effortRuleUp")}</li>
-        <li>{t("effortRuleDown")}</li>
-        <li>{t("effortRuleTrigger")}</li>
-        <li>{t("effortRuleBoundary")}</li>
-      </ul>
     </section>
   );
 }

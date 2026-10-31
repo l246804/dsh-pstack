@@ -8,7 +8,11 @@ import type { CatalogueResult } from "../src/models.ts";
 import { RoleSettingsView, type Translate } from "../src/client/RoleSettingsPage.tsx";
 import { draftsFromSnapshot } from "../src/client/state.ts";
 import { SUPPORTED_LOCALES } from "../src/client/i18n.ts";
-import { catalogs as rolesCatalogs, type PstackRolesLocaleKey } from "../src/client/locales.ts";
+import {
+  catalogs as rolesCatalogs,
+  rolePresentation,
+  type PstackRolesLocaleKey,
+} from "../src/client/locales.ts";
 
 function translator(dictionary: Record<PstackRolesLocaleKey, string>): Translate {
   return (key, vars) => {
@@ -39,7 +43,11 @@ const catalogue: CatalogueResult = {
 
 const noop = (): void => {};
 
-function render(text: string | undefined, translate: Translate = t): string {
+function render(
+  text: string | undefined,
+  locale: (typeof SUPPORTED_LOCALES)[number] = baseLocale,
+): string {
+  const translate = translator(rolesCatalogs[locale]);
   const path = "/home/user/.dsh/pstack-models.mdc";
   const configuration =
     text === undefined
@@ -146,21 +154,21 @@ describe("role configuration page", () => {
     }
   });
 
-  it("explains the effort baseline and floating rules in every supported locale", () => {
+  it("describes adaptive effort without implementation details in every supported locale", () => {
     for (const locale of SUPPORTED_LOCALES) {
       const copy = rolesCatalogs[locale];
-      const html = render(undefined, translator(copy));
+      const html = render(undefined, locale);
       expect(html).toContain(copy.effortBaselineTitle);
-      expect(html).toContain("low → medium → high");
-      expect(html).toContain("pstack_subagent");
-      expect(html).toContain("set_reasoning_effort");
+      expect(html).toContain(copy.effortBaselineIntro);
+      expect(html).not.toContain("pstack_subagent");
+      expect(html).not.toContain("set_reasoning_effort");
     }
   });
 
   it("renders the configuration page in every supported locale", () => {
     for (const locale of SUPPORTED_LOCALES) {
       const copy = rolesCatalogs[locale];
-      const html = render("feature, refactoring: cpa/model-a [high]\n", translator(copy));
+      const html = render("feature, refactoring: cpa/model-a [high]\n", locale);
       expect(html).toContain(copy.title);
       expect(html).toContain(copy.statusLoaded);
       expect(html).toContain(copy.provider);
@@ -168,6 +176,20 @@ describe("role configuration page", () => {
       expect(html).toContain(copy.effort);
       expect(html).toContain(copy.inheritParent);
       expect(html).toContain(`>${copy.save}<`);
+    }
+  });
+
+  it("localizes all role names and usage while preserving their exact file keys", () => {
+    for (const locale of SUPPORTED_LOCALES) {
+      const html = render(undefined, locale);
+      for (const role of ROLE_MANIFEST) {
+        const presentation = rolePresentation(role.key, translator(rolesCatalogs[locale]));
+        expect(presentation.name).not.toBe("");
+        expect(presentation.description).not.toBe("");
+        expect(html).toContain(presentation.name.replaceAll("&", "&amp;"));
+        expect(html).toContain(presentation.description);
+        expect(html).toContain(role.key);
+      }
     }
   });
 });

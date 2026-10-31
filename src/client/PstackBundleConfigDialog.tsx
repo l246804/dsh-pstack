@@ -43,7 +43,7 @@ const panelStyle: CSSProperties = {
   position: "relative",
   zIndex: 1,
   display: "grid",
-  gridTemplateColumns: "188px minmax(0, 1fr)",
+  gridTemplateColumns: "204px minmax(0, 1fr)",
   gridTemplateRows: "auto minmax(0, 1fr)",
   gridTemplateAreas: "'title header' 'nav options'",
   width: 800,
