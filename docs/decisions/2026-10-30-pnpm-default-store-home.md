@@ -1,9 +1,9 @@
 # 决定：pnpm 依赖安装使用默认 store home
 
-Status: proposed
+Status: accepted
 Date: 2026-10-30
 Scope: package.json, pnpm-workspace.yaml, pnpm-lock.yaml
-Implemented-by: -
+Implemented-by: commit:45d44ebd3f7ea93ea6a354724a5679d5d5ecd302
 Review: 2027-04-30
 
 ## 背景

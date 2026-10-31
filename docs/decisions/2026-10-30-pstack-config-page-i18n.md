@@ -1,9 +1,9 @@
 # 决定：插件配置页文案使用通用 locale 目录，不绑定固定语言对
 
-Status: proposed
+Status: accepted
 Date: 2026-10-30
 Scope: src/client/**, tests/**, locale/**
-Implemented-by: -
+Implemented-by: commit:fd9a251393df8538cfc4826a9d40f6a789711932
 Review: 2027-04-30
 
 ## 背景

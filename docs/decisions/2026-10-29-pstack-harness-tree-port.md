@@ -1,9 +1,9 @@
 # 决定：pstack 生成树以上游原文加本地 harness 适配树为输入
 
-Status: proposed
+Status: accepted
 Date: 2026-10-29
 Scope: pstack/**
-Implemented-by: -
+Implemented-by: commit:1d1d8b6c06e9e237c9a99089ffbb15d552b52723
 Review: 2027-04-29
 
 ## 背景

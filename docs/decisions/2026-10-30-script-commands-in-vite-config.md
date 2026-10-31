@@ -1,9 +1,9 @@
 # 决定：新加脚本命令优先定义在 vite.config.ts，已有脚本保持原样
 
-Status: proposed
+Status: accepted
 Date: 2026-10-30
 Scope: package.json, vite.config.ts, playground/package.json, skills/package.json, pstack/package.json, AGENTS.md, docs/architecture.md
-Implemented-by: -
+Implemented-by: commit:a8a74d4f146d0de4f7a3e83250742b7f034c9766
 Review: 2027-04-30
 
 ## 背景

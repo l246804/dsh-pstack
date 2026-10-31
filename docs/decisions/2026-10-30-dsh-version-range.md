@@ -1,9 +1,9 @@
 # 决定：DSH 兼容版本要求改用 >= 下限范围，以当前版本为基准
 
-Status: proposed
+Status: accepted
 Date: 2026-10-30
 Scope: package.json, README.md, README.zh.md
-Implemented-by: -
+Implemented-by: commit:32868d9f7db92452e12c026c6d55a979d545bfc9
 Review: 2027-04-30
 
 ## 背景

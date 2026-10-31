@@ -1,9 +1,9 @@
 # 决定：新增 playground 做真实插件运行测试，开发期所有测试统一在 playground 内运行
 
-Status: proposed
+Status: accepted
 Date: 2026-10-30
 Scope: playground/**, .agents/skills/**, AGENTS.md, vite.config.ts, pnpm-workspace.yaml, package.json, skills-lock.json
-Implemented-by: -
+Implemented-by: commit:a8a74d4f146d0de4f7a3e83250742b7f034c9766
 Review: 2027-04-30
 
 ## 背景
