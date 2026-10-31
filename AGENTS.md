@@ -32,16 +32,11 @@ release. Add a tool name to select part of the graph. For example, run
 
 # AGENTS.md
 
-dsh-pstack 把 pstack 的技能与工作流移植到 DeepSeek Harness。仓库是 pnpm 工作区，只发布 `dist/`。
-
 ## Project docs
 
 - 改动某个模块前读 `docs/architecture.md`；模块边界或入口点变化时同步更新它。
 - 命名概念前读 `docs/glossary.md`；引入新概念时补充术语。
-- 写、更新或评审决策记录前读 `docs/decisions/AGENTS.md`，按其格式、状态与检索约定执行。
-- 重构 `pstack-port` 技能前读 `.agents/skills/pstack-port/SPEC.md`；该文件是用户锁定的场景与要求基线，任何 agent 不得修改，只能由用户明确要求追加。
-- 改动 `pstack/harness/docs/harness/dsh.md`、`docs/harness-doc.yaml` 或 `pstack/README.md` 后，运行 `vp run @internal/pstack#check:harness-doc`；它是 `port doc` 与 `review port` 的门禁（SPEC R-12）。
-- 新加脚本命令前读 `docs/decisions/2026-10-30-script-commands-in-vite-config.md`：已有 `package.json` 脚本保持原样；新加的非必要命令优先定义在根 `vite.config.ts` 的 `run.tasks`。要把新命令加到 `package.json` 前必须先向用户申请确认，确认后才加；未通过就中止该任务。
+- 开始任何仓库任务前读 `docs/decisions/AGENTS.md`，按其检索规则读取与任务相关的决策记录。
 
 ## Local scratch
 

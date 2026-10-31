@@ -1,6 +1,6 @@
 # 决策记录约定
 
-本目录保存一次已定取舍的记录，是这个仓库决策格式、范围与检索规则的唯一来源。`decision-write`（写入、落地更新与取代）与 `decision-audit`（只读审计）两个技能读本文件；改格式前先确认二者仍能解析。
+本目录保存一次已定取舍的记录，是本仓库决策格式、范围、状态与检索规则的唯一来源。`decision-write`（写入、落地更新与取代）与 `decision-audit`（只读审计）两个技能读本文件；改格式前先确认二者仍能解析。
 
 ## 何时写
 
@@ -40,7 +40,7 @@ Superseded-by: <记录路径> — <一句原因>（仅 Status 为 superseded）
 得到了什么，付出了什么代价，什么情况下需要重新考虑。
 ```
 
-- `Scope`：受该决定约束的仓库相对路径 glob，供 `decision-audit` 把改动路由到记录。
+- `Scope`：受该决定约束的仓库相对路径 glob，目录 glob 覆盖其所有后代；供 `decision-audit` 把改动路由到记录。写入与审计共用同一匹配规则。
 - `Implemented-by`：落地锚点，指向实现该决定的改动。实现改动的路径须与 `Scope` 相交，且至少一个路径在本目录之外。仅当 `decision-write` 的 Land 找不到实现且用户明确确认 record-only exception 时，才可锚到新增记录的提交；审计仍会报告该例外。`PR #N` 须为 MERGED，`commit:SHA` 须在默认分支历史中；未落地或无法核验写 `-`。
 - `Superseded-by`：仅 `Status: superseded` 时必填，写替代记录路径和一句原因；只写链接或只改状态不算完成。
 - `Review`：下次人工复核日期，`full` 模式审计据此提示逾期。
@@ -64,6 +64,7 @@ Superseded-by: <记录路径> — <一句原因>（仅 Status 为 superseded）
 
 ## 检索
 
+- 开始每项仓库任务前，只读每条记录的头部（首个 `## ` 之前）即可判定状态与范围；读取所有 `proposed` 与 `accepted` 记录，再按任务及其涉及的路径与 `Scope` 筛选并读正文。`accepted` 记录约束当前实现，`proposed` 记录表示待落地方向；任务与相关记录冲突时，先报告冲突并取得用户指示，再继续。
 - 写新记录或实质更新前：`grep -ril "<关键词>" docs/decisions/*.md`，排除 `AGENTS.md` 与 `README.md`，逐个归类为 duplicate / replaced / overlapping / unrelated，未决项带入报告。
-- 只读每条记录的头部（首个 `## ` 之前）即可判定状态与范围，需要细节再读正文。
+- 所有记录修改统一走 `decision-write`，不要直接编辑记录文件。
 - 审计规则见 `decision-audit` 技能（按 `Scope`、`Implemented-by`、`Superseded-by`、`Review` 做六类检查）。
