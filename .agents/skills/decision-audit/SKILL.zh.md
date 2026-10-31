@@ -1,6 +1,6 @@
 ---
 name: decision-audit
-description: 按改动集合或整个仓库审计决策记录，报告路由、状态、范围、锚点、取代与复核发现，并附命令证据。
+description: 只读审计 PR、本地改动或整个仓库的决策记录，报告路由、状态、范围、锚点、取代与复核逾期发现，并附命令证据。
 disable-model-invocation: true
 ---
 
@@ -12,13 +12,15 @@ disable-model-invocation: true
 
 接受 `mode`（`pr`、`local` 或 `full`，默认 `pr`）、可选的 `base`，以及用于替代计算所得改动集合的可选 `scope` 路径。
 
-`pr` 解析 PR 基线，其他模式先尝试 `origin/main`。不存在时依次尝试 `origin/master`、`main`、`master`、最新 tag、`HEAD~20`。报告实际选中的 ref；全部无法解析时停止并列出每个尝试过的 ref。
+`pr` 解析 PR 基线，`local` 或 `full` 先尝试 `origin/main`。不存在时依次尝试 `origin/master`、`main`、`master`、最新 tag、`HEAD~20`。报告实际选中的 ref。基线无法解析会阻止相对基线的改动集合计算与提交锚点校验；继续其他检查，并在 `Unverified` 中列出每个尝试过的 ref。
 
-检查 `docs/decisions/`、`docs/adr/` 和 `doc/adr/`：
+按以下顺序定位 `<dir>`：
 
-- 只有一个存在：记为 `<dir>` 并报告路径。
-- 多个存在：询问哪个是当前目录并等待。
-- 都不存在或没有记录：报告这一正常结果并停止。
+1. 使用调用方提供的记录或目录路径。
+2. 否则，解析根目录 `AGENTS.md` 的 `## Project docs` 中的决策指针；目标为现存的 `<dir>/AGENTS.md` 时使用该目录。
+3. 否则，检查 `docs/decisions/`、`docs/adr/` 和 `doc/adr/`。
+
+报告选中的路径。仍有多个候选时，询问哪个是当前目录并等待。都不存在或没有记录时，报告这一正常结果并停止。
 
 ## 2. 收集证据
 
@@ -33,24 +35,26 @@ git diff --name-only "$(git merge-base HEAD <base>)"..HEAD
 git status --porcelain=v1 --untracked-files=all
 ```
 
-解析 `git status` 中的路径，重命名取目标路径。`full` 使用所有受 Git 跟踪的文件。从计算结果中剔除锁文件、生成文件、快照和纯资源文件；记录这些排除项与最终集合。
+解析 `git status` 中的路径，重命名取目标路径。`full` 使用所有受 Git 跟踪的文件。从计算结果中剔除锁文件、生成文件、快照和纯资源文件；记录这些排除项与最终集合。显式 `scope` 替换计算所得集合，但不改变依赖基线的锚点校验。
 
-存在 `<dir>/AGENTS.md` 和 `<dir>/README.md` 时读取；它们是约定而非记录。将其约定应用到其他所有 `*.md`。读取每条记录至第一个 `## ` 标题并解析头部。缺少 `Status`、`Date`、`Scope`、`Implemented-by`、`Review` 中任一项的记录单列为 `Legacy`，不参与以下六项检查。
+存在 `<dir>/AGENTS.md` 和 `<dir>/README.md` 时读取；它们是约定而非记录。将其约定应用到其他所有 `*.md`。读取每条记录至第一个 `## ` 标题并解析头部。缺少 `Status`、`Date`、`Scope`、`Implemented-by`、`Review` 中任一项的记录单列为 `Legacy`，补齐必需字段前不执行后续检查。现行记录的 `Superseded-by` 可选，只在 E 类检查中处理。
 
-对每条现行记录执行所有适用的检查；同一记录可以产生多项发现。
+对每条现行记录执行所有适用的检查；同一记录可以产生多项发现。所有 glob/路径检查都使用[匹配 Scope 路径](../decision-write/references/scope.zh.md)，并保留匹配结果作为证据。
 
-## 3. 执行全部六项检查
+## 3. 执行检查
 
-**A——路由。** 对每条非 `superseded` 且 `Scope` 匹配改动集合的记录，用一行报告标题、路径、匹配路径及改动集合证据。
+A、B、B′ 和 D 只用于非 `superseded` 记录；C 和 E 按下方说明执行。
+
+**A——路由。** 对每条 `Scope` 匹配改动集合的记录，用一行报告标题、路径、匹配路径及改动集合证据。
 
 **B——状态成对。** 使用下方的锚点结果，报告每个匹配行：
 
 | Status | 锚点结果 | 发现 |
 |---|---|---|
 | `proposed` | 已核验 | 应改为 `accepted` |
-| `accepted` | `-`、缺失、待落地或未核验 | 落地状态缺少已核验证据 |
+| `accepted` | `-` 或缺失 | 落地状态缺少已核验证据 |
 
-`proposed` 带 `-` 或待落地锚点不是发现；带未核验锚点时归入 `Unverified`，不归入 B 或 C。
+`proposed` 带 `-` 时归为待落地。`proposed` 或 `accepted` 带待落地锚点都不是发现；将记录归为待落地。带未核验锚点时归入 `Unverified`，不归入 B 或 C。
 
 **B′——范围失效。** 对 `Scope` 中所有 glob 都不匹配现存文件的每条 `accepted` 记录，报告路径与 glob 检查证据，并询问是决策已过时还是范围写错。
 
@@ -67,14 +71,14 @@ git status --porcelain=v1 --untracked-files=all
 
 报告提交丢失前，读取[恢复被改写的提交](references/recover-commit.zh.md)；只要其对象仍可用，就尝试恢复 patch 标识。
 
-**D——复核逾期。** 仅在 `full` 模式，报告 `Review` 日期早于当前日期的每条记录，并收集决策日期以来的改动：
+**D——复核逾期。** 仅在 `full` 模式，报告 `Review` 日期早于当前日期的每条记录，并收集决策日期以来匹配 `Scope` 的改动：
 
 ```bash
 date +%F
-git log --since=<Date> --oneline -- <Scope paths>
+git log --since=<Date> --format=%H <base> --
 ```
 
-附上提交数量和最新主题（如有），建议人工复核并更新 `Review` 日期。
+列出每个提交的路径，先用共享匹配器筛选，再计数；记录的 `Scope` 是匹配器输入，不是 Git pathspec。附上匹配提交的数量和最新主题（如有）。日期逾期本身就是发现，即使没有匹配改动；建议人工复核并更新 `Review` 日期。
 
 **E——取代记录。** 对每条现行 `superseded` 记录，在 `Superseded-by` 缺失、无法解析到 `<dir>` 内的记录，或没有 ` — <原因>` 文本时报告。建议补上替代记录路径和一句原因。
 
@@ -96,4 +100,4 @@ git log --since=<Date> --oneline -- <Scope paths>
   Suggest: replace the anchor with commit:8ff9f762 (matching patch-id d064e03f4e53)
 ```
 
-`Legacy` 与 `Unverified` 分别单列，不计为发现。无需关注时用一行说明。`gh` 缺失或未认证时，将 PR 锚点标为未核验，继续其他检查。
+`Legacy` 与 `Unverified` 分别单列，不计为发现。`gh` 缺失或未认证时，将 PR 锚点标为未核验，继续其他检查。没有现行记录带发现时明确说明。所有修改都交给 `decision-write`；仅在决策目录或根指针缺失时建议使用 `/setup-project-docs`。

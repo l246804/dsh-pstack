@@ -1,6 +1,6 @@
 ---
 name: decision-write
-description: Write, update, land, or supersede a decision record. Use for resolved alternatives, missing design rationale, reversed decisions, or any record-file change. Land discovers and verifies the implementation.
+description: Write, update, land, or supersede decision records. Use for resolved alternatives, missing rationale, reversed decisions, or record-file changes. Land finds and verifies the implementation; Review-only updates keep the current status.
 ---
 
 # Write or update a decision record
@@ -13,18 +13,20 @@ Use this procedure for every change to `Status`, `Implemented-by`, `Superseded-b
 
 ## Locate the records
 
-Inspect `docs/decisions/`, `docs/adr/`, and `doc/adr/`:
+Resolve `<dir>` in this order:
 
-- One exists: call it `<dir>`, follow its naming convention, and read its `AGENTS.md` when present.
-- Several exist: ask which is current and wait.
-- None exists: report that this repository keeps no decision records, suggest `/setup-project-docs`, and stop.
+1. Use a caller-supplied record or directory path.
+2. Otherwise, resolve the decision pointer in root `AGENTS.md` under `## Project docs` when it points to an existing `<dir>/AGENTS.md`.
+3. Otherwise, inspect `docs/decisions/`, `docs/adr/`, and `doc/adr/`.
+
+Use the selected directory, follow its naming convention, and read its `AGENTS.md` and `README.md` conventions when present. If several candidates remain, ask which is current and wait. If none exists, report that no decision directory was found, suggest `/setup-project-docs`, and stop.
 
 `AGENTS.md` and `README.md` are conventions, not records; exclude both from searches, classification, and updates.
 
 ## Choose the mode
 
 - **Draft:** no record owns this decision, a new record replaces an old one, or an existing record needs substantive body or relationship updates. Duplicate and overlapping dispositions stay in Draft; explicit status-field updates use Land. Do steps 1–5, present the approval gate in step 6, then write only after confirmation and report with step 7.
-- **Land:** the user explicitly asks to mark an existing record `accepted` or update its status fields. Do steps 4, 5, and 7. A record path plus `accepted` is sufficient input; never enter Land autonomously. Without a path, list records whose `Scope` matches the landed change and ask which to update.
+- **Land:** the user explicitly asks to mark an existing record `accepted` or update its status fields. Read the full target record, then do steps 4, 5, and 7. A record path plus `accepted` is sufficient input; never enter Land autonomously. Without a path, list records whose `Scope` matches the landed change and ask which to update. For a Review-only update, preserve `Status` and `Implemented-by`, skip steps 4 and 5, and report with step 7.
 
 ## 1. Establish the choice
 
@@ -91,13 +93,13 @@ A new record stays `proposed` until it lands. `Implemented-by` identifies the im
 
 For Land without an anchor, or the record-only exception, read [Find and verify the implementation](references/land.md) before editing. For any other proposed anchor, use that reference's verification procedure without its discovery steps.
 
-Resolve `<base>` as the repository's default branch and report the selected ref. Verify every anchor; unavailable evidence or an unresolved base leaves a new record `proposed` + `-`. If an existing `accepted` record's anchor fails verification, stop and report it rather than silently demoting it. Change only fields required by evidence; advancing `Review` alone leaves status unchanged.
+Resolve `<base>` as the repository's default branch and report the selected ref. Verify every anchor. In Draft, unavailable evidence or an unresolved base leaves a new record `proposed` + `-`; in Land, stop and report without editing. If an existing `accepted` record's anchor fails verification, stop and report it rather than silently demoting it. Change only fields required by evidence; advancing `Review` alone leaves status unchanged.
 
 When a new draft replaces an old record, set the old record to `superseded` in the same approved edit set, even when it was `accepted`. Keep its body and anchor, add the cross-link, and write `Superseded-by: <new record path> — <one-line reason>` below `Review`. Ask for a missing reason and wait. A `proposed` old record keeps `Implemented-by: -`.
 
 ## 5. Check scope covers the change
 
-Use caller-supplied `scope` paths when present. For Land with a verified implementing change, list its paths with:
+Use [Match Scope paths](references/scope.md) for every glob/path check, including anchor discovery in Land. Use caller-supplied `scope` paths when present. For Land with a verified implementing change, list its paths with:
 
 ```bash
 gh pr view N --json files --jq '.files[].path'
@@ -119,7 +121,7 @@ For every Draft write, including a Duplicate update, present the complete result
 
 ## 7. Report
 
-Account for every search hit, changed record, relationship, anchor verification, scope match, and unresolved question. A `proposed` record awaiting landing needs a Land update after merge. Name any discovered implementation and its changed paths; mark a record-only anchor as a confirmed exception. Include every `Superseded-by` path and reason.
+When root `AGENTS.md` has no resolving decision pointer for the selected `<dir>`, suggest `/setup-project-docs` to register it. Account for every search hit, changed record, relationship, anchor verification, scope match, and unresolved question. A `proposed` record awaiting landing needs a Land update after merge. Name any discovered implementation and its changed paths; mark a record-only anchor as a confirmed exception. Include every `Superseded-by` path and reason.
 
 ```text
 Record: docs/decisions/2026-10-27-use-postgres.md
