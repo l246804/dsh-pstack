@@ -4,9 +4,9 @@
 - target: extension
 - status: open
 - port_round: no-impact
-- stage: review
+- stage: passed
 - EXT: EXT-003
-- 公开状态: open（2026-10-31 创建，无评论、无标签）
+- 公开状态: open（2026-10-31 创建，无评论、无标签；2026-10-31 实现审查通过）
 - 分诊证据提交: 本仓 `6686261fcd4b12bb17ae61dccef8b07dd32a371e` · DSH `ce7073d51254c26cd63b22a60835b8f948deb447` · 上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`
 
 ## 复核
@@ -46,4 +46,9 @@
 
 ## 审查
 
-待审查。
+- 审查（2026-10-31，`review #14`）：实现审查通过。实现提交 `ad7a284`（审查基线 `8bdc291`）；DSH `ce7073d51254c26cd63b22a60835b8f948deb447`；上游 pstack `4dd1d05818d19792e7cd6e818f1667f95f7e1dbe`。
+- `required_behavior`：17 个角色在中英文下均有名称与用途，原始角色键保留；推理强度说明不含内部工具名；provider 独占一行、model/effort 并排；`pstackRoles` 词典完整一致，保存/校验行为未改。证据见 [EXT-003 工作文件](../../extensions/EXT-003/review.md)。
+- 门禁：`vp check` exit 0；`vp test` exit 0（16 文件 / 96 用例）；`vp run @internal/pstack#check:harness-doc` exit 0；`node pstack/scripts/generate-pstack-harness-tree.mjs --check` exit 0；`node pstack/scripts/port-fixes.mjs replay` exit 0；`vp run build` exit 0。
+- 真实运行：playground `127.0.0.1:17353` 中文/英文角色配置页通过，无控制台错误；provider 选择前后 border 计算样式一致。
+- 范围：`git diff --name-only 8bdc291..ad7a284` 为 4 个实现/文档文件与 4 个工作记录文件；无 port 基线路径，未新增权限、Host 服务或 Remote 方法。
+- 结论：审查通过，`stage: passed`。下一步 `/pstack-port issue #14` 验收。
