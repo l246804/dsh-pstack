@@ -86,6 +86,7 @@
 | `/statechart` | 用 TLA+ 与 TLC 检查状态模型，输出 Mermaid 状态图 |
 | `/show-me-your-work` | 维护 TSV 决策日志，审计当前工作 |
 | `/retro` | 对一次编码会话做环境复盘 |
+| `/docs-drift` | 巡检项目自身指针发现的文档；`report` 只读，`fix` 仅修复获批项。 |
 
 ## 能力
 
@@ -119,6 +120,7 @@
 | `authored` | `decision-write` | 决策记录的写入、落地和取代，Draft 与 Land 两种模式，`Status` 与 `Implemented-by` 必须成对。 | 补上真实项目常缺的决策生命周期。 |
 | `authored` | `decision-audit` | 只读审计决策记录的路由、状态、Scope、锚点与取代关系。 | 让决策记录持续可检索、可复核。 |
 | `authored` | `setup-project-docs` | 搭建 architecture、glossary、decisions 与根 `AGENTS.md` 指针，可重复补齐。 | 给新项目一套可持续的项目文档入口。 |
+| `authored` | `docs-drift` | 从项目指针发现维护文档，检查实现漂移、矛盾、术语、链接、冗余与无依据扩写，仅修复获批项。 | 不依赖固定文档布局，补充周期性文档巡检与受控清理。 |
 
 `vendored` 技能来自 `mattpocock/skills@59db609eb1e18aaf59b63284d0e52255aff0c63c`，来源、路径和哈希记录在 [`skills/skills-lock.json`](./skills/skills-lock.json)。两棵技能树都随包发布，但和 pstack 上游版本没有对应关系。
 
