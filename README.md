@@ -86,6 +86,7 @@ See [`pstack/README.md`](./pstack/README.md) for the full capability map, gaps, 
 | `/statechart` | Checks state models with TLA+ and TLC, and outputs a Mermaid state diagram. |
 | `/show-me-your-work` | Maintains a TSV decision log and audits the current work. |
 | `/retro` | Reviews a coding session's environment. |
+| `/docs-drift` | Audits project-discovered documentation; `report` is read-only, while `fix` repairs approved findings. |
 
 ## Capabilities
 
@@ -119,6 +120,7 @@ The same configuration dialog has a **Recommended plugins** section covering `OP
 | `authored` | `decision-write` | Writes, lands, and supersedes decision records in Draft and Land modes, requiring `Status` and `Implemented-by` to appear together. | Adds the decision lifecycle that real projects often lack. |
 | `authored` | `decision-audit` | Read-only audit of decision-record routing, status, scope, anchors, and supersession relationships. | Keeps decision records searchable and reviewable over time. |
 | `authored` | `setup-project-docs` | Sets up architecture, glossary, decisions, and the root `AGENTS.md` pointers, and can be run repeatedly to fill gaps. | Gives a new project a sustainable documentation entry point. |
+| `authored` | `docs-drift` | Discovers maintained documents through project pointers, checks implementation drift, contradictions, terminology, links, redundancy, and unsupported elaboration, and repairs approved findings. | Adds periodic documentation inspection and controlled cleanup without assuming a fixed document layout. |
 
 `vendored` skills come from `mattpocock/skills@59db609eb1e18aaf59b63284d0e52255aff0c63c`. [`skills/skills-lock.json`](./skills/skills-lock.json) records their sources, paths, and hashes. Both skill trees ship with the package, but they do not correspond to upstream pstack versions.
 
