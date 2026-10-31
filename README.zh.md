@@ -62,7 +62,7 @@
    dsh plugin --profile web add dsh-pstack
    ```
 
-   也可以在 Web 或 Desktop 的 Plugins 页面安装。
+   也可以在 Web 或 Desktop 的「插件」页面安装。
 
 2. 重启对应的 profile，或新开一个 Session。
 
@@ -72,7 +72,7 @@
    /setup-pstack
    ```
 
-   该命令读取当前部署提供的 provider、model 与 reasoning effort，并写入 `$DSH_HOME/pstack-models.mdc`。缺少这个文件时，所有角色继承父级路由。初始化后可在 **Plugins → Installed plugins → dsh-pstack** 查看和编辑同一份配置。
+   该命令读取当前部署提供的 provider、model 与 reasoning effort，并写入 `$DSH_HOME/pstack-models.mdc`。缺少这个文件时，所有角色继承父级路由。初始化后可在 **插件 → 已安装插件 → dsh-pstack** 查看和编辑同一份配置。
 
 ### 常用入口
 
@@ -101,13 +101,11 @@
 
 `poteto-agent` 和 `comment-sicko` 两个 preset 分别负责实现型委派与只读评论审查。`pstack_script` 可以运行 `check-plan`、`watch-pr`、`worktree-audit`、`log`、`statechart` 五个随包脚本，脚本 id 是封闭枚举，不能拼任意路径。
 
-### 角色模型配置
+### 插件配置入口
 
-打开 **Plugins → Installed plugins → dsh-pstack**，点击 bundle 页头右上角的 **配置** 按钮，无需手写文件即可查看和编辑 `$DSH_HOME/pstack-models.mdc`。配置模态框中的 **角色模型配置** 分区显示文件绝对路径与 `missing` / `loaded` / `unreadable` 状态，按 manifest 顺序列出全部 17 个角色，并从 `pstack_models` 的实时目录选择每个角色的 provider、model 与该模型声明的 effort。`inherit-parent` 与 `auto` 仍可选择，每个角色都有重置按钮，列表角色保留全部 route。保存只改该角色行；其他角色、`# budget` 行以及未知或格式错误行保持不变。该文件与 `/setup-pstack` 共用，下一次 `pstack_subagent` 委派会重新读取，无需重启。
+![在插件页头右上角点击「配置」入口](assets/pstack-config-entry.png)
 
-### 推荐插件
-
-同一个配置模态框中还有 **推荐插件** 分区，覆盖 `OPT-01` 至 `OPT-09`。每行显示任务场景分组、包名、实时 `enabled` / `off` / `missing` / `unsupported-platform` / `error` 状态，以及平台或冲突说明。`OPT-01` 与 `OPT-06` 组成默认推荐集；**一键启用推荐项** 按此顺序启用并汇总 `applied`、`restart-required`、`failed` 结果。打开模态框只读取 bundle 列表，任何 profile 变更都需要点击。`@deepseek-ai/dsh-mcp-client` 这类非 bundle 项只给文档指引，`OPT-08` 只提示与 `pstack_subagent` 的冲突；dsh-pstack 首次启用后，`plugins.bundle.activation` 会用一次性提示说明还有多少推荐插件未开启，并链接回本区。
+打开 **插件 → 已安装插件 → dsh-pstack**，点击 bundle 页头右上角的 **配置** 按钮即可打开配置弹窗。
 
 ## skills 目录
 
@@ -126,7 +124,7 @@
 
 ## 可选 DSH 插件
 
-以下插件随 DSH 提供，默认关闭。安装 dsh-pstack 时不要求安装这些插件，但部分 pstack 流程需要它们才能完整执行。要启用插件，在 Plugins 页面用 **Add plugin** 输入包名。也可以运行 `dsh plugin --profile <profile> add <package>`，然后重启 profile。除 `@deepseek-ai/dsh-mcp-client` 外，本节列出的 bundle 与 provider 都是实验性的。
+以下插件随 DSH 提供，默认关闭。安装 dsh-pstack 时不要求安装这些插件，但部分 pstack 流程需要它们才能完整执行。要启用插件，在「插件」页面用**添加插件**输入包名。也可以运行 `dsh plugin --profile <profile> add <package>`，然后重启 profile。除 `@deepseek-ai/dsh-mcp-client` 外，本节列出的 bundle 与 provider 都是实验性的。
 
 > [!NOTE]
 > 未启用可选插件时，pstack 技能仍可加载。需要插件的步骤会输出 `Skipped in DeepSeek Harness: <step>. <reason>.` 后继续。缺少 `gh`、Java/TLC 或视频工具时，对应步骤会报告 blocked 或降级为截图。dsh-pstack 不会把未运行的步骤标记为通过。
