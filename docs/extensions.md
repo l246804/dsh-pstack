@@ -14,6 +14,7 @@
 - 实现与验证：已实现、审查与验收通过（Issue #2，2026-10-30）；实现文件与测试见提交历史，验证证据见 Issue #2 的验收评论。
 - Issue：[#2](https://github.com/l246804/dsh-pstack/issues/2)
 - 补充 Issue：[#8](https://github.com/l246804/dsh-pstack/issues/8)（推理强度说明文案补充，2026-10-30 验收通过）
+- 补充 Issue：[#14](https://github.com/l246804/dsh-pstack/issues/14)（角色标签本地化、推理强度说明简化与下拉布局，`status: implement`，见 `docs/extensions/EXT-003/review.md`）
 
 ## EXT-004：pstack 推荐可选插件启用页
 
