@@ -11,8 +11,8 @@ const base = {
   configureAction: "Configure",
   configureTitle: "Configure dsh-pstack",
   configureSections: "Configuration sections",
-  configurePluginsSection: "Plugins",
-  configureRolesSection: "Roles",
+  configurePluginsSection: "Recommended plugins",
+  configureRolesSection: "Role configuration",
   configureClose: "Close",
   optionalPluginsTitle: "Recommended plugins",
   optionalPluginsSubtitle:
@@ -31,7 +31,7 @@ const base = {
   enablingRecommended: "Enabling recommended plugins…",
   recommendedSummary:
     "{applied} applied, {restart} need a restart, {failed} failed, {skipped} skipped",
-  recommendedHint: "Default set: OPT-01, then OPT-06.",
+  recommendedHint: "Default recommendations: OPT-01, OPT-06.",
   enablePlugin: "Enable",
   disablePlugin: "Disable",
   pluginWorking: "Working…",
@@ -91,8 +91,8 @@ export const catalogs = {
     configureAction: "配置",
     configureTitle: "配置 dsh-pstack",
     configureSections: "配置分区",
-    configurePluginsSection: "插件",
-    configureRolesSection: "角色",
+    configurePluginsSection: "推荐插件",
+    configureRolesSection: "角色配置",
     configureClose: "关闭",
     optionalPluginsTitle: "推荐插件",
     optionalPluginsSubtitle:
@@ -111,7 +111,7 @@ export const catalogs = {
     enablingRecommended: "正在启用推荐项…",
     recommendedSummary:
       "成功 {applied} 项，需重启 {restart} 项，失败 {failed} 项，跳过 {skipped} 项",
-    recommendedHint: "默认集合：先 OPT-01，再 OPT-06。",
+    recommendedHint: "默认推荐 OPT-01、OPT-06。",
     enablePlugin: "启用",
     disablePlugin: "关闭",
     pluginWorking: "处理中…",
@@ -138,7 +138,7 @@ export const catalogs = {
     opt02Detail:
       "提供 PR 面板、checks、review、mark ready 与 merge，服务 /babysit、/shipping 和 /autopilot-*；需要已登录的 gh。",
     opt03Title: "浏览器验证",
-    opt03Detail: "提供浏览器导航、输入、截图和 ARIA 快照；需选择一个 provider 和受支持的模型。",
+    opt03Detail: "提供浏览器导航、输入、截图和 ARIA 快照；需选择一个提供方和受支持的模型。",
     opt04Title: "桌面操作",
     opt04Detail: "在 PTC Session 中操作 macOS 应用，支持点击、输入、截图与权限页。",
     opt05Title: "常驻终端",
