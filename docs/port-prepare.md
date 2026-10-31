@@ -25,7 +25,7 @@
 | `automations/benny/**` | 无 | 不进入生成树；README 的相对链接由生成器改写为 `https://github.com/cursor/plugins/…` | 不随包（`EXCL-01`） |
 | `assets/logo.png`、`plugin.json`、`.cursor-plugin/plugin.json` | 无 | 不进入生成树 | 根 `assets/logo.png`、根 `package.json` 与 `cordis.patch.yml` 承担品牌与插件声明 |
 | `skills/poteto-mode/scripts/**`、`skills/show-me-your-work/scripts/**`、`skills/statechart/scripts/**` | `pstack/runtime/skills/<技能>/scripts/**` | `pstack/pstack/skills/<技能>/scripts/**`（先渲染上游原文，随后由 `replace:scripts` 整目录替换） | `dist/pstack/skills/<技能>/scripts/**`（编译 `.mjs`） |
-| 根插件能力 | 根 `src/*.ts`、`cordis.patch.yml` | — | `dist/{index,models,script,skill,subagent}.mjs` |
+| 根插件能力 | 根 `src/*.ts`、`cordis.patch.yml` | — | `dist/{index,models,remote,roles,script,skill,subagent}.mjs`（Client 另有 `dist/client.mjs`） |
 
 生成器 `pstack/scripts/generate-pstack-harness-tree.mjs` 按生成树相对路径优先读取 `pstack/harness/`，否则读取上游原文；主适配器替换上游 CC 适配器进入生成树，并按主适配器为使用 Cursor 名字的技能插入一次会话读取提示、检查名称映射与相对链接；`--check` 逐字节比对生成树漂移。
 

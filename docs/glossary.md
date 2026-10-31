@@ -24,7 +24,7 @@
 
 ## 随包内容（shipped payload）
 
-`dist/`：根 `vp pack` 的发布产物（`index.mjs`、`pstack/`、`skills/`），被 `.gitignore` 忽略，npm 只发它和 `assets/`、`cordis.patch.yml`。
+`dist/`：根 `vp pack` 的发布产物（`index.mjs`、`pstack/`、`skills/`），被 `.gitignore` 忽略；npm 发布它以及 `assets/`、`cordis.patch.yml`、`locale/` 与各语言 README。
 反例：不要叫它“构建树”或“源码”。
 
 ## 运行时（runtime）
@@ -84,5 +84,5 @@ bundle 配置模态框中的推荐插件分区，以及 dsh-pstack 首次启用�
 
 ## 真实插件测试场（playground）
 
-`playground/`：开发期唯一的真实运行测试环境。提交的 `playground/profile/` 是从随附 `web` 模板复制后加入 `dsh-pstack` 的可移植 profile；运行期 DSH home 固定为 `playground/.dsh`（由 `playground/.gitignore` 忽略，不提交），启动端口固定 `17353`。`playground/` 是 vite-plus 子包 `@internal/playground`；`start.mjs` 每次启动前同步 profile、宿主凭据与模型配置并安装本仓插件（宿主模型更新后自动跟随），由根 `vite.config.ts` 的 `playground` task（`vp run playground`）启动；验证在终端直接对 `playground/.dsh` 与 profile 跑 `dsh` 命令，不内置断言脚本；UI 与真实会话行为由用户交互确认。
+`playground/`：开发期唯一的真实运行测试环境。提交的 `playground/profile/` 是从随附 `web` 模板复制后加入 `dsh-pstack` 的可移植 profile；运行期 DSH home 固定为 `playground/.dsh`（由 `playground/.gitignore` 忽略，不提交），启动端口固定 `17353`。`playground/` 是 vite-plus 子包 `@internal/playground`；`start.mjs` 每次启动前同步 profile、宿主凭据与模型配置并安装本仓插件（宿主模型更新后自动跟随），由根 `vite.config.ts` 的 `playground` task（`vp run playground`）启动；验证在终端直接对 `playground/.dsh` 与 profile 跑 `dsh` 命令，不内置断言脚本；截图/视觉与不涉及模型的 UI 交互由 agent 用 `playground/browser.mjs` / agent-browser 自动完成；真实会话涉及用户所选模型，由用户操作并确认，agent 读取会话日志佐证。
 反例：不是 `tests/` 的 vitest（mock 宿主的单元测试）；也不是宿主 `~/.dsh` 或 `.tmp` 下的一次性测试环境。
