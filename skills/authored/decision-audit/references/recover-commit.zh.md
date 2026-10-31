@@ -9,9 +9,9 @@ git show <dead-sha> | git patch-id --stable
 在记录的日期与范围内搜索可能的替代提交：
 
 ```bash
-git log --since=<Date> --format=%H -- <Scope paths> |
-  while read -r sha; do git show "$sha" | git patch-id --stable; done |
+git log --since=<Date> --format=%H <base> -- |
+  while read -r sha; do git show "$sha" | git patch-id --stable | awk -v sha="$sha" '{print $1, sha}'; done |
   grep -F "<patch-id>"
 ```
 
-命中可支持建议改用替代 SHA；未命中则留给人判断替代项。使用 squash 合并的仓库优先采用 PR 锚点。
+比较 patch 标识前，先用共享 `Scope` 匹配器筛选每个候选提交的路径。命中可支持建议改用替代 SHA；未命中则留给人判断替代项。使用 squash 合并的仓库优先采用 PR 锚点。

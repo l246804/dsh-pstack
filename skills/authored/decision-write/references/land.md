@@ -4,10 +4,10 @@ Use this reference for Land anchor discovery, record-only fallback, and anchor v
 
 ## Find the implementation
 
-In Land when no candidate anchor is available, search commits and merged PRs touching the record's `Scope`:
+In Land when no candidate anchor is available, resolve `<base>` as described under **Verify the anchor**, then search commits and merged PRs touching the record's `Scope`:
 
 ```bash
-git log --since=<Date> --format='%H %cs %s' -- <Scope paths>
+git log --since=<Date> --format='%H %cs %s' <base> --
 gh pr list --state merged --search "<record title or scope keyword>" --json number,title,mergedAt,files --limit 20
 ```
 
@@ -45,4 +45,4 @@ Verify every proposed `Implemented-by` value:
 
 List candidate paths with `gh pr view N --json files --jq '.files[].path'` or `git show --pretty=format: --name-only SHA`. A real implementation intersects `Scope` and includes a path outside `<dir>`; a record-only anchor needs the confirmed exception. Return these paths to the scope check.
 
-For unlanded work, failed verification, unavailable `gh`, or an unresolved `<base>`, write `proposed` + `-` and report the evidence or attempted refs. An unresolved base also blocks base-relative scope checks; use caller-supplied paths or report that evidence as unavailable. Never demote an existing `accepted` record on failed verification; return its broken anchor to the main skill's stop-and-report rule.
+In Draft, unlanded work, failed verification, unavailable `gh`, or an unresolved `<base>` leaves a new record `proposed` + `-`; report the evidence or attempted refs. In Land, stop and report without editing. An unresolved base also blocks base-relative scope checks; use caller-supplied paths or report that evidence as unavailable. Never demote an existing `accepted` record on failed verification; return its broken anchor to the main skill's stop-and-report rule. A Review-only update skips this reference.

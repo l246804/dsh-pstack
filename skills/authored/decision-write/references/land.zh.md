@@ -4,10 +4,10 @@
 
 ## 查找实现
 
-落地模式没有可用的候选锚点时，检索触及记录 `Scope` 的提交与已合并 PR：
+落地模式没有可用的候选锚点时，先按“校验锚点”解析 `<base>`，再检索触及记录 `Scope` 的提交与已合并 PR：
 
 ```bash
-git log --since=<Date> --format='%H %cs %s' -- <Scope paths>
+git log --since=<Date> --format='%H %cs %s' <base> --
 gh pr list --state merged --search "<记录标题或范围关键词>" --json number,title,mergedAt,files --limit 20
 ```
 
@@ -45,4 +45,4 @@ git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null ||
 
 用 `gh pr view N --json files --jq '.files[].path'` 或 `git show --pretty=format: --name-only SHA` 列出候选路径。真实实现与 `Scope` 相交，且至少有一个 `<dir>` 之外的路径；仅记录锚点需要经确认的例外。将这些路径交给范围检查。
 
-改动未落地、校验失败、`gh` 不可用或 `<base>` 无法解析时，写入 `proposed` + `-`，并报告证据或尝试过的 ref。基线无法解析也会阻止相对基线的范围检查；此时使用调用方提供的路径，或报告该证据不可用。既有 `accepted` 记录校验失败时不得降级；回到主技能的停下报告规则处理断裂锚点。
+撰写模式中，改动未落地、校验失败、`gh` 不可用或 `<base>` 无法解析时，新记录保持 `proposed` + `-`，并报告证据或尝试过的 ref。落地模式中停止并报告，不编辑记录。基线无法解析也会阻止相对基线的范围检查；此时使用调用方提供的路径，或报告该证据不可用。既有 `accepted` 记录校验失败时不得降级；回到主技能的停下报告规则处理断裂锚点。仅更新 `Review` 时不读取本参考。
