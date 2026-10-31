@@ -96,4 +96,4 @@ node pstack/scripts/port-fixes.mjs replay
 
 报告逐文件产物、最终覆盖、OPT 降级表、运行期替代表、整文档审查、compact、根 README 国际化核对和全部验证。最后按状态写 `/pstack-port issue #编号` 或「本轮结束，无下一步」。
 
-完成标准（S-01、S-14、S-18～S-20、S-26～S-28、R-09）：适配文档与中文 README 完整；OPT、运行期替代和根 README 国际化已核对；「doc 自检」三项、整文档审查与五条门禁通过；`docs/port-review.md` 正文已清空；FIX 台账与 archive 一致；port 状态、EXT 状态和 blocker 符合来源；报告含完整下一步命令或结束语。
+完成标准（S-01、S-14、S-18～S-20、S-26～S-28、S-30、R-09）：适配文档与中文 README 完整；OPT、运行期替代和根 README 国际化已核对；「doc 自检」三项、整文档审查与五条门禁通过；`docs/port-review.md` 正文已清空；FIX 台账与 archive 一致；port 状态、EXT 状态和 blocker 符合来源；报告含完整下一步命令或结束语。

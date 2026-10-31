@@ -20,7 +20,7 @@
 | 内容 | 位置 |
 |---|---|
 | 模型：核心概念、状态文件、blocker、repair_target、FIX | §1 |
-| 场景 S-01～S-29 | §2 |
+| 场景 S-01～S-30 | §2 |
 | 要求 R-01～R-14 | §3 |
 | 验收证据与门禁 | §4 |
 | 重构验收清单 | §5 |
@@ -465,6 +465,16 @@ blocker:
 - **明确不做**：不改 `SPEC.md`，SPEC 变更走 R-14 自洁；不改技能的功能范围与分支。
 - **验收证据**：报告有「整文档审查」；`vp check` 退出 0；`vp test` 通过。
 
+### S-30 执行测试前读取项目决策记录约定
+
+- **前置状态**：当前分支允许实现或验证工作项；项目存在 `AGENTS.md` 与 `docs/decisions/`。
+- **触发**：`/pstack-port implement port`、`/pstack-port implement EXT-*`、`/pstack-port implement #编号`、`/pstack-port review port`、`/pstack-port review EXT-*`、`/pstack-port review #编号`、`/pstack-port doc` 或 `/pstack-port issue #编号` 执行测试或门禁。
+- **期望行为**：执行测试或门禁前读取适用的 `AGENTS.md`；涉及决策记录的读写、实现或审查时，先读 `docs/decisions/AGENTS.md`，再按当前变更路径核对 `Scope` 相交的 accepted 决策。测试、真实安装验证与验证报告遵循其中的环境与执行约定。以实际文件内容为准，不只依据会话已加载的摘要。
+- **状态与文件变化**：工作记录保存所读取的决策约定与验证环境证据；其他状态按当前分支处理。
+- **下一步**：继续当前分支的验证与后续流程。
+- **明确不做**：不把测试退出 0 当作符合项目约定的充分证据；不在项目约定的测试环境之外另建真实测试环境。
+- **验收证据**：测试报告列出适用的 `AGENTS.md`、accepted 决策和验证环境；测试或门禁退出 0，且执行路径符合 `docs/decisions/2026-10-30-playground-real-plugin-testing.md`。
+
 ## 3. 技能要求
 
 ### R-01 根 README 动态内容同步（doc 最后一步）
@@ -596,8 +606,9 @@ fixes:
 | S-25 | `prepare`、`audit`、`implement`（port） |
 | S-26～S-28 | `doc` |
 | S-29 | 技能整体重构任务 |
+| S-30 | 所有执行测试或门禁的分支，主要是 `implement`、`review`、`doc` 与 `issue` |
 
-重构完成标准：S-01～S-28 每个至少映射到一个分支文件，且在对应分支的完成标准中有可执行的检查；S-29 映射到技能整体重构任务；没有场景落空。
+重构完成标准：S-01～S-28 每个至少映射到一个分支文件，且在对应分支的完成标准中有可执行的检查；S-29 映射到技能整体重构任务；S-30 映射到共同验证契约及执行测试或门禁的分支完成标准；没有场景落空。
 
 ### R-06 锁定与变更
 
@@ -741,7 +752,7 @@ node pstack/scripts/port-fixes.mjs replay
 
 ## 5. 重构验收清单
 
-- [ ] 29 个场景全部有对应执行位置和验收证据。
+- [ ] 30 个场景全部有对应执行位置和验收证据。
 - [ ] `docs/port-state.yaml` 是唯一状态源；`docs/port-review.md` 只做轮次工作文件。
 - [ ] blocker 的 `mode: issue` 与 `mode: core` 路由与 S-05、S-09、S-10、S-15、S-17、S-18 一致。
 - [ ] `docs/port-fixes.yaml` 与 `docs/port-fixes-archive.yaml` 的 schema、状态、compact 与 R-03 一致。

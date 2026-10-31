@@ -102,7 +102,7 @@ fixes:
 
 1. **上游需求**：`<pstack>` 的 Markdown、被调用脚本与配置声明行为。
 2. **DSH 能力**：`<dsh>` 的源码、类型、包清单、插件声明和测试证明能力。
-3. **本仓适配契约**：`docs/architecture.md`、适用的 accepted 决策与 `docs/extensions.md` 规定长期选择。
+3. **本仓适配契约**：适用的 `AGENTS.md`、`docs/architecture.md`、适用的 accepted 决策与 `docs/extensions.md` 规定长期选择。涉及决策记录的读写、实现或审查时，先读 `docs/decisions/AGENTS.md`，再按当前变更路径核对 `Scope` 相交的记录。
 
 当前实现、生成树、旧 README 和测试只证明各自直接表达的事实。用 `git -C <pstack> rev-parse HEAD` 与 `git -C <dsh> rev-parse HEAD` 绑定提交。只读子任务的结论由主任务打开原证据核验。
 
@@ -114,6 +114,8 @@ fixes:
 
 ## 5. 验证与报告
 
+执行测试或门禁前，按实际文件读取适用的 `AGENTS.md` 与决策约定，不只依据会话已加载的摘要。测试环境、命令和真实安装验证遵守其中的 accepted 决策；真实运行验证统一使用项目 `playground/`，不另建 home 或 profile（S-30）。
+
 按场景运行最窄行为测试，再运行相关门禁：
 
 ```bash
@@ -124,7 +126,7 @@ node pstack/scripts/generate-pstack-harness-tree.mjs --check
 node pstack/scripts/port-fixes.mjs replay
 ```
 
-每条命令记录实际退出码。相关测试写明文件或用例；状态验收同时给出文件字段、路由拒绝或通过的观察结果。`doc`、`review port` 与 Issue 验收运行全部五条门禁。
+每条命令记录实际退出码。相关测试写明文件或用例；状态验收同时给出文件字段、路由拒绝或通过的观察结果。验证报告列出适用的 `AGENTS.md`、accepted 决策和验证环境。`doc`、`review port` 与 Issue 验收运行全部五条门禁。
 
 报告回查「需求 → 工作项 → 实现 → 验证 → 产物」。列出未覆盖、证据不足和有意跳过项；为空写「无」。报告最后按 R-09 给出参数完整的 `/pstack-port ...` 下一步命令；多个选择分别说明条件；没有下一步写「本轮结束，无下一步」。
 

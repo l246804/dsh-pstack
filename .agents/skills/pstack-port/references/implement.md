@@ -20,7 +20,7 @@ port 在 `phase: review` 且存在开放 finding 时，下一步是 `/pstack-por
 
 ## 2. 冻结接口与实现范围
 
-读取 `docs/architecture.md`、适用 accepted 决策和当前需求。沿 `<dsh>` 的正式导出、类型、插件包与测试确认公共接口、依赖、权限执行面和插件组合。优先复用 SDK、声明式 bundle 和公共插件接口；确需手写时使用架构规定的位置。
+读取适用的 `AGENTS.md`、`docs/architecture.md`、accepted 决策和当前需求。涉及决策记录时先读 `docs/decisions/AGENTS.md`，再按当前变更路径核对 `Scope` 相交的记录。沿 `<dsh>` 的正式导出、类型、插件包与测试确认公共接口、依赖、权限执行面和插件组合。优先复用 SDK、声明式 bundle 和公共插件接口；确需手写时使用架构规定的位置。
 
 读取现有实现，逐项标为保留、修改、新增或删除。每项对应一个能力、EXT 或 finding。生产依赖与类型声明按仓库约定进入 `dependencies`；生成树与发布树只由构建更新。
 
@@ -58,9 +58,9 @@ port 在 `phase: review` 且存在开放 finding 时，下一步是 `/pstack-por
 
 共享 port 改动运行受影响回归。除第 3 节已登记的破坏外，此阶段不修复或改登记 EXT。EXT/FIX 改动用 `git diff --name-only` 核对没有 port 基线路径，并运行对应 EXT 验收或 FIX 测试。
 
-至少运行相关测试、`vp check`、`vp test` 和 `node pstack/scripts/generate-pstack-harness-tree.mjs --check`。记录实际退出码；本次失败未解决时不得报告完成。
+至少运行相关测试、`vp check`、`vp test` 和 `node pstack/scripts/generate-pstack-harness-tree.mjs --check`。测试与真实运行验证遵循项目决策约定的环境；记录实际退出码、适用决策和验证环境。本次失败未解决时不得报告完成。
 
-完成标准（S-25）：每个实现项都有代码和测试；每个脚本入口可执行且有调用方与验收命令；公共接口与权限边界有证据；相关门禁退出 0；范围外文件未改变。
+完成标准（S-25、S-30）：每个实现项都有代码和测试；每个脚本入口可执行且有调用方与验收命令；公共接口与权限边界有证据；测试前已读取项目约定，验证环境符合 accepted 决策；相关门禁退出 0；范围外文件未改变。
 
 ## 5. 更新记录并报告
 

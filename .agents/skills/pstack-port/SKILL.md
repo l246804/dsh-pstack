@@ -20,6 +20,8 @@ disable-model-invocation: true
 
 每次先读 `docs/port-state.yaml`，再读 [`references/contract.md`](references/contract.md)、`docs/architecture.md` 和所选分支文件。处理 `port` 的 `audit`、`implement`、`review`、`doc` 另读 [`references/port-baseline.md`](references/port-baseline.md)。其他分支文件留在上下文之外。
 
+执行测试或门禁前，按实际文件读取适用的 `AGENTS.md` 与决策约定，不只依据会话摘要。涉及决策记录时先读 `docs/decisions/AGENTS.md`，再核对 `Scope` 与当前变更路径相交的 accepted 决策；真实运行验证使用项目约定的 `playground/`。
+
 `port` 轮次从 `audit` 开始，到 `doc` 结束，链路为 `prepare → audit → implement port ⇄ review port → doc`；`upstream` 与 `prepare` 是前置。后续阶段只在用户显式调用时进入。
 
 `implement` 无参数时，请用户选择 `port`、`EXT-*` 或填写 `#编号`。可以列出本地待处理项，但不访问 GitHub 自动发现 Issue。每次报告以完整的 `/pstack-port ...` 命令给出下一步；没有下一步时写“本轮结束，无下一步”。
