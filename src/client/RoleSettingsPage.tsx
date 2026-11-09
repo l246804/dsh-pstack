@@ -339,7 +339,6 @@ export function RoleSettingsView(props: {
       <header className="pstack-section-head">
         <div>
           <p className="pstack-section-desc">{t("rolesSubtitle")}</p>
-          <p className="pstack-section-desc">{t("effortBaselineHint")}</p>
           <div className="pstack-file-meta">
             <Status tone={fileStatus.tone} label={fileStatus.label} />
             <span>{t("file")}</span>
@@ -422,6 +421,10 @@ export function RoleSettingsView(props: {
         >
           {t("budgetAdjust")}
         </Button>
+      </div>
+      <div className="pstack-effort-hint" role="note">
+        <IconInfo size={14} />
+        <span>{t("effortBaselineHint")}</span>
       </div>
       {budgetOpen && catalogue !== undefined ? (
         <BudgetDialog

@@ -272,9 +272,10 @@ describe("role drafts across tabs", () => {
 });
 
 describe("effort baseline hint", () => {
-  it("explains that reasoning effort is a baseline that can float at dispatch", async () => {
+  it("shows a hint card under the budget bar that reasoning effort is a baseline", async () => {
     await openRoles(makeRoleApi().api);
-    expect(document.body.textContent).toContain(catalogs.roles.en.effortBaselineHint);
+    const card = document.querySelector(".pstack-effort-hint");
+    expect(card?.textContent).toContain(catalogs.roles.en.effortBaselineHint);
   });
 });
 
