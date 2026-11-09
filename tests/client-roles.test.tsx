@@ -271,6 +271,13 @@ describe("role drafts across tabs", () => {
   });
 });
 
+describe("effort baseline hint", () => {
+  it("explains that reasoning effort is a baseline that can float at dispatch", async () => {
+    await openRoles(makeRoleApi().api);
+    expect(document.body.textContent).toContain(catalogs.roles.en.effortBaselineHint);
+  });
+});
+
 describe("clear as deletion", () => {
   it("edits an unconfigured role directly without adding a route", async () => {
     const controller = makeRoleApi();

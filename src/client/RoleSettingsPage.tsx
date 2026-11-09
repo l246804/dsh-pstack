@@ -339,6 +339,7 @@ export function RoleSettingsView(props: {
       <header className="pstack-section-head">
         <div>
           <p className="pstack-section-desc">{t("rolesSubtitle")}</p>
+          <p className="pstack-section-desc">{t("effortBaselineHint")}</p>
           <div className="pstack-file-meta">
             <Status tone={fileStatus.tone} label={fileStatus.label} />
             <span>{t("file")}</span>

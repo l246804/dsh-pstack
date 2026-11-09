@@ -3,6 +3,8 @@
 const en = {
   rolesSubtitle:
     "Choose each role's provider, model, and reasoning effort. Only supported efforts are listed.",
+  effortBaselineHint:
+    "Reasoning effort is a baseline, not a fixed tier. At dispatch it may move up or down to fit the task.",
   file: "File",
   statusMissing: "missing",
   statusLoaded: "loaded",
@@ -119,6 +121,7 @@ const en = {
 
 const zh = {
   rolesSubtitle: "为每个角色选择提供方、模型和推理强度；只列出模型支持的值。",
+  effortBaselineHint: "推理强度是基准档位，并非固定档位；实际派发时会根据任务需要动态上调或下调。",
   file: "文件",
   statusMissing: "缺失",
   statusLoaded: "已加载",
