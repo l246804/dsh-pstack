@@ -105,4 +105,4 @@ vp run playground:collect -- --mode adapted
 - 运行中没有真人回答问题。run-case 会自己应答 ask_user_question 卡片：用例自身的 `answers` 规则优先，否则选第一个选项或填入默认文本，每个回答都记入证据。
 - 模型选择属于操作者。每台机器确认一次；agent 引用会话事件作为证据。
 - 上游技能集与每个技能的用例映射位于 `playground/cases.lock.json`。`vp run playground:check` 在出现漂移时失败。
-- 仅限 Cursor 的技能在 lock 中以原因排除，不获得用例，因此 `--all` 只覆盖可运行的技能。
+- Cursor-only 处理以 `playground/AGENTS.md` 与 lock 为准：只有依赖 Cursor 专属能力的技能才排除、不获得用例；仅在正文提及的技能记入 `CURSOR_MENTION_REVIEWED` 后仍可运行。因此 `--all` 覆盖全部可运行用例。

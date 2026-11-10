@@ -27,10 +27,10 @@
 | Client 入口与对话框 | `src/client/index.ts`、`src/client/PstackConfigDialog.tsx` | 挂载 Remote 描述符、注册 locale 和插件详情动作；管理配置对话框、页签和未保存草稿。 |
 | 角色与插件页面 | `src/client/RoleSettingsPage.tsx`、`src/client/RoleCard.tsx`、`src/client/BudgetDialog.tsx`、`src/client/RecommendedPluginsPage.tsx` | 编辑角色草稿并展示保存结果；按预算批量预览并应用推理档位；展示关联插件及其变更结果。 |
 | Client 支撑 | `src/client/ui.tsx`、`src/client/icons.tsx`、`src/client/styles.ts`、`src/client/toast.tsx`、`src/client/message.ts`、`src/client/focus-trap.ts`、`src/client/locales/`、`src/client/role-copy.ts`、`src/client/role-draft.ts`、`src/client/role-selectors.ts` | 提供本插件的 UI 组件、样式、共享提示、焦点陷阱、翻译、角色草稿和选择器文案。 |
-| 移植与生成 | `port/generate.mjs`、`port/dsh.md`、`port/dsh.zh.md` 与 `playground/reports/skill-audit.md`、`playground/cases.lock.json` | 从固定上游生成 `pstack/`；扫描能力、校验审核引用和当前基线处置。 |
+| 移植与生成 | `port/generate.mjs`、`port/dsh.md`、`port/dsh.zh.md` 与 `playground/reports/skill-audit.md`、`playground/cases.lock.json` | 从固定上游生成 `pstack/`；在 playground 审核技能并维护用例与审批基线。 |
 | 发布元数据 | `port/release-compatibility.ts`、`bump.config.ts` | 按显式兼容键同步双语 README 的版本表；每个 `x.y` 保留最新 `z`，新兼容键新增行，并把双语 README 加入发布提交。 |
 | 构建与打包 | `vite.config.ts`、`package.json` | 分别构建 Host 与浏览器 Client；导出 Host 模块，复制生成树和技能资源。 |
-| 自动化验证 | `tests/`、`playground/start.mjs`、`playground/cases-run.mjs`、`playground/run-cases.mjs`、`playground/browser.mjs` | 运行单元和 DOM 交互测试；在真实 DSH playground 中验证插件和模型驱动用例，并用浏览器脚本做不涉及模型选择的交互。 |
+| 自动化验证 | `tests/`、`playground/scripts/`（prepare、bootstrap、run-case、run-batch、collect、check、approve、status、stop、browser） | 运行单元和 DOM 交互测试；在真实 DSH playground 中验证插件和模型驱动用例，并用浏览器脚本做不涉及模型选择的交互。 |
 
 ## 依赖方向
 
@@ -88,7 +88,7 @@ upstream/cursor-plugins/pstack + port/dsh.md
 - **角色能力**：`src/role-manifest.ts` 同时驱动角色目录、文件解析、设置视图和委派选择。修改角色时同步其上游来源和对应测试。
 - **Agent preset**：在 `cordis.patch.yml` 组合插件行，由 `src/preset.ts` 注册；展示文案集中在 `src/client/locales/` 或 `src/preset-copy.ts`。
 - **Client 配置能力**：通过 `plugins.detail.actions` 进入现有对话框；Host 数据通过显式 Remote 描述符和页面 API 适配层传递。
-- **上游移植**：先扫描并审核能力，再调整生成器或手写适配来源，最后重新生成并检查漂移。
+- **上游移植**：先在 playground 审核技能，再调整生成器或手写适配来源，最后重新生成并检查漂移。
 - **验证**：纯逻辑和 DOM 行为放入 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
 
 ## 验证分层

@@ -1,6 +1,6 @@
 # Playground
 
-本目录是 dsh-pstack 的真实环境验证基建。它对 58 个上游技能逐个留存测试用例，在真实 DSH Web 会话里执行，证据来自持久化会话事件与截图。
+本目录是 dsh-pstack 的真实环境验证基建。它对 58 个上游技能中的 57 个留存测试用例，在真实 DSH Web 会话里执行，证据来自持久化会话事件与截图；只有真正依赖 Cursor 专属能力的技能被排除、没有用例，清单见 `cases.lock.json`。
 
 ## 两阶段流程
 
@@ -44,7 +44,7 @@ vp run playground:browser -- --worker 0 --shot out.png        # 临时浏览器�
 
 ## 用例
 
-`cases/<skill>.ts` 一个技能一个文件，形状见 `types.ts`。工作流技能是完整行为用例，principle 叶子是轻量用例。prompt 必须是自然的用户请求，不点名工具或技能。`cases/index.ts` 是注册表。素材规模收到刚好触发该技能的工作流，重型用例不让模型在 raw 环境把整件事跑完。
+`cases/<skill>.ts` 每个可运行技能一个用例文件，形状见 `types.ts`；被排除的技能没有用例文件。工作流技能是完整行为用例，principle 叶子是轻量用例。prompt 必须是自然的用户请求，不点名工具或技能。`cases/index.ts` 是注册表。素材规模收到刚好触发该技能的工作流，重型用例不让模型在 raw 环境把整件事跑完。
 
 ## 判定口径
 

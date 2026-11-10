@@ -105,4 +105,4 @@ Update every section of `reports/skill-audit.md` to its final state, passed or r
 - No human answers questions in a run. run-case answers any ask_user_question card itself: a case's own `answers` rules win, otherwise it takes the first option or types the default text, and every answer is recorded in the evidence.
 - Model choice is the operator's. Confirm it once per machine; the agent cites session events as evidence.
 - The upstream skill set and per-skill case mapping live in `playground/cases.lock.json`. `vp run playground:check` fails on drift.
-- Cursor-only skills are excluded in the lock with a reason and get no case, so `--all` covers only runnable skills.
+- Cursor-only handling follows `playground/AGENTS.md` and the lock: only a skill that depends on a Cursor-only capability is excluded and gets no case; a skill that merely mentions one is recorded in `CURSOR_MENTION_REVIEWED` and stays runnable. `--all` covers every runnable case.
