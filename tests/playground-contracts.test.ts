@@ -66,7 +66,7 @@ describe("scenario registry", () => {
 
   it("asserts the benchmark verdict word the real reply actually carries", () => {
     const scenario = behaviorScenario("benchmark-checklist-export-claim");
-    expect(scenario.assertions).toContainEqual({ kind: "assistant-contains", text: "采信" });
+    expect(scenario.assertions).toContainEqual({ kind: "assistant-contains", text: "47%" });
     expect(scenario.assertions).not.toContainEqual({ kind: "assistant-contains", text: "可信" });
     // The rubric keeps naming the allowed judgment words; only the mechanical token changed.
     expect(scenario.rubric.prompt).toContain("可信");

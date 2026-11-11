@@ -41,7 +41,7 @@ export const benchmarkChecklist: BehaviorScenario = {
   },
   assertions: [
     { kind: "turn-completed" },
-    { kind: "assistant-contains", text: "采信" },
+    { kind: "assistant-contains", text: "47%" },
     { kind: "assistant-contains", text: "次" },
   ],
   rubric: {
