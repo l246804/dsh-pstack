@@ -331,7 +331,44 @@ describe("applying a review", () => {
     const second = applyReviews(paths(fx));
     expect(second.written).toEqual([]);
     expect(second.skipped).toHaveLength(1);
+    expect(second.stale).toEqual([]);
     expect(evidenceFiles(fx.evidence)).toHaveLength(afterFirst);
+  });
+
+  it("counts a sidecar older than the latest recapture as stale and merges nothing", () => {
+    const fx = fixture("raw");
+    const rerunFile = join(fx.evidence, `${SCENARIO_ID}-raw-base-2026-11-11T02-00-00-000Z.json`);
+    writeFileSync(
+      rerunFile,
+      `${JSON.stringify(
+        pendingRecord("raw", "base", rerunFile, { capturedAt: "2026-11-11T02:00:00.000Z" }),
+        null,
+        2,
+      )}\n`,
+    );
+    writeSidecar(fx.reviews, "raw", reviewValue());
+
+    const result = applyReviews(paths(fx));
+    expect(result.written).toEqual([]);
+    expect(result.stale).toEqual([
+      { scenarioId: SCENARIO_ID, phase: "raw", environmentId: "base" },
+    ]);
+
+    // The rerun evidence keeps its pending review; the old verdict never lands on it.
+    const rerun = newestRecord(fx.evidence);
+    expect(rerun.capturedAt).toBe("2026-11-11T02:00:00.000Z");
+    expect(rerun.semanticReview.status).toBe("pending");
+    expect(evidenceFiles(fx.evidence)).toHaveLength(2);
+  });
+
+  it("merges a sidecar reviewed at exactly the latest capture time", () => {
+    const fx = fixture("raw", { capturedAt: REVIEWED_AT });
+    writeSidecar(fx.reviews, "raw", reviewValue());
+
+    const result = applyReviews(paths(fx));
+    expect(result.stale).toEqual([]);
+    expect(result.written).toHaveLength(1);
+    expect(newestRecord(fx.evidence).semanticReview.status).toBe("supported");
   });
 
   it("leaves a record pending when no sidecar reviews it", () => {

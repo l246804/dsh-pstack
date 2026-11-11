@@ -23,12 +23,19 @@ function main(): void {
     for (const { identity, recordFile } of result.written)
       console.log(`[review] applied ${label(identity)} -> ${recordFile}`);
     for (const identity of result.skipped) console.log(`[review] idempotent ${label(identity)}`);
+    for (const identity of result.stale)
+      console.log(`[review] stale ${label(identity)}: the record was recaptured after reviewedAt`);
     for (const identity of result.missingRecord)
       console.log(`[review] no record for ${label(identity)}`);
     console.log(
-      `[review] applied=${result.written.length} skipped=${result.skipped.length} missing=${result.missingRecord.length} errors=${result.errors.length}`,
+      `[review] applied=${result.written.length} skipped=${result.skipped.length} stale=${result.stale.length} missing=${result.missingRecord.length} errors=${result.errors.length}`,
     );
-    process.exitCode = result.errors.length > 0 ? 1 : result.missingRecord.length > 0 ? 2 : 0;
+    process.exitCode =
+      result.errors.length > 0
+        ? 1
+        : result.missingRecord.length > 0 || result.stale.length > 0
+          ? 2
+          : 0;
     return;
   }
   const inspection = inspectReviews(input);

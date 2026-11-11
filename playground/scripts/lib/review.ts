@@ -227,6 +227,8 @@ function writeJsonAtomic(file: string, value: unknown): void {
 export interface ApplyResult {
   written: Array<{ identity: ReviewIdentity; recordFile: string }>;
   skipped: ReviewIdentity[];
+  /** Sidecars whose latest record was captured after the review: a rerun superseded them. */
+  stale: ReviewIdentity[];
   missingRecord: ReviewIdentity[];
   errors: string[];
 }
@@ -239,14 +241,17 @@ export interface ReviewPaths {
 }
 
 /**
- * For every valid sidecar, append a new RunRecord revision to the latest record it reviews.
- * Re-applying the same sidecar is a no-op: the latest revision already carries that review's
- * semanticReview and reviewedAt. Original records are never deleted.
+ * For every valid sidecar, append a new RunRecord revision to the latest record it
+ * reviews. A sidecar only reviews evidence captured no later than its reviewedAt: when the
+ * latest record is newer, the case was rerun and the sidecar is counted stale instead of
+ * laundering the old verdict onto evidence the reviewer never saw. Re-applying the same
+ * sidecar is a no-op: the latest revision already carries that review's semanticReview and
+ * reviewedAt. Original records are never deleted.
  */
 export function applyReviews(paths: ReviewPaths): ApplyResult {
   const { sidecars, errors } = readReviewSidecars(paths.reviewsDirectory, paths.scenarioIds);
   const now = paths.now ?? (() => new Date());
-  const result: ApplyResult = { written: [], skipped: [], missingRecord: [], errors };
+  const result: ApplyResult = { written: [], skipped: [], stale: [], missingRecord: [], errors };
   const cache = new Map<string, RunRecord[]>();
   const recordsFor = (environmentId: string): RunRecord[] => {
     const cached = cache.get(environmentId);
@@ -273,6 +278,12 @@ export function applyReviews(paths: ReviewPaths): ApplyResult {
       JSON.stringify(latest.semanticReview) === JSON.stringify(semanticReview)
     ) {
       result.skipped.push(identity);
+      continue;
+    }
+    // The idempotence check must stay ahead of this one: a revision captures at apply
+    // time, always later than the reviewedAt it merged, and must stay a no-op, not stale.
+    if (Date.parse(latest.capturedAt) > Date.parse(review.reviewedAt)) {
+      result.stale.push(identity);
       continue;
     }
     const verdictInput = { phase: identity.phase, semanticReview, ...recordFailures(latest) };
