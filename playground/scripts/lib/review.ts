@@ -43,6 +43,9 @@ function nonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim() !== "";
 }
 
+/** Route values that are editing placeholders, not a reviewer identity. */
+const ROUTE_PLACEHOLDERS = new Set(["pending"]);
+
 /**
  * A sidecar name is `<scenarioId>-<phase>-<environmentId>.json`. Neither scenario ids nor
  * environment ids are free of hyphens, so resolve the scenario against the registry and take
@@ -93,8 +96,14 @@ export function parseReviewValue(value: unknown): { review?: ReviewFile; errors:
     } else {
       const target: Partial<TestTarget> = {};
       for (const field of ["provider", "model", "effort"] as const) {
-        if (nonEmptyString(route[field])) target[field] = route[field];
-        else errors.push(`reviewer.route.${field} must be a non-empty string`);
+        const value = route[field];
+        if (!nonEmptyString(value)) {
+          errors.push(`reviewer.route.${field} must be a non-empty string`);
+        } else if (ROUTE_PLACEHOLDERS.has(value.trim().toLowerCase())) {
+          errors.push(`reviewer.route.${field} must not be the placeholder "${value}"`);
+        } else {
+          target[field] = value;
+        }
       }
       if (errors.length === 0) reviewer = { kind: "model", route: target as TestTarget };
     }

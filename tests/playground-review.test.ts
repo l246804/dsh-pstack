@@ -145,12 +145,50 @@ describe("review sidecar validation", () => {
         reviewer: { kind: "model", route: { provider: "provider-a", model: "", effort: "low" } },
       }),
     ).errors;
-    expect(modelErrors.some((error) => error.includes("reviewer.route.model"))).toBe(true);
+    expect(modelErrors).toContain("reviewer.route.model must be a non-empty string");
 
     const humanErrors = parseReviewValue(
       reviewValue({ reviewer: { kind: "human", name: "" } }),
     ).errors;
     expect(humanErrors.some((error) => error.includes("reviewer.name"))).toBe(true);
+  });
+
+  it.each(["pending", "Pending", " pending "])(
+    "rejects the %s placeholder in a model reviewer route",
+    (placeholder) => {
+      const { review, errors } = parseReviewValue(
+        reviewValue({
+          reviewer: {
+            kind: "model",
+            route: { provider: "provider-a", model: placeholder, effort: "low" },
+          },
+        }),
+      );
+      expect(review).toBeUndefined();
+      expect(errors.some((error) => error.includes("reviewer.route.model"))).toBe(true);
+      expect(errors.some((error) => error.includes("placeholder"))).toBe(true);
+    },
+  );
+
+  it("rejects a placeholder provider or effort with the same rule", () => {
+    const providerErrors = parseReviewValue(
+      reviewValue({
+        reviewer: {
+          kind: "model",
+          route: { provider: "pending", model: "model-a", effort: "low" },
+        },
+      }),
+    ).errors;
+    expect(providerErrors.some((error) => error.includes("reviewer.route.provider"))).toBe(true);
+    const effortErrors = parseReviewValue(
+      reviewValue({
+        reviewer: {
+          kind: "model",
+          route: { provider: "provider-a", model: "model-a", effort: "PENDING" },
+        },
+      }),
+    ).errors;
+    expect(effortErrors.some((error) => error.includes("reviewer.route.effort"))).toBe(true);
   });
 
   it("accepts a complete sidecar and a complete human reviewer", () => {
