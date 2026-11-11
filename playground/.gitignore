@@ -13,9 +13,11 @@ node_modules
 *.log
 .DS_Store
 
-# Generated per-run report; skill-audit.md is the hand-curated audit record.
-reports/run-raw-*.md
-reports/run-adapted-*.md
+# Regenerated raw baseline. The generator never writes the upstream checkout.
+raw/generated/
+
+# Generated per-run reports.
+reports/run-*.md
 
 # Archived evidence for the audit report; regenerated per run.
 reports/evidence/
