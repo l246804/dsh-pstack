@@ -190,10 +190,10 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 移植以真实 DeepSeek Harness Web 会话为准进行核对，不靠与上游文本比对。完整流程见 [playground/README.md](./playground/README.md)。
 
 - **raw 基准。** 生成器把上游 pstack 复制到 `playground/raw/generated`，不装其他插件。`playground/raw/dsh.md` 把每项上游能力写成三种情况之一：base DSH 原生、仅官方可选插件提供、没有此能力。生成器只复制该文档并替换引用链接，上游文案保持原样。
-- **场景驱动。** 57 个行为场景用自然语言 turns 先跑 raw 基准，再跑适配后的插件。两项能力因强依赖 Cursor 云 routine、Bot 或 Automations 声明为排除。上游技能既无场景也无排除时，覆盖守卫测试会失败。
+- **场景驱动。** 注册表定义 57 个行为场景，每个场景用自然语言 turns 先跑 raw 基准，再跑适配后的插件。两项能力因强依赖 Cursor 云 routine、Bot 或 Automations 声明为排除。上游技能既无场景也无排除时，覆盖守卫测试会失败。
 - **语义审核。** 技能能加载只证明它可被触达。每个场景单独记录 `supported`、`gap` 或 `inconclusive` 结论，并附审核者与理由；adapted 运行记录 `verified`、`not-verified` 或 `inconclusive`。
 - **adapted 复验。** 审核结论驱动 [port/dsh.zh.md](./port/dsh.zh.md)。适配包用 `vp run build` 重建后，重跑同一批场景确认映射后的行为。
-- **插件矩阵。** adapted 运行覆盖官方插件环境 `base`、`session-search`、`browser-use`、`terminal`、`forge` 与 `agent-team-conflict`。插件 UI 场景与 Agent Teams 冲突回归有各自的运行入口。
+- **插件矩阵。** 矩阵定义官方插件环境 `base`、`session-search`、`browser-use`、`terminal`、`forge` 与 `agent-team-conflict`。按工作流实际依赖运行相应环境；插件 UI 场景与 Agent Teams 冲突回归有各自的运行入口。
 
 ## ⚠️ 仍存在的缺口
 

@@ -190,10 +190,10 @@ Steps that depend on a disabled plugin report skipped or blocked, never passed. 
 The port is checked against real DeepSeek Harness Web sessions, not by comparing text with upstream. [playground/README.md](./playground/README.md) documents the full procedure.
 
 - **Raw baseline.** The generator copies upstream pstack into `playground/raw/generated` and installs nothing else. `playground/raw/dsh.md` states each upstream capability as one of three cases: native in base DSH, provided only by an official optional plugin, or absent. The generator copies that document and rewrites link references only, so the upstream wording stays intact.
-- **Scenario-driven runs.** 57 behavior scenarios drive natural-language turns against the raw baseline and then against the adapted plugin. Two capabilities are declared exclusions because they need Cursor cloud routines, Bots, or Automations. A guard test fails when an upstream skill has neither a scenario nor an exclusion.
+- **Scenario-driven runs.** The registry defines 57 behavior scenarios; each runs its natural-language turns against the raw baseline and then against the adapted plugin. Two capabilities are declared exclusions because they need Cursor cloud routines, Bots, or Automations. A guard test fails when an upstream skill has neither a scenario nor an exclusion.
 - **Semantic review.** A skill load only proves the skill was reachable. Each scenario records a separate verdict (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason, and the adapted run records `verified`, `not-verified`, or `inconclusive`.
 - **Adapted re-check.** Review findings drive [port/dsh.md](./port/dsh.md). The adapted package is rebuilt with `vp run build`, then the same scenarios rerun to confirm the mapped behavior.
-- **Plugin matrix.** Adapted runs cover the official plugin environments `base`, `session-search`, `browser-use`, `terminal`, `forge`, and `agent-team-conflict`. Plugin UI scenarios and the Agent Teams conflict regression have their own run targets.
+- **Plugin matrix.** The matrix defines the official plugin environments `base`, `session-search`, `browser-use`, `terminal`, `forge`, and `agent-team-conflict`. Run the environments your workflow depends on; plugin UI scenarios and the Agent Teams conflict regression have their own run targets.
 
 ## ⚠️ Remaining gaps
 
