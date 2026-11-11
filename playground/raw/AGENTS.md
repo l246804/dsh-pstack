@@ -2,6 +2,15 @@
 
 本目录的 `dsh.md` 是提交进库的 DSH 适配文档，由 agent 按本规则直接分析写成，不存在任何提取、快照或映射脚本。`generate.ts` 对它只做两件事：复制进生成树的 `docs/harness/dsh.md`，以及把技能文件里的注入行与链接引用从 `claude-code.md` 替换为 `dsh.md`。生成器不得包含任何适配逻辑。
 
+## 生成器边界（复刻上游做法）
+
+上游 `scripts/generate-pstack-harness-trees.mjs` 生成 Claude Code 树时只做复制与在技能 H1 后插入一行“读 claude-code.md”的引用说明，所有适配差异都写在 `claude-code.md` 里，其余内容一字不动。本仓的 DSH 生成链必须遵循同一原则：
+
+- `playground/raw/generate.ts` 与 `port/generate.mjs` 只允许：复制上游文件、写入 `dsh.md`、在需要适配的技能 H1 后插入“读 dsh.md”的引用行、把指向 `claude-code.md` 的链接与适配行替换为 `dsh.md`。
+- 不得改写上游的 README、docs/guide、技能正文、安装段、命令前缀说明或任何其他文案。上游原文即使对 DSH 用户不准确（例如 Claude Code 安装指令），也保持原样；这类信息只通过 `dsh.md` 的适配说明与根 README 提供给用户。
+- 若认为某段上游文案必须改写，先在此文件记录理由并取得用户确认，不得由子代理自行添加替换规则表。
+- 守卫测试只验证适配覆盖率与污染，不驱动任何正文改写。
+
 ## 生成规则
 
 1. 唯一结构来源是 `upstream/cursor-plugins/pstack/docs/harness/claude-code.md`。保留其标题层级、全部六节（Tools、Subagent fields、Models、setup-pstack、Paths、Cursor-only features）、两列表结构与 Cursor 列原文；目标列表头写 `DSH`，标题与导语中的环境名做最小替换。
