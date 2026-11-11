@@ -20,7 +20,7 @@ export interface ProgressState {
 }
 
 export function progressFilePath(environmentId: string, phase: Phase): string {
-  return join(workersDirectory(), environmentId, `${phase}-progress.json`);
+  return join(workersDirectory(), phase, environmentId, "progress.json");
 }
 
 /** Local-time `YYYY-MM-DD HH:mm:ss`, hand-padded so the output is locale-independent. */

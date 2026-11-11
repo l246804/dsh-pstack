@@ -174,13 +174,6 @@ export function readRunRecords(directory: string): RunRecord[] {
   });
 }
 
-function environmentDirectories(workersRoot: string): string[] {
-  if (!existsSync(workersRoot)) return [];
-  return readdirSync(workersRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory())
-    .map((entry) => entry.name);
-}
-
 function keyOf(identity: ReviewIdentity): string {
   return `${identity.scenarioId}\0${identity.phase}\0${identity.environmentId}`;
 }
@@ -256,7 +249,9 @@ export function applyReviews(paths: ReviewPaths): ApplyResult {
   const recordsFor = (environmentId: string): RunRecord[] => {
     const cached = cache.get(environmentId);
     if (cached) return cached;
-    const records = readRunRecords(join(paths.workersDirectory, environmentId));
+    const records = readRunRecords(paths.workersDirectory).filter(
+      (record) => record.environment.matrix.id === environmentId,
+    );
     cache.set(environmentId, records);
     return records;
   };
@@ -324,20 +319,16 @@ export function inspectReviews(paths: Omit<ReviewPaths, "now">): ReviewInspectio
   const recordKeys = new Set<string>();
   const reviewed: ReviewIdentity[] = [];
   const pending: ReviewIdentity[] = [];
-  for (const environmentId of environmentDirectories(paths.workersDirectory)) {
-    for (const record of latestRecords(
-      readRunRecords(join(paths.workersDirectory, environmentId)),
-    )) {
-      const identity: ReviewIdentity = {
-        scenarioId: record.scenarioId,
-        phase: record.phase,
-        environmentId: record.environment.matrix.id,
-      };
-      const key = keyOf(identity);
-      if (recordKeys.has(key)) continue;
-      recordKeys.add(key);
-      (sidecarKeys.has(key) ? reviewed : pending).push(identity);
-    }
+  for (const record of latestRecords(readRunRecords(paths.workersDirectory))) {
+    const identity: ReviewIdentity = {
+      scenarioId: record.scenarioId,
+      phase: record.phase,
+      environmentId: record.environment.matrix.id,
+    };
+    const key = keyOf(identity);
+    if (recordKeys.has(key)) continue;
+    recordKeys.add(key);
+    (sidecarKeys.has(key) ? reviewed : pending).push(identity);
   }
   const orphaned = sidecars
     .map((sidecar) => sidecar.identity)

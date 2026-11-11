@@ -403,7 +403,7 @@ async function main(): Promise<void> {
   const worker = Number(argValue("--worker") ?? "0");
   if (!Number.isInteger(worker) || worker < 0) throw new Error("--worker must be non-negative");
   const matrix = environmentMatrix(argValue("--environment"));
-  const paths = workerPaths(worker, matrix.id);
+  const paths = workerPaths(worker, matrix.id, phase);
   const preparedPhase = existsSync(paths.phaseFile)
     ? readFileSync(paths.phaseFile, "utf8").trim()
     : "";

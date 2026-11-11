@@ -39,7 +39,7 @@ vp run playground:status -- --phase raw --environment base
 vp run playground:stop -- --environment base
 ```
 
-每个 worker 的 home、浏览器、工作区和证据位于 `.workers/<environmentId>/w<k>`。环境切换不复用这些目录。端口由 `dsh --port 0` 分配。浏览器操作保留在单一进程中。多 worker 通过独立子进程并行。
+每个 worker 的 home、浏览器、工作区和证据按 phase 与 environment 双层隔离，位于 `.workers/<phase>/<environmentId>/w<k>`。raw 与 adapted 在同一环境下互不覆盖，环境切换也不复用这些目录。`prepare --reset` 只清本 phase 与 environment 的目录，不会删除另一 phase 已采集的证据。端口由 `dsh --port 0` 分配。浏览器操作保留在单一进程中。多 worker 通过独立子进程并行。
 
 执行器等待每个自然语言 turn 的真实 `turn/end`。没有 probe、超时中止或 truncated 状态。模型或基础设施失败按 RunRecord 分类，不自动重试直到变绿。
 

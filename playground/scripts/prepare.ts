@@ -1,8 +1,7 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 import type { Phase } from "../types.ts";
-import { environmentMatrix, isolatedRootDirectory, workersDirectory } from "./lib/run-metadata.ts";
+import { environmentMatrix, workersDirectory } from "./lib/run-metadata.ts";
 import {
   buildProfile,
   cloneInstalledProfile,
@@ -21,7 +20,13 @@ import {
 } from "./lib/env.ts";
 import { listScenarioIds } from "./lib/scenarios.ts";
 import { computeWorkers } from "./lib/capacity.ts";
-import { listWorkers, workerCount, workerPaths, type WorkerPaths } from "./lib/worker.ts";
+import {
+  listWorkers,
+  resetPhase,
+  workerCount,
+  workerPaths,
+  type WorkerPaths,
+} from "./lib/worker.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
@@ -82,8 +87,8 @@ async function main(): Promise<void> {
   const reuse = process.argv.includes("--reuse");
   if (reset && reuse) throw new Error("--reset and --reuse are mutually exclusive");
   if (reuse) {
-    const workers = Array.from({ length: requested ?? workerCount(matrix.id) }, (_, index) =>
-      workerPaths(index, matrix.id),
+    const workers = Array.from({ length: requested ?? workerCount(matrix.id, phase) }, (_, index) =>
+      workerPaths(index, matrix.id, phase),
     );
     for (const worker of workers) stopWeb(worker);
     // The reused profile points at the worker's raw mount outside the repo; refresh it so a
@@ -95,13 +100,12 @@ async function main(): Promise<void> {
     return;
   }
 
-  const workers = Array.from({ length: count }, (_, index) => workerPaths(index, matrix.id));
+  const workers = Array.from({ length: count }, (_, index) => workerPaths(index, matrix.id, phase));
   if (reset) {
-    for (const worker of listWorkers(matrix.id)) stopWeb(worker);
-    rmSync(join(workersDirectory(), matrix.id), { recursive: true, force: true });
-    rmSync(join(isolatedRootDirectory(), matrix.id), { recursive: true, force: true });
+    for (const worker of listWorkers({ environmentId: matrix.id, phase })) stopWeb(worker);
+    resetPhase(matrix.id, phase);
   } else {
-    for (const worker of listWorkers(matrix.id)) {
+    for (const worker of listWorkers({ environmentId: matrix.id, phase })) {
       if (worker.index >= count) stopWeb(worker);
     }
   }

@@ -150,7 +150,7 @@ async function main(): Promise<void> {
     return;
   }
   const requested = argValue("--workers") === undefined ? undefined : Number(argValue("--workers"));
-  const prepared = workerCount(matrix.id);
+  const prepared = workerCount(matrix.id, phase);
   const workers = Math.min(computeWorkers(requested).workers, prepared || requested || 1);
   const queues = distribute(ids, workers);
   const roundFlag = argValue("--round");
@@ -174,8 +174,8 @@ async function main(): Promise<void> {
     workers,
   };
   writeProgress(file, state);
-  mkdirSync(join(workersDirectory(), matrix.id), { recursive: true });
-  const logFile = join(workersDirectory(), matrix.id, `${phase}-batch.log`);
+  mkdirSync(join(workersDirectory(), phase, matrix.id), { recursive: true });
+  const logFile = join(workersDirectory(), phase, matrix.id, "batch.log");
   writeFileSync(logFile, `phase=${phase} environment=${matrix.id} round=${round}\n`);
   await Promise.all(
     queues.map(async (queue, worker) => {
@@ -202,7 +202,7 @@ async function main(): Promise<void> {
           `\n===== ${scenarioId} ${phase} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
         );
         const records = latestRecords(
-          readRecords(join(workersDirectory(), matrix.id, `w${worker}/evidence`)),
+          readRecords(join(workersDirectory(), phase, matrix.id, `w${worker}/evidence`)),
         );
         const record = records.find(
           (entry) => entry.scenarioId === scenarioId && entry.phase === phase,

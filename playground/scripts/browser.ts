@@ -20,15 +20,23 @@ import { join } from "node:path";
 import { createBrowserSession } from "./lib/browser.ts";
 import { readWebUrl } from "./lib/env.ts";
 import { workerPaths } from "./lib/worker.ts";
+import type { Phase } from "../types.ts";
 
 function main(): void {
   const argv = process.argv.slice(2);
   let workerIndex = 0;
   let environmentId = "base";
+  let phase = "adapted" as Phase;
   const environmentPos = argv.indexOf("--environment");
   if (environmentPos >= 0) {
     environmentId = argv[environmentPos + 1] as string;
     argv.splice(environmentPos, 2);
+  }
+  const phasePos = argv.indexOf("--phase");
+  if (phasePos >= 0) {
+    phase = argv[phasePos + 1] as Phase;
+    if (phase !== "raw" && phase !== "adapted") throw new Error("--phase must be raw or adapted");
+    argv.splice(phasePos, 2);
   }
   const workerPos = argv.indexOf("--worker");
   if (workerPos >= 0) {
@@ -38,7 +46,7 @@ function main(): void {
     workerIndex = parsed;
     argv.splice(workerPos, 2);
   }
-  const paths = workerPaths(workerIndex, environmentId);
+  const paths = workerPaths(workerIndex, environmentId, phase);
 
   let url: string | undefined;
   if (argv.length > 0 && !argv[0].startsWith("--")) url = argv.shift();

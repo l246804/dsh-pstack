@@ -35,7 +35,12 @@ import {
   REPOSITORY_ROOT,
 } from "../playground/scripts/lib/run-metadata.ts";
 import { behaviorScenario } from "../playground/scenarios/index.ts";
-import { workerPaths, type WorkerPaths } from "../playground/scripts/lib/worker.ts";
+import {
+  workerPaths,
+  phaseWorkersDirectory,
+  resetPhase,
+  type WorkerPaths,
+} from "../playground/scripts/lib/worker.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -108,8 +113,14 @@ describe("execution contracts", () => {
     const adapted = record("adapted", "base");
     const otherEnvironment = record("raw", "other");
     expect(latestRecords([raw, adapted, otherEnvironment])).toHaveLength(3);
-    expect(workerPaths(0, "base").home).not.toBe(workerPaths(0, "other").home);
-    expect(workerPaths(0, "base").browserDir).not.toBe(workerPaths(0, "other").browserDir);
+    expect(workerPaths(0, "base", "adapted").home).not.toBe(
+      workerPaths(0, "other", "adapted").home,
+    );
+    expect(workerPaths(0, "base", "adapted").browserDir).not.toBe(
+      workerPaths(0, "other", "adapted").browserDir,
+    );
+    // Phase isolates the same environment and worker index into its own evidence tree.
+    expect(workerPaths(0, "base", "raw").home).not.toBe(workerPaths(0, "base", "adapted").home);
   });
 
   it("skips worker state JSON that sits beside evidence instead of treating it as a RunRecord", () => {
@@ -464,6 +475,7 @@ function tempWorkerPaths(index: number): WorkerPaths {
   return {
     index,
     environmentId: "base",
+    phase: "adapted",
     root,
     isolatedRoot,
     home: join(root, "home"),
@@ -497,18 +509,19 @@ function writeFakeRawTree(root: string): void {
 
 describe("read isolation from the repository tree", () => {
   it("keeps the session workspace and raw mount outside the repository", () => {
-    const paths = workerPaths(1, "base");
+    const paths = workerPaths(1, "base", "adapted");
     expect(paths.workspaceRoot.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
     expect(paths.rawMount.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
-    expect(paths.workspaceRoot).toBe(join(ISOLATED_ROOT, "base", "w1", "workspace"));
-    expect(paths.rawMount).toBe(join(ISOLATED_ROOT, "base", "w1", "raw"));
+    expect(paths.workspaceRoot).toBe(join(ISOLATED_ROOT, "adapted", "base", "w1", "workspace"));
+    expect(paths.rawMount).toBe(join(ISOLATED_ROOT, "adapted", "base", "w1", "raw"));
     // Audited state stays inside the repository.
     for (const dir of [paths.home, paths.browserDir, paths.evidenceDir]) {
       expect(dir.startsWith(`${REPOSITORY_ROOT}/playground/.workers/`)).toBe(true);
     }
-    // The isolated root layers per environment and per worker.
-    expect(workerPaths(1, "other").workspaceRoot).not.toBe(paths.workspaceRoot);
-    expect(workerPaths(2, "base").isolatedRoot).not.toBe(paths.isolatedRoot);
+    // The isolated root layers per phase, per environment, and per worker.
+    expect(workerPaths(1, "other", "adapted").workspaceRoot).not.toBe(paths.workspaceRoot);
+    expect(workerPaths(1, "base", "raw").workspaceRoot).not.toBe(paths.workspaceRoot);
+    expect(workerPaths(2, "base", "adapted").isolatedRoot).not.toBe(paths.isolatedRoot);
   });
 
   it("honors the PLAYGROUND_WORKSPACE_ROOT override", () => {
@@ -516,8 +529,8 @@ describe("read isolation from the repository tree", () => {
     process.env.PLAYGROUND_WORKSPACE_ROOT = override;
     try {
       expect(isolatedRootDirectory()).toBe(resolve(override));
-      expect(workerPaths(0, "base").workspaceRoot).toBe(
-        join(resolve(override), "base", "w0", "workspace"),
+      expect(workerPaths(0, "base", "adapted").workspaceRoot).toBe(
+        join(resolve(override), "adapted", "base", "w0", "workspace"),
       );
     } finally {
       delete process.env.PLAYGROUND_WORKSPACE_ROOT;
@@ -569,5 +582,44 @@ describe("read isolation from the repository tree", () => {
     expect(existsSync(paths.home)).toBe(true);
     expect(existsSync(paths.workspaceRoot)).toBe(false);
     expect(existsSync(paths.rawMount)).toBe(false);
+  });
+});
+
+describe("phase isolation of worker evidence", () => {
+  it("separates one environment and worker index by phase", () => {
+    const raw = workerPaths(0, "base", "raw");
+    const adapted = workerPaths(0, "base", "adapted");
+    expect(raw.root).not.toBe(adapted.root);
+    expect(raw.evidenceDir).not.toBe(adapted.evidenceDir);
+    expect(raw.isolatedRoot).not.toBe(adapted.isolatedRoot);
+    expect(raw.root.endsWith(join("raw", "base", "w0"))).toBe(true);
+    expect(adapted.root.endsWith(join("adapted", "base", "w0"))).toBe(true);
+    expect(raw.phase).toBe("raw");
+    expect(adapted.phase).toBe("adapted");
+  });
+
+  it("resets only one phase and leaves the other phase's evidence on disk", () => {
+    const workersRoot = join(temporary, "phase-workers");
+    const isolatedRoot = join(temporary, "phase-isolated");
+    process.env.PLAYGROUND_WORKERS_DIR = workersRoot;
+    process.env.PLAYGROUND_WORKSPACE_ROOT = isolatedRoot;
+    try {
+      const raw = workerPaths(0, "base", "raw");
+      const adapted = workerPaths(0, "base", "adapted");
+      const rawRecord = join(raw.evidenceDir, "raw-record.json");
+      mkdirSync(raw.evidenceDir, { recursive: true });
+      writeFileSync(rawRecord, "{}");
+      mkdirSync(adapted.evidenceDir, { recursive: true });
+      writeFileSync(join(adapted.evidenceDir, "adapted-record.json"), "{}");
+
+      resetPhase("base", "adapted");
+
+      expect(existsSync(rawRecord)).toBe(true);
+      expect(existsSync(adapted.evidenceDir)).toBe(false);
+      expect(existsSync(phaseWorkersDirectory("base", "raw"))).toBe(true);
+    } finally {
+      delete process.env.PLAYGROUND_WORKERS_DIR;
+      delete process.env.PLAYGROUND_WORKSPACE_ROOT;
+    }
   });
 });

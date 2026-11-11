@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
   const config = readPlaygroundConfig(configFile);
   const plan = loadProviderPlan(config);
-  const paths = workerPaths(worker, matrix.id);
+  const paths = workerPaths(worker, matrix.id, "adapted");
 
   resetHome(paths);
   buildProfile(paths, "adapted", installedPackages);
