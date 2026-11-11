@@ -8,6 +8,7 @@ import { profileManifest } from "../playground/scripts/lib/env.ts";
 import {
   assertSafeRecord,
   assertSameEntry,
+  isRunRecord,
   latestRecords,
   pendingSemanticReview,
   verdictFor,
@@ -87,6 +88,18 @@ describe("execution contracts", () => {
     expect(latestRecords([raw, adapted, otherEnvironment])).toHaveLength(3);
     expect(workerPaths(0, "base").home).not.toBe(workerPaths(0, "other").home);
     expect(workerPaths(0, "base").browserDir).not.toBe(workerPaths(0, "other").browserDir);
+  });
+
+  it("skips worker state JSON that sits beside evidence instead of treating it as a RunRecord", () => {
+    const valid = record("raw", "base");
+    expect(isRunRecord(valid)).toBe(true);
+    const workspaceStore = { unit: { name: "workspace", version: 2 }, global: {}, tables: {} };
+    const profileManifestFile = {
+      name: "dsh-playground-raw",
+      dsh: { profile: { bundles: ["@deepseek-ai/dsh-base"] } },
+    };
+    expect(isRunRecord(workspaceStore)).toBe(false);
+    expect(isRunRecord(profileManifestFile)).toBe(false);
   });
 
   it("does not pass an unreviewed semantic effect in either phase", () => {

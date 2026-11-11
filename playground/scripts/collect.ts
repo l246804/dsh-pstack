@@ -9,7 +9,7 @@ import {
 import { basename, dirname, join, resolve, sep } from "node:path";
 
 import type { Phase, RunRecord } from "../types.ts";
-import { assertSameEntry, latestRecords } from "./lib/evidence.ts";
+import { assertSameEntry, isRunRecord, latestRecords } from "./lib/evidence.ts";
 import {
   environmentMatrix,
   PLAYGROUND_DIRECTORY,
@@ -31,7 +31,8 @@ function records(directory: string): RunRecord[] {
     if (entry.isDirectory()) return records(file);
     if (!entry.name.endsWith(".json")) return [];
     try {
-      return [JSON.parse(readFileSync(file, "utf8")) as RunRecord];
+      const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
+      return isRunRecord(parsed) ? [parsed] : [];
     } catch {
       return [];
     }
