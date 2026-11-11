@@ -23,6 +23,15 @@ export function progressFilePath(environmentId: string, phase: Phase): string {
   return join(workersDirectory(), environmentId, `${phase}-progress.json`);
 }
 
+/** Local-time `YYYY-MM-DD HH:mm:ss`, hand-padded so the output is locale-independent. */
+export function formatTimestamp(date: Date = new Date()): string {
+  const pad = (value: number, width = 2): string => String(value).padStart(width, "0");
+  return (
+    `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+    ` ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+  );
+}
+
 export function readProgress(file: string): ProgressState | null {
   return existsSync(file) ? (JSON.parse(readFileSync(file, "utf8")) as ProgressState) : null;
 }
@@ -38,6 +47,6 @@ export function updateProgress(file: string, mutate: (state: ProgressState) => v
   const state = readProgress(file);
   if (!state) throw new Error(`no progress file at ${file}`);
   mutate(state);
-  state.updatedAt = new Date().toISOString();
+  state.updatedAt = formatTimestamp();
   writeProgress(file, state);
 }

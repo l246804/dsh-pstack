@@ -19,6 +19,7 @@ import {
   workersDirectory,
 } from "./lib/run-metadata.ts";
 import {
+  formatTimestamp,
   progressFilePath,
   readProgress,
   updateProgress,
@@ -164,8 +165,8 @@ async function main(): Promise<void> {
     done: 0,
     statuses: statuses(),
     running: [],
-    startedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    startedAt: formatTimestamp(),
+    updatedAt: formatTimestamp(),
     perWorker: Object.fromEntries(
       queues.map((queue, index) => [`w${index}`, { done: 0, total: queue.length }]),
     ),
