@@ -70,6 +70,7 @@ function pendingRecord(
       turnEndReason: "completed",
       assistantText: "建议先用 vp test 验证改动。",
       userText: "prompt",
+      userTexts: ["prompt"],
       autoAnswers: [],
       ...options.sessionOverrides,
     },

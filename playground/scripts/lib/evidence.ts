@@ -97,9 +97,22 @@ function parseArguments(raw: unknown): Record<string, unknown> {
   return (raw as Record<string, unknown>) ?? {};
 }
 
-export function digestSession(file: string, sessionId: string, worker = 0): SessionDigest {
-  const events = readSessionEvents(file);
-  if (events.length === 0) throw new Error(`session file has no readable events: ${file}`);
+/**
+ * Assistant text per turn. Messages inside one turn keep the plain "\n" join; a later
+ * turn with assistant output gets a delimiter header so a reviewer can attribute every
+ * reply span to the turn that produced it.
+ */
+function joinAssistantTurns(turns: string[][]): string {
+  const chunks: string[] = [];
+  for (const [index, parts] of turns.entries()) {
+    const joined = parts.join("\n");
+    if (!joined) continue;
+    chunks.push(index === 0 ? joined : `--- turn ${index + 1} ---\n\n${joined}`);
+  }
+  return chunks.join("\n\n");
+}
+
+export function digestEvents(events: SessionEvent[], sessionId: string, worker = 0): SessionDigest {
   const toolCalls: ToolCallEvidence[] = [];
   const callsById = new Map<string, ToolCallEvidence>();
   const skillCallById = new Map<string, string>();
@@ -108,8 +121,7 @@ export function digestSession(file: string, sessionId: string, worker = 0): Sess
   let agentPreset: string | null = null;
   let route: TestTarget | null = null;
   let turnEndReason: string | null = null;
-  const assistantParts: string[] = [];
-  let userText = "";
+  const assistantTurns: string[][] = [[]];
   for (const event of events) {
     const data = event.data ?? {};
     switch (event.type) {
@@ -171,24 +183,20 @@ export function digestSession(file: string, sessionId: string, worker = 0): Sess
       }
       case "assistant/message": {
         const text = textOfContent((data.message as { content?: unknown } | undefined)?.content);
-        if (text) assistantParts.push(text);
-        break;
-      }
-      case "user/message": {
-        const source = data.source as { kind?: string } | undefined;
-        const text = textOfContent(data.content);
-        if (!userText && source?.kind === "user" && text) userText = text;
+        if (text) assistantTurns[assistantTurns.length - 1].push(text);
         break;
       }
       case "turn/end": {
         const reason = data.reason as { kind?: string } | undefined;
         turnEndReason = reason?.kind ?? null;
+        assistantTurns.push([]);
         break;
       }
       default:
         break;
     }
   }
+  const userTexts = userMessageTexts(events);
   return {
     sessionId,
     workspacePath,
@@ -196,11 +204,18 @@ export function digestSession(file: string, sessionId: string, worker = 0): Sess
     skillLoads,
     toolCalls,
     turnEndReason,
-    assistantText: assistantParts.join("\n"),
-    userText,
+    assistantText: joinAssistantTurns(assistantTurns),
+    userText: userTexts[0] ?? "",
+    userTexts,
     route,
     worker,
   };
+}
+
+export function digestSession(file: string, sessionId: string, worker = 0): SessionDigest {
+  const events = readSessionEvents(file);
+  if (events.length === 0) throw new Error(`session file has no readable events: ${file}`);
+  return digestEvents(events, sessionId, worker);
 }
 
 export function evaluateAssertions(
@@ -334,6 +349,7 @@ export function sessionFacts(
     turnEndReason: digest.turnEndReason,
     assistantText: digest.assistantText,
     userText: digest.userText,
+    userTexts: digest.userTexts,
     autoAnswers,
   };
 }

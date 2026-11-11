@@ -16,6 +16,7 @@ import {
 import {
   assertSafeRecord,
   assertSameEntry,
+  digestEvents,
   firstUserText,
   isRunRecord,
   latestRecords,
@@ -67,6 +68,7 @@ function record(phase: "raw" | "adapted", environmentId: string): RunRecord {
       turnEndReason: "completed",
       assistantText: "A useful response",
       userText: scenario.turns[0]?.prompt ?? "",
+      userTexts: [scenario.turns[0]?.prompt ?? ""],
       autoAnswers: [],
     },
     artifacts: { recordFile: "record.json", observed: [] },
@@ -170,6 +172,78 @@ function turnEnd(): SessionEvent {
   return { type: "turn/end", data: { reason: { kind: "completed" } } };
 }
 
+function assistantMessage(text: string): SessionEvent {
+  return {
+    type: "assistant/message",
+    data: { message: { content: [{ type: "text", text }] } },
+  };
+}
+
+describe("digest granularity", () => {
+  it("separates assistant text per turn and records every user turn", () => {
+    const digest = digestEvents(
+      [
+        userMessage("first prompt"),
+        assistantMessage("answer part a"),
+        assistantMessage("answer part b"),
+        turnEnd(),
+        userMessage("second prompt"),
+        assistantMessage("second answer"),
+        turnEnd(),
+      ],
+      "session-9",
+      2,
+    );
+    expect(digest.assistantText).toBe(
+      "answer part a\nanswer part b\n\n--- turn 2 ---\n\nsecond answer",
+    );
+    expect(digest.userText).toBe("first prompt");
+    expect(digest.userTexts).toEqual(["first prompt", "second prompt"]);
+    expect(digest.turnEndReason).toBe("completed");
+    expect(digest.worker).toBe(2);
+  });
+
+  it("keeps a single-turn reply without a separator", () => {
+    const digest = digestEvents(
+      [userMessage("only prompt"), assistantMessage("x"), assistantMessage("y")],
+      "session-1",
+    );
+    expect(digest.assistantText).toBe("x\ny");
+    expect(digest.userTexts).toEqual(["only prompt"]);
+  });
+
+  it("labels a later turn even when an earlier turn had no assistant text", () => {
+    const digest = digestEvents(
+      [
+        userMessage("first prompt"),
+        turnEnd(),
+        userMessage("second prompt"),
+        assistantMessage("late answer"),
+        turnEnd(),
+      ],
+      "session-2",
+    );
+    expect(digest.assistantText).toBe("--- turn 2 ---\n\nlate answer");
+    expect(digest.userTexts).toEqual(["first prompt", "second prompt"]);
+  });
+
+  it("keeps non-user messages out of userTexts", () => {
+    const digest = digestEvents(
+      [
+        userMessage("real prompt"),
+        {
+          type: "user/message",
+          data: { source: { kind: "tool" }, content: [{ type: "text", text: "tool noise" }] },
+        },
+        turnEnd(),
+      ],
+      "session-3",
+    );
+    expect(digest.userTexts).toEqual(["real prompt"]);
+    expect(digest.userText).toBe("real prompt");
+  });
+});
+
 describe("mechanical failures", () => {
   it("lists every mechanical failure independent of the semantic verdict", () => {
     const scenario = behaviorScenario("poteto-help-smoke");
@@ -184,6 +258,7 @@ describe("mechanical failures", () => {
       turnEndReason: "completed",
       assistantText: "验证建议",
       userText: scenario.turns[0]?.prompt ?? "",
+      userTexts: [scenario.turns[0]?.prompt ?? ""],
       autoAnswers: [],
     };
     const input = {

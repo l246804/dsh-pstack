@@ -134,6 +134,8 @@ export interface SessionFacts {
   turnEndReason: string | null;
   assistantText: string;
   userText: string;
+  /** Every user-authored turn text in order; userText stays the first one for the entry check. */
+  userTexts: string[];
   autoAnswers: Array<{ question: string; answer: string }>;
 }
 
