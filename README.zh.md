@@ -32,6 +32,7 @@
     <a href="#️-常用命令">⌨️ 常用命令</a> ·
     <a href="#-能力">🧩 能力</a> ·
     <a href="#-可选-dsh-插件">🔌 可选插件</a> ·
+    <a href="#-移植如何验证">🧪 移植如何验证</a> ·
     <a href="#️-仍存在的缺口">⚠️ 仍存在的缺口</a> ·
     <a href="#-常见问题">❓ 常见问题</a> ·
     <a href="#-兼容性">📦 兼容性</a>
@@ -42,9 +43,7 @@
 
 `dsh-pstack` 将 [pstack](https://github.com/cursor/plugins/tree/main/pstack) 移植到 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH），保留其技能、playbook 与参考文档，并提供原生技能路由、按角色配置模型和按角色路由的子代理。
 
-完整的移植审查见[技能审核](./playground/reports/skill-audit.md)与[运行时映射](./port/dsh.zh.md)。
-
-当前审核覆盖 68 项面向 Cursor 的能力：39 项直接映射、2 项官方插件、16 项插件实现、11 项有意舍弃。
+每项 Cursor 能力到 DeepSeek Harness 的映射见[运行时映射](./port/dsh.zh.md)。移植以真实 DSH Web 会话为准进行核对，具体做法见[移植如何验证](#-移植如何验证)一节。
 
 > [!IMPORTANT]
 > 要求 DSH `>=0.2.2-rc.1`、Node.js `>=24.21.1`。部分随包工作流需要额外运行时，见[脚本登记](./port/AGENTS.md#脚本登记)。
@@ -171,7 +170,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 | 持久终端 | `@deepseek-ai/dsh-experimental-terminal-bundle` | 为 CLI 和 TUI 验证提供持久 shell 与 REPL 会话。 |
 | MCP 集成 | `@deepseek-ai/dsh-mcp-client` | 使用显式配置的 MCP server 工具；默认不配置 server。 |
 | 自主循环 | `@deepseek-ai/dsh-experimental-ralph-bundle` | 每轮启动新子代理的前台循环，不是同一 Session 的常驻循环或事件 watcher。 |
-| Agent Teams（不兼容） | `@deepseek-ai/dsh-experimental-agent-team-profile` | 提供 lead/teammate 角色与共享任务板。不要在提供 pstack 根预设的 profile 中启用；两者都承担委派与协调，启用 Agent Teams 时 pstack 根预设会在启动时报错。 |
+| Agent Teams（不兼容） | `@deepseek-ai/dsh-experimental-agent-team-profile` | 提供 lead/teammate 角色与共享任务板。不要在提供 pstack 根预设的 profile 中启用。两者都承担委派与协调，Agent Teams 服务存在时 pstack 根预设会因 `AGENT_TEAMS_CONFLICT` 加载失败。Web 仍能启动，`poteto-mode` 与 `poteto-mode-creator` 卡片在「设置 → Agent 预设」中显示「加载失败」。 |
 
 浏览器验证从以下 provider 中选择一个：
 
@@ -182,9 +181,19 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 通过 **插件 → 添加插件** 启用对应包，必要时重启 profile。多数包随 DSH 提供，`@deepseek-ai/dsh-cua-bundle` 按需安装。除 MCP client 外，以上插件均为实验性插件。
 
 > [!WARNING]
-> **Agent Teams 与 pstack 根预设冲突。** Agent Teams 与 `pstack_subagent` 只能二选一。启用 Agent Teams 会导致 pstack 根预设启动失败，并禁用 DSH 原生子代理工具。
+> **Agent Teams 与 pstack 根预设冲突。** Agent Teams 与 `pstack_subagent` 只能二选一。Agent Teams 服务存在时，pstack 根预设会因 `AGENT_TEAMS_CONFLICT` 加载失败。Web 仍能启动，`poteto-mode` 与 `poteto-mode-creator` 卡片在「设置 → Agent 预设」中显示「加载失败」。
 
 依赖未启用插件的步骤会标记为 skipped 或 blocked，不会标记为通过。安装与回退说明见 [DSH 适配文档](./port/dsh.zh.md#可选插件)。
+
+## 🧪 移植如何验证
+
+移植以真实 DeepSeek Harness Web 会话为准进行核对，不靠与上游文本比对。完整流程见 [playground/README.md](./playground/README.md)。
+
+- **raw 基准。** 生成器把上游 pstack 复制到 `playground/raw/generated`，不装其他插件。`playground/raw/dsh.md` 把每项上游能力写成三种情况之一：base DSH 原生、仅官方可选插件提供、没有此能力。生成器只复制该文档并替换引用链接，上游文案保持原样。
+- **场景驱动。** 57 个行为场景用自然语言 turns 先跑 raw 基准，再跑适配后的插件。两项能力因强依赖 Cursor 云 routine、Bot 或 Automations 声明为排除。上游技能既无场景也无排除时，覆盖守卫测试会失败。
+- **语义审核。** 技能能加载只证明它可被触达。每个场景单独记录 `supported`、`gap` 或 `inconclusive` 结论，并附审核者与理由；adapted 运行记录 `verified`、`not-verified` 或 `inconclusive`。
+- **adapted 复验。** 审核结论驱动 [port/dsh.zh.md](./port/dsh.zh.md)。适配包用 `vp run build` 重建后，重跑同一批场景确认映射后的行为。
+- **插件矩阵。** adapted 运行覆盖官方插件环境 `base`、`session-search`、`browser-use`、`terminal`、`forge` 与 `agent-team-conflict`。插件 UI 场景与 Agent Teams 冲突回归有各自的运行入口。
 
 ## ⚠️ 仍存在的缺口
 
@@ -198,7 +207,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 | 模式切换 | 没有 Option+Enter 开关或会话中切换模式的入口。新建会话时选择 `poteto-mode` 或 `poteto-mode-creator`；其它 preset 每个任务调用 `/poteto-mode`。 |
 | 事件驱动循环 | 不订阅 forge 事件；本地 goal、定时任务和 watcher 并非等价替代。 |
 | 图表渲染 | 不提供内置渲染器。图表以 Mermaid 文本返回，需要图片时自行用外部工具渲染。 |
-| 视频证据 | 没有内置视频渲染、录屏与逐帧验证，需要外部录屏或 FFmpeg 工具。 |
+| 视频证据 | 没有内置视频渲染、录屏与逐帧验证。项目自带的渲染器只要产出可核对的文件即可使用；否则借助外部录屏或 FFmpeg。 |
 | 桌面覆盖 | computer use 仅支持 macOS PTC 桌面控制会话，Windows 支持尚不完整。 |
 | MCP 发现 | 不会自动发现证据类别，需要显式配置并识别 MCP 工具。 |
 
