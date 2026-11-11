@@ -11,7 +11,7 @@ vp run playground:typecheck
 
 生成器只复制 `upstream/cursor-plugins/pstack` 和上游 `scripts/generate-pstack-harness-trees.mjs` 到临时目录。上游脚本在该副本中执行。结果写入 `playground/raw/generated`，不会改写上游，也不读取 `port`、`src` 或旧报告。
 
-`raw/generated/tree` 保留完整技能、agents、guide 和许可文件。`raw/generated/upstream` 保留除 Cursor Automations 外的原始 pstack 输入。`raw/generated/scripts` 保留上游生成器。`raw/generated/dsh.md` 只把 Claude Code 的名称、路径和工具提示替换为中性的 DSH 名称。未定义能力保留 unmapped，不能从现行插件反推。
+`raw/generated/tree` 保留完整技能、agents、guide 和许可文件。`raw/generated/upstream` 保留除 Cursor Automations 外的原始 pstack 输入。`raw/generated/scripts` 保留上游生成器。`raw/dsh.md` 是提交进库的 DSH 适配文档，按 `raw/AGENTS.md` 的规则以上游 `docs/harness/claude-code.md` 为唯一结构来源逐项改判为 DSH 真实能力（base 原生 / 仅官方可选插件 / 没有三态）。生成器对它只做复制与引用替换：写入树的 `docs/harness/dsh.md`，并把技能文件的注入行与链接从 `claude-code.md` 换成 `dsh.md`，不做任何词面翻译。
 
 `raw/generated/tree/README.md` 仍是上游 Claude Code 安装说明。它是待审核的 raw 输入，不是 DSH 安装文档。
 

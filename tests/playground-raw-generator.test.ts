@@ -12,24 +12,30 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { generateRawTree, translateAdapter, treeDigest } from "../playground/raw/generate.ts";
+import { generateRawTree, treeDigest } from "../playground/raw/generate.ts";
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const upstream = join(repository, "upstream/cursor-plugins");
+const committedAdapter = join(repository, "playground/raw/dsh.md");
 const temporary = mkdtempSync(join(tmpdir(), "pstack-raw-test-"));
 const isolatedInput = join(temporary, "input");
 const output = join(temporary, "raw/generated");
+const adapterOutput = join(temporary, "raw/adapter-check");
 
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
 
+function prepareIsolatedInput(): void {
+  mkdirSync(join(isolatedInput, "scripts"), { recursive: true });
+  cpSync(join(upstream, "pstack"), join(isolatedInput, "pstack"), { recursive: true });
+  cpSync(
+    join(upstream, "scripts/generate-pstack-harness-trees.mjs"),
+    join(isolatedInput, "scripts/generate-pstack-harness-trees.mjs"),
+  );
+}
+
 describe("isolated raw generation", () => {
-  it("copies only upstream inputs, generates twice identically, and translates only adapter names", () => {
-    mkdirSync(join(isolatedInput, "scripts"), { recursive: true });
-    cpSync(join(upstream, "pstack"), join(isolatedInput, "pstack"), { recursive: true });
-    cpSync(
-      join(upstream, "scripts/generate-pstack-harness-trees.mjs"),
-      join(isolatedInput, "scripts/generate-pstack-harness-trees.mjs"),
-    );
+  it("copies only upstream inputs, generates twice identically, and rewrites only adapter references", () => {
+    prepareIsolatedInput();
 
     const sourceDigest = treeDigest(isolatedInput);
     const first = generateRawTree({ upstreamRoot: isolatedInput, outputRoot: output });
@@ -62,14 +68,20 @@ describe("isolated raw generation", () => {
     expect(readdirSync(join(output, "tree/skills")).length).toBeGreaterThan(1);
   });
 
-  it("keeps Agent unmapped and translates Claude home paths without copying a final adapter", () => {
-    const adapter = readFileSync(join(upstream, "pstack/docs/harness/claude-code.md"), "utf8");
-    const translated = translateAdapter(adapter);
-    expect(translated).toContain("# pstack in DSH");
-    expect(translated).toContain("unmapped upstream Agent capability");
-    expect(translated).toContain("$DSH_HOME/rules/pstack-models.md");
-    expect(translated).toContain(".dsh/skills/");
-    expect(translated).not.toContain("pstack_subagent");
-    expect(translated).not.toContain("~/.claude/");
+  it("copies the committed DSH adapter into the tree verbatim without word translation", () => {
+    prepareIsolatedInput();
+    generateRawTree({ upstreamRoot: isolatedInput, outputRoot: adapterOutput });
+
+    const committed = readFileSync(committedAdapter, "utf8");
+    expect(readFileSync(join(adapterOutput, "tree/docs/harness/dsh.md"), "utf8")).toBe(committed);
+    expect(readFileSync(join(adapterOutput, "dsh.md"), "utf8")).toBe(committed);
+    expect(existsSync(join(adapterOutput, "tree/docs/harness/claude-code.md"))).toBe(false);
+
+    expect(committed).toContain("# pstack in DSH");
+    expect(committed).toContain("| Cursor | DSH |");
+    expect(committed).not.toContain("Claude Code");
+    expect(committed).not.toContain("~/.claude/");
+    expect(committed).not.toContain("unmapped upstream");
+    expect(committed).not.toMatch(/pstack_(subagent|skill|models|roles)/);
   });
 });

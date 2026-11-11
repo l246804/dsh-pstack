@@ -13,9 +13,13 @@ import {
 import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const ADAPTER_PATH = "docs/harness/claude-code.md";
 const TARGET_ADAPTER_PATH = "docs/harness/dsh.md";
+// The committed DSH adapter, authored per playground/raw/AGENTS.md. The
+// generator copies it verbatim; no adaptation logic lives here.
+const ADAPTER_SOURCE = join(dirname(fileURLToPath(import.meta.url)), "dsh.md");
 const INJECTION =
   "In Claude Code, read [the Claude Code adapter](../../docs/harness/claude-code.md) once per session before you follow this skill. It maps the Cursor names in pstack skills to Claude Code.";
 const DSH_INJECTION = INJECTION.replaceAll("Claude Code", "DSH").replace(
@@ -30,29 +34,10 @@ function walk(root: string, current = root): string[] {
   });
 }
 
-export function translateAdapter(source: string): string {
-  return source
-    .replaceAll("Claude Code", "DSH")
-    .replaceAll("~/.claude/", "$DSH_HOME/")
-    .replaceAll(".claude/skills/", ".dsh/skills/")
-    .replaceAll(".claude-plugin/", ".dsh-plugin/")
-    .replaceAll("~/.claude", "$DSH_HOME")
-    .replaceAll(".claude/", ".dsh/")
-    .replaceAll("CLAUDE.md", "AGENTS.md")
-    .replaceAll("`Agent`", "unmapped upstream Agent capability")
-    .replaceAll("`AskUserQuestion`", "unmapped upstream AskUserQuestion capability")
-    .replaceAll("`TodoWrite`", "unmapped upstream TodoWrite capability")
-    .replaceAll("`Skill` tool", "unmapped upstream Skill tool")
-    .replaceAll("`Read`", "unmapped upstream Read capability")
-    .replaceAll("`Bash`", "unmapped upstream Bash capability")
-    .replaceAll("`Grep`", "unmapped upstream Grep capability")
-    .replaceAll("`Glob`", "unmapped upstream Glob capability");
-}
-
 function translateGeneratedReferences(text: string): string {
   return text
     .replaceAll(INJECTION, DSH_INJECTION)
-    .replaceAll("docs/harness/claude-code.md", "docs/harness/dsh.md")
+    .replaceAll("harness/claude-code.md", "harness/dsh.md")
     .replaceAll("the Claude Code adapter", "the DSH adapter")
     .replaceAll("Claude Code adapter", "DSH adapter");
 }
@@ -120,16 +105,18 @@ export function generateRawTree({ upstreamRoot, outputRoot }: GenerateRawOptions
       throw new Error(`upstream generator exited ${String(result.status)}: ${result.stderr}`);
     }
     const tree = join(isolatedRoot, "harness/pstack/claude-code");
-    const adapter = readFileSync(join(tree, ADAPTER_PATH), "utf8");
+    if (!existsSync(ADAPTER_SOURCE)) {
+      throw new Error(`committed DSH adapter is missing: ${ADAPTER_SOURCE}`);
+    }
     rmSync(join(tree, ADAPTER_PATH));
-    writeFileSync(join(tree, TARGET_ADAPTER_PATH), translateAdapter(adapter));
+    writeFileSync(join(tree, TARGET_ADAPTER_PATH), readFileSync(ADAPTER_SOURCE, "utf8"));
 
     for (const path of walk(tree)) {
       if (!path.endsWith(".md")) continue;
       const file = join(tree, path);
       const translated = translateGeneratedReferences(readFileSync(file, "utf8"));
       if (
-        translated.includes("../../docs/harness/claude-code.md") ||
+        translated.includes("harness/claude-code.md") ||
         /In Claude Code, read/.test(translated)
       ) {
         throw new Error(`incomplete DSH adapter reference in ${path}`);
