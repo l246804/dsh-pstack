@@ -1,20 +1,30 @@
-// Data shapes for the browser-only playground. Every script and case imports from here.
+export type Phase = "raw" | "adapted";
 
-export type Mode = "raw" | "adapted";
-
-export interface PlaygroundConfig {
-  providers: Record<string, { apiKey: string; models: Record<string, string[]> }>;
-}
-
-export interface AllowedRoute {
+export interface TestTarget {
   provider: string;
   model: string;
-  efforts: string[];
-  apiKey: string;
+  effort: string;
 }
 
+export interface ProviderAllowance {
+  apiKey: string;
+  models: Record<string, string[]>;
+}
+
+export interface PlaygroundConfig {
+  testModel: TestTarget;
+  providers: Record<string, ProviderAllowance>;
+  hostPatchFile?: string;
+  credentialsFile?: string;
+}
+
+export type AllowedRoute = TestTarget & {
+  efforts: string[];
+  apiKey: string;
+};
+
 export interface PreparedEnv {
-  mode: Mode;
+  phase: Phase;
   home: string;
   browserHome: string;
   port: number;
@@ -22,33 +32,90 @@ export interface PreparedEnv {
   workspaceDirs: Record<string, string>;
 }
 
-export type ExpectationKind =
-  | "turn-completed"
-  | "no-tool-error"
-  | "no-duplicate-skill-load"
-  | "no-retry-after-failure"
-  | "skill-loaded"
-  | "preset-active"
-  | "artifact-contains";
+export type Assertion =
+  | { kind: "turn-completed" }
+  | { kind: "skill-loaded"; skill: string }
+  | { kind: "no-tool-error" }
+  | { kind: "artifact-contains"; path: string; text: string }
+  | { kind: "assistant-contains"; text: string };
 
-export interface Expectation {
-  kind: ExpectationKind;
-  detail?: string;
+export interface WorkspaceFixture {
+  files: Record<string, string>;
 }
 
-export interface SkillCase {
+export interface SemanticRubric {
+  prompt: string;
+}
+
+export interface UiObservation {
+  id: string;
+  description: string;
+}
+
+export interface ScenarioSource {
+  upstreamSkill: string;
+  regression?: string;
+}
+
+export interface BehaviorScenario {
+  type: "behavior";
   id: string;
   skill: string;
-  kind: "behavior" | "principle-light";
-  stages: Mode[];
-  prompt: string;
-  workspaceFiles: Record<string, string>;
-  expect: Expectation[];
-  intent: string;
-  /** Per-case probe window override, in seconds. Wins over the kind default but not `--probe`. */
-  probeSeconds?: number;
-  /** Scripted answers for ask_user_question when no human is present. First matching rule wins. */
+  turns: Array<{ prompt: string }>;
+  workspace: WorkspaceFixture;
+  assertions: Assertion[];
+  rubric: SemanticRubric;
+  uiObservations: UiObservation[];
+  source: ScenarioSource;
+  environmentId?: string;
   answers?: Array<{ match: string; selected?: string[]; custom?: string }>;
+}
+
+export interface ConflictRegression {
+  type: "conflict-regression";
+  id: string;
+  turns: Array<{ prompt: string }>;
+  workspace: WorkspaceFixture;
+  expectedConflict: {
+    packages: string[];
+    symptom: string;
+    recovery: string;
+  };
+  observations: UiObservation[];
+  source: ScenarioSource;
+  environmentId: string;
+}
+
+export interface PluginUiScenario {
+  type: "plugin-ui";
+  id: string;
+  steps: Array<{ action: string; expected: string }>;
+  observations: UiObservation[];
+  source: ScenarioSource;
+  environmentId: string;
+}
+
+export type Scenario = BehaviorScenario | ConflictRegression | PluginUiScenario;
+
+export interface Exclusion {
+  id: string;
+  skill: string;
+  reason: string;
+  evidence: string;
+}
+
+export interface EnvironmentMatrix {
+  id: string;
+  enabledPluginPackages: string[];
+}
+
+export interface RunEnvironment {
+  worker: number;
+  dshVersion: string;
+  adaptedVersion: string | null;
+  matrix: EnvironmentMatrix;
+  upstreamRevision: string;
+  configHash: string;
 }
 
 export interface ToolCallEvidence {
@@ -57,43 +124,50 @@ export interface ToolCallEvidence {
   errorText?: string;
 }
 
-export interface SessionEvidence {
-  caseId: string;
-  mode: Mode;
-  worker: number;
-  truncated: boolean;
+export interface SessionFacts {
   sessionId: string;
   sessionFile: string;
   workspacePath: string | null;
   agentPreset: string | null;
-  route: { provider: string; model: string; effort: string } | null;
   skillLoads: string[];
   toolCalls: ToolCallEvidence[];
   turnEndReason: string | null;
   assistantText: string;
-  capturedAt: string;
-  /** Set to "infra" when the run failed on infrastructure (no session / unreadable log), not a FAIL. */
-  error?: string;
-  /** The judged outcome written beside the evidence so a rerun can select failures without re-digesting. */
-  verdict?: { passed: boolean; failures: string[] };
-  /** Questions the harness answered on the user's behalf, with the answer it gave. */
-  autoAnswers?: Array<{ question: string; answer: string }>;
+  userText: string;
+  autoAnswers: Array<{ question: string; answer: string }>;
 }
 
-export interface CaseVerdict {
-  caseId: string;
-  mode: Mode;
-  passed: boolean;
-  failures: string[];
-  evidence: SessionEvidence;
-}
-
-export interface Finding {
-  skill: string;
-  mode: Mode;
-  sessionId: string;
+export interface ArtifactEvidence {
+  recordFile: string;
+  screenshotFile?: string;
   observed: string[];
-  neededAdapterNotes: string[];
-  neededPluginTools: string[];
-  verdict: "clean" | "gap" | "blocked";
+}
+
+export type SemanticReview =
+  | { status: "pending"; reason: string }
+  | {
+      status: "supported" | "gap" | "inconclusive";
+      reason: string;
+      reviewer: { kind: "model"; route: TestTarget } | { kind: "human"; name: string };
+    };
+
+export type Verdict =
+  | { phase: "raw"; status: "observed"; gaps: string[] }
+  | { phase: "raw"; status: "gap"; gaps: string[] }
+  | { phase: "raw"; status: "blocked"; reason: string }
+  | { phase: "raw"; status: "unobserved"; reason: string }
+  | { phase: "adapted"; status: "verified" }
+  | { phase: "adapted"; status: "not-verified"; failures: string[] }
+  | { phase: "adapted"; status: "inconclusive"; reason: string };
+
+export interface RunRecord {
+  scenarioId: string;
+  phase: Phase;
+  environment: RunEnvironment;
+  target: TestTarget | null;
+  session: SessionFacts | null;
+  artifacts: ArtifactEvidence;
+  semanticReview: SemanticReview;
+  verdict: Verdict;
+  capturedAt: string;
 }
