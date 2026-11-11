@@ -8,9 +8,12 @@ import { profileManifest } from "../playground/scripts/lib/env.ts";
 import {
   assertSafeRecord,
   assertSameEntry,
+  firstUserText,
   isRunRecord,
   latestRecords,
   pendingSemanticReview,
+  sessionMatchesPrompt,
+  type SessionEvent,
   verdictFor,
 } from "../playground/scripts/lib/evidence.ts";
 import { publicConfigHash } from "../playground/scripts/lib/run-metadata.ts";
@@ -138,5 +141,45 @@ describe("execution contracts", () => {
 
   it("leaves temporary test directories under the system temp root", () => {
     expect(existsSync(temporary)).toBe(true);
+  });
+});
+
+function userMessage(text: string): SessionEvent {
+  return {
+    type: "user/message",
+    data: { source: { kind: "user" }, content: [{ type: "text", text }] },
+  };
+}
+
+function turnEnd(): SessionEvent {
+  return { type: "turn/end", data: { reason: { kind: "completed" } } };
+}
+
+describe("multi-turn session matching", () => {
+  // Two turns in one session log: the first user message stays fixed while the second
+  // turn's prompt only exists in the second user message.
+  const events: SessionEvent[] = [
+    userMessage("first prompt"),
+    turnEnd(),
+    userMessage("second prompt"),
+    turnEnd(),
+  ];
+
+  it("matches the opening prompt through the first user message", () => {
+    expect(firstUserText(events)).toBe("first prompt");
+    expect(sessionMatchesPrompt(events, "first prompt", true)).toBe(true);
+  });
+
+  it("lets a later turn match its own prompt without the first user message", () => {
+    expect(firstUserText(events)).toBe("first prompt");
+    expect(firstUserText(events).includes("second prompt")).toBe(false);
+    // First-turn semantics (the old matching path) can never see the second prompt.
+    expect(sessionMatchesPrompt(events, "second prompt", true)).toBe(false);
+    // The later-turn path matches the second user message, so the second turn advances.
+    expect(sessionMatchesPrompt(events, "second prompt", false)).toBe(true);
+  });
+
+  it("rejects a prompt the session never carried", () => {
+    expect(sessionMatchesPrompt(events, "third prompt", false)).toBe(false);
   });
 });

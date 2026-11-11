@@ -21,6 +21,7 @@ import {
   readSessionEvents,
   recordFileName,
   sessionFacts,
+  sessionMatchesPrompt,
   verdictFor,
   type SessionDigest,
 } from "./lib/evidence.ts";
@@ -60,20 +61,6 @@ function listSessionFiles(paths: WorkerPaths): SessionFile[] {
       return existsSync(file) ? [{ id, file }] : [];
     });
   });
-}
-
-function firstUserText(events: ReturnType<typeof readSessionEvents>): string {
-  for (const event of events) {
-    if (event.type !== "user/message") continue;
-    const source = event.data?.source as { kind?: string } | undefined;
-    if (source?.kind !== "user") continue;
-    const content = event.data?.content as Array<{ type?: string; text?: string }> | undefined;
-    const text = (content ?? [])
-      .map((part) => (part.type === "text" ? (part.text ?? "") : ""))
-      .join("");
-    if (text) return text;
-  }
-  return "";
 }
 
 function waitFor(predicate: () => boolean, timeoutMs: number): boolean {
@@ -169,7 +156,7 @@ function findMatchingSession(
   for (const { id, file } of listSessionFiles(paths)) {
     if (before.has(id) && statSync(file).mtimeMs < startedAtMs - 2000) continue;
     const events = readSessionEvents(file);
-    if (firstUserText(events).includes(prompt)) return { id, file };
+    if (sessionMatchesPrompt(events, prompt, true)) return { id, file };
   }
   return null;
 }
@@ -303,14 +290,9 @@ function attemptScenario(input: AttemptInput): {
     if (!prompt) throw new Error("scenario has no turn");
     const before = new Set(listSessionFiles(paths).map((entry) => entry.id));
     let match: MatchResult | null = null;
-    for (const turn of scenario.turns) {
+    let seenTurnEnds = 0;
+    for (const [turnIndex, turn] of scenario.turns.entries()) {
       const turnStartedAt = Date.now();
-      const previousFiles = new Map(
-        listSessionFiles(paths).map((entry) => [
-          entry.file,
-          readSessionEvents(entry.file).filter((event) => event.type === "turn/end").length,
-        ]),
-      );
       session.click(COMPOSER_SELECTOR);
       session.keyboardType(turn.prompt);
       session.wait(800);
@@ -329,14 +311,28 @@ function attemptScenario(input: AttemptInput): {
       for (;;) {
         try {
           answerPendingQuestions(session, scenario, autoAnswers);
-          match = findMatchingSession(paths, before, turnStartedAt, turn.prompt);
+          // Only the first turn discovers a fresh session from its opening prompt. Every
+          // later turn runs in that same session, whose first user message never changes,
+          // so reuse the match and wait for one more turn/end instead of re-matching on a
+          // prompt that can never be the first message again.
+          if (turnIndex === 0) {
+            match = findMatchingSession(paths, before, turnStartedAt, turn.prompt);
+          } else if (!match) {
+            throw new InfraError("no session matched the scenario");
+          } else if (!existsSync(match.file)) {
+            throw new InfraError("matched session log vanished");
+          }
           if (match) {
             const ends = readSessionEvents(match.file).filter(
               (event) => event.type === "turn/end",
             ).length;
-            if (ends > (previousFiles.get(match.file) ?? 0)) break;
+            if (ends > seenTurnEnds) {
+              seenTurnEnds = ends;
+              break;
+            }
           }
         } catch (error) {
+          if (error instanceof InfraError) throw error;
           throw new InfraError(error instanceof Error ? error.message : String(error));
         }
         sleep(POLL_INTERVAL_MS);

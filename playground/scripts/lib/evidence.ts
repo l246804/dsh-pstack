@@ -14,7 +14,7 @@ import type {
   Verdict,
 } from "../../types.ts";
 
-interface SessionEvent {
+export interface SessionEvent {
   type: string;
   cwd?: string;
   agentPreset?: string;
@@ -52,6 +52,38 @@ function textOfContent(content: unknown): string {
       return "";
     })
     .join("");
+}
+
+/** User-authored message texts in order, ignoring assistant and system messages. */
+export function userMessageTexts(events: SessionEvent[]): string[] {
+  const texts: string[] = [];
+  for (const event of events) {
+    if (event.type !== "user/message") continue;
+    const source = event.data?.source as { kind?: string } | undefined;
+    if (source?.kind !== "user") continue;
+    const text = textOfContent(event.data?.content);
+    if (text) texts.push(text);
+  }
+  return texts;
+}
+
+export function firstUserText(events: SessionEvent[]): string {
+  return userMessageTexts(events)[0] ?? "";
+}
+
+/**
+ * Whether a session log answers `prompt`. The first turn opens the session, so its prompt
+ * must be the session's first user message. That first message stays fixed on every later
+ * turn, so a later turn knows its prompt landed when any user message carries it rather than
+ * re-reading the first one and failing forever.
+ */
+export function sessionMatchesPrompt(
+  events: SessionEvent[],
+  prompt: string,
+  isFirstTurn: boolean,
+): boolean {
+  if (isFirstTurn) return firstUserText(events).includes(prompt);
+  return userMessageTexts(events).some((text) => text.includes(prompt));
 }
 
 function parseArguments(raw: unknown): Record<string, unknown> {
