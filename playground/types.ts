@@ -122,6 +122,12 @@ export interface RunEnvironment {
 export interface ToolCallEvidence {
   name: string;
   status: string;
+  /**
+   * Tool name plus its whitelisted audit arguments, capped at 200 characters. Only
+   * listed keys (paths, commands, patterns, targets) are copied, so credentials and
+   * payload parameters never reach the record.
+   */
+  argsSummary: string;
   errorText?: string;
 }
 

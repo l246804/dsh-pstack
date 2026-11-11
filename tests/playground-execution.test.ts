@@ -24,6 +24,7 @@ import {
   mechanicalFailures,
   pendingSemanticReview,
   sessionMatchesPrompt,
+  summarizeToolArguments,
   type SessionEvent,
   verdictFor,
 } from "../playground/scripts/lib/evidence.ts";
@@ -246,6 +247,69 @@ describe("digest granularity", () => {
 });
 
 const dirAssertion: Assertion = { kind: "artifact-dir-nonempty", path: "verify/features" };
+
+describe("tool call argument summaries", () => {
+  it("records the path for write tools and drops unlisted parameters", () => {
+    expect(
+      summarizeToolArguments("write", {
+        file_path: "notes/todo.md",
+        content: "apiKey: sk-secret-value",
+      }),
+    ).toBe("write file_path=notes/todo.md");
+    expect(
+      summarizeToolArguments("edit", {
+        file_path: "src/main.ts",
+        old_string: "a",
+        new_string: "b",
+      }),
+    ).toBe("edit file_path=src/main.ts");
+  });
+
+  it("never copies secret-carrying parameters into the summary", () => {
+    const summary = summarizeToolArguments(
+      "bash",
+      JSON.stringify({ command: "git status", apiKey: "sk-secret-value", token: "abc123secret" }),
+    );
+    expect(summary).toBe("bash command=git status");
+    expect(summary).not.toContain("sk-secret-value");
+    expect(summary).not.toContain("abc123secret");
+  });
+
+  it("truncates the summary at 200 characters", () => {
+    const summary = summarizeToolArguments("bash", { command: "x".repeat(500) });
+    expect(summary.length).toBe(200);
+    expect(summary.startsWith("bash command=")).toBe(true);
+  });
+
+  it("keeps the bare tool name when no listed argument is present", () => {
+    expect(summarizeToolArguments("job_list", {})).toBe("job_list");
+    expect(summarizeToolArguments("read", "not-json")).toBe("read");
+  });
+
+  it("surfaces out-of-workspace reads in the digest for auditing", () => {
+    const digest = digestEvents(
+      [
+        {
+          type: "tool/call",
+          data: {
+            name: "read",
+            callId: "c1",
+            arguments: { file_path: "../../playground/scenarios/tdd.ts" },
+          },
+        },
+        {
+          type: "tool/result",
+          data: { toolCallId: "c1", message: { isError: false, content: [] } },
+        },
+      ],
+      "session-4",
+    );
+    expect(digest.toolCalls[0]?.argsSummary).toBe(
+      "read file_path=../../playground/scenarios/tdd.ts",
+    );
+    expect(digest.toolCalls[0]?.status).toBe("ok");
+  });
+});
 
 const emptySession: SessionFacts = {
   sessionId: "session",

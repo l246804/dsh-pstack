@@ -98,6 +98,34 @@ function parseArguments(raw: unknown): Record<string, unknown> {
 }
 
 /**
+ * The argument keys an auditor needs to see: file paths for write/read tools, the
+ * command for shell tools, targets for search and fetch tools. Everything else
+ * (contents, env blobs, credential parameters) stays out of the record by omission.
+ */
+const SUMMARIZED_ARGUMENT_KEYS = [
+  "file_path",
+  "path",
+  "command",
+  "pattern",
+  "query",
+  "url",
+  "name",
+  "resource",
+];
+const ARGS_SUMMARY_LIMIT = 200;
+
+export function summarizeToolArguments(name: string, raw: unknown): string {
+  const args = parseArguments(raw);
+  const parts: string[] = [];
+  for (const key of SUMMARIZED_ARGUMENT_KEYS) {
+    const value = args[key];
+    if (typeof value !== "string" || value.trim() === "") continue;
+    parts.push(`${key}=${value.replace(/\s+/g, " ").trim()}`);
+  }
+  return (parts.length === 0 ? name : `${name} ${parts.join(" ")}`).slice(0, ARGS_SUMMARY_LIMIT);
+}
+
+/**
  * Assistant text per turn. Messages inside one turn keep the plain "\n" join; a later
  * turn with assistant output gets a delimiter header so a reviewer can attribute every
  * reply span to the turn that produced it.
@@ -153,7 +181,11 @@ export function digestEvents(events: SessionEvent[], sessionId: string, worker =
       case "tool/call": {
         const name = typeof data.name === "string" ? data.name : "";
         const callId = typeof data.callId === "string" ? data.callId : "";
-        const call = { name, status: "pending" };
+        const call: ToolCallEvidence = {
+          name,
+          status: "pending",
+          argsSummary: summarizeToolArguments(name, data.arguments),
+        };
         toolCalls.push(call);
         callsById.set(callId, call);
         if (["skill", "pstack_skill", "pstack-skill"].includes(name)) {
