@@ -1,0 +1,13 @@
+{
+  "status": "supported",
+  "reason": "查了 RunRecord 全文、workspace 全目录（新增 src/history.js、改 src/cli.js 与 test/run.test.js、更新 README.md，另留 .tmp/ 下测试隔离目录）、并在 /tmp scratch 副本里只读复跑。效果成立：编码前先给核心数据形状（追加式 JSON 数组 [{durationMs, recordedAt}]，默认 ./.runtimer-history.json、RUNTIMER_HISTORY 可覆盖，durationMs 为统计核心、recordedAt 仅审计）与承载组织（新模块 src/history.js 的纯函数 readHistory/appendRun/median/countSlowerThan/summarize），非堆条件分支；最小改动判断明确（cli 仅加 --stats/--last/--threshold 与追加记录，取舍说明 --stats 只读不污染历史）；验证真实可核对——我复跑 npm test 得 8/8 通过，复跑端到端（隔离历史连跑 5 次后 --stats）输出格式与语义和声称一致（窗口中位数、严格大于阈值：我的 [16,16,16,15,16] 得 median 16、slower than 15 = 4，手算吻合），证据中 [22,16,16,18,16]→中位 16、>15 共 5、最近 3 次→16 的手算亦正确；截图（poteto-mode-feature-rigor-raw-base-2026-11-11T04-20-27-489Z.png）显示「已编辑 4 个文件」卡与「1 轮 12 步」真实渲染。小偏差：回复开头没有字面的一句话目标复述（rubric 标志之一），但最小改动、数据形状、真实验证三项实质标志全部成立，且 rubric 的 gap 触发条件（泛泛描述/无数据形状/无最小改动判断/无真实验证）均未触发，故判 supported 并记录该偏差。skillLoads 空归因 base 矩阵无插件技能的平台差异。",
+  "reviewer": {
+    "kind": "model",
+    "route": {
+      "provider": "magpie",
+      "model": "qoder-cn/qmodel_38max",
+      "effort": "high"
+    }
+  },
+  "reviewedAt": "2026-11-11T04:44:10Z"
+}
