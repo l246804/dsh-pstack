@@ -1,6 +1,6 @@
 # Playground
 
-本目录用真实 DSH Web 会话比较上游 pstack 与适配后的 dsh-pstack。先采集 raw 证据并审核实际效果，再开发最终适配。当前只有行为冒烟注册表，不代表所有技能已经覆盖。
+本目录用真实 DSH Web 会话比较上游 pstack 与适配后的 dsh-pstack。先采集 raw 证据并审核实际效果，再开发最终适配。注册表覆盖 57 个行为场景，另有 2 项声明排除；覆盖守卫保证上游技能都有场景或排除。
 
 ## 生成 raw 输入
 
@@ -53,4 +53,4 @@ vp run playground:stop -- --environment base
 
 `collect` 从注册表补齐 unrun 和排除项。adapted 报告还检查 raw 对照的自然语言、实际模型、上游 revision 和配置 hash。排除目前只有 make-bot-ui 与 Benny Cursor Automations。提及 Cursor 的普通工作流不排除。
 
-旧 cases、审批 lock 和 skill-audit 已删除。发布兼容键的新来源由后续适配阶段处理。
+旧 cases、审批 lock 和 skill-audit 已删除。发布兼容键由 `playground/baseline.json` 提供。插件矩阵环境、插件 UI 场景与 agent-team 冲突回归分别用 `prepare --environment`、`playground:run-ui` 与 `playground:run-conflict` 运行。
