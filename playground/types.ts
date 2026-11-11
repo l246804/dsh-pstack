@@ -170,4 +170,6 @@ export interface RunRecord {
   semanticReview: SemanticReview;
   verdict: Verdict;
   capturedAt: string;
+  /** Set on a review revision: the reviewedAt of the sidecar that produced this record. */
+  reviewedAt?: string;
 }

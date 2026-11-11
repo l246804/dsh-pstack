@@ -21,3 +21,5 @@ reports/run-*.md
 
 # Archived evidence for the audit report; regenerated per run.
 reports/evidence/
+
+# Review sidecars under reviews/ are reviewed source files committed with the repo; never ignore them.
