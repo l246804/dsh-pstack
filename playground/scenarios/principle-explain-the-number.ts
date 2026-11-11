@@ -15,7 +15,7 @@ export const explainTheNumberApply: BehaviorScenario = {
       "bench.md": "# 缓存改造基准\nbefore: 120ms\nafter: 40ms\nruns: 1\n",
     },
   },
-  assertions: [{ kind: "turn-completed" }, { kind: "assistant-contains", text: "限制" }],
+  assertions: [{ kind: "turn-completed" }],
   rubric: {
     prompt:
       "回复应在采信或上报数字前追问是什么限制了它（为什么不是更快）、并列出这个数字还可能测到了什么（单次运行、噪声、缓存命中跳过了实际工作、预热缺失、报错等），要求给出运行次数与波动范围，而不是直接接受 3 倍提速。只说“还需要多测”却不指出限制因素与可疑测量项，记 gap；只复述原则名字，记 gap。技能加载只是过程证据，不等于效果成立。",

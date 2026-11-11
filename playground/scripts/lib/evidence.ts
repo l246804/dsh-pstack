@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 import type {
@@ -218,6 +218,18 @@ export function digestSession(file: string, sessionId: string, worker = 0): Sess
   return digestEvents(events, sessionId, worker);
 }
 
+/** Resolve an artifact path inside the workspace, or null when it escapes. */
+function resolveInWorkspace(workspace: string, relative: string): string | null {
+  const target = resolve(workspace, relative);
+  return target === workspace || target.startsWith(`${workspace}/`) ? target : null;
+}
+
+function directoryHasFiles(directory: string): boolean {
+  return readdirSync(directory, { recursive: true, withFileTypes: true }).some((entry) =>
+    entry.isFile(),
+  );
+}
+
 export function evaluateAssertions(
   assertions: Assertion[],
   session: SessionFacts,
@@ -244,13 +256,24 @@ export function evaluateAssertions(
         break;
       }
       case "artifact-contains": {
-        const target = resolve(workspace, assertion.path);
-        if (target !== workspace && !target.startsWith(`${workspace}/`)) {
+        const target = resolveInWorkspace(workspace, assertion.path);
+        if (target === null) {
           failures.push(`artifact escapes workspace: ${assertion.path}`);
         } else if (!existsSync(target)) {
           failures.push(`missing artifact: ${assertion.path}`);
         } else if (!readFileSync(target, "utf8").includes(assertion.text)) {
           failures.push(`artifact ${assertion.path} lacks ${JSON.stringify(assertion.text)}`);
+        }
+        break;
+      }
+      case "artifact-dir-nonempty": {
+        const target = resolveInWorkspace(workspace, assertion.path);
+        if (target === null) {
+          failures.push(`artifact escapes workspace: ${assertion.path}`);
+        } else if (!existsSync(target) || !statSync(target).isDirectory()) {
+          failures.push(`missing artifact directory: ${assertion.path}`);
+        } else if (!directoryHasFiles(target)) {
+          failures.push(`artifact directory has no files: ${assertion.path}`);
         }
         break;
       }

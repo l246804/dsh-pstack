@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import type { RunRecord, SessionFacts } from "../playground/types.ts";
+import type { Assertion, RunRecord, SessionFacts } from "../playground/types.ts";
 import {
   mountRawTree,
   profileManifest,
@@ -17,6 +17,7 @@ import {
   assertSafeRecord,
   assertSameEntry,
   digestEvents,
+  evaluateAssertions,
   firstUserText,
   isRunRecord,
   latestRecords,
@@ -241,6 +242,90 @@ describe("digest granularity", () => {
     );
     expect(digest.userTexts).toEqual(["real prompt"]);
     expect(digest.userText).toBe("real prompt");
+  });
+});
+
+const dirAssertion: Assertion = { kind: "artifact-dir-nonempty", path: "verify/features" };
+
+const emptySession: SessionFacts = {
+  sessionId: "session",
+  sessionFile: "session-file",
+  workspacePath: null,
+  agentPreset: "standard",
+  skillLoads: [],
+  toolCalls: [],
+  turnEndReason: "completed",
+  assistantText: "",
+  userText: "",
+  userTexts: [],
+  autoAnswers: [],
+};
+
+let workspaceCount = 0;
+
+function workspaceWith(entries: Record<string, string>): string {
+  const workspace = join(temporary, `artifact-ws-${workspaceCount++}`);
+  mkdirSync(workspace, { recursive: true });
+  for (const [relative, content] of Object.entries(entries)) {
+    const target = join(workspace, relative);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, content);
+  }
+  return workspace;
+}
+
+describe("artifact-dir-nonempty assertion", () => {
+  it("passes only when the directory exists and holds at least one file", () => {
+    expect(evaluateAssertions([dirAssertion], emptySession, workspaceWith({}))).toEqual([
+      "missing artifact directory: verify/features",
+    ]);
+
+    const emptyDir = workspaceWith({});
+    mkdirSync(join(emptyDir, "verify/features"), { recursive: true });
+    expect(evaluateAssertions([dirAssertion], emptySession, emptyDir)).toEqual([
+      "artifact directory has no files: verify/features",
+    ]);
+
+    const readmeIndex = workspaceWith({ "verify/features/README.md": "# Index" });
+    expect(evaluateAssertions([dirAssertion], emptySession, readmeIndex)).toEqual([]);
+
+    const indexVariant = workspaceWith({ "verify/features/index.md": "# Index" });
+    expect(evaluateAssertions([dirAssertion], emptySession, indexVariant)).toEqual([]);
+
+    const nestedPage = workspaceWith({ "verify/features/notes/page.md": "# Feature" });
+    expect(evaluateAssertions([dirAssertion], emptySession, nestedPage)).toEqual([]);
+  });
+
+  it("rejects a file standing in for the directory and a path escaping the workspace", () => {
+    const workspace = workspaceWith({ "verify/features": "not a directory" });
+    expect(evaluateAssertions([dirAssertion], emptySession, workspace)).toEqual([
+      "missing artifact directory: verify/features",
+    ]);
+    expect(
+      evaluateAssertions(
+        [{ kind: "artifact-dir-nonempty", path: "../escape" }],
+        emptySession,
+        workspace,
+      ),
+    ).toEqual(["artifact escapes workspace: ../escape"]);
+  });
+
+  it("keeps the artifact-contains escape check after the shared resolver refactor", () => {
+    const workspace = workspaceWith({ "verify/SKILL.md": "---\nname: verify-notes\n---\n" });
+    expect(
+      evaluateAssertions(
+        [{ kind: "artifact-contains", path: "verify/SKILL.md", text: "name: verify" }],
+        emptySession,
+        workspace,
+      ),
+    ).toEqual([]);
+    expect(
+      evaluateAssertions(
+        [{ kind: "artifact-contains", path: "../../etc/passwd", text: "root" }],
+        emptySession,
+        workspace,
+      ),
+    ).toEqual(["artifact escapes workspace: ../../etc/passwd"]);
   });
 });
 

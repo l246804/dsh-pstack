@@ -58,6 +58,23 @@ describe("scenario registry", () => {
     expect(scenario.rubric.prompt).toContain("技能加载是过程证据，不等于建议有效");
   });
 
+  it("leaves the explain-the-number effect to the rubric instead of a word-level check", () => {
+    const scenario = behaviorScenario("principle-explain-the-number-apply");
+    expect(scenario.assertions).toEqual([{ kind: "turn-completed" }]);
+    expect(scenario.rubric.prompt).toContain("限制");
+  });
+
+  it("asserts the verification skill artifacts without hardcoding the index file name", () => {
+    const scenario = behaviorScenario("create-verification-skill-notes-web");
+    expect(scenario.assertions).toEqual([
+      { kind: "turn-completed" },
+      { kind: "artifact-contains", path: "verify/SKILL.md", text: "name: verify" },
+      { kind: "artifact-dir-nonempty", path: "verify/features" },
+      { kind: "assistant-contains", text: "验证" },
+    ]);
+    expect(scenario.rubric.prompt).toContain("README.md 或 index.md");
+  });
+
   it("declares complete plugin environments instead of host inheritance", () => {
     for (const environment of environments) {
       expect(environment.id).not.toBe("");

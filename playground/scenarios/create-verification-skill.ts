@@ -83,12 +83,12 @@ export const createVerificationSkillNotesWeb: BehaviorScenario = {
   assertions: [
     { kind: "turn-completed" },
     { kind: "artifact-contains", path: "verify/SKILL.md", text: "name: verify" },
-    { kind: "artifact-contains", path: "verify/features/README.md", text: "#" },
+    { kind: "artifact-dir-nonempty", path: "verify/features" },
     { kind: "assistant-contains", text: "验证" },
   ],
   rubric: {
     prompt:
-      "回复应为这个笔记服务产出一个项目内、可被下一个代理冷读的验证技能：包含启动命令与就绪判断、一次只读的健康检查、用真实用户路径驱动笔记的新建与读取、证据留存位置与证据标准、清理方式，并铺好功能地图（README 索引加每个功能的说明）。技能加载只是过程证据，不等于效果成立。若只给出泛泛建议、没有生成 `verify/SKILL.md` 与 `verify/features/`，或生成的技能没有真实执行过一次，则记为缺口。",
+      "回复应为这个笔记服务产出一个项目内、可被下一个代理冷读的验证技能：包含启动命令与就绪判断、一次只读的健康检查、用真实用户路径驱动笔记的新建与读取、证据留存位置与证据标准、清理方式，并铺好功能地图（`verify/features/` 下有索引文件加每个功能的说明；索引文件名接受 README.md 或 index.md，两者皆合格，不因文件名判缺口）。技能加载只是过程证据，不等于效果成立。若只给出泛泛建议、没有生成 `verify/SKILL.md` 与含至少一个功能页的 `verify/features/`，或生成的技能没有真实执行过一次，则记为缺口。",
   },
   uiObservations: [
     { id: "completed-turn", description: "会话自然结束，没有自动点击停止。" },
