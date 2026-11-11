@@ -18,18 +18,13 @@ fork it. improve it. make it yours. PRs are welcome!
 /add-plugin pstack
 ```
 
-in claude code:
+in DeepSeek Harness:
 
 ```bash
-/plugin marketplace add cursor/plugins
-/plugin install pstack@cursor-plugins
+dsh plugin --profile web add dsh-pstack
 ```
 
-claude code leaves auto-update off for third-party marketplaces, so pstack stays on the version you installed. to turn it on, run `/plugin`, open the **marketplaces** tab, select `cursor-plugins`, and choose **enable auto-update**. to update once by hand, run `claude plugin update pstack@cursor-plugins`.
-
-claude code prefixes plugin commands and agents, so `/poteto-mode` is `/pstack:poteto-mode`. the [claude code adapter](https://github.com/cursor/plugins/blob/main/pstack/docs/harness/claude-code.md) maps every other cursor name. in claude code, `/pstack:setup-pstack` writes your model choices to `~/.claude/rules/pstack-models.md`, and a step that needs a cursor-only feature, such as bugbot or automations, is skipped with a one-line note.
-
-claude code installs a generated copy of pstack, including this readme and the guide, from [`harness/pstack/`](https://github.com/cursor/plugins/tree/main/harness/pstack) at the repository root. after you change pstack, run `node scripts/generate-pstack-harness-trees.mjs` from the repository root and commit the result. ci fails while the generated copy is out of date.
+in DeepSeek Harness, commands keep their plain names with no prefix, so `/poteto-mode` stays `/poteto-mode`. the [DSH adapter](./docs/harness/dsh.md) maps every other cursor name. `/setup-pstack` writes your model choices to `$DSH_HOME/pstack-models.mdc`, and a step that needs a cursor-only feature, such as bugbot or automations, is skipped with a one-line note.
 
 ## get started
 
