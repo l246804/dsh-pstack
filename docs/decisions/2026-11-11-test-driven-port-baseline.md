@@ -32,4 +32,4 @@ Review: 2026-11-11
 - 发布流程只依赖 `playground/baseline.json`，`vp run compatibility:check` 与 release 不再受审核文件影响。
 - 审核结论以侧车形式进库，`review --apply` 产生可追溯的 RunRecord 修订。运行时证据仍在 gitignored 的 worker 目录与 `reports/evidence`，由重跑重新生成。
 - 上游 pstack 或 DSH 升级时按 `playground/raw/AGENTS.md` 重新判定适配文档，按场景注册表重跑 raw 与 adapted，不需要旧 lock 或审批轮次。
-- 本记录替代 [2026-11-08-release-compatibility-metadata.md](./2026-11-08-release-compatibility-metadata.md)。实现已落在 `playground-browser-rework` 分支的 `test-driven-pstack-port` 合并提交，合入默认分支后补实现锚点。
+- 本记录替代 [2026-11-08-release-compatibility-metadata.md](./2026-11-08-release-compatibility-metadata.md)。实现已落在 `refactor/test-driven-pstack-port` 分支的 `test-driven-pstack-port` 合并提交，合入默认分支后补实现锚点。
