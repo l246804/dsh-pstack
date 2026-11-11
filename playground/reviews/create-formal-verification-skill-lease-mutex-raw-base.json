@@ -1,0 +1,13 @@
+{
+  "status": "supported",
+  "reason": "查了 RunRecord 全文、workspace 全目录（lease-mutex-verification/SKILL.md、specs/LeaseRacy.tla、specs/LeaseFixed.tla 与两个 cfg、scripts/explore.py、scripts/run_tlc.sh、scripts/verify.sh、references/model.md、specs/LEASE_TS.sha256、reports/VERIFICATION.md、reports/verify-output.txt、.tools/tla2tools.jar）与同名截图。走的是 rubric 第一分支且超出预期：起始 PATH 上 tlc/apalache/spin/nusmv/alloy/cbmc/esbmc/z3/cvc5 全缺，但 java 可用，于是下载官方 tla2tools.jar v1.8.0（本机核验为 4,510,215 字节真实 JAR，sha256 e1f11b75…dbcd7f 与报告钉住值一致），对抽取的并发模型做真模型检查，找出互斥反例（C0.check、C1.check、C0.commit、C1.commit 后双持有者）并如实报告「性质为假」，没有谎称验证通过；技能写明性质（MUTEX）、覆盖代码、一条复跑命令、完成标准（SUMMARY: PASS / 退出码）、模型↔源码哈希钉住与 java 缺失时「TLC: SKIPPED 但 explorer 结论仍立」的诚实降级路径；故意破坏的 racy 变体（即当前源码形状）使 TLC 退出 12、atomic 变体退出 0，证明检查真能失败。我在 /tmp 副本复跑 bash lease-mutex-verification/scripts/verify.sh：explorer 89/130 状态、TLC 两个模型按预期、correspondence OK、SUMMARY: PASS、exit 0。仍缺的 TS 模型检查前端被明确命名并与验证结论区分。截图显示 VERIFICATION.md、SKILL.md、verify-output.txt 三张 present 卡、「全部 11 个文件」与 1 轮 42 步，GUI 真实渲染。判 supported。",
+  "reviewer": {
+    "kind": "model",
+    "route": {
+      "provider": "magpie",
+      "model": "qoder-cn/qmodel_38max",
+      "effort": "high"
+    }
+  },
+  "reviewedAt": "2026-11-11T04:34:22Z"
+}

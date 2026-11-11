@@ -1,0 +1,13 @@
+{
+  "status": "supported",
+  "reason": "查了 RunRecord 全文（assistantText 含两轮）、workspace 全目录、生成脚本与帧、mp4 容器和截图。产物真实可核对：recap/workspace-recap.mp4 为 ISO Media MP4（884978 字节），我解析 mvhd 得时长 27.5 秒，与声称「27.5 秒」一致；.tmp/make_recap.py 以 PIL 渲染 7 屏（dur 合计 3.0+4.0+4.5+4.0+4.0+4.5+3.5=27.5）、W,H=1280,720、FPS=30，经自带 imageio ffmpeg 编码，与声称「1280×720、30fps、7 屏」一致；抽看帧 .tmp/f_13.png 为 1280x720 幻灯片，含中文字幕条「测试用 Node 内置测试框架，只有一个断言」与 STEP 3/5 标签、7 点进度，画面内容（读工作区 4 文件、读 src/app.js、读 test/app.test.js、项目为 notes-app、目录名与项目名不一致、未改代码）与 session 日志 toolCalls 逐条吻合，无虚构。第二轮在视频下方用文字列出 4 项待用户决定事项并附建议（项目名 vs 目录名、是否跑测试、是否加功能、视频规格），符合「需要我决定的事情用文字列在视频下面」。截图（ketchup-video-recap-slides-raw-base-2026-11-11T04-16-36-273Z.png）显示 workspace-recap.mp4 的 present 卡片与「2 轮 16 步」真实渲染。声称有视频且产物存在、内容属实，不触发 gap 条件。附带观察（协议缺陷上报）：截图中的「已编辑 4 个文件」卡片列入了 playground/reviews/ 下 3 个评审侧车 json，但 session 日志 grep reviews/ 为 0 命中、write 目标仅 .tmp/*；原因是 playground/.gitignore 忽略 .workers/ 而不忽略 reviews/，GUI 的变更卡按 git 状态聚合了并发评审会话的写入，故截图不能单独作为「该会话编辑了哪些文件」的证据。skillLoads 空归因 base 矩阵无插件技能的平台差异。",
+  "reviewer": {
+    "kind": "model",
+    "route": {
+      "provider": "magpie",
+      "model": "qoder-cn/qmodel_38max",
+      "effort": "high"
+    }
+  },
+  "reviewedAt": "2026-11-11T04:36:40Z"
+}
