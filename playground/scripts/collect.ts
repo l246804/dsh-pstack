@@ -7,6 +7,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { basename, dirname, join, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import type { Phase, RunRecord } from "../types.ts";
 import { assertSameEntry, isRunRecord, latestRecords } from "./lib/evidence.ts";
@@ -70,12 +71,24 @@ export function reportFor(
   const current = latest.filter(
     (record) => record.phase === phase && record.environment.matrix.id === environmentId,
   );
+  const statuses = [
+    "observed",
+    "gap",
+    "blocked",
+    "unobserved",
+    "verified",
+    "not-verified",
+    "inconclusive",
+  ];
+  const counts: Record<string, number> = Object.fromEntries(statuses.map((status) => [status, 0]));
   const archived: Array<{ record: RunRecord; source: string }> = [];
   const rows: string[] = [];
+  let unrun = 0;
   for (const id of listScenarioIds()) {
     const record = current.find((entry) => entry.scenarioId === id);
     const scenario = loadScenario(id);
     if (!record) {
+      unrun += 1;
       rows.push(
         `| ${id} | ${phase} | ${environmentId} | unrun | unavailable | pending | no RunRecord | ${escape(scenario.rubric.prompt)} | missing |`,
       );
@@ -101,7 +114,10 @@ export function reportFor(
       ? `${record.target.provider}/${record.target.model}[${record.target.effort}]`
       : "unavailable";
     const reason = [record.semanticReview.reason, ...comparisonFailures].join("; ");
+    // The row verdict is what the table shows: an adapted record without a raw
+    // comparison reports inconclusive no matter what its recorded verdict says.
     const verdict = comparisonFailures.length > 0 ? "inconclusive" : record.verdict.status;
+    counts[verdict] += 1;
     rows.push(
       `| ${id} | ${phase} | ${environmentId} | ${verdict} | ${escape(route)} | ${record.semanticReview.status} | ${escape(reason)} | ${escape(scenario.rubric.prompt)} | ${escape(record.artifacts.recordFile)} |`,
     );
@@ -112,21 +128,6 @@ export function reportFor(
     );
   }
   const metadata = current[0]?.environment;
-  const statuses = [
-    "observed",
-    "gap",
-    "blocked",
-    "unobserved",
-    "verified",
-    "not-verified",
-    "inconclusive",
-  ];
-  const counts = Object.fromEntries(
-    statuses.map((status) => [
-      status,
-      current.filter((record) => record.verdict.status === status).length,
-    ]),
-  );
   const lines = [
     `# Playground ${phase} evidence`,
     "",
@@ -135,11 +136,7 @@ export function reportFor(
     `Config hash: ${metadata?.configHash ?? "not observed"}. Adapted package: ${metadata?.adaptedVersion ?? "none"}.`,
     "",
     "```json",
-    JSON.stringify(
-      { ...counts, unrun: listScenarioIds().length - current.length, excluded: exclusions.length },
-      null,
-      2,
-    ),
+    JSON.stringify({ ...counts, unrun, excluded: exclusions.length }, null, 2),
     "```",
     "",
     "| scenario | phase | environment | verdict | actual route | semantic review | reason | rubric | evidence |",
@@ -179,9 +176,11 @@ function relativePlayground(file: string): string {
     : file;
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(`[collect] ERROR: ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    main();
+  } catch (error) {
+    console.error(`[collect] ERROR: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  }
 }

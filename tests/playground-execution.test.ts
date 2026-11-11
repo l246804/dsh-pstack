@@ -34,7 +34,9 @@ import {
   publicConfigHash,
   REPOSITORY_ROOT,
 } from "../playground/scripts/lib/run-metadata.ts";
-import { behaviorScenario } from "../playground/scenarios/index.ts";
+import { behaviorScenario, exclusions } from "../playground/scenarios/index.ts";
+import { listScenarioIds } from "../playground/scripts/lib/scenarios.ts";
+import { reportFor } from "../playground/scripts/collect.ts";
 import {
   workerPaths,
   phaseWorkersDirectory,
@@ -621,5 +623,54 @@ describe("phase isolation of worker evidence", () => {
       delete process.env.PLAYGROUND_WORKERS_DIR;
       delete process.env.PLAYGROUND_WORKSPACE_ROOT;
     }
+  });
+});
+
+function verifiedAdapted(environmentId: string): RunRecord {
+  return {
+    ...record("adapted", environmentId),
+    verdict: { phase: "adapted", status: "verified" },
+  };
+}
+
+function summaryCounts(markdown: string): Record<string, number> {
+  const match = markdown.match(/```json\n([\s\S]*?)\n```/);
+  if (!match) throw new Error("report is missing its summary json block");
+  return JSON.parse(match[1] ?? "") as Record<string, number>;
+}
+
+function rowVerdict(markdown: string, scenarioId: string): string {
+  const line = markdown.split("\n").find((entry) => entry.startsWith(`| ${scenarioId} |`));
+  if (!line) throw new Error(`report has no row for ${scenarioId}`);
+  return (line.split("|")[4] ?? "").trim();
+}
+
+describe("collect report verdict counting", () => {
+  it("counts an adapted row without a raw comparison as inconclusive, not verified", () => {
+    const adapted = verifiedAdapted("base");
+    const { markdown } = reportFor("adapted", "base", [adapted]);
+    const counts = summaryCounts(markdown);
+    expect(counts.inconclusive).toBe(1);
+    expect(counts.verified).toBe(0);
+    expect(rowVerdict(markdown, adapted.scenarioId)).toBe("inconclusive");
+  });
+
+  it("counts a matched raw comparison as verified", () => {
+    const raw = record("raw", "base");
+    const adapted = verifiedAdapted("base");
+    const { markdown } = reportFor("adapted", "base", [raw, adapted]);
+    const counts = summaryCounts(markdown);
+    expect(counts.verified).toBe(1);
+    expect(counts.inconclusive).toBe(0);
+    expect(rowVerdict(markdown, adapted.scenarioId)).toBe("verified");
+  });
+
+  it("keeps status counts plus unrun and excluded equal to registered plus exclusions", () => {
+    const raw = record("raw", "base");
+    const adapted = verifiedAdapted("base");
+    const counts = summaryCounts(reportFor("adapted", "base", [raw, adapted]).markdown);
+    const { unrun = 0, excluded = 0, ...statuses } = counts;
+    const counted = Object.values(statuses).reduce((total, value) => total + value, 0);
+    expect(counted + unrun + excluded).toBe(listScenarioIds().length + exclusions.length);
   });
 });
