@@ -19,7 +19,7 @@ export const recallDegradedNoHistory: BehaviorScenario = {
         "export function priceByUsage(units) {\n  return units <= 100 ? units * 1 : 100 + (units - 100) * 0.8;\n}\n",
     },
   },
-  assertions: [{ kind: "turn-completed" }, { kind: "assistant-contains", text: "历史" }],
+  assertions: [{ kind: "turn-completed" }, { kind: "assistant-contains", text: "记录" }],
   rubric: {
     prompt:
       "这是会话历史检索类技能（recall）。该环境没有可用的历史检索插件（DSH 的 session-search 为可选且默认关闭），且是全新会话。效果成立的标志：助手明确说明无法访问此前的对话历史或检索能力不可用，同时基于当前工作区给出可用的当前状态简报（正在做什么、已完成/进行中/未开始、已知问题、下一步建议），而不是假装检索到历史、编造过去对话内容，或直接报错中断。若声称查到了过去历史却无依据、或只说『无法回顾』却不给任何基于工作区的简报，记 gap。是否加载技能是过程证据，不等于效果成立。",
