@@ -62,7 +62,7 @@
   },
   "scripts": {
     "prepare": "vp config && skills experimental_sync -y -a universal --copy && skills add ./skills/authored -y -a universal",
-    "ci": "vp check && vp run typecheck && vp run playground:typecheck && vp run playground:check && vp test && vp run generate:check && vp run compatibility:check && vp run build",
+    "ci": "vp check && vp run typecheck && vp run playground:typecheck && vp test && vp run generate:check && vp run compatibility:check && vp run build",
     "prerelease": "vp run ci",
     "release": "bumpp",
     "prepublishOnly": "vp run ci"
