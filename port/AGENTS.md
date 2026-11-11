@@ -43,7 +43,7 @@
 
 DSH 或 pstack 任一上游发生破坏性变更时，按新基线重新实现受影响内容，不维护跨基线兼容分支或过渡实现。运行时适配文档只描述所选基线的行为。
 
-实现提交使用 Conventional Commits 的 `type!:` 形式。破坏性适配同时更新 `package.json` 的 DSH 范围和 lock 的 `compatibilityKey`，并在双语 README 注册新的兼容键、增加对应行；保留旧兼容行。
+实现提交使用 Conventional Commits 的 `type!:` 形式。破坏性适配同时更新 `package.json` 的 DSH 范围和 `playground/baseline.json` 的 `compatibilityKey`，并在双语 README 注册新的兼容键、增加对应行；保留旧兼容行。
 
 `vp run release` 在版本更新后、发布提交前由 `bump.config.ts` 的 `execute` 钩子在同一进程内调用 `port/release-compatibility.ts` 导出的 `syncCompatibility`。该函数读取当前版本、DSH 范围、兼容键与实际 pstack 版本：键匹配时更新该行，每个 `x.y` 只保留最新 `z`；键不存在时追加行；同一键对应不同 DSH 范围时停止。发布提交包含 `package.json` 和双语 README。`vp run compatibility:check` 以只读方式检查同步结果。
 
