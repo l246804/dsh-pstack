@@ -1,108 +1,92 @@
 ---
 name: playground-verify
-description: 在一台全新机器上跑完整的 dsh-pstack playground 验证闭环，从环境准备、原始审核轮、修订后的回归轮直至收敛复跑。
+description: 在新机器上跑完整的 dsh-pstack 移植验证闭环：raw 基线生成、语义审核、adapted 回归、官方插件矩阵、插件 UI 检查与最终全量复跑。
 disable-model-invocation: true
 ---
 
-# 运行 playground 验证
+# 跑 playground 验证
 
-驱动 playground 走完整个验证闭环，面对一个真实的 DSH Web 会话。它以一份审核报告收尾，报告里每条证据路径都真实存在。报告名不带阶段序号：待审批的审核报告是 `reports/skill-audit.md`，单次运行是 `reports/run-raw-<date>.md` 或 `reports/run-adapted-<date>.md`。
+用真实 DSH Web 会话驱动完整的测试驱动移植。raw 证据决定适配内容，adapted 证据证明适配成立。不存在 case lock 与审批文件：审核结论在 `playground/reviews/` 侧车，发布兼容键在 `playground/baseline.json`。
 
-## 1. 一次性机器准备
-
-这些步骤每台机器只做一次。当 `dsh` 在 PATH 中、`playground/config.json` 已填好、插件构建是最新时，整节跳过。只有依赖或插件源码变了才重新执行 `vp install` 与 `vp run build`。
+## 1. 机器准备
 
 1. `vp install`。
-2. 按 `port/AGENTS.md` 把生成的目录树准备好，然后 `vp run build`。
-3. 确认 `dsh` 在 PATH 中。
-4. 把 `playground/config.example.json` 的内容复制到 `playground/config.json`，填入真实的供应商与 apiKey。每个需要它的脚本在缺失或为空时都会大声报错，且该文件被 git 忽略。
+2. 确认 `dsh` 在 PATH 中，`agent-browser` 已安装 Chromium。
+3. 把 `playground/config.example.json` 复制为 `playground/config.json`，填 `providers` 与 `testModel`（provider/model/effort）。该文件已忽略，缺失时脚本直接报错，不要提交。
+4. `vp run playground:raw-generate` 从上游与 `playground/raw/dsh.md` 生成隔离的 raw 树。
 
-## 2. 每轮准备 worker
-
-每轮都执行。worker 数量由机器检测得出，除非被覆盖。每个 worker 独占 `playground/.workers/w<k>/`，拥有自己的 DSH home、浏览器 profile、工作区根目录和证据目录，并从 `dsh --port 0` 绑定一个由操作系统分配的端口。不存在固定端口。
+## 2. raw 发现轮
 
 ```sh
-vp run playground:prepare -- --mode raw --reset
-vp run playground:prepare -- --mode raw --reset --workers 6
+vp run playground:prepare -- --phase raw --environment base --workers 4 --reset
+vp run playground:bootstrap -- --worker 0 --environment base
+vp run playground:run-batch -- --phase raw --environment base --all
+vp run playground:collect -- --phase raw --environment base
+vp run playground:status -- --phase raw --environment base
 ```
 
-## 3. 落地浏览器 profile
+raw 只允许无附加插件的 `base` 环境，使用 standard preset 加 `playground/raw/dsh.md` 的 raw `systemPrompt` 注入。每个场景等待真实 `turn/end`，没有 probe、到点中止或 truncated 状态。
 
-```sh
-vp run playground:bootstrap -- --all
+然后做语义审核。每个场景写一份侧车 `playground/reviews/<scenarioId>-<phase>-<environmentId>.json`：
+
+```json
+{
+  "status": "supported",
+  "reason": "查了哪些产物与回复，rubric 为何成立或不成立",
+  "reviewer": { "kind": "model", "route": { "provider": "...", "model": "...", "effort": "..." } },
+  "reviewedAt": "2026-11-11T00:00:00Z"
+}
 ```
 
-## 4. raw 轮
-
-用短探针跑每一个可运行的技能用例，principle 用例 120 秒，behavior 用例 300 秒。探针会中止进行中的 turn，并把证据标记为 truncated。
-
 ```sh
-vp run playground:run-batch -- --mode raw --all
-vp run playground:status
-vp run playground:collect -- --mode raw
+vp run playground:review            # 校验侧车并列出待审
+vp run playground:review -- --apply # 合并为 append-only 的 RunRecord 修订
 ```
 
-collect 写出 `reports/run-raw-<date>.md`，并把本轮的证据归档到 `reports/evidence/<round>-<date>/` 下。每一行都写明它自己的归档证据文件。
+侧车早于最新重采记录会被判 stale 并跳过，绝不能把旧审核洗到新证据上。
 
-然后写审核报告 `reports/skill-audit.md`，每个技能一节。每一节陈述上游能力以及当前状态与缺口，并留两个空行供操作者在审批时填写：建议的 dsh.md 适配和建议的插件工具。状态从待审批开始。不要预先填写这些建议。停在这里，把报告交给操作者逐节审批。用 `vp run playground:approve -- --skill <a>,<b> --round <n>` 记录每次审批，它写入该技能的审批字段，报告显示对应状态。
+## 3. 实现适配
 
-## 5. 审批后适配
-
-对每个获批的节，填写并实现操作者建议的 dsh.md 适配和插件工具，然后构建可发布的插件。
+按 raw 发现更新 `port/dsh.md` 与 `port/dsh.zh.md`。生成器只复制上游并插入适配引用行，不改上游文案；所有适配差异只在适配文档里。
 
 ```sh
+vpx port/generate.mjs
 vp run build
 ```
 
-## 6. adapted 回归轮
-
-第一个 adapted 轮会用刚构建好的插件重建 worker profile，同时保留 raw 证据。不要在第一个轮次传 `--reuse`，否则 worker 会保留旧的 raw profile。adapted 轮里 run-case 会在发送前于输入区选中 `poteto-mode` preset，让模型带上技能路由指令；raw 轮保持标准 preset。
+## 4. adapted 回归轮
 
 ```sh
-vp run playground:prepare -- --mode adapted --workers 4
-vp run playground:run-batch -- --mode adapted --only-failed
-vp run playground:collect -- --mode adapted
+vp run playground:prepare -- --phase adapted --environment base --workers 4 --reset
+vp run playground:run-batch -- --phase adapted --environment base --only-failed
+vp run playground:collect -- --phase adapted --environment base
 ```
 
-后续轮次重启同一批 worker，不触碰 profile、工作区或证据。
+adapted 加载构建后的 `dsh-pstack` 并选择 `poteto-mode` preset，不注入 raw 提示。用同样的侧车流程审核并 apply。重复 `--only-failed`（not-verified 或 inconclusive）直到没有实现缺陷，然后做一次全量 adapted 复跑。
+
+## 5. 官方插件矩阵与 UI
+
+环境定义在 `playground/scenarios/environments.ts`：`base`、`session-search`、`browser-use`、`terminal`、`forge`、`agent-team-conflict`。相关环境用同一批场景 id 逐个 prepare 与运行。
 
 ```sh
-vp run playground:prepare -- --mode adapted --reuse --workers 4
-vp run playground:run-batch -- --mode adapted --only-failed --round 2
-vp run playground:run-batch -- --mode adapted --skills <a>,<b>
+vp run playground:prepare -- --phase adapted --environment session-search --workers 1 --reset
+vp run playground:run-batch -- --phase adapted --environment session-search --scenarios <ids>
+vp run playground:run-conflict -- --environment agent-team-conflict
+vp run playground:run-ui -- --worker 0 --scenario plugin-ui-role-config --environment base --packages dsh-pstack
+vp run playground:run-ui -- --worker 0 --scenario plugin-ui-recommended-plugins --environment base --packages dsh-pstack
 ```
 
-`--only-failed` 读取各归档轮次中最新的证据，选出判定失败或运行以 infra error 结束的用例。`--skills` 把技能名映射到它们的用例。`--round` 设置写入进度的轮次。`playground/status` 和 `playground/.workers/progress.json` 里的进度携带轮次号。
+声明了 `versionExemptions` 的环境需要 exact-version 豁免，`prepare` 会按实际安装版本与运行时版本自动 grant。Agent Teams 是冲突回归，不是支持组合：Web 能启动，`poteto-mode` preset 必须显示 `AGENT_TEAMS_CONFLICT` 加载失败。
 
-逐个分类每个失败并采取行动。
+## 6. 收尾
 
-- 实现缺陷：修实现，`vp run build`，重启受影响的 worker，重跑受影响的用例。
-- 用例缺陷：改用例，更新 `cases.lock.json`，重跑该用例。
-- 环境错误：自动重试一次；若再次失败，深入排查。
-- 真实遗留：把原因记入审核报告的遗留行，不要重跑。
-
-重复直到某一轮没有实现缺陷，且每个剩余项都是已声明的遗留。
-
-## 7. 收敛复跑
-
-收敛之后，对所有用例完整跑一次 adapted，确保没有用例漏验。
-
-```sh
-vp run playground:prepare -- --mode adapted --reuse
-vp run playground:run-batch -- --mode adapted --all
-vp run playground:collect -- --mode adapted
-```
-
-当每个用例通过，或每个未通过的用例都是带原因的已声明遗留时，判定通过。若完整复跑暴露出新的实现缺陷，回到第 6 步。
-
-## 8. 收口报告
-
-把 `reports/skill-audit.md` 的每一节更新到最终状态，已通过或带原因的遗留，并把轮次和状态记录进 `cases.lock.json`。下一轮从第 5 步开始。
+矩阵与 UI 完成后，做一次干净的 raw 与 adapted 全量复跑，collect 两份报告，审核全部侧车。通过条件是每个 adapted 场景 verified，或因环境 blocked 且有证据地记录，同时 schema、覆盖与构建检查全绿。
 
 ## 约定
 
-- 用例 prompt 保持自然的用户请求。绝不点名工具或展开调用参数。
-- 运行中没有真人回答问题。run-case 会自己应答 ask_user_question 卡片：用例自身的 `answers` 规则优先，否则选第一个选项或填入默认文本，每个回答都记入证据。
-- 模型选择属于操作者。每台机器确认一次；agent 引用会话事件作为证据。
-- 上游技能集与每个技能的用例映射位于 `playground/cases.lock.json`。`vp run playground:check` 在出现漂移时失败。
-- Cursor-only 处理以 `playground/AGENTS.md` 与 lock 为准：只有依赖 Cursor 专属能力的技能才排除、不获得用例；仅在正文提及的技能记入 `CURSOR_MENTION_REVIEWED` 后仍可运行。因此 `--all` 覆盖全部可运行用例。
+- 场景 prompt 保持自然用户请求，不点名工具、不展开调用参数。
+- 运行中无人回答提问。`run-case` 自行回答 `ask_user_question`：场景自带 `answers` 优先，否则取第一个选项或输入默认文本，并记录每次回答。
+- 模型由操作者选择，每条 RunRecord 记录实际路由。
+- 技能加载只是过程证据；语义效果由审核侧车判定，pending 不算通过。
+- raw 四态 observed/gap/blocked/unobserved；adapted 三态 verified/not-verified/inconclusive。
+- 不恢复 cases.lock、审批流、旧 SkillCase、Finding 或 `reports/skill-audit.md`。
