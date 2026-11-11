@@ -249,11 +249,9 @@ describe("plugin UI scenario registry", () => {
     }
   });
 
-  it("does not hard-code the configured test model in the scenario file", () => {
-    const config = JSON.parse(readFileSync(join(repository, "playground/config.json"), "utf8")) as {
-      testModel: { model: string };
-    };
+  it("keeps the scenario free of literal provider and model routes", () => {
     const source = readFileSync(join(repository, "playground/scenarios/plugin-ui.ts"), "utf8");
-    expect(source).not.toContain(config.testModel.model);
+    expect(source).toContain("{{model}}");
+    expect(source).not.toMatch(/["'][a-z0-9-]+\/[a-z0-9.-]+["']/);
   });
 });
