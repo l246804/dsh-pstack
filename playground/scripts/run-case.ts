@@ -1,51 +1,48 @@
-// Run one skill case against one prepared worker's web instance end to end:
-// materialize the case workspace, drive the real composer in one browser process,
-// locate the session it created, wait for turn/end (or a probe window), then persist
-// evidence plus a verdict. In probe mode the turn is aborted at the window's end and
-// the evidence is marked truncated. A missing session or an unreadable session log is
-// an infrastructure error: retry once with a fresh session, then exit 2 (not a FAIL).
-
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { Mode, SessionEvidence, SkillCase, ToolCallEvidence } from "../types";
-import { createBrowserSession, type BrowserSession } from "./lib/browser";
-import { loadCase, loadCaseFile } from "./lib/cases";
+import type { BehaviorScenario, Phase, RunRecord, SessionFacts, TestTarget } from "../types.ts";
+import { createBrowserSession, type BrowserSession } from "./lib/browser.ts";
 import {
-  buildVerdict,
+  assertExpectedEntry,
+  assertSafeRecord,
   digestSession,
+  evaluateAssertions,
+  expectedWorkspace,
+  pendingSemanticReview,
   readSessionEvents,
-  toSessionEvidence,
+  recordFileName,
+  sessionFacts,
+  verdictFor,
   type SessionDigest,
-} from "./lib/evidence";
-import { readWebUrl } from "./lib/env";
-import { workerPaths, type WorkerPaths } from "./lib/worker";
+} from "./lib/evidence.ts";
+import { readHomePlan, readPlaygroundConfig, readWebUrl, CONFIG_FILE } from "./lib/env.ts";
+import { createEnvironment, environmentMatrix, REPORT_DIRECTORY } from "./lib/run-metadata.ts";
+import { loadScenario } from "./lib/scenarios.ts";
+import { workerPaths, type WorkerPaths } from "./lib/worker.ts";
 
 const COMPOSER_SELECTOR = '[data-composer-input="true"]';
 const NEW_SESSION_LABEL = "新会话";
-const DEFAULT_WAIT_SECONDS = 900;
 const POLL_INTERVAL_MS = 2_000;
-/** Stage-one short-probe window per case kind, in seconds. */
-const DEFAULT_PROBE_SECONDS: Record<SkillCase["kind"], number> = {
-  behavior: 300,
-  "principle-light": 120,
-};
 
-/** A failure that is the harness's fault, not the case's: no session, or an unreadable log. */
 class InfraError extends Error {}
-
-function isEnoent(error: unknown): boolean {
-  return (error as NodeJS.ErrnoException | null)?.code === "ENOENT";
-}
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-const sleep = (ms: number): void => {
+function sleep(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-};
+}
 
 interface SessionFile {
   id: string;
@@ -55,16 +52,14 @@ interface SessionFile {
 function listSessionFiles(paths: WorkerPaths): SessionFile[] {
   const root = join(paths.home, "sessions");
   if (!existsSync(root)) return [];
-  const files: SessionFile[] = [];
-  for (const slug of readdirSync(root)) {
-    const slugDir = join(root, slug);
-    if (!statSync(slugDir).isDirectory()) continue;
-    for (const id of readdirSync(slugDir)) {
-      const file = join(slugDir, id, "session.v4.jsonl.zstd");
-      if (existsSync(file)) files.push({ id, file });
-    }
-  }
-  return files;
+  return readdirSync(root).flatMap((slug) => {
+    const directory = join(root, slug);
+    if (!statSync(directory).isDirectory()) return [];
+    return readdirSync(directory).flatMap((id) => {
+      const file = join(directory, id, "session.v4.jsonl.zstd");
+      return existsSync(file) ? [{ id, file }] : [];
+    });
+  });
 }
 
 function firstUserText(events: ReturnType<typeof readSessionEvents>): string {
@@ -76,45 +71,32 @@ function firstUserText(events: ReturnType<typeof readSessionEvents>): string {
     const text = (content ?? [])
       .map((part) => (part.type === "text" ? (part.text ?? "") : ""))
       .join("");
-    if (text !== "") return text;
+    if (text) return text;
   }
   return "";
 }
 
-function waitFor(predicate: () => boolean, timeoutMs: number, intervalMs = 500): boolean {
+function waitFor(predicate: () => boolean, timeoutMs: number): boolean {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (predicate()) return true;
-    sleep(intervalMs);
+    sleep(500);
   }
   return predicate();
 }
 
-/** Dismiss the preview notice if a fresh profile still shows it. */
 function dismissPreview(session: BrowserSession): void {
-  const body = session.eval<string>("document.body.innerText");
-  if (!body.includes("预览版说明")) return;
+  if (!session.eval<string>("document.body.innerText").includes("预览版说明")) return;
   session.eval<boolean>(
-    `(() => {
-      const button = [...document.querySelectorAll("button")].find((element) => element.innerText.trim() === "继续");
-      if (!button) return false;
-      button.click();
-      return true;
-    })()`,
+    `(() => { const button = [...document.querySelectorAll("button")].find((element) => element.innerText.trim() === "继续"); if (!button) return false; button.click(); return true; })()`,
   );
   session.wait(2000);
 }
 
-/**
- * Create a session inside the case's own workspace when its sidebar row exposes the
- * per-workspace new-session action, else fall back to the header button (single
- * workspace / smoke). Without this, every case would land in whichever workspace is
- * most recent and lose its own workspaceFiles.
- */
-function startSession(session: BrowserSession, workspaceTitle: string): string {
-  const viaWorkspace = session.eval<string>(
+function startSession(session: BrowserSession, scenarioId: string): void {
+  const started = session.eval<string>(
     `(() => {
-      const title = ${JSON.stringify(workspaceTitle)};
+      const title = ${JSON.stringify(scenarioId)};
       const button = [...document.querySelectorAll("button")].find((element) => {
         const label = element.getAttribute("aria-label") || "";
         return label.includes(title) && (label.includes("新建会话") || label.toLowerCase().includes("new session"));
@@ -125,25 +107,15 @@ function startSession(session: BrowserSession, workspaceTitle: string): string {
       return "none";
     })()`,
   );
-  if (viaWorkspace === "none")
-    throw new Error(`could not find a "${NEW_SESSION_LABEL}" button to start a session`);
-  return viaWorkspace;
+  if (started === "none") throw new Error("could not start a session in the scenario workspace");
 }
 
-/**
- * First-line display labels for the agent presets a case may need. The adapted round
- * runs pstack cases under `poteto-mode` so the model carries the skill-routing
- * instructions; without that preset the hidden pstack skills never enter the catalog.
- */
 const PRESET_LABELS: Record<string, string[]> = {
   "poteto-mode": ["Poteto 模式", "Poteto mode"],
-  "poteto-mode-creator": ["Poteto 创造模式", "Poteto Creator mode"],
   standard: ["标准模式", "Standard mode"],
 };
 
-/** Open the composer's preset menu and pick a preset by its display label. */
-function selectPreset(session: BrowserSession, presetId: string): string {
-  const labels = PRESET_LABELS[presetId] ?? [presetId];
+function selectPreset(session: BrowserSession, preset: string): void {
   const seat = session.eval<string>(
     `(() => {
       const button = [...document.querySelectorAll("button")].find((element) =>
@@ -151,44 +123,36 @@ function selectPreset(session: BrowserSession, presetId: string): string {
         (element.getAttribute("aria-haspopup") === "menu" && !element.getAttribute("aria-label") && /模式|Mode/.test(element.innerText || ""))
       );
       if (!button) return "no-seat";
-      const before = (button.innerText || "").trim();
-      button.click();
-      return before || "clicked";
+      button.click(); return "clicked";
     })()`,
   );
-  if (seat === "no-seat") return "no-seat";
+  if (seat === "no-seat") throw new InfraError("preset selector is unavailable");
   session.wait(900);
   const picked = session.eval<string>(
     `(() => {
-      const labels = ${JSON.stringify(labels)};
-      const items = [...document.querySelectorAll("[role=menuitem]")];
-      const item = items.find((element) => {
-        const text = (element.innerText || "").trim();
-        return labels.some((label) => text.startsWith(label));
-      });
+      const labels = ${JSON.stringify(PRESET_LABELS[preset] ?? [preset])};
+      const item = [...document.querySelectorAll("[role=menuitem]")].find((element) => labels.some((label) => (element.innerText || "").trim().startsWith(label)));
       if (!item) return "no-item";
-      item.click();
-      return (item.innerText || "").trim().split("\\n")[0];
+      item.click(); return "selected";
     })()`,
   );
+  if (picked !== "selected") throw new InfraError(`could not select preset ${preset}`);
   session.wait(900);
-  return picked;
 }
 
-function materializeWorkspace(
-  paths: WorkerPaths,
-  caseId: string,
-  files: Record<string, string>,
-): string {
-  const workspaceDir = join(paths.workspaceRoot, caseId);
-  rmSync(workspaceDir, { recursive: true, force: true });
-  mkdirSync(workspaceDir, { recursive: true });
-  for (const [relative, content] of Object.entries(files)) {
-    const target = join(workspaceDir, relative);
+function materializeWorkspace(paths: WorkerPaths, scenario: BehaviorScenario): string {
+  const workspace = join(paths.workspaceRoot, scenario.id);
+  rmSync(workspace, { recursive: true, force: true });
+  mkdirSync(workspace, { recursive: true });
+  for (const [relative, content] of Object.entries(scenario.workspace.files)) {
+    const target = join(workspace, relative);
+    if (target !== workspace && !target.startsWith(`${workspace}/`)) {
+      throw new Error(`fixture path escapes workspace: ${relative}`);
+    }
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, content);
   }
-  return workspaceDir;
+  return workspace;
 }
 
 interface MatchResult {
@@ -196,7 +160,6 @@ interface MatchResult {
   file: string;
 }
 
-/** Find the session whose first user message contains the prompt, created after `startedAtMs`. */
 function findMatchingSession(
   paths: WorkerPaths,
   before: Set<string>,
@@ -204,184 +167,90 @@ function findMatchingSession(
   prompt: string,
 ): MatchResult | null {
   for (const { id, file } of listSessionFiles(paths)) {
-    // The app creates a blank session on open and reuses it on "新会话", so an id in
-    // `before` can still be the target once its zstd log is rewritten. mtime tells us
-    // the log moved after we started sending.
-    const recent = !before.has(id) || statSync(file).mtimeMs >= startedAtMs - 2000;
-    if (!recent) continue;
+    if (before.has(id) && statSync(file).mtimeMs < startedAtMs - 2000) continue;
     const events = readSessionEvents(file);
-    if (events.length === 0) continue;
-    if (!firstUserText(events).includes(prompt)) continue;
-    return { id, file };
+    if (firstUserText(events).includes(prompt)) return { id, file };
   }
   return null;
 }
 
-function sessionHasTurnEnd(file: string): boolean {
-  return readSessionEvents(file).some((event) => event.type === "turn/end");
-}
-
-/** Poll until the matched session reaches turn/end or `waitMs` elapses, returning the best match. */
-function waitForMatch(
-  paths: WorkerPaths,
-  before: Set<string>,
-  startedAtMs: number,
-  prompt: string,
-  waitMs: number,
-  onPoll?: () => void,
-): { match: MatchResult | null; ended: boolean } {
-  const deadline = Date.now() + waitMs;
-  let match: MatchResult | null = null;
-  while (Date.now() < deadline) {
-    if (onPoll) onPoll();
-    match = findMatchingSession(paths, before, startedAtMs, prompt);
-    if (match && sessionHasTurnEnd(match.file)) return { match, ended: true };
-    sleep(POLL_INTERVAL_MS);
-  }
-  if (!match) match = findMatchingSession(paths, before, startedAtMs, prompt);
-  return { match, ended: match ? sessionHasTurnEnd(match.file) : false };
-}
-
-/**
- * Click the stop button to abort an in-flight turn. First an aria-label match, then the
- * visible "停止" label, then the last enabled svg button as a fallback.
- */
-function stopInFlightTurn(session: BrowserSession): string {
-  return session.eval<string>(
-    `(() => {
-      const buttons = [...document.querySelectorAll("button")];
-      const aria = buttons.find((button) => /停止|stop/i.test(button.getAttribute("aria-label") || ""));
-      if (aria) { aria.click(); return "aria"; }
-      const text = buttons.find((button) => button.innerText.trim() === "停止");
-      if (text) { text.click(); return "text"; }
-      const withSvg = buttons.filter((button) => !button.disabled && button.querySelector("svg"));
-      const last = withSvg.at(-1);
-      if (last) { last.click(); return "svg"; }
-      return "none";
-    })()`,
-  );
-}
-
-interface AttemptOutcome {
-  digest: SessionDigest;
-  matchFile: string;
-  truncated: boolean;
-  autoAnswers: Array<{ question: string; answer: string }>;
-}
-
-/** Default free-text answer when a question offers no options and the case declares nothing. */
-const DEFAULT_ANSWER_TEXT = "按你的最佳判断继续";
-
-/**
- * Answer any open ask_user_question card as the absent user would, so an unattended case
- * keeps moving instead of aborting at the question. A case's own `answers` rules win; for
- * anything unmatched the first option is taken, or the default text is typed when there
- * are no options. Every answer is recorded for the evidence and the report.
- */
 function answerPendingQuestions(
   session: BrowserSession,
-  skillCase: SkillCase,
+  scenario: BehaviorScenario,
   log: Array<{ question: string; answer: string }>,
 ): void {
   const raw = session.eval<string>(
     `(() => {
-      const rules = ${JSON.stringify(skillCase.answers ?? [])};
-      const fallback = ${JSON.stringify(DEFAULT_ANSWER_TEXT)};
+      const rules = ${JSON.stringify(scenario.answers ?? [])};
       const visible = (el) => !!el && (el.offsetParent !== null || el.getClientRects().length > 0);
       const containers = [...document.querySelectorAll("[data-question-key]")].filter(visible);
-      if (containers.length === 0) return "[]";
-      const setValue = (input, text) => {
-        const proto = input.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-        const setter = Object.getOwnPropertyDescriptor(proto, "value").set;
-        setter.call(input, text);
-        input.dispatchEvent(new Event("input", { bubbles: true }));
-      };
+      if (!containers.length) return "[]";
       const actions = [];
       for (const c of containers) {
         const question = (c.innerText || "").trim().split("\\n").slice(0, 3).join(" ").slice(0, 300);
         const rule = rules.find((r) => question.includes(r.match));
         const rows = [...c.querySelectorAll("[data-option-row]")].filter(visible);
         let answer = "";
-        if (rule && rule.selected && rule.selected.length) {
+        if (rule?.selected?.length) {
           for (const label of rule.selected) {
             const row = rows.find((r) => ((r.getAttribute("data-option-line") || r.innerText || "")).includes(label));
             if (row) { row.click(); answer += label + " "; }
           }
         } else if (!rule || (!rule.selected && !rule.custom)) {
-          if (rows.length) {
-            rows[0].click();
-            answer = (rows[0].getAttribute("data-option-line") || rows[0].innerText || "").trim();
-          }
+          if (rows.length) { rows[0].click(); answer = (rows[0].getAttribute("data-option-line") || rows[0].innerText || "").trim(); }
         }
-        let custom = rule && rule.custom ? rule.custom : "";
-        if (!custom && rows.length === 0) custom = fallback;
+        let custom = rule?.custom ?? "";
+        if (!custom && rows.length === 0) custom = "按你的最佳判断继续";
         const input = c.querySelector("[data-question-reply] textarea, [data-question-reply] input, textarea, input:not([type=checkbox]):not([type=radio])");
         if (custom && input) {
-          setValue(input, custom);
+          const proto = input.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          Object.getOwnPropertyDescriptor(proto, "value").set.call(input, custom);
+          input.dispatchEvent(new Event("input", { bubbles: true }));
           answer = answer ? answer + " / " + custom : custom;
         }
-        actions.push({ question, answer: answer || "(clicked first option)" });
+        actions.push({ question, answer });
       }
       const scope = containers[0].closest("[role=dialog]") || containers[0].parentElement?.parentElement?.parentElement || containers[0];
-      const inScope = [...scope.querySelectorAll("button")].filter((b) => !b.disabled && visible(b));
-      const submit = inScope.find((b) => /回复|提交|reply|submit/i.test((b.getAttribute("aria-label") || "") + " " + (b.innerText || "")));
-      if (submit) { submit.click(); return JSON.stringify(actions); }
-      const next = inScope.find((b) => /下一|next/i.test((b.getAttribute("aria-label") || "") + " " + (b.innerText || "")));
-      if (next) { next.click(); return JSON.stringify(actions); }
+      const buttons = [...scope.querySelectorAll("button")].filter((b) => !b.disabled && visible(b));
+      const submit = buttons.find((b) => /回复|提交|reply|submit/i.test((b.getAttribute("aria-label") || "") + " " + (b.innerText || "")));
+      if (submit) submit.click();
+      else buttons.find((b) => /下一|next/i.test((b.getAttribute("aria-label") || "") + " " + (b.innerText || "")))?.click();
       return JSON.stringify(actions);
     })()`,
   );
   try {
-    const parsed = JSON.parse(raw) as Array<{ question: string; answer: string }>;
-    for (const entry of parsed) {
-      log.push(entry);
-      console.log(`[run-case] auto-answered "${entry.question}" -> ${entry.answer}`);
-    }
+    log.push(...(JSON.parse(raw) as Array<{ question: string; answer: string }>));
   } catch {
-    // no question card this poll
+    // The browser returned no complete question card.
   }
 }
 
 interface AttemptInput {
-  url: string;
   paths: WorkerPaths;
-  skillCase: SkillCase;
-  workerIndex: number;
-  waitMs: number;
-  probeSeconds: number | null;
-  timeoutSeconds: number;
+  scenario: BehaviorScenario;
+  url: string;
+  expectedTarget: TestTarget;
   screenshotFile: string;
-  /** Agent preset display id to select before sending; adapted rounds use poteto-mode. */
-  preset?: string;
+  expectedPreset: string;
 }
 
-/**
- * One full attempt against a freshly opened browser session: open, start a session, send
- * the prompt, locate the created session, wait for turn/end or the probe window, and
- * digest the log. Throws InfraError when no session appears or its log cannot be read.
- */
-function attemptCase(input: AttemptInput): AttemptOutcome {
-  const { url, paths, skillCase, workerIndex, waitMs, probeSeconds, timeoutSeconds, preset } =
-    input;
-  const caseId = skillCase.id;
-  const workerTag = `w${workerIndex}`;
-  const autoAnswers: Array<{ question: string; answer: string }> = [];
+function attemptScenario(input: AttemptInput): {
+  digest: SessionDigest;
+  file: string;
+  answers: SessionFacts["autoAnswers"];
+} {
+  const { paths, scenario, url, screenshotFile, expectedPreset } = input;
+  const preset = expectedPreset;
   const session = createBrowserSession({
-    session: `w${workerIndex}`,
+    session: `${paths.environmentId}-w${paths.index}`,
     browserDir: paths.browserDir,
   });
+  const autoAnswers: Array<{ question: string; answer: string }> = [];
   try {
     session.open(url);
     session.wait(6000);
     dismissPreview(session);
-
-    const before = new Set(listSessionFiles(paths).map((entry) => entry.id));
-    const startedAtMs = Date.now();
-    const startedVia = startSession(session, caseId);
-    console.log(
-      `[run-case] worker ${workerIndex} started session via ${startedVia} for workspace "${caseId}"`,
-    );
-
+    startSession(session, scenario.id);
     session.wait(2500);
     if (
       !waitFor(
@@ -392,249 +261,217 @@ function attemptCase(input: AttemptInput): AttemptOutcome {
         15_000,
       )
     ) {
-      throw new Error("composer did not appear after starting a session");
+      throw new InfraError("composer did not appear");
     }
-    if (preset !== undefined) {
-      const picked = selectPreset(session, preset);
-      console.log(`[run-case] preset -> ${picked} (wanted ${preset})`);
-      if (picked === "no-seat" || picked === "no-item") {
-        session.screenshot(input.screenshotFile);
-        throw new Error(`could not select agent preset "${preset}" (got ${picked})`);
-      }
-    }
-    session.click(COMPOSER_SELECTOR);
-    session.keyboardType(skillCase.prompt);
-    session.wait(800);
-    session.press("Enter");
-    session.wait(2000);
-
-    let composer = session.eval<string>(
-      `(document.querySelector(${JSON.stringify(COMPOSER_SELECTOR)})?.innerText ?? "").trim()`,
-    );
-    if (composer !== "") {
-      console.log("[run-case] composer not cleared after Enter; clicking the send button");
-      session.eval<boolean>(
-        `(() => {
-          const candidates = [...document.querySelectorAll("button")].filter((button) => !button.disabled && button.querySelector("svg"));
-          const last = candidates.at(-1);
-          if (!last) return false;
-          last.click();
-          return true;
-        })()`,
+    selectPreset(session, preset);
+    const prompt = scenario.turns[0]?.prompt;
+    if (!prompt) throw new Error("scenario has no turn");
+    const before = new Set(listSessionFiles(paths).map((entry) => entry.id));
+    let match: MatchResult | null = null;
+    for (const turn of scenario.turns) {
+      const turnStartedAt = Date.now();
+      const previousFiles = new Map(
+        listSessionFiles(paths).map((entry) => [
+          entry.file,
+          readSessionEvents(entry.file).filter((event) => event.type === "turn/end").length,
+        ]),
       );
-      session.wait(2500);
-      composer = session.eval<string>(
-        `(document.querySelector(${JSON.stringify(COMPOSER_SELECTOR)})?.innerText ?? "").trim()`,
-      );
-    }
-
-    const { match, ended } = waitForMatch(
-      paths,
-      before,
-      startedAtMs,
-      skillCase.prompt,
-      waitMs,
-      () => answerPendingQuestions(session, skillCase, autoAnswers),
-    );
-    let truncated = false;
-    if (!match) {
-      throw new InfraError(
-        `no session matching the prompt appeared within ${waitMs / 1000}s (worker ${workerTag})`,
-      );
-    }
-    if (!ended) {
-      if (probeSeconds === null) {
-        session.screenshot(input.screenshotFile);
-        throw new Error(
-          `no session matching the prompt reached turn/end within ${timeoutSeconds}s (screenshot ${input.screenshotFile})`,
-        );
-      }
-      const how = stopInFlightTurn(session);
+      session.click(COMPOSER_SELECTOR);
+      session.keyboardType(turn.prompt);
+      session.wait(800);
+      session.press("Enter");
       session.wait(2000);
-      truncated = true;
-      console.log(
-        `[run-case] probe window ${probeSeconds}s expired without turn/end; stopped turn via ${how} (truncated)`,
-      );
+      if (
+        session.eval<string>(
+          `(document.querySelector(${JSON.stringify(COMPOSER_SELECTOR)})?.innerText ?? "").trim()`,
+        ) !== ""
+      ) {
+        session.eval<boolean>(
+          `(() => { const buttons = [...document.querySelectorAll("button")].filter((b) => !b.disabled && b.querySelector("svg")); const last = buttons.at(-1); if (!last) return false; last.click(); return true; })()`,
+        );
+        session.wait(2500);
+      }
+      for (;;) {
+        try {
+          answerPendingQuestions(session, scenario, autoAnswers);
+          match = findMatchingSession(paths, before, turnStartedAt, turn.prompt);
+          if (match) {
+            const ends = readSessionEvents(match.file).filter(
+              (event) => event.type === "turn/end",
+            ).length;
+            if (ends > (previousFiles.get(match.file) ?? 0)) break;
+          }
+        } catch (error) {
+          throw new InfraError(error instanceof Error ? error.message : String(error));
+        }
+        sleep(POLL_INTERVAL_MS);
+      }
     }
+    if (!match) throw new InfraError("no session matched the scenario");
+    const matched: MatchResult = match;
     session.wait(1000);
-    session.screenshot(input.screenshotFile);
-
-    if (!existsSync(match.file))
-      throw new InfraError(`session log vanished before read: ${match.file} (worker ${workerTag})`);
-    let digest: SessionDigest;
+    session.screenshot(screenshotFile);
+    if (!existsSync(matched.file)) throw new InfraError("session log vanished before reading");
     try {
-      digest = digestSession(match.file, match.id, workerIndex);
+      return {
+        digest: digestSession(matched.file, matched.id, paths.index),
+        file: matched.file,
+        answers: autoAnswers,
+      };
     } catch (error) {
-      if (isEnoent(error))
-        throw new InfraError(`reading session log hit ENOENT: ${match.file} (worker ${workerTag})`);
-      throw error;
+      throw new InfraError(error instanceof Error ? error.message : String(error));
     }
-    // The session event records the preset at creation; we switch it in the composer
-    // before sending, so record the preset the turn actually ran under.
-    if (preset !== undefined) digest.agentPreset = preset;
-    return { digest, matchFile: match.file, truncated, autoAnswers };
   } finally {
     session.close();
   }
 }
 
-/** Evidence record for a run that failed on infrastructure twice; counted as ERROR, not FAIL. */
-function buildInfraEvidence(
-  caseId: string,
-  mode: Mode,
-  workerIndex: number,
-  workspaceDir: string,
-  capturedAt: string,
-): SessionEvidence {
+function blockedRecord(input: {
+  scenarioId: string;
+  phase: Phase;
+  paths: WorkerPaths;
+  configFile: string;
+  recordFile: string;
+  screenshotFile: string;
+  reason: string;
+}): RunRecord {
+  const config = readPlaygroundConfig(input.configFile);
+  const matrix = environmentMatrix(input.paths.environmentId);
+  const capturedAt = new Date().toISOString();
   return {
-    caseId,
-    mode,
-    worker: workerIndex,
-    truncated: false,
-    sessionId: "",
-    sessionFile: "",
-    workspacePath: workspaceDir,
-    agentPreset: null,
-    route: null,
-    skillLoads: [],
-    toolCalls: [],
-    turnEndReason: null,
-    assistantText: "",
+    scenarioId: input.scenarioId,
+    phase: input.phase,
+    environment: createEnvironment({
+      worker: input.paths.index,
+      matrix,
+      config,
+      phase: input.phase,
+      paths: input.paths,
+    }),
+    target: null,
+    session: null,
+    artifacts: { recordFile: input.recordFile, screenshotFile: input.screenshotFile, observed: [] },
+    semanticReview: pendingSemanticReview(),
+    verdict: verdictFor({
+      phase: input.phase,
+      failures: [],
+      semanticReview: pendingSemanticReview(),
+      blockedReason: input.reason,
+    }),
     capturedAt,
-    error: "infra",
-    verdict: { passed: false, failures: ["infra"] },
-    autoAnswers: [],
   };
 }
 
 async function main(): Promise<void> {
-  const mode = argValue("--mode") as Mode | undefined;
-  if (mode !== "raw" && mode !== "adapted")
+  const phase = argValue("--phase") as Phase | undefined;
+  const scenarioId = argValue("--scenario");
+  if ((phase !== "raw" && phase !== "adapted") || !scenarioId) {
     throw new Error(
-      "usage: run-case.ts --worker <k> --case <id> --mode raw|adapted [--probe <seconds>] [--timeout <seconds>] [--case-file <path>]",
+      "usage: run-case.ts --worker N --scenario ID --phase raw|adapted [--environment base] [--config FILE]",
     );
-  const workerIndex = Number(argValue("--worker") ?? "0");
-  if (!Number.isInteger(workerIndex) || workerIndex < 0)
-    throw new Error("--worker must be a non-negative integer");
-  const paths = workerPaths(workerIndex);
-
-  const caseFileArg = argValue("--case-file");
-  const caseIdArg = argValue("--case");
-  if (!caseFileArg && !caseIdArg) throw new Error("missing --case <id> (or --case-file <path>)");
-  const skillCase: SkillCase = caseFileArg
-    ? await loadCaseFile(caseFileArg)
-    : await loadCase(caseIdArg as string);
-  const caseId = skillCase.id;
-  if (!skillCase.stages.includes(mode))
-    console.warn(
-      `[run-case] ${caseId} does not list stage "${mode}" (has ${skillCase.stages.join(",")}); running anyway`,
-    );
-
-  const probeFlag = argValue("--probe");
-  const timeoutFlag = argValue("--timeout");
-  const timeoutSeconds = timeoutFlag !== undefined ? Number(timeoutFlag) : DEFAULT_WAIT_SECONDS;
-  if (!Number.isFinite(timeoutSeconds) || timeoutSeconds <= 0)
-    throw new Error("--timeout must be a positive number of seconds");
-  let probeSeconds: number | null;
-  if (probeFlag !== undefined) {
-    const parsed = Number(probeFlag);
-    if (!Number.isFinite(parsed) || parsed <= 0)
-      throw new Error("--probe must be a positive number of seconds");
-    probeSeconds = parsed;
-  } else if (timeoutFlag !== undefined) {
-    probeSeconds = null; // explicit --timeout runs the full wait, no short probe
-  } else {
-    probeSeconds = skillCase.probeSeconds ?? DEFAULT_PROBE_SECONDS[skillCase.kind];
   }
-  const waitMs = probeSeconds !== null ? probeSeconds * 1000 : timeoutSeconds * 1000;
-
-  // Adapted rounds run pstack cases under the poteto-mode preset so the model carries
-  // the skill-routing instructions; raw rounds keep the standard preset.
-  const presetArg = argValue("--preset");
-  const preset = presetArg ?? (mode === "adapted" ? "poteto-mode" : undefined);
-
-  const workspaceDir = materializeWorkspace(paths, caseId, skillCase.workspaceFiles);
-  const url = readWebUrl(paths);
-
-  const workerTag = `w${workerIndex}`;
+  const worker = Number(argValue("--worker") ?? "0");
+  if (!Number.isInteger(worker) || worker < 0) throw new Error("--worker must be non-negative");
+  const matrix = environmentMatrix(argValue("--environment"));
+  const paths = workerPaths(worker, matrix.id);
+  const preparedPhase = existsSync(paths.phaseFile)
+    ? readFileSync(paths.phaseFile, "utf8").trim()
+    : "";
+  if (preparedPhase !== phase)
+    throw new Error(`worker is prepared for ${preparedPhase || "nothing"}, not ${phase}`);
+  const scenario = loadScenario(scenarioId);
+  const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
+  const config = readPlaygroundConfig(configFile);
+  const expectedTarget = readHomePlan(paths);
+  const expectedPreset = phase === "raw" ? "standard" : "poteto-mode";
+  const workspace = materializeWorkspace(paths, scenario);
   const capturedAt = new Date().toISOString();
   const stamp = capturedAt.replace(/[:.]/g, "-");
-  const evidenceFile = join(paths.evidenceDir, `${workerTag}-${caseId}-${mode}-${stamp}.json`);
-  const screenshotFile = join(paths.evidenceDir, `${workerTag}-${caseId}-${mode}-${stamp}.png`);
-
-  const attemptInput: AttemptInput = {
-    url,
-    paths,
-    skillCase,
-    workerIndex,
-    waitMs,
-    probeSeconds,
-    timeoutSeconds,
-    screenshotFile,
-    preset,
-  };
-
-  let outcome: AttemptOutcome;
+  mkdirSync(paths.evidenceDir, { recursive: true });
+  const recordFile = join(paths.evidenceDir, recordFileName(scenarioId, phase, matrix.id, stamp));
+  const screenshotFile = recordFile.replace(/\.json$/, ".png");
+  let record: RunRecord;
   try {
-    outcome = attemptCase(attemptInput);
+    const outcome = attemptScenario({
+      paths,
+      scenario,
+      url: readWebUrl(paths),
+      expectedTarget,
+      screenshotFile,
+      expectedPreset,
+    });
+    const session = sessionFacts(outcome.digest, outcome.file, outcome.answers);
+    const failures = [
+      ...evaluateAssertions(scenario.assertions, session, workspace),
+      ...expectedWorkspace(workspace, session),
+      ...assertExpectedEntry(
+        scenario,
+        session,
+        outcome.digest.route ?? { provider: "", model: "", effort: "" },
+        expectedPreset,
+      ),
+    ];
+    if (
+      JSON.stringify(outcome.digest.route) !==
+      JSON.stringify({
+        provider: expectedTarget.provider,
+        model: expectedTarget.model,
+        effort: expectedTarget.effort,
+      })
+    ) {
+      failures.push("actual model route differs from testModel");
+    }
+    const semanticReview = pendingSemanticReview();
+    record = {
+      scenarioId,
+      phase,
+      environment: createEnvironment({ worker, matrix, config, phase, paths }),
+      target: outcome.digest.route,
+      session,
+      artifacts: {
+        recordFile,
+        screenshotFile,
+        observed: [
+          `skillLoads=${session.skillLoads.join(",") || "none"}`,
+          `toolCalls=${session.toolCalls.length}`,
+        ],
+      },
+      semanticReview,
+      verdict: verdictFor({ phase, failures, semanticReview }),
+      capturedAt,
+    };
   } catch (error) {
-    if (!(error instanceof InfraError)) throw error;
-    console.error(
-      `[run-case] INFRA ${workerTag} ${caseId}: ${error.message}; closing browser and retrying once with a fresh session`,
-    );
-    try {
-      outcome = attemptCase(attemptInput);
-    } catch (retryError) {
-      if (!(retryError instanceof InfraError)) throw retryError;
-      console.error(
-        `[run-case] ERROR ${workerTag} ${caseId}: infra retry failed: ${retryError.message}`,
-      );
-      const evidence = buildInfraEvidence(caseId, mode, workerIndex, workspaceDir, capturedAt);
-      mkdirSync(paths.evidenceDir, { recursive: true });
-      writeFileSync(evidenceFile, `${JSON.stringify(evidence, null, 2)}\n`);
-      console.log(`[run-case] ${workerTag} ${caseId} [${mode}] ERROR error=infra`);
-      console.log(`[run-case] evidence=${evidenceFile}`);
-      process.exitCode = 2;
-      return;
+    const reason = error instanceof Error ? error.message : String(error);
+    record = blockedRecord({
+      scenarioId,
+      phase,
+      paths,
+      configFile,
+      recordFile,
+      screenshotFile,
+      reason,
+    });
+    if (!(error instanceof InfraError)) {
+      record.artifacts.observed.push("scenario execution did not complete");
     }
   }
-
-  const evidence = toSessionEvidence(
-    outcome.digest,
-    caseId,
-    mode,
-    outcome.matchFile,
-    capturedAt,
-    outcome.truncated,
+  assertSafeRecord(
+    record,
+    Object.values(config.providers).map((provider) => provider.apiKey),
   );
-  const verdict = buildVerdict(skillCase.expect, evidence, workspaceDir);
-  evidence.verdict = { passed: verdict.passed, failures: verdict.failures };
-  if (outcome.autoAnswers.length > 0) evidence.autoAnswers = outcome.autoAnswers;
-  mkdirSync(paths.evidenceDir, { recursive: true });
-  writeFileSync(evidenceFile, `${JSON.stringify(evidence, null, 2)}\n`);
-
-  console.log(
-    `[run-case] ${workerTag} ${caseId} [${mode}] probe=${probeSeconds ?? "-"} truncated=${outcome.truncated} ${verdict.passed ? "PASS" : "FAIL"}`,
-  );
-  if (!verdict.passed) for (const failure of verdict.failures) console.log(`  - ${failure}`);
-  console.log(
-    `[run-case] route=${evidence.route ? `${evidence.route.provider}/${evidence.route.model}[${evidence.route.effort}]` : "unknown"} turnEnd=${evidence.turnEndReason ?? "none"}`,
-  );
-  console.log(
-    `[run-case] toolCalls=${summarizeCalls(evidence.toolCalls)} skillLoads=${evidence.skillLoads.join(", ") || "none"}`,
-  );
-  console.log(`[run-case] evidence=${evidenceFile}`);
-  console.log(JSON.stringify(verdict));
-  process.exitCode = verdict.passed ? 0 : 1;
-}
-
-function summarizeCalls(calls: ToolCallEvidence[]): string {
-  if (calls.length === 0) return "none";
-  const errors = calls.filter((call) => call.status === "error").map((call) => call.name);
-  return `${calls.length} total${errors.length > 0 ? `, errors: ${errors.join("/")}` : ", no errors"}`;
+  writeFileSync(recordFile, `${JSON.stringify(record, null, 2)}\n`);
+  console.log(`[run-case] ${scenarioId} ${phase} ${matrix.id} ${record.verdict.status}`);
+  console.log(`[run-case] evidence=${recordFile}`);
+  console.log(`[run-case] reports=${REPORT_DIRECTORY}`);
+  process.exitCode =
+    record.verdict.status === "verified"
+      ? 0
+      : record.verdict.status === "inconclusive" || record.verdict.status === "blocked"
+        ? 2
+        : 1;
 }
 
 main().catch((error: unknown) => {
   console.error(`[run-case] ERROR: ${error instanceof Error ? error.message : String(error)}`);
-  process.exit(1);
+  process.exitCode = 1;
 });

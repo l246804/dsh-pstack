@@ -1,17 +1,18 @@
-// Turn a persisted DSH session (session.v4.jsonl.zstd) into the evidence shape the
-// playground judges against, and evaluate a case's expect list from it.
-
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import type {
-  CaseVerdict,
-  Expectation,
-  Mode,
-  SessionEvidence,
+  Assertion,
+  BehaviorScenario,
+  Phase,
+  RunRecord,
+  SemanticReview,
+  SessionFacts,
+  TestTarget,
   ToolCallEvidence,
-} from "../../types";
+  Verdict,
+} from "../../types.ts";
 
 interface SessionEvent {
   type: string;
@@ -20,35 +21,25 @@ interface SessionEvent {
   data?: Record<string, unknown>;
 }
 
-export interface SessionDigest {
-  sessionId: string;
+export interface SessionDigest extends Omit<SessionFacts, "sessionFile" | "autoAnswers"> {
+  route: TestTarget | null;
   worker: number;
-  workspacePath: string | null;
-  agentPreset: string | null;
-  route: { provider: string; model: string; effort: string } | null;
-  skillLoads: string[];
-  toolCalls: ToolCallEvidence[];
-  turnEndReason: string | null;
-  assistantText: string;
-  userText: string;
 }
 
-/** zstdcat the session file. A partial or missing file yields [] so a poller can retry. */
 export function readSessionEvents(file: string): SessionEvent[] {
-  if (!existsSync(file)) return [];
+  if (!existsSync(file)) throw new Error(`session log is missing: ${file}`);
   const result = spawnSync("zstdcat", [file], { encoding: "utf8", maxBuffer: 256 * 1024 * 1024 });
-  if (result.status !== 0) return [];
-  const events: SessionEvent[] = [];
-  for (const line of (result.stdout ?? "").split("\n")) {
-    const trimmed = line.trim();
-    if (trimmed === "") continue;
-    try {
-      events.push(JSON.parse(trimmed) as SessionEvent);
-    } catch {
-      // a flushed tail can end mid-line; the next poll sees the whole record
-    }
-  }
-  return events;
+  if (result.status !== 0) throw new Error(`cannot decompress session log: ${file}`);
+  return (result.stdout ?? "")
+    .split("\n")
+    .filter((line) => line.trim() !== "")
+    .flatMap((line) => {
+      try {
+        return [JSON.parse(line) as SessionEvent];
+      } catch {
+        return [];
+      }
+    });
 }
 
 function textOfContent(content: unknown): string {
@@ -60,33 +51,43 @@ function textOfContent(content: unknown): string {
       }
       return "";
     })
-    .filter((text) => text !== "")
     .join("");
 }
 
-const SKILL_TOOLS = new Set(["skill", "pstack_skill", "pstack-skill"]);
+function parseArguments(raw: unknown): Record<string, unknown> {
+  if (typeof raw === "string") {
+    try {
+      return JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      return {};
+    }
+  }
+  return (raw as Record<string, unknown>) ?? {};
+}
 
 export function digestSession(file: string, sessionId: string, worker = 0): SessionDigest {
   const events = readSessionEvents(file);
   if (events.length === 0) throw new Error(`session file has no readable events: ${file}`);
-
   const toolCalls: ToolCallEvidence[] = [];
   const callsById = new Map<string, ToolCallEvidence>();
   const skillCallById = new Map<string, string>();
   const skillLoads: string[] = [];
   let workspacePath: string | null = null;
   let agentPreset: string | null = null;
-  let route: SessionDigest["route"] = null;
+  let route: TestTarget | null = null;
   let turnEndReason: string | null = null;
   const assistantParts: string[] = [];
   let userText = "";
-
   for (const event of events) {
     const data = event.data ?? {};
     switch (event.type) {
       case "session": {
         if (typeof event.cwd === "string") workspacePath = event.cwd;
         if (typeof event.agentPreset === "string") agentPreset = event.agentPreset;
+        break;
+      }
+      case "agent-preset/selected": {
+        if (typeof data.agentPreset === "string") agentPreset = data.agentPreset;
         break;
       }
       case "request/header": {
@@ -108,16 +109,14 @@ export function digestSession(file: string, sessionId: string, worker = 0): Sess
       case "tool/call": {
         const name = typeof data.name === "string" ? data.name : "";
         const callId = typeof data.callId === "string" ? data.callId : "";
-        const call: ToolCallEvidence = { name, status: "pending" };
+        const call = { name, status: "pending" };
         toolCalls.push(call);
-        if (callId) callsById.set(callId, call);
-        if (SKILL_TOOLS.has(name)) {
+        callsById.set(callId, call);
+        if (["skill", "pstack_skill", "pstack-skill"].includes(name)) {
           const args = parseArguments(data.arguments);
-          const skillName = typeof args.name === "string" ? args.name : "";
+          const skill = typeof args.name === "string" ? args.name : "";
           const resource = typeof args.resource === "string" ? args.resource : "";
-          // Record the attempt keyed by call id; only a successful result counts as a load.
-          if (skillName)
-            skillCallById.set(callId, resource ? `${skillName}#${resource}` : skillName);
+          if (skill) skillCallById.set(callId, resource ? `${skill}#${resource}` : skill);
         }
         break;
       }
@@ -125,31 +124,28 @@ export function digestSession(file: string, sessionId: string, worker = 0): Sess
         const message = data.message as
           | { isError?: boolean; content?: unknown; toolCallId?: string }
           | undefined;
-        if (!message) break;
-        const rawCallId = data.toolCallId ?? message.toolCallId;
-        const callId = typeof rawCallId === "string" ? rawCallId : "";
-        const call = callsById.get(callId);
-        if (!call) break;
+        const rawCallId = data.toolCallId ?? message?.toolCallId;
+        const call = callsById.get(typeof rawCallId === "string" ? rawCallId : "");
+        if (!message || !call) break;
         if (message.isError === true) {
           call.status = "error";
           call.errorText = textOfContent(message.content).slice(0, 2000);
         } else {
           call.status = "ok";
-          const loaded = skillCallById.get(callId);
-          if (loaded !== undefined) skillLoads.push(loaded);
+          const loaded = skillCallById.get(rawCallId as string);
+          if (loaded) skillLoads.push(loaded);
         }
         break;
       }
       case "assistant/message": {
-        const content = (data.message as { content?: unknown } | undefined)?.content;
-        const text = textOfContent(content);
-        if (text !== "") assistantParts.push(text);
+        const text = textOfContent((data.message as { content?: unknown } | undefined)?.content);
+        if (text) assistantParts.push(text);
         break;
       }
       case "user/message": {
         const source = data.source as { kind?: string } | undefined;
         const text = textOfContent(data.content);
-        if (userText === "" && source?.kind === "user" && text !== "") userText = text;
+        if (!userText && source?.kind === "user" && text) userText = text;
         break;
       }
       case "turn/end": {
@@ -161,168 +157,198 @@ export function digestSession(file: string, sessionId: string, worker = 0): Sess
         break;
     }
   }
-
   return {
     sessionId,
-    worker,
     workspacePath,
     agentPreset,
-    route,
     skillLoads,
     toolCalls,
     turnEndReason,
     assistantText: assistantParts.join("\n"),
     userText,
+    route,
+    worker,
   };
 }
 
-function parseArguments(raw: unknown): Record<string, unknown> {
-  if (typeof raw === "string") {
-    try {
-      return JSON.parse(raw) as Record<string, unknown>;
-    } catch {
-      return {};
-    }
-  }
-  return (raw as Record<string, unknown>) ?? {};
-}
-
-export function toSessionEvidence(
-  digest: SessionDigest,
-  caseId: string,
-  mode: Mode,
-  sessionFile: string,
-  capturedAt: string,
-  truncated: boolean,
-): SessionEvidence {
-  return {
-    caseId,
-    mode,
-    worker: digest.worker,
-    truncated,
-    sessionId: digest.sessionId,
-    sessionFile,
-    workspacePath: digest.workspacePath,
-    agentPreset: digest.agentPreset,
-    route: digest.route,
-    skillLoads: digest.skillLoads,
-    toolCalls: digest.toolCalls,
-    turnEndReason: digest.turnEndReason,
-    assistantText: digest.assistantText,
-    capturedAt,
-  };
-}
-
-/** Top-level skill loads only exist without a resource suffix; a resource read is not a reload. */
-function duplicateSkillLoads(skillLoads: string[]): string[] {
-  const counts = new Map<string, number>();
-  for (const entry of skillLoads) {
-    if (entry.includes("#")) continue;
-    counts.set(entry, (counts.get(entry) ?? 0) + 1);
-  }
-  return [...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name);
-}
-
-function retryAfterFailure(toolCalls: ToolCallEvidence[]): string[] {
-  const failures = new Set<string>();
-  for (let i = 0; i < toolCalls.length; i++) {
-    if (toolCalls[i].status !== "error") continue;
-    const name = toolCalls[i].name;
-    if (toolCalls.slice(i + 1).some((later) => later.name === name)) failures.add(name);
-  }
-  return [...failures];
-}
-
-/** Judge every expectation against the digest and the case workspace. Returns human-readable failures. */
-export function judgeExpectations(
-  expectations: Expectation[],
-  evidence: SessionEvidence,
-  workspaceDir: string,
+export function evaluateAssertions(
+  assertions: Assertion[],
+  session: SessionFacts,
+  workspace: string,
 ): string[] {
   const failures: string[] = [];
-  for (const expectation of expectations) {
-    switch (expectation.kind) {
+  for (const assertion of assertions) {
+    switch (assertion.kind) {
       case "turn-completed": {
-        // A short-probe run aborts the turn on purpose; that is not a defect.
-        if (evidence.truncated) break;
-        if (evidence.turnEndReason !== "completed") {
-          failures.push(
-            `turn-completed: turn ended with ${evidence.turnEndReason ?? "no turn/end"}`,
-          );
+        if (session.turnEndReason !== "completed") {
+          failures.push(`turn ended with ${session.turnEndReason ?? "no turn/end"}`);
         }
-        break;
-      }
-      case "no-tool-error": {
-        const errors = evidence.toolCalls.filter((call) => call.status === "error");
-        if (errors.length > 0)
-          failures.push(`no-tool-error: ${errors.map((call) => call.name).join(", ")}`);
-        break;
-      }
-      case "no-duplicate-skill-load": {
-        const duplicates = duplicateSkillLoads(evidence.skillLoads);
-        if (duplicates.length > 0)
-          failures.push(`no-duplicate-skill-load: ${duplicates.join(", ")}`);
-        break;
-      }
-      case "no-retry-after-failure": {
-        const retried = retryAfterFailure(evidence.toolCalls);
-        if (retried.length > 0) failures.push(`no-retry-after-failure: ${retried.join(", ")}`);
         break;
       }
       case "skill-loaded": {
-        const wanted = expectation.detail ?? "";
-        const loaded = evidence.skillLoads.some(
-          (entry) => entry.split("#")[0] === wanted || entry.split("#")[0].endsWith(`:${wanted}`),
-        );
-        if (!loaded) failures.push(`skill-loaded: ${wanted} was never loaded`);
+        const loaded = session.skillLoads.some((entry) => entry.split("#")[0] === assertion.skill);
+        if (!loaded) failures.push(`process evidence: ${assertion.skill} was not loaded`);
         break;
       }
-      case "preset-active": {
-        const wanted = expectation.detail ?? "";
-        if (evidence.agentPreset !== wanted)
-          failures.push(
-            `preset-active: session preset is ${evidence.agentPreset ?? "none"}, expected ${wanted}`,
-          );
+      case "no-tool-error": {
+        const errors = session.toolCalls.filter((call) => call.status === "error");
+        if (errors.length > 0)
+          failures.push(`tool errors: ${errors.map((call) => call.name).join(", ")}`);
         break;
       }
       case "artifact-contains": {
-        const detail = expectation.detail ?? "";
-        const marker = detail.indexOf("::");
-        const relativePath = marker >= 0 ? detail.slice(0, marker) : detail;
-        const needle = marker >= 0 ? detail.slice(marker + 2) : "";
-        const target = join(workspaceDir, relativePath);
-        if (!existsSync(target)) {
-          failures.push(`artifact-contains: missing ${relativePath}`);
-        } else if (needle !== "" && !readFileSync(target, "utf8").includes(needle)) {
-          failures.push(`artifact-contains: ${relativePath} lacks "${needle}"`);
+        const target = resolve(workspace, assertion.path);
+        if (target !== workspace && !target.startsWith(`${workspace}/`)) {
+          failures.push(`artifact escapes workspace: ${assertion.path}`);
+        } else if (!existsSync(target)) {
+          failures.push(`missing artifact: ${assertion.path}`);
+        } else if (!readFileSync(target, "utf8").includes(assertion.text)) {
+          failures.push(`artifact ${assertion.path} lacks ${JSON.stringify(assertion.text)}`);
         }
         break;
       }
-      default: {
-        const unknown = expectation.kind as string;
-        failures.push(`unknown expectation kind: ${unknown}`);
+      case "assistant-contains": {
+        if (!session.assistantText.includes(assertion.text)) {
+          failures.push(`assistant reply lacks ${JSON.stringify(assertion.text)}`);
+        }
+        break;
       }
     }
   }
   return failures;
 }
 
-export function buildVerdict(
-  expectations: Expectation[],
-  evidence: SessionEvidence,
-  workspaceDir: string,
-): CaseVerdict {
-  const failures = judgeExpectations(expectations, evidence, workspaceDir);
-  if (evidence.workspacePath !== null && evidence.workspacePath !== workspaceDir) {
-    failures.unshift(
-      `workspace: session ran in ${evidence.workspacePath}, expected ${workspaceDir}`,
-    );
-  }
+export function pendingSemanticReview(): SemanticReview {
   return {
-    caseId: evidence.caseId,
-    mode: evidence.mode,
-    passed: failures.length === 0,
-    failures,
-    evidence,
+    status: "pending",
+    reason: "No reviewer has compared the observed effect with the scenario rubric.",
   };
+}
+
+export function verdictFor(input: {
+  phase: Phase;
+  failures: string[];
+  semanticReview: SemanticReview;
+  blockedReason?: string;
+}): Verdict {
+  if (input.blockedReason) {
+    return input.phase === "raw"
+      ? { phase: "raw", status: "blocked", reason: input.blockedReason }
+      : { phase: "adapted", status: "inconclusive", reason: input.blockedReason };
+  }
+  if (input.semanticReview.status === "pending" || input.semanticReview.status === "inconclusive") {
+    const reason = input.semanticReview.reason;
+    return input.phase === "raw"
+      ? { phase: "raw", status: "unobserved", reason }
+      : { phase: "adapted", status: "inconclusive", reason };
+  }
+  if (input.phase === "raw") {
+    return input.failures.length > 0 || input.semanticReview.status === "gap"
+      ? { phase: "raw", status: "gap", gaps: [...input.failures, input.semanticReview.reason] }
+      : { phase: "raw", status: "observed", gaps: [] };
+  }
+  return input.failures.length === 0 && input.semanticReview.status === "supported"
+    ? { phase: "adapted", status: "verified" }
+    : {
+        phase: "adapted",
+        status: "not-verified",
+        failures: [...input.failures, input.semanticReview.reason],
+      };
+}
+
+export function assertSafeRecord(record: RunRecord, apiKeys: string[]): void {
+  const serialized = JSON.stringify(record);
+  for (const apiKey of apiKeys) {
+    if (apiKey && serialized.includes(apiKey)) throw new Error("RunRecord contains an apiKey");
+  }
+}
+
+export function latestRecords(records: RunRecord[]): RunRecord[] {
+  const latest = new Map<string, RunRecord>();
+  for (const record of records) {
+    const key = `${record.scenarioId}\0${record.phase}\0${record.environment.matrix.id}`;
+    const current = latest.get(key);
+    if (!current || record.capturedAt > current.capturedAt) latest.set(key, record);
+  }
+  return [...latest.values()];
+}
+
+export function sessionFacts(
+  digest: SessionDigest,
+  file: string,
+  autoAnswers: SessionFacts["autoAnswers"],
+): SessionFacts {
+  return {
+    sessionId: digest.sessionId,
+    sessionFile: file,
+    workspacePath: digest.workspacePath,
+    agentPreset: digest.agentPreset,
+    skillLoads: digest.skillLoads,
+    toolCalls: digest.toolCalls,
+    turnEndReason: digest.turnEndReason,
+    assistantText: digest.assistantText,
+    userText: digest.userText,
+    autoAnswers,
+  };
+}
+
+export function assertExpectedEntry(
+  scenario: BehaviorScenario,
+  session: SessionFacts,
+  target: TestTarget,
+  expectedPreset: string,
+): string[] {
+  const failures: string[] = [];
+  if (session.userText !== scenario.turns[0]?.prompt)
+    failures.push("natural-language entry differs");
+  if (session.agentPreset !== expectedPreset) failures.push(`expected preset ${expectedPreset}`);
+  if (!target.provider || !target.model || !target.effort)
+    failures.push("actual model route is missing");
+  return failures;
+}
+
+export function assertSameEntry(
+  raw: RunRecord,
+  adapted: RunRecord,
+  scenario: BehaviorScenario,
+): string[] {
+  const failures: string[] = [];
+  if (raw.scenarioId !== scenario.id || adapted.scenarioId !== scenario.id) {
+    failures.push("records do not belong to the selected scenario");
+  }
+  if (raw.environment.configHash !== adapted.environment.configHash) {
+    failures.push("raw and adapted configuration hashes differ");
+  }
+  if (raw.environment.upstreamRevision !== adapted.environment.upstreamRevision) {
+    failures.push("raw and adapted upstream revisions differ");
+  }
+  if (JSON.stringify(raw.target) !== JSON.stringify(adapted.target)) {
+    failures.push("raw and adapted actual model routes differ");
+  }
+  if (
+    raw.session?.userText !== scenario.turns[0]?.prompt ||
+    adapted.session?.userText !== scenario.turns[0]?.prompt
+  ) {
+    failures.push("raw and adapted natural-language entries differ from the scenario");
+  }
+  return failures;
+}
+
+export function expectedWorkspace(workspace: string, session: SessionFacts): string[] {
+  return session.workspacePath !== null && session.workspacePath !== workspace
+    ? [`session ran in ${session.workspacePath}, expected ${workspace}`]
+    : [];
+}
+
+export function recordFileName(
+  scenarioId: string,
+  phase: Phase,
+  environmentId: string,
+  stamp: string,
+): string {
+  return `${scenarioId}-${phase}-${environmentId}-${stamp}.json`;
+}
+
+export function archivedRecordPath(root: string, record: RunRecord): string {
+  return join(root, record.environment.matrix.id, record.phase, `${record.scenarioId}.json`);
 }

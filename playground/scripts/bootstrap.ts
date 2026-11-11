@@ -5,9 +5,9 @@
 
 import { join } from "node:path";
 
-import { createBrowserSession } from "./lib/browser";
-import { readHomePlan, readWebUrl, readWorkspaceStore } from "./lib/env";
-import { listWorkers, workerPaths, type WorkerPaths } from "./lib/worker";
+import { createBrowserSession } from "./lib/browser.ts";
+import { readHomePlan, readWebUrl, readWorkspaceStore } from "./lib/env.ts";
+import { listWorkers, workerPaths, type WorkerPaths } from "./lib/worker.ts";
 
 const CONTINUE_LABEL = "继续";
 const PREVIEW_NOTICE = "预览版说明";
@@ -18,8 +18,9 @@ function argValue(flag: string): string | undefined {
 }
 
 function selectWorkers(): WorkerPaths[] {
+  const environment = argValue("--environment") ?? "base";
   if (process.argv.includes("--all")) {
-    const workers = listWorkers();
+    const workers = listWorkers(environment);
     if (workers.length === 0)
       throw new Error("no prepared workers found; run playground:prepare first");
     return workers;
@@ -29,10 +30,10 @@ function selectWorkers(): WorkerPaths[] {
     const index = Number(workerFlag);
     if (!Number.isInteger(index) || index < 0)
       throw new Error("--worker must be a non-negative integer");
-    return [workerPaths(index)];
+    return [workerPaths(index, environment)];
   }
-  const workers = listWorkers();
-  return workers.length > 0 ? [workers[0]] : [workerPaths(0)];
+  const workers = listWorkers(environment);
+  return workers.length > 0 ? [workers[0] as WorkerPaths] : [workerPaths(0, environment)];
 }
 
 function validateWorker(paths: WorkerPaths): string[] {
@@ -41,7 +42,7 @@ function validateWorker(paths: WorkerPaths): string[] {
   const { defaultTitle } = readWorkspaceStore(paths);
 
   const session = createBrowserSession({
-    session: `w${paths.index}`,
+    session: `${paths.environmentId}-w${paths.index}`,
     browserDir: paths.browserDir,
   });
   const failures: string[] = [];

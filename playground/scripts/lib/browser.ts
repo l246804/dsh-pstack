@@ -8,10 +8,10 @@ import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { REPO_ROOT } from "./env";
+import { REPOSITORY_ROOT } from "./run-metadata.ts";
 
 const BIN = join(
-  REPO_ROOT,
+  REPOSITORY_ROOT,
   "node_modules",
   ".bin",
   process.platform === "win32" ? "agent-browser.cmd" : "agent-browser",

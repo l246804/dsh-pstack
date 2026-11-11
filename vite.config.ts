@@ -77,6 +77,10 @@ export default defineConfig({
         command: "vpx port/release-compatibility.ts --check",
         cache: false,
       },
+      "playground:raw-generate": {
+        command: "vpx playground/raw/generate-cli.ts",
+        cache: false,
+      },
       "playground:prepare": {
         command: "vpx playground/scripts/prepare.ts",
         cache: false,
@@ -87,18 +91,6 @@ export default defineConfig({
       },
       "playground:stop": {
         command: "vpx playground/scripts/stop.ts",
-        cache: false,
-      },
-      "playground:check": {
-        command: "vpx playground/scripts/check.ts",
-        cache: false,
-      },
-      "playground:lock": {
-        command: "vpx playground/scripts/lock.ts",
-        cache: false,
-      },
-      "playground:approve": {
-        command: "vpx playground/scripts/approve.ts",
         cache: false,
       },
       "playground:status": {

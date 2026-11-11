@@ -1,10 +1,3 @@
-// Collect the evidence files for one stage, across every worker, into a Markdown
-// report: per-case verdict, worker, truncation, route, tool errors, duplicate skill
-// loads, the reasons behind each failure, and the archived evidence path. Before
-// writing the report it copies this round's evidence JSON and screenshot into
-// playground/reports/evidence/<round>-<date>/ so the report's evidence column points
-// at a durable file rather than a worker dir that the next prepare may clear.
-
 import {
   copyFileSync,
   existsSync,
@@ -13,181 +6,181 @@ import {
   readFileSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { basename, dirname, join, resolve, sep } from "node:path";
 
-import type { Expectation, Mode, SessionEvidence } from "../types";
-import { loadCase, loadSmokeCase } from "./lib/cases";
-import { buildVerdict, digestSession, toSessionEvidence } from "./lib/evidence";
-import { PLAYGROUND_DIR, REPORT_DIR } from "./lib/env";
-import { progressFilePath, readProgress } from "./lib/progress";
-import { WORKERS_DIR, workerPaths } from "./lib/worker";
+import type { Phase, RunRecord } from "../types.ts";
+import { assertSameEntry, latestRecords } from "./lib/evidence.ts";
+import {
+  environmentMatrix,
+  PLAYGROUND_DIRECTORY,
+  REPORT_DIRECTORY,
+  workersDirectory,
+} from "./lib/run-metadata.ts";
+import { loadScenario, listScenarioIds } from "./lib/scenarios.ts";
+import { exclusions } from "../scenarios/index.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-interface StoredEvidence {
-  evidence: SessionEvidence;
-  /** Absolute path of the evidence JSON on disk, the source we archive. */
-  file: string;
-}
-
-async function resolveExpectations(
-  caseId: string,
-): Promise<{ expectations: Expectation[]; found: boolean }> {
-  try {
-    return { expectations: (await loadCase(caseId)).expect, found: true };
-  } catch {
+function records(directory: string): RunRecord[] {
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const file = join(directory, entry.name);
+    if (entry.isDirectory()) return records(file);
+    if (!entry.name.endsWith(".json")) return [];
     try {
-      const smoke = await loadSmokeCase();
-      if (smoke.id === caseId) return { expectations: smoke.expect, found: true };
+      return [JSON.parse(readFileSync(file, "utf8")) as RunRecord];
     } catch {
-      // fall through
+      return [];
     }
-  }
-  return { expectations: [], found: false };
+  });
 }
 
-/** Every evidence JSON across all worker evidence dirs whose stored mode matches. */
-function loadEvidenceByMode(mode: Mode): StoredEvidence[] {
-  if (!existsSync(WORKERS_DIR)) return [];
-  const collected: StoredEvidence[] = [];
-  for (const workerDir of readdirSync(WORKERS_DIR)) {
-    if (!/^w\d+$/.test(workerDir)) continue;
-    const evidenceDir = join(WORKERS_DIR, workerDir, "evidence");
-    if (!existsSync(evidenceDir)) continue;
-    for (const name of readdirSync(evidenceDir)) {
-      if (!name.endsWith(".json")) continue;
-      const file = join(evidenceDir, name);
-      try {
-        const evidence = JSON.parse(readFileSync(file, "utf8")) as SessionEvidence;
-        if (evidence.mode === mode) collected.push({ evidence, file });
-      } catch {
-        // skip a partial or non-evidence json
-      }
-    }
-  }
-  return collected;
+function archive(record: RunRecord, source: string, destinationRoot: string): string {
+  if (resolve(source).startsWith(`${resolve(destinationRoot)}${sep}`)) return source;
+  const destination = join(
+    destinationRoot,
+    record.environment.matrix.id,
+    record.phase,
+    basename(source),
+  );
+  mkdirSync(dirname(destination), { recursive: true });
+  copyFileSync(source, destination);
+  const screenshot = source.replace(/\.json$/, ".png");
+  if (existsSync(screenshot)) copyFileSync(screenshot, destination.replace(/\.json$/, ".png"));
+  return destination;
 }
 
-function latestPerCase(files: StoredEvidence[]): Map<string, StoredEvidence> {
-  const latest = new Map<string, StoredEvidence>();
-  for (const stored of files) {
-    const current = latest.get(stored.evidence.caseId);
-    if (!current || stored.evidence.capturedAt > current.evidence.capturedAt)
-      latest.set(stored.evidence.caseId, stored);
-  }
-  return latest;
-}
-
-function duplicateLoads(skillLoads: string[]): string[] {
-  const counts = new Map<string, number>();
-  for (const entry of skillLoads) {
-    if (entry.includes("#")) continue;
-    counts.set(entry, (counts.get(entry) ?? 0) + 1);
-  }
-  return [...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name);
-}
-
-function escapeCell(value: string): string {
+function escape(value: string): string {
   return value.replace(/\|/g, "\\|").replace(/\n/g, " ");
 }
 
-/** Copy a case's evidence JSON and its sibling PNG into the round archive; return the repo-relative path. */
-function archiveEvidence(sourceFile: string, archiveDir: string, archiveSubdir: string): string {
-  if (!existsSync(sourceFile)) return "missing";
-  const name = basename(sourceFile);
-  try {
-    copyFileSync(sourceFile, join(archiveDir, name));
-    const png = sourceFile.replace(/\.json$/, ".png");
-    if (existsSync(png)) copyFileSync(png, join(archiveDir, basename(png)));
-  } catch {
-    return "missing";
-  }
-  return `reports/evidence/${archiveSubdir}/${name}`;
-}
-
-async function main(): Promise<void> {
-  const mode = argValue("--mode") as Mode | undefined;
-  if (mode !== "raw" && mode !== "adapted") throw new Error("usage: collect.ts --mode raw|adapted");
-
-  const collected = loadEvidenceByMode(mode);
-  if (collected.length === 0)
-    throw new Error(
-      `no ${mode} evidence under ${WORKERS_DIR}/w*/evidence; run playground:run-batch first`,
-    );
-  const perCase = latestPerCase(collected);
-
-  const round = readProgress(progressFilePath())?.round ?? 1;
-  const date = new Date().toISOString().slice(0, 10);
-  const archiveSubdir = `${round}-${date}`;
-  const archiveDir = join(REPORT_DIR, "evidence", archiveSubdir);
-  mkdirSync(archiveDir, { recursive: true });
-
+export function reportFor(
+  phase: Phase,
+  environmentId: string,
+  allRecords: RunRecord[],
+): {
+  markdown: string;
+  archived: Array<{ record: RunRecord; source: string }>;
+} {
+  const latest = latestRecords(allRecords);
+  const current = latest.filter(
+    (record) => record.phase === phase && record.environment.matrix.id === environmentId,
+  );
+  const archived: Array<{ record: RunRecord; source: string }> = [];
   const rows: string[] = [];
-  let passed = 0;
-  for (const caseId of [...perCase.keys()].sort()) {
-    const stored = perCase.get(caseId) as StoredEvidence;
-    const worker = Number.isInteger(stored.evidence.worker) ? stored.evidence.worker : 0;
-    // Re-digest from the session log so verdicts track the current pipeline even
-    // when the stored evidence predates a digest field.
-    const evidence =
-      stored.evidence.sessionFile && existsSync(stored.evidence.sessionFile)
-        ? toSessionEvidence(
-            digestSession(stored.evidence.sessionFile, stored.evidence.sessionId, worker),
-            stored.evidence.caseId,
-            stored.evidence.mode,
-            stored.evidence.sessionFile,
-            stored.evidence.capturedAt,
-            stored.evidence.truncated ?? false,
+  for (const id of listScenarioIds()) {
+    const record = current.find((entry) => entry.scenarioId === id);
+    const scenario = loadScenario(id);
+    if (!record) {
+      rows.push(
+        `| ${id} | ${phase} | ${environmentId} | unrun | unavailable | pending | no RunRecord | ${escape(scenario.rubric.prompt)} | missing |`,
+      );
+      continue;
+    }
+    archived.push({ record, source: record.artifacts.recordFile });
+    const comparison =
+      phase === "adapted"
+        ? latest.find(
+            (entry) =>
+              entry.phase === "raw" &&
+              entry.scenarioId === id &&
+              entry.environment.matrix.id === environmentId,
           )
-        : stored.evidence;
-    const { expectations, found } = await resolveExpectations(caseId);
-    const workspaceDir = join(workerPaths(worker).workspaceRoot, caseId);
-    const verdict = buildVerdict(expectations, evidence, workspaceDir);
-    const failures = [...verdict.failures];
-    if (!found) failures.push("no case definition found for this evidence");
-    const status = evidence.truncated ? "PROBE" : failures.length === 0 ? "PASS" : "FAIL";
-    if (status === "PASS") passed += 1;
-
-    const errors = evidence.toolCalls
-      .filter((call) => call.status === "error")
-      .map((call) => call.name);
-    const duplicates = duplicateLoads(evidence.skillLoads);
-    const route = evidence.route
-      ? `${evidence.route.provider}/${evidence.route.model}[${evidence.route.effort}]`
-      : "unknown";
-    const archived = archiveEvidence(stored.file, archiveDir, archiveSubdir);
+        : undefined;
+    const comparisonFailures =
+      phase === "adapted"
+        ? comparison
+          ? assertSameEntry(comparison, record, scenario)
+          : ["raw comparison is missing"]
+        : [];
+    const route = record.target
+      ? `${record.target.provider}/${record.target.model}[${record.target.effort}]`
+      : "unavailable";
+    const reason = [record.semanticReview.reason, ...comparisonFailures].join("; ");
+    const verdict = comparisonFailures.length > 0 ? "inconclusive" : record.verdict.status;
     rows.push(
-      `| ${escapeCell(caseId)} | w${worker} | ${status} | ${evidence.truncated ? "yes" : "no"} | ${escapeCell(evidence.turnEndReason ?? "none")} | ${escapeCell(route)} | ${escapeCell(errors.join(", ") || "-")} | ${escapeCell(duplicates.join(", ") || "-")} | ${escapeCell(failures.join("; ") || "-")} | ${escapeCell(archived)} |`,
+      `| ${id} | ${phase} | ${environmentId} | ${verdict} | ${escape(route)} | ${record.semanticReview.status} | ${escape(reason)} | ${escape(scenario.rubric.prompt)} | ${escape(record.artifacts.recordFile)} |`,
     );
   }
-
+  for (const exclusion of exclusions) {
+    rows.push(
+      `| ${exclusion.id} | excluded | ${environmentId} | excluded | not run | not applicable | ${escape(exclusion.reason)} | ${escape(exclusion.evidence)} | excluded |`,
+    );
+  }
+  const metadata = current[0]?.environment;
+  const statuses = [
+    "observed",
+    "gap",
+    "blocked",
+    "unobserved",
+    "verified",
+    "not-verified",
+    "inconclusive",
+  ];
+  const counts = Object.fromEntries(
+    statuses.map((status) => [
+      status,
+      current.filter((record) => record.verdict.status === status).length,
+    ]),
+  );
   const lines = [
-    `# Playground evidence — ${mode} — ${date}`,
+    `# Playground ${phase} evidence`,
     "",
-    `Generated ${new Date().toISOString()} from ${relative(PLAYGROUND_DIR, WORKERS_DIR)}/w*/evidence; archived to reports/evidence/${archiveSubdir}/.`,
+    `Environment: ${environmentId}. Registered scenarios: ${listScenarioIds().length}. Exclusions: ${exclusions.length}.`,
+    `DSH: ${metadata?.dshVersion ?? "not observed"}. Upstream: ${metadata?.upstreamRevision ?? "not observed"}.`,
+    `Config hash: ${metadata?.configHash ?? "not observed"}. Adapted package: ${metadata?.adaptedVersion ?? "none"}.`,
     "",
-    `- total: ${perCase.size}`,
-    `- passed: ${passed}`,
-    `- failed: ${perCase.size - passed}`,
+    "```json",
+    JSON.stringify(
+      { ...counts, unrun: listScenarioIds().length - current.length, excluded: exclusions.length },
+      null,
+      2,
+    ),
+    "```",
     "",
-    "| case | worker | verdict | truncated | turn end | route | tool errors | duplicate loads | failures | evidence |",
-    "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+    "| scenario | phase | environment | verdict | actual route | semantic review | reason | rubric | evidence |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ...rows,
     "",
   ];
-
-  mkdirSync(REPORT_DIR, { recursive: true });
-  const reportFile = join(REPORT_DIR, `run-${mode}-${date}.md`);
-  writeFileSync(reportFile, lines.join("\n"));
-  console.log(`[collect] ${perCase.size} cases, ${passed} passed, ${perCase.size - passed} failed`);
-  console.log(`[collect] evidence archived to ${archiveDir}`);
-  console.log(`[collect] report=${reportFile}`);
+  return { markdown: lines.join("\n"), archived };
 }
 
-main().catch((error: unknown) => {
+function main(): void {
+  const phase = argValue("--phase") as Phase | undefined;
+  if (phase !== "raw" && phase !== "adapted")
+    throw new Error("collect requires --phase raw|adapted --environment ID");
+  const matrix = environmentMatrix(argValue("--environment"));
+  const { markdown, archived } = reportFor(phase, matrix.id, records(workersDirectory()));
+  const rewritten = markdown.split("\n").map((line) => {
+    let result = line;
+    for (const { record, source } of archived) {
+      const destination = archive(record, source, join(REPORT_DIRECTORY, "evidence"));
+      result = result.replaceAll(source, relativePlayground(destination));
+    }
+    return result;
+  });
+  const file = join(
+    REPORT_DIRECTORY,
+    `run-${phase}-${matrix.id}-${new Date().toISOString().slice(0, 10)}.md`,
+  );
+  mkdirSync(REPORT_DIRECTORY, { recursive: true });
+  writeFileSync(file, rewritten.join("\n"));
+  console.log(`[collect] report=${file}`);
+}
+
+function relativePlayground(file: string): string {
+  return file.startsWith(`${PLAYGROUND_DIRECTORY}/`)
+    ? file.slice(PLAYGROUND_DIRECTORY.length + 1)
+    : file;
+}
+
+try {
+  main();
+} catch (error) {
   console.error(`[collect] ERROR: ${error instanceof Error ? error.message : String(error)}`);
-  process.exit(1);
-});
+  process.exitCode = 1;
+}

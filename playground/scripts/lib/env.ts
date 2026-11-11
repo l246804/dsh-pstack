@@ -1,14 +1,9 @@
-// Environment building blocks shared by every playground script: repo paths, the
-// provider plan read from the host profile plus config.json, the generated DSH home,
-// workspace pre-registration, and the detached web lifecycle. Every runtime-state
-// function takes one worker's paths so independent workers never share a home,
-// browser profile, workspace root, or evidence dir.
-
 import { spawn, spawnSync } from "node:child_process";
 import {
   chmodSync,
   closeSync,
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   openSync,
@@ -18,37 +13,22 @@ import {
 } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
-import type { AllowedRoute, Mode, PlaygroundConfig } from "../../types";
-import type { WorkerPaths } from "./worker";
+import type { AllowedRoute, Phase, PlaygroundConfig, TestTarget } from "../../types.ts";
+import { readConfig } from "./config.ts";
+import { RAW_ROOT, RAW_SKILLS, REPOSITORY_ROOT } from "./run-metadata.ts";
+import type { WorkerPaths } from "./worker.ts";
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-
-export const PLAYGROUND_DIR = resolve(HERE, "../..");
-export const REPO_ROOT = resolve(PLAYGROUND_DIR, "..");
-export const SCRIPTS_DIR = join(PLAYGROUND_DIR, "scripts");
-export const CASES_DIR = join(PLAYGROUND_DIR, "cases");
-export const PROFILE_TEMPLATE_DIR = join(PLAYGROUND_DIR, "profile");
-
-export const CONFIG_FILE = join(PLAYGROUND_DIR, "config.json");
 export const PROFILE_NAME = "playground";
-export const CREDENTIALS_SOURCE = join(homedir(), ".dsh", ".credentials.yaml");
-
-export const REPORT_DIR = join(PLAYGROUND_DIR, "reports");
-
-export const HOST_PATCH_FILE = join(homedir(), ".dsh", "profiles", "web", "cordis.patch.yml");
-export const RAW_SKILLS_DIR = join(REPO_ROOT, "upstream", "cursor-plugins", "pstack", "skills");
-
+export const PROFILE_TEMPLATE_DIR = join(REPOSITORY_ROOT, "playground/profile");
+export const DEFAULT_HOST_PATCH_FILE = join(homedir(), ".dsh/profiles/web/cordis.patch.yml");
+export const DEFAULT_CREDENTIALS_FILE = join(homedir(), ".dsh/.credentials.yaml");
 export const HOST = "127.0.0.1";
+const DSH_BIN = process.env.DSH_BIN ?? (process.platform === "win32" ? "dsh.cmd" : "dsh");
 
-/**
- * A per-worker writable runtime and temp dir. The verification host runs with a
- * read-only HOME and a read-only default XDG_RUNTIME_DIR, which makes pnpm's
- * store-operation lock (during `dsh plugin install`) and dsh's runtime sockets fail
- * with EROFS. Point both at a worker-local writable dir so prepare and startWeb work.
- */
+export { DEFAULT_CONFIG_FILE as CONFIG_FILE, RAW_ROOT, RAW_SKILLS } from "./run-metadata.ts";
+
 function runtimeEnv(paths: WorkerPaths): Record<string, string> {
   const runtime = join(paths.root, "xdg-runtime");
   const tmp = join(paths.root, "tmp");
@@ -57,46 +37,15 @@ function runtimeEnv(paths: WorkerPaths): Record<string, string> {
   try {
     chmodSync(runtime, 0o700);
   } catch {
-    // best effort; some filesystems ignore mode bits
+    // Filesystems without POSIX modes can still use the isolated runtime.
   }
   return { XDG_RUNTIME_DIR: runtime, TMPDIR: tmp };
-}
-
-const DSH_BIN = process.env.DSH_BIN ?? (process.platform === "win32" ? "dsh.cmd" : "dsh");
-
-/** The DSH home-level files that live inside one worker's home directory. */
-function homePatchFile(paths: WorkerPaths): string {
-  return join(paths.home, "cordis.patch.yml");
-}
-function profileDir(paths: WorkerPaths): string {
-  return join(paths.home, "profiles", PROFILE_NAME);
-}
-function workspaceStoreFile(paths: WorkerPaths): string {
-  return join(paths.home, "storages", "workspace.json");
-}
-
-export function readConfig(): PlaygroundConfig {
-  if (!existsSync(CONFIG_FILE)) {
-    throw new Error(
-      `missing ${CONFIG_FILE}; copy the contents of playground/config.example.json into it and fill the real provider and apiKey`,
-    );
-  }
-  const parsed = JSON.parse(readFileSync(CONFIG_FILE, "utf8")) as PlaygroundConfig;
-  if (
-    parsed === null ||
-    typeof parsed !== "object" ||
-    Object.keys(parsed.providers ?? {}).length === 0
-  ) {
-    throw new Error(`${CONFIG_FILE} must declare at least one provider with an apiKey and models`);
-  }
-  return parsed;
 }
 
 interface HostModel {
   id: string;
   name?: string;
   reasoningEfforts?: Record<string, string | null>;
-  [key: string]: unknown;
 }
 
 interface HostProvider {
@@ -106,111 +55,95 @@ interface HostProvider {
 }
 
 export interface ProviderPlan {
-  /** Every configured (provider, model, effort) that the host profile also serves. */
   routes: AllowedRoute[];
-  /** Provider configs filtered down to config.json's allowed models, ready for the llm-pi-ai patch. */
   providers: Record<string, HostProvider>;
   apiKeyEnv: string;
   apiKey: string;
-  main: { provider: string; model: string; effort: string; name: string };
+  main: TestTarget & { name: string };
 }
 
-function readHostProviders(): Record<string, HostProvider> {
-  if (!existsSync(HOST_PATCH_FILE)) {
+function readHostProviders(file: string): Record<string, HostProvider> {
+  if (!existsSync(file)) {
     throw new Error(
-      `host web profile patch not found at ${HOST_PATCH_FILE}; the playground reads its llm-pi-ai provider from there`,
+      `host provider patch not found at ${file}; set hostPatchFile in playground/config.json`,
     );
   }
-  const entries = yamlLoad(readFileSync(HOST_PATCH_FILE, "utf8")) as Array<{
+  const entries = yamlLoad(readFileSync(file, "utf8")) as Array<{
     id?: string;
     config?: { providers?: Record<string, HostProvider> };
   }>;
-  const llm = entries.find((entry) => entry.id === "llm-pi-ai");
-  const providers = llm?.config?.providers;
+  const providers = entries.find((entry) => entry.id === "llm-pi-ai")?.config?.providers;
   if (!providers || Object.keys(providers).length === 0) {
-    throw new Error(`no llm-pi-ai providers in ${HOST_PATCH_FILE}`);
+    throw new Error(`no llm-pi-ai providers in ${file}`);
   }
   return providers;
 }
 
-/**
- * Merge config.json (which provider keys and models the operator allows) with the
- * host profile (how those providers are actually deployed) into one plan. Throws
- * when config.json asks for a route the host does not serve, so prepare fails loudly
- * instead of booting a web app that cannot answer.
- */
-export function loadProviderPlan(mainFilter?: string): ProviderPlan {
-  const config = readConfig();
-  const hostProviders = readHostProviders();
-
+export function loadProviderPlan(
+  config: PlaygroundConfig,
+  hostFile = config.hostPatchFile ??
+    process.env.PLAYGROUND_HOST_PATCH_FILE ??
+    DEFAULT_HOST_PATCH_FILE,
+): ProviderPlan {
+  const hostProviders = readHostProviders(hostFile);
   const routes: AllowedRoute[] = [];
   const providers: Record<string, HostProvider> = {};
-
   for (const [provider, entry] of Object.entries(config.providers)) {
     const host = hostProviders[provider];
-    if (!host)
-      throw new Error(
-        `config.json allows provider "${provider}" but the host web profile has no such llm-pi-ai provider`,
-      );
-    if (!host.apiKeyEnv)
-      throw new Error(
-        `host provider "${provider}" has no apiKeyEnv; cannot inject the key into the web process`,
-      );
-
-    const requestedModels = Object.keys(entry.models ?? {});
+    if (!host?.apiKeyEnv) throw new Error(`host provider "${provider}" has no apiKeyEnv`);
     const hostById = new Map((host.models ?? []).map((model) => [model.id, model]));
     const filteredModels: HostModel[] = [];
-
-    for (const modelId of requestedModels) {
-      const hostModel = hostById.get(modelId);
-      if (!hostModel)
-        throw new Error(
-          `config.json allows ${provider}/${modelId} but the host profile does not deploy it`,
-        );
-      const supported = hostModel.reasoningEfforts ?? {};
-      const efforts = (entry.models[modelId] ?? []).filter((effort) => effort in supported);
+    for (const [model, allowedEfforts] of Object.entries(entry.models)) {
+      const hostModel = hostById.get(model);
+      if (!hostModel) throw new Error(`host does not deploy ${provider}/${model}`);
+      const efforts = allowedEfforts.filter(
+        (effort) => effort in (hostModel.reasoningEfforts ?? {}),
+      );
       if (efforts.length === 0)
-        throw new Error(`config.json allows no effort that ${provider}/${modelId} deploys`);
-      routes.push({ provider, model: modelId, efforts, apiKey: entry.apiKey });
+        throw new Error(`host deploys no allowed effort for ${provider}/${model}`);
+      routes.push({ provider, model, effort: "", efforts, apiKey: entry.apiKey });
       filteredModels.push(hostModel);
     }
-
     providers[provider] = { ...host, models: filteredModels };
   }
-
-  const lowRoutes = routes.filter((route) => route.efforts.includes("low"));
-  // No real provider or model name is hardcoded: --main picks by the operator's own
-  // substring, and without it the first allowed low route is the default probe.
-  const mainRoute = mainFilter
-    ? lowRoutes.find((route) => new RegExp(mainFilter, "i").test(route.model))
-    : lowRoutes[0];
-  if (!mainRoute)
-    throw new Error(
-      mainFilter
-        ? `no allowed low route matches --main ${mainFilter}`
-        : "no allowed route exposes a low reasoning effort; the default probe needs one",
-    );
-  const mainModel = (providers[mainRoute.provider].models ?? []).find(
-    (model) => model.id === mainRoute.model,
+  const route = routes.find(
+    (entry) =>
+      entry.provider === config.testModel.provider &&
+      entry.model === config.testModel.model &&
+      entry.efforts.includes(config.testModel.effort),
   );
-  const apiKey = mainRoute.apiKey;
-
+  if (!route) throw new Error("the host cannot serve testModel");
+  const model = providers[route.provider]?.models?.find((entry) => entry.id === route.model);
   return {
     routes,
     providers,
-    apiKeyEnv: providers[mainRoute.provider].apiKeyEnv as string,
-    apiKey,
-    main: {
-      provider: mainRoute.provider,
-      model: mainRoute.model,
-      effort: "low",
-      name: mainModel?.name ?? mainRoute.model,
-    },
+    apiKeyEnv: hostProviders[route.provider]?.apiKeyEnv as string,
+    apiKey: route.apiKey,
+    main: { ...config.testModel, name: model?.name ?? route.model },
   };
 }
 
-/** Write the machine-local home patch: default probe route plus the filtered llm-pi-ai provider. */
-export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan): void {
+function homePatchFile(paths: WorkerPaths): string {
+  return join(paths.home, "cordis.patch.yml");
+}
+
+function profileDirectory(paths: WorkerPaths): string {
+  return join(paths.home, "profiles", PROFILE_NAME);
+}
+
+function persistentInstructions(): string {
+  const skill = join(RAW_SKILLS, "poteto-mode/SKILL.md");
+  if (!existsSync(skill)) throw new Error("raw tree is missing; run playground:raw-generate first");
+  const body = readFileSync(skill, "utf8").replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
+  return [
+    "You are running the raw baseline under the standard agent preset.",
+    `Read ${join(RAW_ROOT, "dsh.md")} once before following the skill below.`,
+    `Skill file: ${skill}`,
+    body,
+  ].join("\n\n");
+}
+
+export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan, phase: Phase): void {
   mkdirSync(paths.home, { recursive: true });
   const patch = [
     {
@@ -222,24 +155,22 @@ export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan): void {
         reasoningEffort: plan.main.effort,
       },
     },
+    { id: "llm-pi-ai", name: "@deepseek-ai/dsh-llm-pi-ai", config: { providers: plan.providers } },
     {
-      id: "llm-pi-ai",
-      name: "@deepseek-ai/dsh-llm-pi-ai",
-      config: { providers: plan.providers },
-    },
-    {
-      // Unattended cases have no answerer behind the approval seam; a pending
-      // request would hang the turn forever. "never" rejects gated actions
-      // deterministically so the model sees the rejection and moves on.
       id: "approval",
       name: "@deepseek-ai/dsh-user-approval",
       config: { policy: "never" },
     },
+    ...(phase === "raw"
+      ? [
+          {
+            id: "system-prompt",
+            name: "@deepseek-ai/dsh-system-prompt",
+            config: { personaSuffix: persistentInstructions() },
+          },
+        ]
+      : []),
     {
-      // The permission preset table composes a sandbox mode with an approval policy and
-      // refuses to start when the effective pair matches no declared preset. The base
-      // bundle only pairs "never" with danger-full-access, so declare the pair this
-      // playground actually runs (confined sandbox + no approvals) and make it default.
       id: "permission",
       name: "@deepseek-ai/dsh-permission-presets",
       config: {
@@ -251,115 +182,118 @@ export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan): void {
   writeFileSync(homePatchFile(paths), yamlDump(patch, { lineWidth: 120 }));
 }
 
-export interface HomePlan {
-  provider: string;
-  model: string;
-  effort: string;
+export interface HomePlan extends TestTarget {
   name: string;
 }
 
-/** Read back what prepare actually applied, so bootstrap/run-case verify the real config not a recomputation. */
 export function readHomePlan(paths: WorkerPaths): HomePlan {
-  const file = homePatchFile(paths);
-  if (!existsSync(file)) throw new Error(`missing ${file}; run playground:prepare first`);
-  const entries = yamlLoad(readFileSync(file, "utf8")) as Array<{
+  const entries = yamlLoad(readFileSync(homePatchFile(paths), "utf8")) as Array<{
     id?: string;
     config?: Record<string, unknown>;
   }>;
-  const defaultModel = entries.find((entry) => entry.id === "agent-default-model")?.config as
+  const config = entries.find((entry) => entry.id === "agent-default-model")?.config as
     | { provider?: string; model?: string; reasoningEffort?: string }
     | undefined;
-  if (!defaultModel?.provider || !defaultModel.model)
-    throw new Error(`home patch has no agent-default-model route`);
-  const providers = entries.find((entry) => entry.id === "llm-pi-ai")?.config?.providers as
-    | Record<string, HostProvider>
-    | undefined;
-  const model = providers?.[defaultModel.provider]?.models?.find(
-    (entry) => entry.id === defaultModel.model,
-  );
+  if (!config?.provider || !config.model || !config.reasoningEffort) {
+    throw new Error("home patch has no complete testModel");
+  }
   return {
-    provider: defaultModel.provider,
-    model: defaultModel.model,
-    effort: defaultModel.reasoningEffort ?? "low",
-    name: model?.name ?? defaultModel.model,
+    provider: config.provider,
+    model: config.model,
+    effort: config.reasoningEffort,
+    name: config.model,
   };
 }
 
-export function copyCredentials(paths: WorkerPaths): void {
+export function copyCredentials(paths: WorkerPaths, file = DEFAULT_CREDENTIALS_FILE): void {
   mkdirSync(paths.home, { recursive: true });
-  if (existsSync(CREDENTIALS_SOURCE)) {
-    copyFileSync(CREDENTIALS_SOURCE, join(paths.home, ".credentials.yaml"));
-    return;
-  }
-  console.warn(
-    `[prepare] no ${CREDENTIALS_SOURCE}; skipping credentials copy (fine if no model login is needed)`,
-  );
+  if (existsSync(file)) copyFileSync(file, join(paths.home, ".credentials.yaml"));
 }
 
 export function resetHome(paths: WorkerPaths): void {
-  rmSync(paths.home, { recursive: true, force: true });
+  rmSync(paths.root, { recursive: true, force: true });
   mkdirSync(paths.home, { recursive: true });
 }
 
-function profileManifest(mode: Mode): Record<string, unknown> {
-  const bundles = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"];
-  if (mode === "adapted") bundles.push("dsh-pstack");
+export function profileManifest(
+  phase: Phase,
+  enabledPluginPackages: string[],
+): Record<string, unknown> {
+  if (phase === "raw" && enabledPluginPackages.includes("dsh-pstack")) {
+    throw new Error("raw profile must not install dsh-pstack");
+  }
+  const dependencies = Object.fromEntries(
+    enabledPluginPackages.map((name) => [
+      name,
+      name === "dsh-pstack" ? `link:${REPOSITORY_ROOT}` : "*",
+    ]),
+  );
+  const bundles = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", ...enabledPluginPackages];
   return {
-    name: `dsh-playground-${mode}`,
+    name: `dsh-playground-${phase}`,
     private: true,
-    dependencies: mode === "adapted" ? { "dsh-pstack": `link:${REPO_ROOT}` } : {},
+    dependencies,
     dsh: { profile: { bundles } },
   };
 }
 
-function rawSkillPatch(): { insert: unknown[] } {
-  return {
-    insert: [
-      {
-        id: "pstack-raw-skills",
-        name: "@deepseek-ai/dsh-skill-filesystem",
-        config: {
-          providerName: "pstack-raw",
-          includeDefaultRoots: false,
-          watch: false,
-          bundledSkillDir: RAW_SKILLS_DIR,
+export function rawProfileEntries(template: unknown[]): unknown[] {
+  if (!existsSync(RAW_SKILLS))
+    throw new Error("raw tree is missing; run playground:raw-generate first");
+  return [
+    ...template,
+    {
+      insert: [
+        {
+          id: "pstack-raw-skills",
+          name: "@deepseek-ai/dsh-skill-filesystem",
+          config: {
+            providerName: "pstack-raw",
+            includeDefaultRoots: false,
+            watch: false,
+            bundledSkillDir: RAW_SKILLS,
+          },
         },
-      },
-    ],
-  };
+      ],
+    },
+  ];
 }
 
-/** Rebuild the runtime profile from the template: the mode picks the bundles and the raw skill mount. */
-export function buildProfile(paths: WorkerPaths, mode: Mode): void {
-  const dir = profileDir(paths);
-  rmSync(dir, { recursive: true, force: true });
-  mkdirSync(dir, { recursive: true });
-
-  copyFileSync(join(PROFILE_TEMPLATE_DIR, "pnpm-workspace.yaml"), join(dir, "pnpm-workspace.yaml"));
-  const templatePatch = join(PROFILE_TEMPLATE_DIR, "cordis.patch.yml");
-  if (mode === "raw") {
-    const entries = (yamlLoad(readFileSync(templatePatch, "utf8")) as unknown[]) ?? [];
-    entries.push(rawSkillPatch());
-    writeFileSync(join(dir, "cordis.patch.yml"), yamlDump(entries, { lineWidth: 120 }));
-  } else {
-    copyFileSync(templatePatch, join(dir, "cordis.patch.yml"));
+export function buildProfile(
+  paths: WorkerPaths,
+  phase: Phase,
+  enabledPluginPackages: string[] = phase === "adapted" ? ["dsh-pstack"] : [],
+): void {
+  const directory = profileDirectory(paths);
+  rmSync(directory, { recursive: true, force: true });
+  mkdirSync(directory, { recursive: true });
+  copyFileSync(
+    join(PROFILE_TEMPLATE_DIR, "pnpm-workspace.yaml"),
+    join(directory, "pnpm-workspace.yaml"),
+  );
+  const entries =
+    (yamlLoad(readFileSync(join(PROFILE_TEMPLATE_DIR, "cordis.patch.yml"), "utf8")) as unknown[]) ??
+    [];
+  const patch = phase === "raw" ? rawProfileEntries(entries) : entries;
+  writeFileSync(join(directory, "cordis.patch.yml"), yamlDump(patch, { lineWidth: 120 }));
+  const manifest = profileManifest(phase, enabledPluginPackages);
+  if (phase === "adapted" && !enabledPluginPackages.includes("dsh-pstack")) {
+    throw new Error("adapted profile must explicitly include dsh-pstack");
   }
-  writeFileSync(join(dir, "package.json"), `${JSON.stringify(profileManifest(mode), null, 2)}\n`);
+  writeFileSync(join(directory, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
 }
 
-/** Path to one worker's installed profile dir, so adapted mode can clone it to the rest. */
 export function profileDirFor(paths: WorkerPaths): string {
-  return profileDir(paths);
+  return profileDirectory(paths);
 }
 
 export function installPlugins(paths: WorkerPaths): void {
   const result = spawnSync(DSH_BIN, ["plugin", "--profile", PROFILE_NAME, "install"], {
-    cwd: REPO_ROOT,
+    cwd: REPOSITORY_ROOT,
     env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
     stdio: "inherit",
   });
-  if (result.error)
-    throw new Error(`failed to run dsh plugin install: ${result.error.message}; is dsh on PATH?`);
+  if (result.error) throw new Error(`failed to run dsh plugin install: ${result.error.message}`);
   if (result.status !== 0) throw new Error(`dsh plugin install exited ${result.status}`);
 }
 
@@ -369,108 +303,98 @@ export interface WorkspaceRegistration {
   defaultTitle: string;
 }
 
-export function registerWorkspaces(paths: WorkerPaths, caseIds: string[]): WorkspaceRegistration {
-  const ids = [...new Set(caseIds)].sort();
+export function registerWorkspaces(
+  paths: WorkerPaths,
+  scenarioIds: string[],
+): WorkspaceRegistration {
+  const ids = [...new Set(scenarioIds)].sort();
   if (ids.length === 0) ids.push("playground");
   mkdirSync(paths.workspaceRoot, { recursive: true });
-  const storeFile = workspaceStoreFile(paths);
+  const storeFile = join(paths.home, "storages/workspace.json");
   mkdirSync(dirname(storeFile), { recursive: true });
-
   const now = new Date().toISOString();
   const dirs: Record<string, string> = {};
   const tables: Record<string, unknown> = {};
   const workspaceIds: string[] = [];
-
-  for (const caseId of ids) {
-    const workspaceId = randomId();
-    const path = join(paths.workspaceRoot, caseId);
+  for (const id of ids) {
+    const workspaceId = crypto.randomUUID();
+    const path = join(paths.workspaceRoot, id);
     mkdirSync(path, { recursive: true });
-    dirs[caseId] = path;
+    dirs[id] = path;
     workspaceIds.push(workspaceId);
-    tables[workspaceId] = { path, title: caseId, sessionIds: [], createdAt: now, updatedAt: now };
+    tables[workspaceId] = { path, title: id, sessionIds: [], createdAt: now, updatedAt: now };
   }
-
-  const defaultId = workspaceIds[0];
-  const store = {
-    unit: { name: "workspace", version: 2 },
-    global: {
-      initialized: true,
-      workspaceIds,
-      archivedSessionIds: [],
-      pinnedSessionIds: [],
-      defaultWorkspaceId: defaultId,
-    },
-    tables: { workspaces: tables },
-  };
-  writeFileSync(storeFile, `${JSON.stringify(store, null, 2)}\n`);
-  return { dirs, defaultId, defaultTitle: ids[0] };
-}
-
-export interface StoredWorkspace {
-  path: string;
-  title: string;
+  writeFileSync(
+    storeFile,
+    `${JSON.stringify(
+      {
+        unit: { name: "workspace", version: 2 },
+        global: {
+          initialized: true,
+          workspaceIds,
+          archivedSessionIds: [],
+          pinnedSessionIds: [],
+          defaultWorkspaceId: workspaceIds[0],
+        },
+        tables: { workspaces: tables },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  return { dirs, defaultId: workspaceIds[0] as string, defaultTitle: ids[0] as string };
 }
 
 export function readWorkspaceStore(paths: WorkerPaths): {
   defaultTitle: string;
-  workspaces: StoredWorkspace[];
+  workspaces: Array<{ path: string; title: string }>;
 } {
-  const file = workspaceStoreFile(paths);
-  if (!existsSync(file)) throw new Error(`missing ${file}; run playground:prepare first`);
+  const file = join(paths.home, "storages/workspace.json");
   const store = JSON.parse(readFileSync(file, "utf8")) as {
     global: { workspaceIds: string[]; defaultWorkspaceId: string };
-    tables: { workspaces: Record<string, StoredWorkspace> };
+    tables: { workspaces: Record<string, { path: string; title: string }> };
   };
-  const workspaces = store.global.workspaceIds.map((id) => store.tables.workspaces[id]);
-  const defaultWorkspace = store.tables.workspaces[store.global.defaultWorkspaceId];
-  return { defaultTitle: defaultWorkspace.title, workspaces };
+  return {
+    defaultTitle: store.tables.workspaces[store.global.defaultWorkspaceId]?.title ?? "",
+    workspaces: store.global.workspaceIds.map((id) => store.tables.workspaces[id]).filter(Boolean),
+  };
 }
-
-function randomId(): string {
-  return crypto.randomUUID();
-}
-
-const syncSleep = (ms: number): void => {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
-};
-
-const asyncSleep = (ms: number): Promise<void> =>
-  new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 
 export interface StartedWeb {
   url: string;
   port: number;
 }
 
-/**
- * Spawn the web app detached with `--port 0` (the OS assigns a free port), then poll
- * its log for the tokenized URL line and persist the url/pid/log to the worker's own
- * files. The wait loop is async so prepare can start several workers concurrently.
- */
 export async function startWeb(paths: WorkerPaths, plan: ProviderPlan): Promise<StartedWeb> {
+  if (process.platform !== "linux") {
+    throw new Error(
+      "the managed web lifecycle currently supports Linux only; run scenarios in a managed DSH process",
+    );
+  }
   mkdirSync(paths.home, { recursive: true });
   const logFd = openSync(paths.logFile, "w");
-  const args = ["--profile", PROFILE_NAME, "--port", "0", "--host", HOST, "--no-open"];
-  const child = spawn(DSH_BIN, args, {
-    cwd: REPO_ROOT,
-    env: {
-      ...process.env,
-      ...runtimeEnv(paths),
-      DSH_HOME: paths.home,
-      [plan.apiKeyEnv]: plan.apiKey,
+  const child = spawn(
+    DSH_BIN,
+    ["--profile", PROFILE_NAME, "--port", "0", "--host", HOST, "--no-open"],
+    {
+      cwd: REPOSITORY_ROOT,
+      env: {
+        ...process.env,
+        ...runtimeEnv(paths),
+        DSH_HOME: paths.home,
+        [plan.apiKeyEnv]: plan.apiKey,
+      },
+      detached: true,
+      stdio: ["ignore", logFd, logFd],
     },
-    detached: true,
-    stdio: ["ignore", logFd, logFd],
-  });
+  );
   closeSync(logFd);
   writeFileSync(paths.pidFile, `${child.pid ?? ""}\n`);
   child.unref();
-
   let exited: number | null = null;
   child.once("exit", (code) => {
     exited = code ?? -1;
   });
-
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
     const found = readWebUrlFromLog(paths.logFile);
@@ -479,41 +403,34 @@ export async function startWeb(paths: WorkerPaths, plan: ProviderPlan): Promise<
       writeFileSync(paths.urlFile, `${found}\n`);
       return { url: found, port };
     }
-    if (exited !== null)
-      throw new Error(
-        `worker ${paths.index} web exited (code ${String(exited)}) before printing a URL. Log tail:\n${logTail(paths.logFile)}`,
-      );
-    await asyncSleep(500);
+    if (exited !== null) throw new Error(`web exited ${String(exited)}: ${logTail(paths.logFile)}`);
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
   }
-  throw new Error(
-    `worker ${paths.index} web did not print a URL within 120s. Log tail:\n${logTail(paths.logFile)}`,
-  );
+  throw new Error(`web did not print a URL within 120s: ${logTail(paths.logFile)}`);
 }
 
-function readWebUrlFromLog(logFile: string): string | null {
-  if (!existsSync(logFile)) return null;
-  const match = readFileSync(logFile, "utf8").match(/^dsh web:\s*(http:\/\/\S+)$/m);
-  return match ? match[1] : null;
+function readWebUrlFromLog(file: string): string | null {
+  if (!existsSync(file)) return null;
+  return readFileSync(file, "utf8").match(/^dsh web:\s*(http:\/\/\S+)$/m)?.[1] ?? null;
 }
 
-function logTail(logFile: string): string {
-  if (!existsSync(logFile)) return "(no log)";
-  return readFileSync(logFile, "utf8").trim().split("\n").slice(-20).join("\n");
+function logTail(file: string): string {
+  return existsSync(file)
+    ? readFileSync(file, "utf8").trim().split("\n").slice(-20).join("\n")
+    : "(no log)";
 }
 
 export function readWebUrl(paths: WorkerPaths): string {
-  if (!existsSync(paths.urlFile))
-    throw new Error(`missing ${paths.urlFile}; run playground:prepare first`);
   return readFileSync(paths.urlFile, "utf8").trim();
 }
 
-export function readWebPid(paths: WorkerPaths): number | null {
+function readWebPid(paths: WorkerPaths): number | null {
   if (!existsSync(paths.pidFile)) return null;
   const pid = Number(readFileSync(paths.pidFile, "utf8").trim());
   return Number.isInteger(pid) && pid > 0 ? pid : null;
 }
 
-export function isAlive(pid: number): boolean {
+function isAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
@@ -522,41 +439,30 @@ export function isAlive(pid: number): boolean {
   }
 }
 
-/**
- * True only when `pid` is a live DSH web process for this profile. A stale pid file can
- * point at a PID that the OS has since reused (notably across sandbox PID namespaces);
- * signalling that would kill an unrelated process, so we verify the command line first.
- */
 function isDshWeb(pid: number): boolean {
   if (!isAlive(pid)) return false;
   try {
-    const cmdline = readFileSync(`/proc/${pid}/cmdline`, "utf8");
-    return cmdline.includes("dsh") && cmdline.includes(PROFILE_NAME);
+    const command = readFileSync(`/proc/${pid}/cmdline`, "utf8");
+    return command.includes("dsh") && command.includes(PROFILE_NAME);
   } catch {
-    // No /proc (non-Linux): fall back to liveness alone.
-    return true;
+    return false;
   }
 }
 
 export function stopWeb(paths: WorkerPaths): { stopped: boolean; pid: number | null } {
   const pid = readWebPid(paths);
-  if (pid === null) {
-    rmSync(paths.pidFile, { force: true });
-    rmSync(paths.urlFile, { force: true });
-    return { stopped: false, pid: null };
+  const owned = pid !== null && isDshWeb(pid);
+  if (pid !== null && owned) {
+    signalGroup(pid, "SIGTERM");
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline && isAlive(pid)) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
+    }
+    if (isAlive(pid)) signalGroup(pid, "SIGKILL");
   }
-  if (!isDshWeb(pid)) {
-    rmSync(paths.pidFile, { force: true });
-    rmSync(paths.urlFile, { force: true });
-    return { stopped: false, pid };
-  }
-  signalGroup(pid, "SIGTERM");
-  const deadline = Date.now() + 10_000;
-  while (Date.now() < deadline && isAlive(pid)) syncSleep(200);
-  if (isAlive(pid)) signalGroup(pid, "SIGKILL");
   rmSync(paths.pidFile, { force: true });
   rmSync(paths.urlFile, { force: true });
-  return { stopped: true, pid };
+  return { stopped: owned, pid };
 }
 
 function signalGroup(pid: number, signal: NodeJS.Signals): void {
@@ -566,7 +472,15 @@ function signalGroup(pid: number, signal: NodeJS.Signals): void {
     try {
       process.kill(pid, signal);
     } catch {
-      // already gone
+      // The process exited between the liveness check and the signal.
     }
   }
+}
+
+export function readPlaygroundConfig(file: string): PlaygroundConfig {
+  return readConfig(resolve(file));
+}
+
+export function cloneInstalledProfile(source: WorkerPaths, destination: WorkerPaths): void {
+  cpSync(profileDirFor(source), profileDirFor(destination), { recursive: true, force: true });
 }

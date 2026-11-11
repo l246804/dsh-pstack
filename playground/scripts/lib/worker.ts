@@ -1,23 +1,11 @@
-// Per-worker runtime layout. Each worker owns its own DSH home, browser profile,
-// workspace root, evidence dir, and web lifecycle files, so parallel workers never
-// share a writable path.
-
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 
-import { PLAYGROUND_DIR } from "./env";
-
-// A probe run may point PLAYGROUND_WORKERS_DIR at a sibling dir so the cross-probe
-// evidence never overwrites the primary probe's sessions and report. Resolve it
-// absolute: workspace rows the web reads must be absolute paths or the app shows an
-// empty "pick a workspace" state.
-const OVERRIDE = process.env.PLAYGROUND_WORKERS_DIR;
-export const WORKERS_DIR = OVERRIDE
-  ? resolve(PLAYGROUND_DIR, OVERRIDE)
-  : join(PLAYGROUND_DIR, ".workers");
+import { workersDirectory } from "./run-metadata.ts";
 
 export interface WorkerPaths {
   index: number;
+  environmentId: string;
   root: string;
   home: string;
   browserDir: string;
@@ -26,12 +14,16 @@ export interface WorkerPaths {
   urlFile: string;
   pidFile: string;
   logFile: string;
+  phaseFile: string;
 }
 
-export function workerPaths(index: number): WorkerPaths {
-  const root = join(WORKERS_DIR, `w${index}`);
+export function workerPaths(index: number, environmentId = "base"): WorkerPaths {
+  if (!/^[a-z0-9-]+$/.test(environmentId))
+    throw new Error(`invalid environment id: ${environmentId}`);
+  const root = join(workersDirectory(), environmentId, `w${index}`);
   return {
     index,
+    environmentId,
     root,
     home: join(root, "home"),
     browserDir: join(root, "browser"),
@@ -40,29 +32,26 @@ export function workerPaths(index: number): WorkerPaths {
     urlFile: join(root, "web-url.txt"),
     pidFile: join(root, "web.pid"),
     logFile: join(root, "web.log"),
+    phaseFile: join(root, "phase.txt"),
   };
 }
 
-function isWorkerDirName(name: string): boolean {
-  return /^w\d+$/.test(name);
+export function listWorkers(environmentId?: string): WorkerPaths[] {
+  const root = workersDirectory();
+  if (!existsSync(root)) return [];
+  const environments = environmentId ? [environmentId] : readdirSync(root);
+  return environments.flatMap((environment) => {
+    const directory = join(root, environment);
+    if (!existsSync(directory) || !statSync(directory).isDirectory()) return [];
+    return readdirSync(directory)
+      .filter((name) => /^w\d+$/.test(name) && statSync(join(directory, name)).isDirectory())
+      .map((name) => workerPaths(Number(name.slice(1)), environment))
+      .filter((paths) => existsSync(paths.pidFile) || existsSync(paths.urlFile));
+  });
 }
 
-function indexesOnDisk(): number[] {
-  if (!existsSync(WORKERS_DIR)) return [];
-  return readdirSync(WORKERS_DIR)
-    .filter((name) => isWorkerDirName(name) && statSync(join(WORKERS_DIR, name)).isDirectory())
-    .map((name) => Number(name.slice(1)))
-    .sort((a, b) => a - b);
-}
-
-/** Workers that were prepared and started: those with a pid or url file on disk. */
-export function listWorkers(): WorkerPaths[] {
-  return indexesOnDisk()
-    .map(workerPaths)
-    .filter((paths) => existsSync(paths.pidFile) || existsSync(paths.urlFile));
-}
-
-/** How many worker directories exist on disk, started or not. */
-export function workerCount(): number {
-  return indexesOnDisk().length;
+export function workerCount(environmentId = "base"): number {
+  const root = join(workersDirectory(), environmentId);
+  if (!existsSync(root)) return 0;
+  return readdirSync(root).filter((name) => /^w\d+$/.test(name)).length;
 }
