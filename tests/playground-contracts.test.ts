@@ -1,7 +1,18 @@
+import { readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { describe, expect, it } from "vite-plus/test";
 
 import { parseConfig } from "../playground/scripts/lib/config.ts";
-import { behaviorScenario, environments, exclusions } from "../playground/scenarios/index.ts";
+import {
+  behaviorScenario,
+  behaviorScenarios,
+  environments,
+  exclusions,
+} from "../playground/scenarios/index.ts";
+
+const repository = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 function config(provider = "provider-a", model = "model-a", effort = "low") {
   return {
@@ -58,5 +69,18 @@ describe("scenario registry", () => {
 
   it("only excludes capabilities that require Cursor services or bots", () => {
     expect(exclusions.map((entry) => entry.id)).toEqual(["make-bot-ui", "automations-benny"]);
+  });
+
+  it("covers every upstream skill with a scenario or an explicit exclusion", () => {
+    const skillsDir = join(repository, "upstream/cursor-plugins/pstack/skills");
+    const upstream = readdirSync(skillsDir, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name);
+    const covered = new Set(behaviorScenarios.map((scenario) => scenario.skill));
+    const excluded = new Set(exclusions.map((entry) => entry.skill));
+    const uncovered = upstream.filter((skill) => !covered.has(skill) && !excluded.has(skill));
+    expect(uncovered).toEqual([]);
+    const stale = [...covered].filter((skill) => !upstream.includes(skill));
+    expect(stale).toEqual([]);
   });
 });
