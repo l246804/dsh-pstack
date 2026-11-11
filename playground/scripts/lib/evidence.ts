@@ -386,6 +386,40 @@ export function expectedWorkspace(workspace: string, session: SessionFacts): str
     : [];
 }
 
+/**
+ * Every mechanical check result of one run, independent of the semantic review. The
+ * verdict may sit at unobserved/inconclusive while a review is pending, but this list
+ * is always written to the record so the pending verdict hides nothing.
+ */
+export function mechanicalFailures(input: {
+  scenario: BehaviorScenario;
+  session: SessionFacts;
+  workspace: string;
+  route: TestTarget | null;
+  expectedTarget: TestTarget;
+  expectedPreset: string;
+}): string[] {
+  const failures = [
+    ...evaluateAssertions(input.scenario.assertions, input.session, input.workspace),
+    ...expectedWorkspace(input.workspace, input.session),
+    ...assertExpectedEntry(
+      input.scenario,
+      input.session,
+      input.route ?? { provider: "", model: "", effort: "" },
+      input.expectedPreset,
+    ),
+  ];
+  const expectedRoute = {
+    provider: input.expectedTarget.provider,
+    model: input.expectedTarget.model,
+    effort: input.expectedTarget.effort,
+  };
+  if (JSON.stringify(input.route ?? null) !== JSON.stringify(expectedRoute)) {
+    failures.push("actual model route differs from testModel");
+  }
+  return failures;
+}
+
 export function recordFileName(
   scenarioId: string,
   phase: Phase,

@@ -33,12 +33,21 @@ afterEach(() => {
     rmSync(directory, { recursive: true, force: true });
 });
 
+interface RecordOptions {
+  sessionOverrides?: Partial<SessionFacts>;
+  mechanicalFailures?: string[];
+  capturedAt?: string;
+  /** Simulate a record written before mechanicalFailures existed: the JSON lacks the field. */
+  legacy?: boolean;
+}
+
 function pendingRecord(
   phase: Phase,
   environmentId: string,
   recordFile: string,
-  sessionOverrides: Partial<SessionFacts> = {},
+  options: RecordOptions = {},
 ): RunRecord {
+  const mechanicalFailures = options.mechanicalFailures ?? [];
   return {
     scenarioId: SCENARIO_ID,
     phase,
@@ -62,12 +71,17 @@ function pendingRecord(
       assistantText: "建议先用 vp test 验证改动。",
       userText: "prompt",
       autoAnswers: [],
-      ...sessionOverrides,
+      ...options.sessionOverrides,
     },
     artifacts: { recordFile, observed: [] },
     semanticReview: pendingSemanticReview(),
-    verdict: verdictFor({ phase, failures: [], semanticReview: pendingSemanticReview() }),
-    capturedAt: "2026-11-11T00:00:00.000Z",
+    mechanicalFailures,
+    verdict: verdictFor({
+      phase,
+      failures: mechanicalFailures,
+      semanticReview: pendingSemanticReview(),
+    }),
+    capturedAt: options.capturedAt ?? "2026-11-11T00:00:00.000Z",
   };
 }
 
@@ -78,7 +92,7 @@ interface Fixture {
   original: string;
 }
 
-function fixture(phase: Phase, sessionOverrides: Partial<SessionFacts> = {}): Fixture {
+function fixture(phase: Phase, options: RecordOptions = {}): Fixture {
   const root = mkdtempSync(join(tmpdir(), "pstack-review-"));
   temporaries.push(root);
   const workers = join(root, ".workers");
@@ -87,10 +101,14 @@ function fixture(phase: Phase, sessionOverrides: Partial<SessionFacts> = {}): Fi
   const reviews = join(root, "reviews");
   mkdirSync(reviews, { recursive: true });
   const original = join(evidence, `${SCENARIO_ID}-${phase}-base-2026-11-11T00-00-00-000Z.json`);
-  writeFileSync(
-    original,
-    `${JSON.stringify(pendingRecord(phase, "base", original, sessionOverrides), null, 2)}\n`,
-  );
+  const record = pendingRecord(phase, "base", original, options);
+  if (options.legacy) {
+    const legacy: Record<string, unknown> = { ...record };
+    delete legacy.mechanicalFailures;
+    writeFileSync(original, `${JSON.stringify(legacy, null, 2)}\n`);
+  } else {
+    writeFileSync(original, `${JSON.stringify(record, null, 2)}\n`);
+  }
   return { workers, reviews, evidence, original };
 }
 
@@ -253,7 +271,7 @@ describe("applying a review", () => {
   });
 
   it("does not launder a failed assertion into observed", () => {
-    const fx = fixture("raw", { skillLoads: [] });
+    const fx = fixture("raw", { sessionOverrides: { skillLoads: [] }, legacy: true });
     writeSidecar(fx.reviews, "raw", reviewValue());
 
     applyReviews(paths(fx));
@@ -262,6 +280,43 @@ describe("applying a review", () => {
     expect(upgraded.semanticReview.status).toBe("supported");
     expect(upgraded.verdict.status).toBe("gap");
     expect(JSON.stringify(upgraded.verdict)).toContain("poteto-help");
+    expect(upgraded.mechanicalFailures.some((failure) => failure.includes("poteto-help"))).toBe(
+      true,
+    );
+  });
+
+  it("keeps mechanical failures on disk while a raw verdict is still unobserved", () => {
+    const fx = fixture("raw", { mechanicalFailures: ['assistant reply lacks "限制"'] });
+    const record = newestRecord(fx.evidence);
+    expect(record.verdict.status).toBe("unobserved");
+    expect(record.mechanicalFailures).toEqual(['assistant reply lacks "限制"']);
+  });
+
+  it("keeps mechanical failures on disk while an adapted verdict is inconclusive", () => {
+    const fx = fixture("adapted", { mechanicalFailures: ["missing artifact: verify/SKILL.md"] });
+    const record = newestRecord(fx.evidence);
+    expect(record.verdict.status).toBe("inconclusive");
+    expect(record.mechanicalFailures).toEqual(["missing artifact: verify/SKILL.md"]);
+  });
+
+  it("carries recorded mechanical failures into the revision verdict", () => {
+    const fx = fixture("raw", {
+      mechanicalFailures: ["actual model route differs from testModel"],
+    });
+    writeSidecar(fx.reviews, "raw", reviewValue());
+
+    applyReviews(paths(fx));
+
+    const upgraded = newestRecord(fx.evidence);
+    expect(upgraded.mechanicalFailures).toEqual(["actual model route differs from testModel"]);
+    expect(upgraded.verdict).toEqual({
+      phase: "raw",
+      status: "gap",
+      gaps: [
+        "actual model route differs from testModel",
+        "The reply gives concrete verification guidance.",
+      ],
+    });
   });
 
   it("is idempotent: a second apply writes no new revision", () => {

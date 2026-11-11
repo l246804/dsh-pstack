@@ -12,11 +12,9 @@ import { dirname, join } from "node:path";
 import type { BehaviorScenario, Phase, RunRecord, SessionFacts, TestTarget } from "../types.ts";
 import { createBrowserSession, type BrowserSession } from "./lib/browser.ts";
 import {
-  assertExpectedEntry,
   assertSafeRecord,
   digestSession,
-  evaluateAssertions,
-  expectedWorkspace,
+  mechanicalFailures,
   pendingSemanticReview,
   readSessionEvents,
   recordFileName,
@@ -383,6 +381,7 @@ function blockedRecord(input: {
     session: null,
     artifacts: { recordFile: input.recordFile, screenshotFile: input.screenshotFile, observed: [] },
     semanticReview: pendingSemanticReview(),
+    mechanicalFailures: [],
     verdict: verdictFor({
       phase: input.phase,
       failures: [],
@@ -432,26 +431,14 @@ async function main(): Promise<void> {
       expectedPreset,
     });
     const session = sessionFacts(outcome.digest, outcome.file, outcome.answers);
-    const failures = [
-      ...evaluateAssertions(scenario.assertions, session, workspace),
-      ...expectedWorkspace(workspace, session),
-      ...assertExpectedEntry(
-        scenario,
-        session,
-        outcome.digest.route ?? { provider: "", model: "", effort: "" },
-        expectedPreset,
-      ),
-    ];
-    if (
-      JSON.stringify(outcome.digest.route) !==
-      JSON.stringify({
-        provider: expectedTarget.provider,
-        model: expectedTarget.model,
-        effort: expectedTarget.effort,
-      })
-    ) {
-      failures.push("actual model route differs from testModel");
-    }
+    const failures = mechanicalFailures({
+      scenario,
+      session,
+      workspace,
+      route: outcome.digest.route,
+      expectedTarget,
+      expectedPreset,
+    });
     const semanticReview = pendingSemanticReview();
     record = {
       scenarioId,
@@ -468,6 +455,7 @@ async function main(): Promise<void> {
         ],
       },
       semanticReview,
+      mechanicalFailures: failures,
       verdict: verdictFor({ phase, failures, semanticReview }),
       capturedAt,
     };

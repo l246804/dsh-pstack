@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import type { RunRecord } from "../playground/types.ts";
+import type { RunRecord, SessionFacts } from "../playground/types.ts";
 import {
   mountRawTree,
   profileManifest,
@@ -19,6 +19,7 @@ import {
   firstUserText,
   isRunRecord,
   latestRecords,
+  mechanicalFailures,
   pendingSemanticReview,
   sessionMatchesPrompt,
   type SessionEvent,
@@ -70,6 +71,7 @@ function record(phase: "raw" | "adapted", environmentId: string): RunRecord {
     },
     artifacts: { recordFile: "record.json", observed: [] },
     semanticReview: pendingSemanticReview(),
+    mechanicalFailures: [],
     verdict: verdictFor({ phase, failures: [], semanticReview: pendingSemanticReview() }),
     capturedAt: "2026-11-11T00:00:00.000Z",
   };
@@ -167,6 +169,41 @@ function userMessage(text: string): SessionEvent {
 function turnEnd(): SessionEvent {
   return { type: "turn/end", data: { reason: { kind: "completed" } } };
 }
+
+describe("mechanical failures", () => {
+  it("lists every mechanical failure independent of the semantic verdict", () => {
+    const scenario = behaviorScenario("poteto-help-smoke");
+    const target = { provider: "provider-a", model: "model-a", effort: "low" };
+    const session: SessionFacts = {
+      sessionId: "session",
+      sessionFile: "session-file",
+      workspacePath: temporary,
+      agentPreset: "standard",
+      skillLoads: [],
+      toolCalls: [],
+      turnEndReason: "completed",
+      assistantText: "验证建议",
+      userText: scenario.turns[0]?.prompt ?? "",
+      autoAnswers: [],
+    };
+    const input = {
+      scenario,
+      session,
+      workspace: temporary,
+      expectedTarget: target,
+      expectedPreset: "standard",
+    };
+    const failures = mechanicalFailures({ ...input, route: target });
+    expect(failures).toEqual(["process evidence: poteto-help was not loaded"]);
+    expect(mechanicalFailures({ ...input, route: null })).toContain(
+      "actual model route differs from testModel",
+    );
+    // The pending verdict stays unobserved while the list is already on the record.
+    expect(
+      verdictFor({ phase: "raw", failures, semanticReview: pendingSemanticReview() }).status,
+    ).toBe("unobserved");
+  });
+});
 
 describe("multi-turn session matching", () => {
   // Two turns in one session log: the first user message stays fixed while the second

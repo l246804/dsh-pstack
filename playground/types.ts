@@ -168,6 +168,13 @@ export interface RunRecord {
   session: SessionFacts | null;
   artifacts: ArtifactEvidence;
   semanticReview: SemanticReview;
+  /**
+   * Every mechanical check result at capture time (assertions, workspace, entry, route).
+   * Always recorded: an unobserved or inconclusive verdict must not hide them, and a
+   * review revision must not launder them. Records written before this field existed
+   * lack it on disk.
+   */
+  mechanicalFailures: string[];
   verdict: Verdict;
   capturedAt: string;
   /** Set on a review revision: the reviewedAt of the sidecar that produced this record. */

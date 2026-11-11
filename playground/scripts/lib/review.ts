@@ -186,14 +186,17 @@ function keyOf(identity: ReviewIdentity): string {
 }
 
 /**
- * The mechanical failures the original verdict saw. A pending record hides them behind
- * unobserved/inconclusive, so re-evaluate the scenario assertions from the record's own session
- * facts; otherwise a supported review could launder a failed assertion into a pass. Fall back to
- * the failures a non-pending verdict already exposes when the scenario is unknown.
+ * The mechanical failures the reviewed run recorded. A record captured with the
+ * mechanicalFailures field carries the exact list its verdict saw, so a supported review
+ * can never launder a failure the pending verdict hid. Records written before the field
+ * existed lack it on disk; for those, re-evaluate the scenario assertions from the
+ * record's own session facts, and fall back to the failures a non-pending verdict already
+ * exposes when the scenario is unknown.
  */
 function recordFailures(record: RunRecord): { failures: string[]; blockedReason?: string } {
   if (record.verdict.status === "blocked")
     return { failures: [], blockedReason: record.verdict.reason };
+  if (Array.isArray(record.mechanicalFailures)) return { failures: record.mechanicalFailures };
   if (!record.session) return { failures: [] };
   try {
     const scenario = loadScenario(record.scenarioId);
@@ -283,6 +286,7 @@ export function applyReviews(paths: ReviewPaths): ApplyResult {
       ...latest,
       semanticReview,
       reviewedAt: review.reviewedAt,
+      mechanicalFailures: verdictInput.failures,
       verdict: verdictFor(verdictInput),
       capturedAt,
       artifacts: { ...latest.artifacts, recordFile },
