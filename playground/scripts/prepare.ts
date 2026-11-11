@@ -122,7 +122,7 @@ async function main(): Promise<void> {
     registerWorkspaces(worker, listScenarioIds());
     if (enabledPackages.length > 0) {
       if (installed === null) {
-        installPlugins(worker);
+        installPlugins(worker, matrix.versionExemptions ?? []);
         installed = worker;
       } else {
         cloneInstalledProfile(installed, worker);

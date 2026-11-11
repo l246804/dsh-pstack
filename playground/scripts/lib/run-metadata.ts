@@ -37,7 +37,13 @@ export function isolatedRootDirectory(): string {
 export function environmentMatrix(id: string | undefined): RunEnvironment["matrix"] {
   const matrix = environments.find((entry) => entry.id === (id ?? "base"));
   if (!matrix) throw new Error(`unknown playground environment: ${id ?? "base"}`);
-  return { id: matrix.id, enabledPluginPackages: [...matrix.enabledPluginPackages] };
+  return {
+    id: matrix.id,
+    enabledPluginPackages: [...matrix.enabledPluginPackages],
+    ...(matrix.versionExemptions === undefined
+      ? {}
+      : { versionExemptions: [...matrix.versionExemptions] }),
+  };
 }
 
 export function publicConfigHash(

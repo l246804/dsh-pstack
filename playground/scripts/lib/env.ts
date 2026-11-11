@@ -17,7 +17,7 @@ import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
 import type { AllowedRoute, Phase, PlaygroundConfig, TestTarget } from "../../types.ts";
 import { readConfig } from "./config.ts";
-import { RAW_ROOT, REPOSITORY_ROOT } from "./run-metadata.ts";
+import { RAW_ROOT, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
 
 export const PROFILE_NAME = "playground";
@@ -308,7 +308,10 @@ export function profileDirFor(paths: WorkerPaths): string {
   return profileDirectory(paths);
 }
 
-export function installPlugins(paths: WorkerPaths): void {
+export function installPlugins(
+  paths: WorkerPaths,
+  versionExemptions: readonly string[] = [],
+): void {
   const result = spawnSync(DSH_BIN, ["plugin", "--profile", PROFILE_NAME, "install"], {
     cwd: REPOSITORY_ROOT,
     env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
@@ -316,6 +319,63 @@ export function installPlugins(paths: WorkerPaths): void {
   });
   if (result.error) throw new Error(`failed to run dsh plugin install: ${result.error.message}`);
   if (result.status !== 0) throw new Error(`dsh plugin install exited ${result.status}`);
+  if (versionExemptions.length > 0) grantVersionExemptions(paths, versionExemptions);
+}
+
+/** The cached version of a package the profile installed under its own node_modules. */
+function installedPackageVersion(paths: WorkerPaths, name: string): string {
+  const file = join(paths.home, "profiles", PROFILE_NAME, "node_modules", name, "package.json");
+  if (!existsSync(file)) {
+    throw new Error(
+      `cannot exempt ${name}: it is not installed in the profile (run install first)`,
+    );
+  }
+  const version = (JSON.parse(readFileSync(file, "utf8")) as { version?: string }).version;
+  if (!version) throw new Error(`cannot exempt ${name}: its package.json has no version`);
+  return version;
+}
+
+/**
+ * Grant exact-version exemptions so the loader keeps plugin rows whose peer range omits the
+ * running dsh. `dsh plugin allow-version` wants an exact `name@version` and the exact runtime
+ * version, so both are read from disk and the running CLI rather than hard-coded. Returns the
+ * granted `name@version` list for the caller to record.
+ */
+export function grantVersionExemptions(
+  paths: WorkerPaths,
+  packageNames: readonly string[],
+  runtimeVersion = dshVersion(),
+): string[] {
+  const granted: string[] = [];
+  for (const name of packageNames) {
+    const packageVersion = `${name}@${installedPackageVersion(paths, name)}`;
+    const result = spawnSync(
+      DSH_BIN,
+      [
+        "plugin",
+        "--profile",
+        PROFILE_NAME,
+        "allow-version",
+        packageVersion,
+        "--dsh-version",
+        runtimeVersion,
+        "--accept-risk",
+      ],
+      {
+        cwd: REPOSITORY_ROOT,
+        env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
+        stdio: "inherit",
+      },
+    );
+    if (result.error)
+      throw new Error(
+        `failed to grant version exemption ${packageVersion}: ${result.error.message}`,
+      );
+    if (result.status !== 0)
+      throw new Error(`dsh plugin allow-version ${packageVersion} exited ${result.status}`);
+    granted.push(packageVersion);
+  }
+  return granted;
 }
 
 export interface WorkspaceRegistration {

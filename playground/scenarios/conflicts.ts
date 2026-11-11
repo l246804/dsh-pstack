@@ -1,10 +1,14 @@
 import type { ConflictRegression } from "../types.ts";
 
 /**
- * The one conflict we verify as a regression: the Agent Teams profile and the pstack root
- * preset cannot share a profile. `src/poteto-mode.ts` throws `AGENT_TEAMS_CONFLICT` from
- * `assertNoAgentTeams` at preset mount when the `agentTeams` service is present, so the
- * web process exits instead of printing a URL.
+ * The one conflict we verify as a regression: Agent Teams and the pstack root presets cannot
+ * share a profile. `src/poteto-mode.ts` (row `poteto-mode-section`, `dsh-pstack/poteto-mode`)
+ * throws `AGENT_TEAMS_CONFLICT` from `assertNoAgentTeams` whenever `ctx.get("agentTeams")` is
+ * present. That row lives in each pstack root preset's plugin list, and `@deepseek-ai/dsh-agent-preset-registry`
+ * mounts a preset eagerly when it registers, awaiting the host tree first. So once Agent Teams
+ * registers `agentTeams`, mounting `poteto-mode`/`poteto-mode-creator` fails: the definition is
+ * recorded as broken (加载失败) and the preset cannot compose a session. The web host itself
+ * starts fine — a broken preset is non-fatal.
  */
 export const agentTeamConflict: ConflictRegression = {
   type: "conflict-regression",
@@ -13,9 +17,9 @@ export const agentTeamConflict: ConflictRegression = {
   expectedConflict: {
     packages: ["@deepseek-ai/dsh-experimental-agent-team-profile"],
     symptom:
-      '启动 profile 时进程退出、不打印 web URL：cordis.patch.yml 的 pstack 根 preset 行（dsh-pstack/poteto-mode）在 apply 时看到 agentTeams 服务已由 @deepseek-ai/dsh-experimental-agent-team-profile 注册，抛出 "pstack root presets cannot be used with Agent Teams"。两者都接管委派与任务协调，pstack 根 preset 启动失败。',
+      'web 正常启动（两者可以共存），但设置 → Agent 预设里 pstack 根 preset 显示「加载失败」，不可选：Agent Teams 加载后注册了 agentTeams 服务，pstack 根 preset 行 poteto-mode-section（dsh-pstack/poteto-mode）在 preset 激活时看到该服务，抛出 "pstack root presets cannot be used with Agent Teams"，于是 poteto-mode / poteto-mode-creator 无法组合会话，新会话的预设菜单里也不出现它们。',
     recovery:
-      "禁用 @deepseek-ai/dsh-experimental-agent-team-profile，或改用不加载 pstack 根 preset 的 profile（standard / Creator preset）。不要让 Agent Teams 与 pstack 根 preset 在同一 profile 共存。",
+      "禁用 @deepseek-ai/dsh-experimental-agent-team-profile，或改用未加载 pstack 根 preset 的 standard / Creator preset。不要让 Agent Teams 与 pstack 根 preset 在同一 profile 共存；共存时 web 能启动，但根 preset 不可用。",
   },
   turns: [
     {
@@ -25,15 +29,15 @@ export const agentTeamConflict: ConflictRegression = {
   workspace: { files: {} },
   observations: [
     {
-      id: "startup-conflict-log",
+      id: "preset-unavailable",
       description:
-        'web 启动日志或进程错误含 "Agent Teams" 与 "preset" 关键词，证明根 preset 的启动守卫按预期拒绝与 Agent Teams 共存。',
+        'web 启动成功（打印 URL）；设置 → Agent 预设里 [data-agent-preset-id="poteto-mode"] 显示「加载失败」，告警文本含 "Agent Teams" 与 "preset" 关键词，证明根 preset 因 Agent Teams 存在而拒绝组合；新会话预设菜单不提供 poteto-mode。',
     },
   ],
   source: {
     upstreamSkill: "cordis.patch.yml",
     regression:
-      '根 preset 行 dsh-pstack/poteto-mode 的 assertNoAgentTeams 守卫：ctx.get("agentTeams") 存在时抛 AGENT_TEAMS_CONFLICT（src/poteto-mode.ts）。',
+      '根 preset 行 poteto-mode-section（dsh-pstack/poteto-mode）的 assertNoAgentTeams 守卫：ctx.get("agentTeams") 存在时抛 AGENT_TEAMS_CONFLICT（src/poteto-mode.ts），使 preset 激活失败并标记为 broken。',
   },
 };
 
