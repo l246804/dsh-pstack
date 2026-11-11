@@ -174,52 +174,87 @@ function findMatchingSession(
   return null;
 }
 
+const DEFAULT_ANSWER_TEXT = "按你的最佳判断继续";
+
+/**
+ * Answer the open ask_user_question card as the absent user would. The card is a
+ * one-question-per-page wizard: choosing an option on a non-last question advances on its
+ * own, and the last question needs the primary submit button in the footer. So we act one
+ * step per poll (select, or submit) and let React re-render before the next poll. A case's
+ * `answers` rules win; otherwise take the first option, or type the default text when the
+ * question offers no options. Every distinct answer is recorded once for the evidence.
+ */
 function answerPendingQuestions(
   session: BrowserSession,
   scenario: BehaviorScenario,
   log: Array<{ question: string; answer: string }>,
 ): void {
-  const raw = session.eval<string>(
-    `(() => {
+  let raw: string;
+  try {
+    raw = session.eval<string>(
+      `(() => {
       const rules = ${JSON.stringify(scenario.answers ?? [])};
+      const fallback = ${JSON.stringify(DEFAULT_ANSWER_TEXT)};
       const visible = (el) => !!el && (el.offsetParent !== null || el.getClientRects().length > 0);
-      const containers = [...document.querySelectorAll("[data-question-key]")].filter(visible);
-      if (!containers.length) return "[]";
+      const card = [...document.querySelectorAll("[data-question-key]")].find(visible);
+      if (!card) return "[]";
+      const labelledBy = card.getAttribute("aria-labelledby");
+      const labelEl = labelledBy ? document.getElementById(labelledBy) : null;
+      const question = ((labelEl && labelEl.innerText) || (card.innerText || "")).trim().split("\\n")[0].slice(0, 300);
+      const rule = rules.find((r) => question.includes(r.match));
+      const optionButtons = [...card.querySelectorAll("[data-option-row] button")].filter((b) => visible(b) && !b.disabled);
+      const selected = optionButtons.filter((b) => b.getAttribute("aria-checked") === "true");
       const actions = [];
-      for (const c of containers) {
-        const question = (c.innerText || "").trim().split("\\n").slice(0, 3).join(" ").slice(0, 300);
-        const rule = rules.find((r) => question.includes(r.match));
-        const rows = [...c.querySelectorAll("[data-option-row]")].filter(visible);
-        let answer = "";
-        if (rule?.selected?.length) {
-          for (const label of rule.selected) {
-            const row = rows.find((r) => ((r.getAttribute("data-option-line") || r.innerText || "")).includes(label));
-            if (row) { row.click(); answer += label + " "; }
+      const record = (answer) => actions.push({ question, answer: answer || "(clicked first option)" });
+      if (selected.length === 0) {
+        const custom = rule && rule.custom ? rule.custom : (!rule && optionButtons.length === 0 ? fallback : "");
+        if (custom) {
+          const input = card.querySelector("textarea, input:not([type=checkbox]):not([type=radio])");
+          if (input) {
+            const proto = input.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+            Object.getOwnPropertyDescriptor(proto, "value").set.call(input, custom);
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            record(custom);
           }
-        } else if (!rule || (!rule.selected && !rule.custom)) {
-          if (rows.length) { rows[0].click(); answer = (rows[0].getAttribute("data-option-line") || rows[0].innerText || "").trim(); }
+        } else if (optionButtons.length > 0) {
+          let target = null;
+          if (rule && rule.selected && rule.selected.length) {
+            target = optionButtons.find((b) => (b.getAttribute("aria-label") || b.innerText || "").includes(rule.selected[0]));
+          }
+          if (!target) target = optionButtons[0];
+          record((target.getAttribute("aria-label") || target.innerText || "").trim());
+          target.click();
         }
-        let custom = rule?.custom ?? "";
-        if (!custom && rows.length === 0) custom = "按你的最佳判断继续";
-        const input = c.querySelector("[data-question-reply] textarea, [data-question-reply] input, textarea, input:not([type=checkbox]):not([type=radio])");
-        if (custom && input) {
-          const proto = input.tagName === "TEXTAREA" ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
-          Object.getOwnPropertyDescriptor(proto, "value").set.call(input, custom);
-          input.dispatchEvent(new Event("input", { bubbles: true }));
-          answer = answer ? answer + " / " + custom : custom;
-        }
-        actions.push({ question, answer });
+        return JSON.stringify(actions);
       }
-      const scope = containers[0].closest("[role=dialog]") || containers[0].parentElement?.parentElement?.parentElement || containers[0];
-      const buttons = [...scope.querySelectorAll("button")].filter((b) => !b.disabled && visible(b));
-      const submit = buttons.find((b) => /回复|提交|reply|submit/i.test((b.getAttribute("aria-label") || "") + " " + (b.innerText || "")));
-      if (submit) submit.click();
-      else buttons.find((b) => /下一|next/i.test((b.getAttribute("aria-label") || "") + " " + (b.innerText || "")))?.click();
+      // Already answered: click the primary footer button (advance on non-last, submit on last).
+      // Skip the pager arrows (aria nav.prev/nav.next with no text) and the skip button.
+      const footer = card.querySelector("footer");
+      const primary = footer
+        ? [...footer.querySelectorAll("button")].find((b) => {
+            const label = b.getAttribute("aria-label") || "";
+            if (/上一题|下一题|prev|next/i.test(label) && !b.innerText.trim()) return false;
+            if (/跳过|skip/i.test((b.innerText || "") + " " + label)) return false;
+            return visible(b) && !b.disabled;
+          })
+        : null;
+      if (primary) primary.click();
       return JSON.stringify(actions);
     })()`,
-  );
+    );
+  } catch {
+    // A transient eval failure (for example the page context changed mid-poll when a
+    // preset switch or navigation reloads the app) must not abort the case; retry next poll.
+    return;
+  }
   try {
-    log.push(...(JSON.parse(raw) as Array<{ question: string; answer: string }>));
+    const parsed = JSON.parse(raw) as Array<{ question: string; answer: string }>;
+    for (const entry of parsed) {
+      if (log.some((item) => item.question === entry.question && item.answer === entry.answer))
+        continue;
+      log.push(entry);
+      console.log(`[run-case] auto-answered "${entry.question}" -> ${entry.answer}`);
+    }
   } catch {
     // The browser returned no complete question card.
   }
