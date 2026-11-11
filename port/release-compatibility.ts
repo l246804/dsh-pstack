@@ -24,8 +24,10 @@ interface Manifest {
   engines?: { dsh?: string };
 }
 
-interface CasesLock {
-  baseline?: { compatibilityKey?: string };
+interface Baseline {
+  compatibilityKey?: string;
+  dshVersion?: string;
+  pstackCommit?: string;
 }
 
 interface UpstreamManifest {
@@ -49,11 +51,11 @@ function readJson(path: string, root = ROOT): unknown {
 
 export function releaseMetadata(read = readJson): ReleaseMetadata {
   const manifest = read("package.json") as Manifest;
-  const lock = read("playground/cases.lock.json") as CasesLock;
+  const baseline = read("playground/baseline.json") as Baseline;
   const upstream = read("upstream/cursor-plugins/pstack/plugin.json") as UpstreamManifest;
   const version = manifest.version;
   const dshRange = manifest.engines?.dsh;
-  const compatibilityKey = lock.baseline?.compatibilityKey;
+  const compatibilityKey = baseline.compatibilityKey;
   const pstackVersion = upstream.version;
   if (typeof version !== "string" || !VERSION.test(version)) {
     throw new Error(`package.json has an invalid release version: ${version}`);

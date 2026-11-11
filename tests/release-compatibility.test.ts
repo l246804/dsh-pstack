@@ -53,8 +53,10 @@ function prepare(): void {
   mkdirSync(join(ROOT, "playground"), { recursive: true });
   mkdirSync(join(ROOT, "upstream", "cursor-plugins", "pstack"), { recursive: true });
   writeJson("package.json", { version: "0.3.0-beta.1", engines: { dsh: RANGE } });
-  writeJson("playground/cases.lock.json", {
-    baseline: { compatibilityKey: KEY },
+  writeJson("playground/baseline.json", {
+    compatibilityKey: KEY,
+    dshVersion: RANGE,
+    pstackCommit: "ae5650febf4320793844c12c4adaa937f417f8da",
   });
   writeJson("upstream/cursor-plugins/pstack/plugin.json", { version: "0.15.36" });
   writeFileSync(join(ROOT, "README.md"), readme());
