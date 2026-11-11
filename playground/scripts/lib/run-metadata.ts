@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -15,10 +16,22 @@ export const RAW_TREE = join(RAW_ROOT, "tree");
 export const RAW_SKILLS = join(RAW_TREE, "skills");
 export const REPORT_DIRECTORY = join(PLAYGROUND_DIRECTORY, "reports");
 export const WORKERS_ROOT = join(PLAYGROUND_DIRECTORY, ".workers");
+export const ISOLATED_ROOT = join(tmpdir(), "dsh-pstack-playground");
 
 export function workersDirectory(): string {
   const override = process.env.PLAYGROUND_WORKERS_DIR;
   return override ? resolve(PLAYGROUND_DIRECTORY, override) : WORKERS_ROOT;
+}
+
+/**
+ * Root of the per-worker directories the tested session can reach: its workspace and the
+ * raw skill mount. The sandbox limits writes but not reads, so this root must stay outside
+ * the repository tree; a workspace inside the repo lets the session read scenario rubrics
+ * and assertions and answer to them.
+ */
+export function isolatedRootDirectory(): string {
+  const override = process.env.PLAYGROUND_WORKSPACE_ROOT;
+  return override ? resolve(override) : ISOLATED_ROOT;
 }
 
 export function environmentMatrix(id: string | undefined): RunEnvironment["matrix"] {

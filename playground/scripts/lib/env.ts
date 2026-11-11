@@ -17,7 +17,7 @@ import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
 import type { AllowedRoute, Phase, PlaygroundConfig, TestTarget } from "../../types.ts";
 import { readConfig } from "./config.ts";
-import { RAW_ROOT, RAW_SKILLS, REPOSITORY_ROOT } from "./run-metadata.ts";
+import { RAW_ROOT, REPOSITORY_ROOT } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
 
 export const PROFILE_NAME = "playground";
@@ -30,8 +30,10 @@ const DSH_BIN = process.env.DSH_BIN ?? (process.platform === "win32" ? "dsh.cmd"
 export { DEFAULT_CONFIG_FILE as CONFIG_FILE, RAW_ROOT, RAW_SKILLS } from "./run-metadata.ts";
 
 function runtimeEnv(paths: WorkerPaths): Record<string, string> {
-  const runtime = join(paths.root, "xdg-runtime");
-  const tmp = join(paths.root, "tmp");
+  // Every tool child of the worker inherits these, so they must not point into the
+  // repository tree or the tested session could derive the repo root from its own env.
+  const runtime = join(paths.isolatedRoot, "xdg-runtime");
+  const tmp = join(paths.isolatedRoot, "tmp");
   mkdirSync(runtime, { recursive: true });
   mkdirSync(tmp, { recursive: true });
   try {
@@ -131,13 +133,14 @@ function profileDirectory(paths: WorkerPaths): string {
   return join(paths.home, "profiles", PROFILE_NAME);
 }
 
-function persistentInstructions(): string {
-  const skill = join(RAW_SKILLS, "poteto-mode/SKILL.md");
-  if (!existsSync(skill)) throw new Error("raw tree is missing; run playground:raw-generate first");
+function persistentInstructions(rawMount: string): string {
+  const skill = join(rawMount, "tree/skills/poteto-mode/SKILL.md");
+  if (!existsSync(skill))
+    throw new Error("raw mount is missing; run playground:prepare for the raw phase first");
   const body = readFileSync(skill, "utf8").replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
   return [
     "You are running the raw baseline under the standard agent preset.",
-    `Read ${join(RAW_ROOT, "dsh.md")} once before following the skill below.`,
+    `Read ${join(rawMount, "dsh.md")} once before following the skill below.`,
     `Skill file: ${skill}`,
     body,
   ].join("\n\n");
@@ -166,7 +169,7 @@ export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan, phase: Ph
           {
             id: "system-prompt",
             name: "@deepseek-ai/dsh-system-prompt",
-            config: { personaSuffix: persistentInstructions() },
+            config: { personaSuffix: persistentInstructions(paths.rawMount) },
           },
         ]
       : []),
@@ -214,7 +217,22 @@ export function copyCredentials(paths: WorkerPaths, file = DEFAULT_CREDENTIALS_F
 
 export function resetHome(paths: WorkerPaths): void {
   rmSync(paths.root, { recursive: true, force: true });
+  rmSync(paths.isolatedRoot, { recursive: true, force: true });
   mkdirSync(paths.home, { recursive: true });
+}
+
+/**
+ * Copy the generated raw tree to the worker's mount outside the repository and return the
+ * mount root. The raw profile and persona reference this copy only; the in-repo path would
+ * hand the tested session the repository root, and with it the scenario rubrics.
+ */
+export function mountRawTree(paths: WorkerPaths, source: string = RAW_ROOT): string {
+  if (!existsSync(source))
+    throw new Error("raw tree is missing; run playground:raw-generate first");
+  rmSync(paths.rawMount, { recursive: true, force: true });
+  mkdirSync(paths.isolatedRoot, { recursive: true });
+  cpSync(source, paths.rawMount, { recursive: true });
+  return paths.rawMount;
 }
 
 export function profileManifest(
@@ -239,9 +257,10 @@ export function profileManifest(
   };
 }
 
-export function rawProfileEntries(template: unknown[]): unknown[] {
-  if (!existsSync(RAW_SKILLS))
-    throw new Error("raw tree is missing; run playground:raw-generate first");
+export function rawProfileEntries(template: unknown[], rawMount: string): unknown[] {
+  const skills = join(rawMount, "tree/skills");
+  if (!existsSync(skills))
+    throw new Error("raw mount is missing; run playground:prepare for the raw phase first");
   return [
     ...template,
     {
@@ -253,7 +272,7 @@ export function rawProfileEntries(template: unknown[]): unknown[] {
             providerName: "pstack-raw",
             includeDefaultRoots: false,
             watch: false,
-            bundledSkillDir: RAW_SKILLS,
+            bundledSkillDir: skills,
           },
         },
       ],
@@ -276,7 +295,7 @@ export function buildProfile(
   const entries =
     (yamlLoad(readFileSync(join(PROFILE_TEMPLATE_DIR, "cordis.patch.yml"), "utf8")) as unknown[]) ??
     [];
-  const patch = phase === "raw" ? rawProfileEntries(entries) : entries;
+  const patch = phase === "raw" ? rawProfileEntries(entries, paths.rawMount) : entries;
   writeFileSync(join(directory, "cordis.patch.yml"), yamlDump(patch, { lineWidth: 120 }));
   const manifest = profileManifest(phase, enabledPluginPackages);
   if (phase === "adapted" && !enabledPluginPackages.includes("dsh-pstack")) {

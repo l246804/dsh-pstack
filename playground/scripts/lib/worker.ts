@@ -1,15 +1,19 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import { workersDirectory } from "./run-metadata.ts";
+import { isolatedRootDirectory, workersDirectory } from "./run-metadata.ts";
 
 export interface WorkerPaths {
   index: number;
   environmentId: string;
+  /** Audited worker state inside the repository: home, browser, evidence, pid, log. */
   root: string;
+  /** Per-worker root outside the repository tree for everything the tested session can reach. */
+  isolatedRoot: string;
   home: string;
   browserDir: string;
   workspaceRoot: string;
+  rawMount: string;
   evidenceDir: string;
   urlFile: string;
   pidFile: string;
@@ -21,13 +25,16 @@ export function workerPaths(index: number, environmentId = "base"): WorkerPaths 
   if (!/^[a-z0-9-]+$/.test(environmentId))
     throw new Error(`invalid environment id: ${environmentId}`);
   const root = join(workersDirectory(), environmentId, `w${index}`);
+  const isolatedRoot = join(isolatedRootDirectory(), environmentId, `w${index}`);
   return {
     index,
     environmentId,
     root,
+    isolatedRoot,
     home: join(root, "home"),
     browserDir: join(root, "browser"),
-    workspaceRoot: join(root, "workspace"),
+    workspaceRoot: join(isolatedRoot, "workspace"),
+    rawMount: join(isolatedRoot, "raw"),
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
     pidFile: join(root, "web.pid"),

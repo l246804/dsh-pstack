@@ -1,10 +1,18 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import type { RunRecord } from "../playground/types.ts";
-import { profileManifest } from "../playground/scripts/lib/env.ts";
+import {
+  mountRawTree,
+  profileManifest,
+  rawProfileEntries,
+  registerWorkspaces,
+  resetHome,
+  writeHomePatch,
+  type ProviderPlan,
+} from "../playground/scripts/lib/env.ts";
 import {
   assertSafeRecord,
   assertSameEntry,
@@ -16,9 +24,14 @@ import {
   type SessionEvent,
   verdictFor,
 } from "../playground/scripts/lib/evidence.ts";
-import { publicConfigHash } from "../playground/scripts/lib/run-metadata.ts";
+import {
+  ISOLATED_ROOT,
+  isolatedRootDirectory,
+  publicConfigHash,
+  REPOSITORY_ROOT,
+} from "../playground/scripts/lib/run-metadata.ts";
 import { behaviorScenario } from "../playground/scenarios/index.ts";
-import { workerPaths } from "../playground/scripts/lib/worker.ts";
+import { workerPaths, type WorkerPaths } from "../playground/scripts/lib/worker.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -181,5 +194,119 @@ describe("multi-turn session matching", () => {
 
   it("rejects a prompt the session never carried", () => {
     expect(sessionMatchesPrompt(events, "third prompt", false)).toBe(false);
+  });
+});
+
+function tempWorkerPaths(index: number): WorkerPaths {
+  const root = join(temporary, `worker-${index}`);
+  const isolatedRoot = join(temporary, `isolated-${index}`);
+  return {
+    index,
+    environmentId: "base",
+    root,
+    isolatedRoot,
+    home: join(root, "home"),
+    browserDir: join(root, "browser"),
+    workspaceRoot: join(isolatedRoot, "workspace"),
+    rawMount: join(isolatedRoot, "raw"),
+    evidenceDir: join(root, "evidence"),
+    urlFile: join(root, "web-url.txt"),
+    pidFile: join(root, "web.pid"),
+    logFile: join(root, "web.log"),
+    phaseFile: join(root, "phase.txt"),
+  };
+}
+
+const isolationPlan: ProviderPlan = {
+  routes: [],
+  providers: {},
+  apiKeyEnv: "TEST_PROVIDER_KEY",
+  apiKey: "test-key-value",
+  main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
+};
+
+function writeFakeRawTree(root: string): void {
+  mkdirSync(join(root, "tree/skills/poteto-mode"), { recursive: true });
+  writeFileSync(join(root, "dsh.md"), "# raw harness adapter\n");
+  writeFileSync(
+    join(root, "tree/skills/poteto-mode/SKILL.md"),
+    "---\nname: poteto-mode\n---\n\n# Raw poteto mode body\n",
+  );
+}
+
+describe("read isolation from the repository tree", () => {
+  it("keeps the session workspace and raw mount outside the repository", () => {
+    const paths = workerPaths(1, "base");
+    expect(paths.workspaceRoot.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
+    expect(paths.rawMount.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
+    expect(paths.workspaceRoot).toBe(join(ISOLATED_ROOT, "base", "w1", "workspace"));
+    expect(paths.rawMount).toBe(join(ISOLATED_ROOT, "base", "w1", "raw"));
+    // Audited state stays inside the repository.
+    for (const dir of [paths.home, paths.browserDir, paths.evidenceDir]) {
+      expect(dir.startsWith(`${REPOSITORY_ROOT}/playground/.workers/`)).toBe(true);
+    }
+    // The isolated root layers per environment and per worker.
+    expect(workerPaths(1, "other").workspaceRoot).not.toBe(paths.workspaceRoot);
+    expect(workerPaths(2, "base").isolatedRoot).not.toBe(paths.isolatedRoot);
+  });
+
+  it("honors the PLAYGROUND_WORKSPACE_ROOT override", () => {
+    const override = join(temporary, "workspace-override");
+    process.env.PLAYGROUND_WORKSPACE_ROOT = override;
+    try {
+      expect(isolatedRootDirectory()).toBe(resolve(override));
+      expect(workerPaths(0, "base").workspaceRoot).toBe(
+        join(resolve(override), "base", "w0", "workspace"),
+      );
+    } finally {
+      delete process.env.PLAYGROUND_WORKSPACE_ROOT;
+    }
+    expect(isolatedRootDirectory()).toBe(ISOLATED_ROOT);
+    expect(ISOLATED_ROOT.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
+  });
+
+  it("mounts a raw copy so no worker profile path exposes the repository root", () => {
+    const paths = tempWorkerPaths(10);
+    const source = join(temporary, "raw-source");
+    writeFakeRawTree(source);
+    expect(mountRawTree(paths, source)).toBe(paths.rawMount);
+    expect(existsSync(join(paths.rawMount, "dsh.md"))).toBe(true);
+    expect(existsSync(join(paths.rawMount, "tree/skills/poteto-mode/SKILL.md"))).toBe(true);
+    expect(() => mountRawTree(paths, join(temporary, "absent"))).toThrow(/raw tree is missing/);
+
+    const entries = rawProfileEntries([], paths.rawMount);
+    expect(JSON.stringify(entries)).toContain(join(paths.rawMount, "tree/skills"));
+    expect(JSON.stringify(entries)).not.toContain(REPOSITORY_ROOT);
+    expect(() => rawProfileEntries([], join(temporary, "absent"))).toThrow(/raw mount is missing/);
+
+    writeHomePatch(paths, isolationPlan, "raw");
+    const patch = readFileSync(join(paths.home, "cordis.patch.yml"), "utf8");
+    expect(patch).toContain(join(paths.rawMount, "tree/skills/poteto-mode/SKILL.md"));
+    expect(patch).toContain(join(paths.rawMount, "dsh.md"));
+    expect(patch).not.toContain(REPOSITORY_ROOT);
+  });
+
+  it("keeps registerWorkspaces on absolute paths under the isolated workspace root", () => {
+    const paths = tempWorkerPaths(11);
+    const registration = registerWorkspaces(paths, ["scenario-b", "scenario-a"]);
+    expect(Object.keys(registration.dirs)).toEqual(["scenario-a", "scenario-b"]);
+    for (const dir of Object.values(registration.dirs)) {
+      expect(isAbsolute(dir)).toBe(true);
+      expect(dir.startsWith(`${paths.workspaceRoot}/`)).toBe(true);
+    }
+    const store = readFileSync(join(paths.home, "storages/workspace.json"), "utf8");
+    expect(store).toContain(paths.workspaceRoot);
+    expect(store).not.toContain(REPOSITORY_ROOT);
+  });
+
+  it("clears the isolated root when the worker home resets", () => {
+    const paths = tempWorkerPaths(12);
+    mkdirSync(paths.workspaceRoot, { recursive: true });
+    writeFileSync(join(paths.workspaceRoot, "leftover.txt"), "x");
+    mountRawTree(paths, join(temporary, "raw-source"));
+    resetHome(paths);
+    expect(existsSync(paths.home)).toBe(true);
+    expect(existsSync(paths.workspaceRoot)).toBe(false);
+    expect(existsSync(paths.rawMount)).toBe(false);
   });
 });

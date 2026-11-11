@@ -1,14 +1,15 @@
-import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Phase } from "../types.ts";
-import { environmentMatrix, workersDirectory } from "./lib/run-metadata.ts";
+import { environmentMatrix, isolatedRootDirectory, workersDirectory } from "./lib/run-metadata.ts";
 import {
   buildProfile,
   cloneInstalledProfile,
   copyCredentials,
   installPlugins,
   loadProviderPlan,
+  mountRawTree,
   readPlaygroundConfig,
   registerWorkspaces,
   resetHome,
@@ -25,6 +26,10 @@ import { listWorkers, workerCount, workerPaths, type WorkerPaths } from "./lib/w
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
+}
+
+function readPhase(paths: WorkerPaths): string {
+  return existsSync(paths.phaseFile) ? readFileSync(paths.phaseFile, "utf8").trim() : "";
 }
 
 async function waitReachable(url: string): Promise<boolean> {
@@ -81,6 +86,11 @@ async function main(): Promise<void> {
       workerPaths(index, matrix.id),
     );
     for (const worker of workers) stopWeb(worker);
+    // The reused profile points at the worker's raw mount outside the repo; refresh it so a
+    // cleared temp root does not restart raw workers with missing skills.
+    for (const worker of workers) {
+      if (readPhase(worker) === "raw") mountRawTree(worker);
+    }
     await startWorkers(workers, plan);
     return;
   }
@@ -89,6 +99,7 @@ async function main(): Promise<void> {
   if (reset) {
     for (const worker of listWorkers(matrix.id)) stopWeb(worker);
     rmSync(join(workersDirectory(), matrix.id), { recursive: true, force: true });
+    rmSync(join(isolatedRootDirectory(), matrix.id), { recursive: true, force: true });
   } else {
     for (const worker of listWorkers(matrix.id)) {
       if (worker.index >= count) stopWeb(worker);
@@ -99,6 +110,7 @@ async function main(): Promise<void> {
   for (const worker of workers) {
     if (reset) resetHome(worker);
     else mkdirSync(worker.home, { recursive: true });
+    if (phase === "raw") mountRawTree(worker);
     buildProfile(worker, phase, enabledPackages);
     writeFileSync(worker.phaseFile, `${phase}\n`);
     copyCredentials(worker, config.credentialsFile);

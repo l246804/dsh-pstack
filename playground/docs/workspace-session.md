@@ -4,7 +4,7 @@
 
 ## 隔离运行环境
 
-一个 worker 有一套独立运行环境，目录为 `playground/.workers/<environmentId>/w<k>`。home、浏览器 profile、工作区、证据、pid 和日志互不共享。environmentId 属于 RunRecord 的身份，不能只靠时间戳区分。
+一个 worker 有一套独立运行环境。home、浏览器 profile、证据、pid 和日志在仓库内 `playground/.workers/<environmentId>/w<k>`，便于审计；被测会话的工作区和 raw 技能挂载在仓库外隔离根 `<isolatedRoot>/<environmentId>/w<k>`（默认 `os.tmpdir()/dsh-pstack-playground`，环境变量 `PLAYGROUND_WORKSPACE_ROOT` 可覆盖）。沙箱只限写不限读，所以 prepare 把 `playground/raw/generated` 整体复制到隔离根的 `raw` 挂载目录，raw profile 与常驻提示只引用该副本，工作区与挂载路径都不得暴露仓库根。environmentId 属于 RunRecord 的身份，不能只靠时间戳区分。
 
 每个 worker 使用 `dsh --port 0`。prepare 从实际启动输出读取 URL 和端口。当前受管 web 生命周期只在 Linux 上运行。其他平台需要接入受管 DSH 进程，不能把未知 PID 当成 web 进程。
 
