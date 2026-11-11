@@ -8,6 +8,7 @@ import {
   conflicts,
 } from "../playground/scenarios/conflicts.ts";
 import { environments } from "../playground/scenarios/index.ts";
+import { environmentMatrix } from "../playground/scripts/lib/run-metadata.ts";
 import {
   CONFLICT_KEYWORD_GROUPS,
   buildConflictRunRecord,
@@ -52,15 +53,28 @@ describe("environment matrix", () => {
 
   it("force-loads the incompatible Agent Teams plugins only in the conflict environment", () => {
     const byId = new Map(environments.map((environment) => [environment.id, environment]));
-    expect(byId.get("agent-team-conflict")?.versionExemptions).toEqual([
+    const agentTeamPackages = [
       "@deepseek-ai/dsh-experimental-agent-team",
       "@deepseek-ai/dsh-experimental-tool-agent-team",
-    ]);
+    ];
+    expect(byId.get("agent-team-conflict")?.versionExemptions).toEqual(agentTeamPackages);
     for (const environment of environments) {
       if (environment.id !== "agent-team-conflict") {
-        expect(environment.versionExemptions ?? []).toEqual([]);
+        expect(environment.versionExemptions ?? []).not.toContain(agentTeamPackages[0]);
+        expect(environment.versionExemptions ?? []).not.toContain(agentTeamPackages[1]);
       }
     }
+  });
+
+  it("exempts session-search's incompatible packages and passes them through the matrix", () => {
+    const sessionSearch = environments.find((environment) => environment.id === "session-search");
+    const sessionQueryPackages = [
+      "@deepseek-ai/dsh-session-query-sqlite",
+      "@deepseek-ai/dsh-tool-session-query",
+    ];
+    expect(sessionSearch?.versionExemptions).toEqual(sessionQueryPackages);
+    // prepare grants whatever environmentMatrix returns, so the pass-through is the contract.
+    expect(environmentMatrix("session-search").versionExemptions).toEqual(sessionQueryPackages);
   });
 });
 

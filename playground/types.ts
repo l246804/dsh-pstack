@@ -109,11 +109,12 @@ export interface EnvironmentMatrix {
   id: string;
   enabledPluginPackages: string[];
   /**
-   * Plugin packages force-loaded despite a peer/runtime version mismatch. Only the
-   * agent-team fixture needs this: its experimental plugins declare a peer range that the
-   * pinned dsh runtime does not satisfy, so the loader disables them unless the exact
-   * package@version is exempted for this runtime. `prepare` reads the installed version and
-   * the actual runtime version to grant each exemption.
+   * Plugin packages force-loaded despite a peer/runtime version mismatch. Two fixtures need
+   * this: `session-search`, whose experimental plugin pins session-query packages the runtime
+   * does not satisfy, and `agent-team-conflict`, whose experimental Agent Teams plugins declare
+   * a peer range the pinned dsh runtime does not satisfy. The loader disables those rows unless
+   * the exact package@version is exempted for this runtime. `prepare` reads the installed
+   * version and the actual runtime version to grant each exemption.
    */
   versionExemptions?: string[];
 }

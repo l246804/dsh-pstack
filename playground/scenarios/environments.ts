@@ -5,17 +5,25 @@ import type { EnvironmentMatrix } from "../types.ts";
  * `dsh-pstack` to every adapted profile automatically, so `enabledPluginPackages` holds
  * only the extra official packages layered on top of the base bundle.
  *
+ * Two environments force-load packages the pinned dsh runtime would otherwise disable.
+ * `session-search`'s experimental plugin pins its session-query packages to an older runtime
+ * line the pinned dsh rejects, and `agent-team-conflict` ships experimental Agent Teams plugins
+ * whose peer range omits the runtime. The loader disables those rows unless the exact package is
+ * exempted, so `versionExemptions` lists the packages to force-load through
+ * `dsh plugin allow-version`.
+ *
  * `agent-team-conflict` is not a capability sample: it force-loads the Agent Teams profile so
  * `run-conflict` can prove the pstack root presets (poteto-mode) cannot compose beside it.
- * Agent Teams ships as experimental plugins whose peer range omits the pinned dsh runtime, so
- * the loader would disable those rows; `versionExemptions` lists the packages to force-load
- * through `dsh plugin allow-version` so the `agentTeams` service really registers.
  */
 export const environments: readonly EnvironmentMatrix[] = [
   { id: "base", enabledPluginPackages: [] },
   {
     id: "session-search",
     enabledPluginPackages: ["@deepseek-ai/dsh-experimental-session-search"],
+    versionExemptions: [
+      "@deepseek-ai/dsh-session-query-sqlite",
+      "@deepseek-ai/dsh-tool-session-query",
+    ],
   },
   { id: "browser-use", enabledPluginPackages: ["@deepseek-ai/dsh-browser-use"] },
   {
