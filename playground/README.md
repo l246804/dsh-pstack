@@ -49,6 +49,8 @@ vp run playground:stop -- --environment base
 
 技能加载只是过程证据。`semanticReview` 必须单独记录 supported、gap 或 inconclusive，并附审核者与理由。pending 不会使 raw 变为 observed，也不会使 adapted 变为 verified。raw 有 observed、gap、blocked、unobserved 四态，adapted 有 verified、not-verified、inconclusive 三态。
 
+审核侧车文件名是 `<scenarioId>-<phase>-<environmentId>.json`。scenarioId 取自行为、插件 UI 与冲突回归三张注册表，因此 `plugin-ui-*` 与 `plugin-conflict-*` 的侧车同样可解析。
+
 `collect` 从注册表补齐 unrun 和排除项。adapted 报告还检查 raw 对照的自然语言、实际模型、上游 revision 和配置 hash。排除目前只有 make-bot-ui 与 Benny Cursor Automations。提及 Cursor 的普通工作流不排除。
 
 旧 cases、审批 lock 和 skill-audit 已删除。发布兼容键的新来源由后续适配阶段处理。

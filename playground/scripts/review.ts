@@ -5,7 +5,7 @@ import {
   REVIEWS_DIRECTORY,
   type ReviewIdentity,
 } from "./lib/review.ts";
-import { listScenarioIds } from "./lib/scenarios.ts";
+import { listReviewScenarioIds } from "./lib/scenarios.ts";
 
 function label(identity: ReviewIdentity): string {
   return `${identity.scenarioId} ${identity.phase} ${identity.environmentId}`;
@@ -15,7 +15,7 @@ function main(): void {
   const input = {
     reviewsDirectory: REVIEWS_DIRECTORY,
     workersDirectory: workersDirectory(),
-    scenarioIds: listScenarioIds(),
+    scenarioIds: listReviewScenarioIds(),
   };
   if (process.argv.includes("--apply")) {
     const result = applyReviews(input);

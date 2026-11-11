@@ -1,6 +1,8 @@
 import type { BehaviorScenario, Exclusion } from "../types.ts";
 
 import { architectDiscountStrategy as Architect } from "./architect.ts";
+import { conflicts } from "./conflicts.ts";
+import { pluginUiScenarios } from "./plugin-ui.ts";
 import { arenaDurationBakeoff as Arena } from "./arena.ts";
 import { automateMeCapturePreferences as AutomateMe } from "./automate-me.ts";
 import { benchmarkChecklist as BenchmarkChecklist } from "./benchmark-checklist.ts";
@@ -127,6 +129,20 @@ export function behaviorScenario(id: string): BehaviorScenario {
 }
 
 export { environments } from "./environments.ts";
+
+export { conflicts, pluginUiScenarios };
+
+/**
+ * Every scenario id that can own a review sidecar: behavior scenarios, plugin-UI
+ * scenarios, and conflict regressions all write RunRecords with their own ids.
+ */
+export function reviewScenarioIds(): string[] {
+  return [
+    ...behaviorScenarios.map((scenario) => scenario.id),
+    ...pluginUiScenarios.map((scenario) => scenario.id),
+    ...conflicts.map((conflict) => conflict.id),
+  ];
+}
 
 export const exclusions: readonly Exclusion[] = [
   {

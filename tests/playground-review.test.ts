@@ -20,9 +20,12 @@ import {
 import {
   applyReviews,
   inspectReviews,
+  parseReviewFileName,
   parseReviewValue,
+  readReviewSidecars,
   readRunRecords,
 } from "../playground/scripts/lib/review.ts";
+import { listReviewScenarioIds } from "../playground/scripts/lib/scenarios.ts";
 
 const SCENARIO_ID = "poteto-help-smoke";
 const REVIEWED_AT = "2026-11-11T01:00:00.000Z";
@@ -97,7 +100,7 @@ function fixture(phase: Phase, options: RecordOptions = {}): Fixture {
   const root = mkdtempSync(join(tmpdir(), "pstack-review-"));
   temporaries.push(root);
   const workers = join(root, ".workers");
-  const evidence = join(workers, "base", "w0", "evidence");
+  const evidence = join(workers, phase, "base", "w0", "evidence");
   mkdirSync(evidence, { recursive: true });
   const reviews = join(root, "reviews");
   mkdirSync(reviews, { recursive: true });
@@ -394,5 +397,49 @@ describe("applying a review", () => {
     );
     expect(latest?.semanticReview.status).toBe("supported");
     expect(latest?.verdict).toEqual({ phase: "adapted", status: "verified" });
+  });
+});
+
+describe("review sidecar scenario registry", () => {
+  it("parses plugin-ui and conflict sidecar names through the full registry", () => {
+    const ids = listReviewScenarioIds();
+    expect(parseReviewFileName("plugin-ui-role-config-adapted-base.json", ids)).toEqual({
+      scenarioId: "plugin-ui-role-config",
+      phase: "adapted",
+      environmentId: "base",
+    });
+    expect(
+      parseReviewFileName("plugin-conflict-agent-team-adapted-agent-team-conflict.json", ids),
+    ).toEqual({
+      scenarioId: "plugin-conflict-agent-team",
+      phase: "adapted",
+      environmentId: "agent-team-conflict",
+    });
+  });
+
+  it("accepts a plugin-ui sidecar and still rejects an unknown scenario id", () => {
+    const root = mkdtempSync(join(tmpdir(), "pstack-review-registry-"));
+    temporaries.push(root);
+    const reviews = join(root, "reviews");
+    mkdirSync(reviews, { recursive: true });
+    writeFileSync(
+      join(reviews, "plugin-ui-role-config-adapted-base.json"),
+      `${JSON.stringify(reviewValue(), null, 2)}\n`,
+    );
+    writeFileSync(
+      join(reviews, "unknown-scenario-adapted-base.json"),
+      `${JSON.stringify(reviewValue(), null, 2)}\n`,
+    );
+
+    const { sidecars, errors } = readReviewSidecars(reviews, listReviewScenarioIds());
+    expect(sidecars.map((sidecar) => sidecar.identity.scenarioId)).toEqual([
+      "plugin-ui-role-config",
+    ]);
+    expect(
+      errors.some(
+        (error) => error.includes("unknown-scenario") && error.includes("file name must"),
+      ),
+    ).toBe(true);
+    expect(errors.some((error) => error.includes("plugin-ui-role-config"))).toBe(false);
   });
 });
