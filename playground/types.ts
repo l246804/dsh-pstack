@@ -167,6 +167,8 @@ export type Verdict =
   | { phase: "raw"; status: "unobserved"; reason: string }
   | { phase: "adapted"; status: "verified" }
   | { phase: "adapted"; status: "not-verified"; failures: string[] }
+  /** A conflict regression whose expected startup conflict reproduced: blocked by design. */
+  | { phase: "adapted"; status: "blocked"; reason: string }
   | { phase: "adapted"; status: "inconclusive"; reason: string };
 
 export interface RunRecord {

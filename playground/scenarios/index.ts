@@ -1,4 +1,4 @@
-import type { BehaviorScenario, EnvironmentMatrix, Exclusion } from "../types.ts";
+import type { BehaviorScenario, Exclusion } from "../types.ts";
 
 import { architectDiscountStrategy as Architect } from "./architect.ts";
 import { arenaDurationBakeoff as Arena } from "./arena.ts";
@@ -126,9 +126,7 @@ export function behaviorScenario(id: string): BehaviorScenario {
   return scenario;
 }
 
-export const environments: readonly EnvironmentMatrix[] = [
-  { id: "base", enabledPluginPackages: [] },
-];
+export { environments } from "./environments.ts";
 
 export const exclusions: readonly Exclusion[] = [
   {
