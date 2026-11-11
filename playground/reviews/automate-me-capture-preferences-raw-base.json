@@ -1,0 +1,13 @@
+{
+  "status": "supported",
+  "reason": "产物 modes/liming-mode/SKILL.md 存在且可读（28 行）：frontmatter name=liming-mode，description 含触发条件「按我的习惯」与 /liming-mode；正文三板块「回复风格 / 协作流程 / 验证」逐条对应三份偏好样例中的重复偏好（结论先行、短句、猜测标注、不用长破折号、比较用表格；独立子任务并行、大改先计划、提交前自查；真跑验证、脚本取证、证据含命令/退出码/产物路径），无硬编偶发偏好、无整段抄其他技能内容，语言为可操作祈使句，符合 rubric「归纳成操作型技能文件」。回复用表格说明三个来源文件的覆盖情况，并把两处判断显式标注（disable-model-invocation: true 为手动调用、只写 DSH 接受的 frontmatter 字段而省略 Cursor 专有的 icon/color/reminder），与产物内容一致。机械断言 turn-completed、artifact-contains「liming」、assistant-contains「liming」均成立。截图（automate-me-capture-preferences-raw-base-2026-11-11T04-10-01-067Z.png）显示回复尾部与「已编辑 SKILL.md +28 -0」文件卡在 GUI 真实渲染，1 轮 15 步自然结束。skillLoads 仅 writing-for-agents 而非 automate-me，但 rubric 明示技能加载只是过程证据、不等于效果成立，且技能文件本身已起草好，不影响判定。",
+  "reviewer": {
+    "kind": "model",
+    "route": {
+      "provider": "magpie",
+      "model": "qoder-cn/qmodel_38max",
+      "effort": "high"
+    }
+  },
+  "reviewedAt": "2026-11-11T04:18:40Z"
+}
