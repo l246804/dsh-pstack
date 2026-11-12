@@ -19,7 +19,7 @@ Accept paths, globs, and exclusions to set the scope. Ask when the mode or scope
 
 Keep one ledger. Define every value list here. Reconcile the ledger in step 5.
 
-**DocumentCoverage** is one row per candidate. A candidate is any maintained document plus any code or configuration file whose comments the project maintains as prose. Class code-comment files by the same value list.
+**DocumentCoverage** is one row per candidate. A candidate is any maintained document. Code and configuration files whose comments the project maintains as prose are evidence sources, not repairable targets. Class them `reference` and name the claims they support. Steps 2 to 7 work on maintained documents.
 `path · class · audit · edit route · checked · findings · unverified`
 
 - class: `maintained` | `reference` | `excluded` | `unresolved`
@@ -48,7 +48,7 @@ Keep one ledger. Define every value list here. Reconcile the ledger in step 5.
 
 Take the user's paths and exclusions as the scope. With no paths, use the documentation set the project declares. When it declares none, find candidates in the requested scope by their maintenance markers: ownership, update conventions, and references that require them to stay current. An explicitly requested file is an audit target whatever its usual role.
 
-Read the rules the project supplies for each candidate. Class `maintained` when the project owns the file and updates it as implementation or workflows change. Class `reference` when the file supplies evidence for another claim. Class `excluded` by the request. Class `unresolved` when ownership is unclear; continue with other candidates and report the question.
+Read the governing rules for each candidate. Class `maintained` when the project owns the file and updates it as implementation or workflows change. Class `reference` when the file supplies evidence for another claim. Class `excluded` by the request. Class `unresolved` when ownership is unclear; continue with other candidates and report the question.
 
 Record audit and edit route separately. Name any source and update procedure the project declares for a file. Record a baseline when the project exposes one; otherwise record the current content as the observed state and mark evidence that depends on it. Keep existing edits intact.
 
@@ -56,15 +56,15 @@ Record audit and edit route separately. Name any source and update procedure the
 
 ## 2. Extract the claims
 
-Read each maintained document and its governing instructions. Index every section or cohesive block with its line range. Give each block its claim IDs, or the marker `no checkable claims`.
+Read each maintained document and its governing rules. Index every section or cohesive block with its line range. Give each block its claim IDs, or the marker `no checkable claims`.
 
 **Done when** every block of every maintained document has an index entry and either claim IDs or `no checkable claims`.
 
 ## 3. Resolve claims to evidence
 
-For each claim, record its kind first. Then trace it to the source that kind needs: code, specifications, configuration, manifests, real directories, entry points, bindings, or tests. Use the governing specification as authority for requirement claims and historical evidence for historical claims. Record the exact source and the observed fact. Verify paths against the observed source or directory. A read-only project check may answer a specific evidence question; record its command and result.
+For each claim, record its kind first. Then trace it to the source that kind needs: code, specifications, configuration, manifests, real directories, entry points, bindings, or tests. Use governing rules as authority for requirement claims and historical evidence for historical claims. Record the exact source and the observed fact. Verify paths against the observed source or directory. A read-only project check may answer a specific evidence question; record its command and result.
 
-Set each outcome. An unverified claim records its attempted check and evidence boundary. Keep conflicting authority visible. Mark claims affected by an unclear working-tree baseline unverified. Record which claims support each check in **Checks**; write `not applicable` only when the block index shows no applicable claim.
+Set each outcome. An unverified claim records its attempted check and evidence boundary. Keep conflicting authority visible. Mark claims affected by an unclear baseline unverified. Record which claims support each check in **Checks**; write `not applicable` only when the block index shows no applicable claim.
 
 **Done when** every claim has an outcome or an explicit boundary, and every maintained document's claim count matches its ledger.
 
@@ -72,7 +72,7 @@ Set each outcome. An unverified claim records its attempted check and evidence b
 
 Apply every check in **Checks** to its applicable claims in every maintained document. Record the claim IDs behind each result.
 
-**Done when** every check has supporting claim IDs or a block-backed `not applicable` for every maintained document, and every contradicted claim or disproven elaboration has a Finding.
+**Done when** every check has supporting claim IDs or a block-backed `not applicable` for every maintained document, and every issue found by a check has a Finding that cites its claim IDs.
 
 ## 5. Dispose and report
 
@@ -81,7 +81,7 @@ Pick authority by the kind of question. Explicit user requirements govern reques
 Set each Finding's disposition:
 
 - `repairable`: evidence establishes the fact, and the edit corrects a description, removes genuine redundancy, or shrinks disproven elaboration.
-- `needs-user-decision`: authorities conflict, or the choice changes requirements.
+- `needs-user-decision`: authorities conflict, the choice changes requirements, or the fix needs a non-document change the user must decide.
 - `unverified`: the finding's evidence is incomplete.
 
 Stop a repairable item and ask the user in any of these cases:
@@ -97,7 +97,7 @@ Emit the report from **Report shapes**: the coverage table, per-document claim l
 
 - Each candidate has exactly one coverage row.
 - Each document's `checked` equals the sum of its claim outcomes.
-- Each contradicted claim and each disproven elaboration maps to a Finding.
+- Each issue found by a check maps to a Finding that cites its claim IDs.
 - Each Finding cites at least one Claim and has a disposition.
 - Each repairable action changes documents only.
 - Each unverified claim lists its attempted check and boundary.
@@ -107,7 +107,7 @@ Emit the report from **Report shapes**: the coverage table, per-document claim l
 
 Fix only. Exclude unverified and unresolved items from the repair plan. Show the exact unified diff for every affected file, including language variants and deletion boundaries, as text in the reply. Label every hunk with its finding IDs. Put language pairs and other atomic synchronizations in one finding group. Mark edits excluded by unresolved questions.
 
-Request explicit approval and wait. The user may approve a subset of complete finding groups. Immediately before editing, compare the current baseline with the recorded one through version control, or compare the target text and evidence directly. If either changed or cannot be compared, stop and present a new diff. Apply exactly the approved hunks. Repair the authoritative source, synchronize summaries and language variants, and follow the project's source ownership and generation procedure for derived documents, all through approved hunks. Preserve every unique requirement, constraint, caveat, and evidence pointer. If a new semantic conflict appears, stop that item and request a decision.
+Request explicit approval and wait. The user may approve a subset of complete finding groups. Immediately before editing, compare the current baseline with the recorded one, or compare the target text and evidence directly. If either changed or cannot be compared, stop and present a new diff. Apply exactly the approved hunks. Repair the authoritative source, synchronize summaries and language variants, and follow the project's source ownership and generation procedure for derived documents, all through approved hunks. Preserve every unique requirement, constraint, caveat, and evidence pointer. If a new semantic conflict appears, stop that item and request a decision.
 
 **Done when** every approved hunk is applied exactly or explicitly left unapplied with its reason, and no unapproved file changed.
 
@@ -121,15 +121,15 @@ Re-read every changed document and recheck all its claims. Confirm approved find
 
 Nine checks. Each yields zero or more Findings. Cite the claim IDs behind each.
 
-**Implementation behavior.** For claims describing what code does, compare the described behavior with the implementation: module responsibilities, interfaces, return values, side effects, command behavior, configuration defaults, state transitions, counts, and status. Report contradicted claims as `Implementation drift`. A comment in maintained code is a claim when it states behavior; the surrounding code is its evidence.
+**Implementation behavior.** For claims describing what code does, compare the described behavior with the implementation: module responsibilities, interfaces, return values, side effects, command behavior, configuration defaults, state transitions, counts, and status. Report contradicted claims as `Implementation drift`. Use comments in maintained code as evidence of intent; the code itself is authority for behavior.
 
-**Comment accuracy.** For code comments the project maintains as prose, compare each stated intent, invariant, limitation, or usage with the code it annotates and with current behavior. Report a stale comment as `Comment drift`, with the comment text and the code that supersedes it. Treat comments that describe current behavior as evidence for cross-document claims.
+**Comment accuracy.** For code comments the project maintains as prose, use them as evidence for document claims. Compare each stated intent, invariant, limitation, or usage with the code it annotates and with current behavior. When a document repeats or relies on a stale comment, report `Comment drift` against that document claim. The document's own correction is `repairable`. Repairing the comment itself changes code; report that boundary and use `needs-user-decision` for the code fix.
 
 **Paths, trees, commands, links, and pointers.** Resolve repository-relative links, paths, and anchors from the containing document. Match directory-tree entries to real files or the code that creates them. For parameterized paths, compare segment order and parameters with the constructors and their callers. Resolve command examples through real script or task declarations and argument parsers. Run an example only when read-only and it answers the claim. Network or access failures are `unverified`.
 
 **Implementation coupling.** When a document names members of an enum, registry, group, phase, or configuration set, locate the authoritative definition. Weigh the document's purpose and the members' stability. A general process rule that repeats changing internal members is `Implementation coupling`, even when the names currently match; propose an applicability rule or a reference to that definition. User references, support matrices, public contracts, and fixed record formats intentionally enumerate members; verify them against consumers and the authoritative definition.
 
-**Examples and temporary inventories.** Check that an example still exercises the stated behavior and that its status, selectors, inputs, and expected results remain current. Trace each concrete value to current implementation. When a permanent rule lists one-time work whose items or states are obsolete, report `Stale example`. When the governing contract requires a lasting principle or checklist, replace a temporary inventory with that form.
+**Examples and temporary inventories.** Check that an example still exercises the stated behavior and that its status, selectors, inputs, and expected results remain current. Trace each concrete value to current implementation. When a permanent rule lists one-time work whose items or states are obsolete, report `Stale example`. When governing rules require a lasting principle or checklist, replace a temporary inventory with that form.
 
 **Repeated concepts and authority.** Group claims by concept within and across maintained documents. Compare definitions, conditions, exceptions, and process rules. Identify the authoritative location before proposing consolidation. A repeated rule links to that authority or has evidence to stand alone. Retain summaries that add no obligations, audience-specific detail, and unique qualifications. Report duplicated rules without authority as `Redundancy` and conflicting rules as `Contradiction`. If no authority exists and rules agree, propose one; if their obligations conflict, use `needs-user-decision`.
 
@@ -152,7 +152,7 @@ Path | Class | Audit | Edit route | Checked | Findings | Unverified
 <path> | unresolved | <reason> | - | - | - | -
 ```
 
-For each maintained document, report its ownership pointer, every claim's id, location, evidence, and outcome, and every check's result or limitation. A compact table serves. List every unverified claim with its attempted check and boundary. A no-finding conclusion carries the coverage table and claim evidence. With unverified or unresolved items and no confirmed finding, conclude `No confirmed findings; audit incomplete`.
+For each maintained document, report its governing rules, every claim's id, location, evidence, and outcome, and every check's result or limitation. A compact table serves. List every unverified claim with its attempted check and boundary. A no-finding conclusion carries the coverage table and claim evidence. With unverified or unresolved items and no confirmed finding, conclude `No confirmed findings; audit incomplete`.
 
 **Finding entry:**
 
