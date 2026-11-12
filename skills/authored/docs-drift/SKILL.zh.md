@@ -42,7 +42,7 @@ disable-model-invocation: true
 
 检查 claim 前，使用项目可用的版本控制状态检查候选文档及证据来源。在 Git 项目中，记录 `HEAD`，并对这些路径运行只读 `git status`。其他项目记录没有这类基线。区分基线明确的可读文档与工作区改动使预期状态无法判断的文档。标明仅存在于当前工作区的证据。不得为获得基线而 stash、reset 或覆盖改动。
 
-每个候选文档都有一行 DocumentCoverage、有来源依据的分类、可审计性，以及编辑途径或排除原因时，本步完成。
+每个候选文档都有一行 DocumentCoverage 和有来源依据的分类。维护文档有可审计性和编辑途径。reference 行记录其回答的证据问题。excluded 和 unresolved 行记录规则或原因。limited 候选记录证据限制。满足这些条件时本步完成。
 
 ## 2. 盘点并核验每项 claim
 
@@ -127,7 +127,7 @@ disable-model-invocation: true
   处置：repairable | needs-user-decision | unverified
 ```
 
-冗余或耦合发现须写明权威来源，以及文档应保留或引用什么。没有现存权威且规则一致时，可以在纯文档提案中指定一个。义务冲突时使用 needs-user-decision。有已核验反证的无依据扩写须说明删除还是收缩。否则请求补充证据，并保持处置为 unverified。不得把需要用户决定或未核验项藏在干净结论中。有未核验 claim 且没有已确认发现时，写 `No confirmed findings; audit incomplete`，不写 `No drift`。
+冗余或耦合发现须写明权威来源，以及文档应保留或引用什么。没有现存权威且规则一致时，可以在纯文档提案中指定一个。义务冲突时使用 needs-user-decision。有已核验反证的无依据扩写须说明删除还是收缩。否则将其留在未核验清单并请求补充证据。不得把需要用户决定或未核验项藏在干净结论中。有未核验 claim 且没有已确认发现时，写 `No confirmed findings; audit incomplete`，不写 `No drift`。
 
 Report 到此结束，不写文件，也不创建报告产物。没有覆盖表和逐文档证据摘要时，无发现结论视为未完成。
 

@@ -42,7 +42,7 @@ Do not infer ownership from paths, directory names, file types, or subjects. A p
 
 Before checking claims, inspect the candidates and evidence sources with the project's available version-control status. In a Git project, record `HEAD` and run read-only `git status` for these paths. Otherwise record that no such baseline is available. Separate readable documents with a clear baseline from documents whose working-tree changes obscure the intended state. Identify evidence that exists only in the current working tree. Never stash, reset, or overwrite changes to obtain a baseline.
 
-Complete this step when every candidate has one DocumentCoverage row, source-backed classification, auditability, and an edit route or exclusion reason.
+Complete this step when every candidate has one DocumentCoverage row and source-backed classification. Maintained rows have auditability and an edit route. Reference rows name their evidence questions. Excluded and unresolved rows name their rule or reason. Limited candidates record the evidence limitation.
 
 ## 2. Inventory and verify every claim
 
@@ -127,7 +127,7 @@ Use one entry per finding:
   Disposition: repairable | needs-user-decision | unverified
 ```
 
-For redundancy or coupling, name the authoritative source and what the document should retain or reference. If no authority exists and the rules agree, a documentation-only proposal may designate one. If their obligations conflict, use needs-user-decision. For unsupported elaboration with verified counterevidence, state whether to delete it or shrink it. Otherwise request the missing evidence and keep the disposition unverified. Do not hide needs-user-decision or unverified items inside a clean conclusion. With unresolved claims and no confirmed finding, say `No confirmed findings; audit incomplete` rather than `No drift`.
+For redundancy or coupling, name the authoritative source and what the document should retain or reference. If no authority exists and the rules agree, a documentation-only proposal may designate one. If their obligations conflict, use needs-user-decision. For unsupported elaboration with verified counterevidence, state whether to delete it or shrink it. Otherwise keep it in the unverified claim list and request the missing evidence. Do not hide needs-user-decision or unverified items inside a clean conclusion. With unresolved claims and no confirmed finding, say `No confirmed findings; audit incomplete` rather than `No drift`.
 
 Report mode ends here without writing files or creating a report artifact. A no-finding conclusion is incomplete without the coverage table and per-document evidence summary.
 

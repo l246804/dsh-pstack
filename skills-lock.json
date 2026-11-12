@@ -21,7 +21,7 @@
     "docs-drift": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "35aa60d6bdc5a4637e0ea988b07cc27254cb808fc4ebfe37bb3427d9c7316d93"
+      "computedHash": "5cb4aa48dad3b6ea4459cebc0f18bf5487b17f2cb2ef88a73b30eeeeb9d017d8"
     },
     "retro": {
       "source": "mattpocock/skills",
