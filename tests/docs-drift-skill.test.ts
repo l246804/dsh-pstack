@@ -21,7 +21,8 @@ describe("docs-drift skill contract", () => {
       english,
       [
         "Checked claims | Findings | Unverified",
-        "In a Git project, run read-only `git status`",
+        "Auditability | Edit route | Checked claims",
+        "In a Git project, record `HEAD` and run read-only `git status`",
         "constructors and their callers",
         "**Examples and temporary inventories.**",
         "**Repeated concepts and authority.**",
@@ -35,7 +36,13 @@ describe("docs-drift skill contract", () => {
         "A current-behavior claim contradicted by implementation always produces a Finding",
         "audit incomplete",
         "block-backed not-applicable reason",
-        "named consumer or test as evidence",
+        "verifying it against a named consumer or test",
+        "The skill edits documents, not the behavior they describe",
+        "An external or vendored document is not automatically reference-only",
+        "appears in the unverified list, not as a Finding by itself",
+        "Use `unverified` for insufficient evidence",
+        "A maintained language variant must be paired",
+        "Count a finding on every document whose claim it references",
       ],
     ],
     [
@@ -43,7 +50,8 @@ describe("docs-drift skill contract", () => {
       chinese,
       [
         "已检查 claim 数 | 发现数 | 未核验数",
-        "在 Git 项目中，对这些路径运行只读 `git status`",
+        "可审计性 | 编辑途径 | 已检查 claim 数",
+        "在 Git 项目中，记录 `HEAD`，并对这些路径运行只读 `git status`",
         "构造函数及其调用方",
         "**示例与临时清单。**",
         "**重复概念与权威。**",
@@ -57,7 +65,13 @@ describe("docs-drift skill contract", () => {
         "当前行为 claim 与实现冲突时必须产生 Finding",
         "audit incomplete",
         "有块索引依据的不适用原因",
-        "指明消费者或测试作为证据",
+        "与具名消费者或测试核对",
+        "技能修改文档，不修改文档所描述的行为",
+        "外部或 vendored 文档不自动成为 reference",
+        "列入未核验清单，不因此单独产生 Finding",
+        "证据不足、检查未完成或工作区基线不明时使用 `unverified`",
+        "维护中的语言版本必须配对",
+        "跨文档 finding 在其引用的每份文档上都计入发现数",
       ],
     ],
   ])("requires evidence-backed coverage in the %s instructions", (_language, source, required) => {
@@ -102,7 +116,10 @@ describe("docs-drift skill contract", () => {
 
   it("keeps the installed skill and its lock hash synchronized with the source", () => {
     const hash = createHash("sha256");
-    for (const file of readdirSync(directory).sort()) {
+    for (const file of readdirSync(directory, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .map((entry) => entry.name)
+      .sort()) {
       const source = readFileSync(`${directory}/${file}`);
       expect(readFileSync(`.agents/skills/docs-drift/${file}`)).toEqual(source);
       hash.update(file);
