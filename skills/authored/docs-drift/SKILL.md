@@ -1,6 +1,6 @@
 ---
 name: docs-drift
-description: Audit living project documentation for drift, redundancy, and unsupported claims; repair approved findings.
+description: Audit maintained project documentation for drift, redundancy, and unsupported claims; repair approved findings.
 disable-model-invocation: true
 ---
 
@@ -19,7 +19,7 @@ Accept paths, globs, and exclusions to set the scope. Ask when the mode or scope
 
 Keep one ledger. Define every value list here. Reconcile the ledger in step 5.
 
-**DocumentCoverage** is one row per candidate:
+**DocumentCoverage** is one row per candidate. A candidate is any maintained document plus any code or configuration file whose comments the project maintains as prose. Class code-comment files by the same value list.
 `path · class · audit · edit route · checked · findings · unverified`
 
 - class: `maintained` | `reference` | `excluded` | `unresolved`
@@ -41,16 +41,16 @@ Keep one ledger. Define every value list here. Reconcile the ledger in step 5.
 **Finding** is one row per confirmed issue:
 `id · kind · claim ids · current text · evidence · proposal · disposition`
 
-- kind: `Implementation drift` | `Implementation coupling` | `Stale example` | `Environment assumption` | `Contradiction` | `Terminology` | `Link` | `Redundancy` | `Language drift` | `Unsupported elaboration`
+- kind: `Implementation drift` | `Implementation coupling` | `Stale example` | `Environment assumption` | `Comment drift` | `Contradiction` | `Terminology` | `Link` | `Redundancy` | `Language drift` | `Unsupported elaboration`
 - disposition: `repairable` | `needs-user-decision` | `unverified`
 
 ## 1. Set the scope
 
-Take the user's paths when given. Otherwise start from the project's entry documents and maintenance rules, including linked language variants. Follow pointers that name documents to read, update, or keep synchronized. An explicitly requested document is an audit target even when it normally serves as evidence. Read the governing instructions for each candidate.
+Take the user's paths and exclusions as the scope. With no paths, use the documentation set the project declares. When it declares none, find candidates in the requested scope by their maintenance markers: ownership, update conventions, and references that require them to stay current. An explicitly requested file is an audit target whatever its usual role.
 
-Derive class from project pointers, governing instructions, ownership, and update conventions. Derive audit and edit route separately. A maintained document may be generated, vendored, or upstream; name its declared source and update procedure. Classify external and vendored documents by the same criteria.
+Read the rules the project supplies for each candidate. Class `maintained` when the project owns the file and updates it as implementation or workflows change. Class `reference` when the file supplies evidence for another claim. Class `excluded` by the request. Class `unresolved` when ownership is unclear; continue with other candidates and report the question.
 
-Record the current revision and working-tree state through the project's version control when available. State when no revision baseline exists. Separate readable documents with a clear baseline from documents whose working-tree changes obscure the intended state. Mark evidence that exists only in the working tree. Keep the working tree unchanged.
+Record audit and edit route separately. Name any source and update procedure the project declares for a file. Record a baseline when the project exposes one; otherwise record the current content as the observed state and mark evidence that depends on it. Keep existing edits intact.
 
 **Done when** every candidate has one coverage row with class, audit, edit route, and the evidence for each. Maintained rows carry audit and edit route. Reference rows name the evidence questions they answer. Excluded and unresolved rows cite their rule or reason. Limited rows name the limitation.
 
@@ -119,7 +119,11 @@ Re-read every changed document and recheck all its claims. Confirm approved find
 
 ## Checks
 
-Seven checks. Each yields zero or more Findings. Cite the claim IDs behind each.
+Nine checks. Each yields zero or more Findings. Cite the claim IDs behind each.
+
+**Implementation behavior.** For claims describing what code does, compare the described behavior with the implementation: module responsibilities, interfaces, return values, side effects, command behavior, configuration defaults, state transitions, counts, and status. Report contradicted claims as `Implementation drift`. A comment in maintained code is a claim when it states behavior; the surrounding code is its evidence.
+
+**Comment accuracy.** For code comments the project maintains as prose, compare each stated intent, invariant, limitation, or usage with the code it annotates and with current behavior. Report a stale comment as `Comment drift`, with the comment text and the code that supersedes it. Treat comments that describe current behavior as evidence for cross-document claims.
 
 **Paths, trees, commands, links, and pointers.** Resolve repository-relative links, paths, and anchors from the containing document. Match directory-tree entries to real files or the code that creates them. For parameterized paths, compare segment order and parameters with the constructors and their callers. Resolve command examples through real script or task declarations and argument parsers. Run an example only when read-only and it answers the claim. Network or access failures are `unverified`.
 
