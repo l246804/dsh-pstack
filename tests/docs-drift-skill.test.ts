@@ -21,7 +21,7 @@ describe("docs-drift skill contract", () => {
       english,
       [
         "Checked claims | Findings | Unverified",
-        "read-only Git status",
+        "In a Git project, run read-only `git status`",
         "constructors and their callers",
         "**Examples and temporary inventories.**",
         "**Repeated concepts and authority.**",
@@ -43,7 +43,7 @@ describe("docs-drift skill contract", () => {
       chinese,
       [
         "已检查 claim 数 | 发现数 | 未核验数",
-        "只读 Git status",
+        "在 Git 项目中，对这些路径运行只读 `git status`",
         "构造函数及其调用方",
         "**示例与临时清单。**",
         "**重复概念与权威。**",
