@@ -1,10 +1,14 @@
 {
+  "testModel": {
+    "provider": "your-provider",
+    "model": "your-model",
+    "effort": "low"
+  },
   "providers": {
-    "<provider>": {
-      "apiKey": "<PROVIDER_API_KEY>",
+    "your-provider": {
+      "apiKey": "<paste-your-key>",
       "models": {
-        "<model-a>": ["low", "high"],
-        "<model-b>": ["low"]
+        "your-model": ["low", "high"]
       }
     }
   }

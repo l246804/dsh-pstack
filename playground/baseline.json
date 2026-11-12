@@ -1,0 +1,5 @@
+{
+  "compatibilityKey": "dsh-0.2.2-rc.1+port-v1",
+  "dshVersion": ">=0.2.2-rc.1",
+  "pstackCommit": "ae5650febf4320793844c12c4adaa937f417f8da"
+}

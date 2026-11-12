@@ -1,49 +1,56 @@
 # Playground
 
-本目录提供真实 DSH 环境的验证基建。插件功能和适配结论由移植审核文档决定，不在这里预设。
+本目录用真实 DSH Web 会话比较上游 pstack 与适配后的 dsh-pstack。先采集 raw 证据并审核实际效果，再开发最终适配。注册表覆盖 57 个行为场景，另有 2 项声明排除；覆盖守卫保证上游技能都有场景或排除。
 
-## 准备
-
-1. 在仓库根目录运行 `vp install`。
-2. 按 `port/AGENTS.md` 准备插件源码和生成树，再运行 `vp run build`。
-3. 确认 `dsh` 在 PATH 中。
-4. 运行 `vp run playground`，启动 `127.0.0.1:17353` 上的 Web 环境。
-
-启动器每次同步 `playground/profile/`、宿主凭据和模型配置。运行期文件、依赖、会话和凭据保存在已忽略的 `playground/.dsh/`。
+## 生成 raw 输入
 
 ```sh
-vp run playground:reset       # 重建运行期 profile
-vp run playground:reinstall   # 重新安装插件依赖
+vp run playground:raw-generate
+vp run playground:typecheck
 ```
 
-端口固定为 `17353`。冲突时先确认是否已有 playground，不自行更换端口或停止其他服务。
+生成器只复制 `upstream/cursor-plugins/pstack` 和上游 `scripts/generate-pstack-harness-trees.mjs` 到临时目录。上游脚本在该副本中执行。结果写入 `playground/raw/generated`，不会改写上游，也不读取 `port`、`src` 或旧报告。
 
-## 浏览器验证
+`raw/generated/tree` 保留完整技能、agents、guide 和许可文件。`raw/generated/upstream` 保留除 Cursor Automations 外的原始 pstack 输入。`raw/generated/scripts` 保留上游生成器。`raw/dsh.md` 是提交进库的 DSH 适配文档，按 `raw/AGENTS.md` 的规则以上游 `docs/harness/claude-code.md` 为唯一结构来源逐项改判为 DSH 真实能力（base 原生 / 仅官方可选插件 / 没有三态）。生成器对它只做复制与引用替换：写入树的 `docs/harness/dsh.md`，并把技能文件的注入行与链接从 `claude-code.md` 换成 `dsh.md`，不做任何词面翻译。
 
-使用 `dsh web` 输出的带 token URL。
+`raw/generated/tree/README.md` 仍是上游 Claude Code 安装说明。它是待审核的 raw 输入，不是 DSH 安装文档。
+
+## 配置真实模型
+
+复制 `config.example.json` 到已忽略的 `config.json`，填写本机允许的 provider、model、effort 和凭据。`testModel` 必须在 `providers` 的允许清单中。示例不包含真实路由。不要提交该文件。
+
+默认从当前用户的 DSH web profile 读取 `llm-pi-ai` 连接配置。可用 `hostPatchFile` 或 `PLAYGROUND_HOST_PATCH_FILE` 指定其他 patch。可用 `credentialsFile` 指定凭据副本来源。apiKey 可使用 `${ENVIRONMENT_VARIABLE}` 引用，避免把密钥写入配置。脚本不会把 API key 写入 RunRecord 或公开报告。
+
+## 运行一个场景
 
 ```sh
-vp run playground:browser -- '<token URL>' --out .tmp/playground.png
-vp run playground:browser -- '<token URL>' --click '<界面文本>' --no-shot
+vp run playground:raw-generate
+vp run playground:prepare -- --phase raw --environment base --workers 1 --reset
+vp run playground:bootstrap -- --worker 0 --environment base
+vp run playground:run -- --worker 0 --environment base --phase raw --scenario poteto-help-smoke
+vp run playground:collect -- --phase raw --environment base
 ```
 
-helper 输出页面正文、控制台错误和截图。也可以直接使用 `node_modules/.bin/agent-browser` 操作页面。
-
-## 无头验证
-
-复制 `playground/config.example.json` 为 `playground/config.json`，填写允许使用的 provider、apiKey、模型和思考等级。该文件已被忽略。
+raw 只允许无附加插件的 `base` 环境。它使用 standard preset，并通过 DSH 的标准 `systemPrompt.personaSuffix` 注入 raw poteto-mode。adapted 使用真实插件提供的 poteto-mode preset，不注入 raw 文件。两个阶段使用同一场景 id、自然语言 turns 和 `testModel`。RunRecord 记录实际路由、上游 revision、配置 hash 和安装版本。
 
 ```sh
-vp run cases:list       # 列出用例和就绪状态
-vp run cases:check      # 校验配置、部署和路由，不调用模型
-vp run cases            # 运行已注册用例
-vp run cases -- --case CASE-ID
+vp run playground:run-batch -- --phase raw --environment base --scenarios poteto-help-smoke --workers 1
+vp run playground:status -- --phase raw --environment base
+vp run playground:stop -- --environment base
 ```
 
-`cases/*.case.mjs` 注册用例。复制 `cases/_template.mjs` 开始。runner 提供事件流、工具调用和进程结果，每个用例定义自己的断言。报告写入 `playground/.dsh/cases-report/`，原始会话保存在 `playground/.dsh/sessions/`。
+每个 worker 的 home、浏览器、工作区和证据按 phase 与 environment 双层隔离，位于 `.workers/<phase>/<environmentId>/w<k>`。raw 与 adapted 在同一环境下互不覆盖，环境切换也不复用这些目录。`prepare --reset` 只清本 phase 与 environment 的目录，不会删除另一 phase 已采集的证据。端口由 `dsh --port 0` 分配。浏览器操作保留在单一进程中。多 worker 通过独立子进程并行。
 
-无头用例的提示词必须是自然的用户请求，不能直接点名工具或展开调用参数。每个目标只允许首次调用成功；出现失败后重试、重复加载或先错后对，该用例判为失败。
+执行器等待每个自然语言 turn 的真实 `turn/end`。没有 probe、超时中止或 truncated 状态。模型或基础设施失败按 RunRecord 分类，不自动重试直到变绿。
 
-用例默认串行运行。每个用例即使写不同的 `pstack-models.mdc`，所有子进程仍共享同一个 `DSH_HOME` 和 profile；要并行运行，需要为每个 worker 复制独立的 DSH home 和 profile，不能只拆角色文件。runner 在正常结束和 SIGINT/SIGTERM 时都会执行当前用例的 cleanup。
+## 审核证据
 
-不要把涉及用户模型选择的验证结论交给 agent 自行确认。自动化结果用于核对行为和日志，模型路由是否符合用户意图仍由用户确认。
+`Scenario` 包含稳定 id、skill、自然语言 turns、workspace fixture、可观察 assertions、语义 rubric、UI 观察点和来源。raw 与 adapted 是 Phase，不是两份场景。插件 UI 和冲突回归有独立类型。环境矩阵用 id 和启用的官方插件包标识完整环境。
+
+技能加载只是过程证据。`semanticReview` 必须单独记录 supported、gap 或 inconclusive，并附审核者与理由。pending 不会使 raw 变为 observed，也不会使 adapted 变为 verified。raw 有 observed、gap、blocked、unobserved 四态，adapted 有 verified、not-verified、inconclusive 三态。
+
+审核侧车文件名是 `<scenarioId>-<phase>-<environmentId>.json`。scenarioId 取自行为、插件 UI 与冲突回归三张注册表，因此 `plugin-ui-*` 与 `plugin-conflict-*` 的侧车同样可解析。
+
+`collect` 从注册表补齐 unrun 和排除项。adapted 报告还检查 raw 对照的自然语言、实际模型、上游 revision 和配置 hash。排除目前只有 make-bot-ui 与 Benny Cursor Automations。提及 Cursor 的普通工作流不排除。
+
+旧 cases、审批 lock 和 skill-audit 已删除。发布兼容键由 `playground/baseline.json` 提供。插件矩阵环境、插件 UI 场景与 agent-team 冲突回归分别用 `prepare --environment`、`playground:run-ui` 与 `playground:run-conflict` 运行。

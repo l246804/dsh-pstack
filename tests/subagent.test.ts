@@ -159,9 +159,9 @@ describe("pstack_subagent arguments and planning", () => {
 
     const routed = planDelegation(
       args({ role: "bug-fix" }),
-      fakeRuntime(home("bug-fix: magpie/workbuddy/deepseek-v4.1-flash [high]\n")),
+      fakeRuntime(home("bug-fix: acme/quick-model [high]\n")),
     );
-    expect(routed.children[0]?.routeLabel).toBe("magpie/workbuddy/deepseek-v4.1-flash [high]");
+    expect(routed.children[0]?.routeLabel).toBe("acme/quick-model [high]");
   });
 
   it("rejects a depth above the configured cap", () => {

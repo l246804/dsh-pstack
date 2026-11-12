@@ -1,7 +1,7 @@
 {
   "name": "@internal/playground",
   "private": true,
-  "description": "Real-plugin runtime playground for dsh-pstack (fixed port 17353).",
+  "description": "Browser-only real-plugin runtime playground for dsh-pstack.",
   "type": "module",
   "devDependencies": {
     "js-yaml": "catalog:playground"

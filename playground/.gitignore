@@ -1,5 +1,25 @@
-# Runtime DSH home for the playground: sessions, logs, credentials, installed deps.
-.dsh/
+# Per-worker runtime: DSH home, browser profile, workspaces, evidence.
+.workers/
+.workers-*/
 
-# Local config with provider keys and allowed routes; copy config.example.json.
+# Legacy single-instance runtime paths, kept ignored so stale dirs never leak.
+.dsh/
+.browser/
+.workspace/
+
+# Local config with provider keys and allowed routes; copy config.example.json and fill the real values.
 config.json
+node_modules
+*.log
+.DS_Store
+
+# Regenerated raw baseline. The generator never writes the upstream checkout.
+raw/generated/
+
+# Generated per-run reports.
+reports/run-*.md
+
+# Archived evidence for the audit report; regenerated per run.
+reports/evidence/
+
+# Review sidecars under reviews/ are reviewed source files committed with the repo; never ignore them.

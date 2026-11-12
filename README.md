@@ -32,6 +32,7 @@
     <a href="#️-common-commands">⌨️ Commands</a> ·
     <a href="#-capabilities">🧩 Capabilities</a> ·
     <a href="#-optional-dsh-plugins">🔌 Optional plugins</a> ·
+    <a href="#-port-verification">🧪 Port verification</a> ·
     <a href="#️-remaining-gaps">⚠️ Limitations</a> ·
     <a href="#-faq">❓ FAQ</a> ·
     <a href="#-compatibility">📦 Compatibility</a>
@@ -42,9 +43,7 @@
 
 `dsh-pstack` ports [pstack](https://github.com/cursor/plugins/tree/main/pstack) to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It includes the upstream skills, playbooks, and references, and adds skill routing, role-based model configuration, and role-routed subagents.
 
-See the [capability audit (in Chinese)](./port/audit.md) and [runtime mapping](./port/dsh.md) for the full porting review.
-
-The current review covers 68 Cursor-facing capabilities: 39 direct mappings, 2 official plugins, 16 plugin implementations, and 11 deliberate omissions.
+Each Cursor feature is mapped to DeepSeek Harness in the [runtime mapping](./port/dsh.md). The port is checked against real DSH Web sessions. The [Port verification](#-port-verification) section explains how.
 
 > [!IMPORTANT]
 > Requires DSH `>=0.2.2-rc.1` and Node.js `>=24.21.1`. See the [script registry (in Chinese)](./port/AGENTS.md#脚本登记) for the extra runtime requirements of bundled workflows.
@@ -171,7 +170,7 @@ Install dsh-pstack without these plugins, then enable only the capabilities you 
 | Persistent terminals | `@deepseek-ai/dsh-experimental-terminal-bundle` | Persistent shell and REPL sessions for CLI and TUI verification. |
 | MCP integrations | `@deepseek-ai/dsh-mcp-client` | Tools from explicitly configured MCP servers; no server is configured by default. |
 | Autonomous loops | `@deepseek-ai/dsh-experimental-ralph-bundle` | A foreground loop that starts a fresh child each round, rather than a persistent Session loop or event watcher. |
-| Agent Teams (incompatible) | `@deepseek-ai/dsh-experimental-agent-team-profile` | Lead and teammate roles and a shared task board. Do not enable it in a profile that offers the pstack root presets; both own delegation and coordination, and the pstack root preset fails at startup while the Agent Teams service is present. |
+| Agent Teams (incompatible) | `@deepseek-ai/dsh-experimental-agent-team-profile` | Lead and teammate roles and a shared task board. Do not enable it in a profile that offers the pstack root presets. Both own delegation and coordination, and while the Agent Teams service runs, the pstack root preset fails to load with `AGENT_TEAMS_CONFLICT`. The Web app still starts; the `poteto-mode` and `poteto-mode-creator` cards show a load failure in Settings → Agent presets. |
 
 For browser verification, choose one provider:
 
@@ -182,9 +181,19 @@ For browser verification, choose one provider:
 Enable packages through **Plugins → Add plugin**, then restart the profile when required. Most packages ship with DSH; `@deepseek-ai/dsh-cua-bundle` installs on demand. All except the MCP client are experimental.
 
 > [!WARNING]
-> **Agent Teams conflicts with the pstack root presets.** Use either Agent Teams or `pstack_subagent`, not both. Enabling Agent Teams makes the pstack root preset fail at startup and disables DSH native subagent tools.
+> **Agent Teams conflicts with the pstack root presets.** Use either Agent Teams or `pstack_subagent`, not both. While the Agent Teams service runs, the pstack root preset fails to load with `AGENT_TEAMS_CONFLICT`. The Web app still starts, and the `poteto-mode` and `poteto-mode-creator` cards show a load failure in Settings → Agent presets.
 
 Steps that depend on a disabled plugin report skipped or blocked, never passed. See the [DSH adaptation guide](./pstack/docs/harness/dsh.md#optional-plugins) for setup and fallbacks.
+
+## 🧪 Port verification
+
+The port is checked against real DeepSeek Harness Web sessions, not by comparing text with upstream. [playground/README.md](./playground/README.md) documents the full procedure.
+
+- **Raw baseline.** The generator copies upstream pstack into `playground/raw/generated` and installs nothing else. `playground/raw/dsh.md` states each upstream capability as one of three cases: native in base DSH, provided only by an official optional plugin, or absent. The generator copies that document and rewrites link references only, so the upstream wording stays intact.
+- **Scenario-driven runs.** The registry defines 57 behavior scenarios; each runs its natural-language turns against the raw baseline and then against the adapted plugin. Two capabilities are declared exclusions because they need Cursor cloud routines, Bots, or Automations. A guard test fails when an upstream skill has neither a scenario nor an exclusion.
+- **Semantic review.** A skill load only proves the skill was reachable. Each scenario records a separate verdict (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason, and the adapted run records `verified`, `not-verified`, or `inconclusive`.
+- **Adapted re-check.** Review findings drive [port/dsh.md](./port/dsh.md). The adapted package is rebuilt with `vp run build`, then the same scenarios rerun to confirm the mapped behavior.
+- **Plugin matrix.** The matrix defines the official plugin environments `base`, `session-search`, `browser-use`, `terminal`, `forge`, and `agent-team-conflict`. Run the environments your workflow depends on; plugin UI scenarios and the Agent Teams conflict regression have their own run targets.
 
 ## ⚠️ Remaining gaps
 
@@ -198,7 +207,7 @@ These limitations remain even after all optional plugins that can coexist with p
 | Mode switching | No Option+Enter toggle or mid-session mode switch. Select `poteto-mode` or `poteto-mode-creator` at session creation; other presets invoke `/poteto-mode` for each task. |
 | Event-driven loops | No forge event subscription. Local goals, schedules, and watchers are not equivalent. |
 | Diagram rendering | No built-in renderer. Charts return Mermaid text; render an image with your own tools when needed. |
-| Media evidence | No built-in video rendering, recording, or frame-level verification. Use external recording or FFmpeg tools. |
+| Media evidence | No built-in video rendering, recording, or frame-level verification. A project-owned renderer is acceptable when it produces a checkable file; otherwise use external recording or FFmpeg. |
 | Desktop coverage | Computer use is limited to macOS PTC desktop-control sessions. Windows support is incomplete. |
 | MCP discovery | No automatic evidence-category discovery. Configure and identify MCP tools explicitly. |
 
