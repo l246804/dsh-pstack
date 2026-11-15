@@ -1,7 +1,22 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 
 import { parseConfig } from "../playground/scripts/lib/config.ts";
-import { environments } from "../playground/scenarios/index.ts";
+import { environments, scenariosById } from "../playground/scenarios/index.ts";
+
+interface InventoryCapability {
+  id: string;
+  status: string;
+  probes?: { base?: string };
+}
+
+function inventory(): InventoryCapability[] {
+  const text = readFileSync(
+    new URL("../playground/scenarios/capability-inventory.json", import.meta.url),
+    "utf8",
+  );
+  return (JSON.parse(text) as { capabilities: InventoryCapability[] }).capabilities;
+}
 
 function config(provider = "provider-a", model = "model-a", effort = "low") {
   return {
@@ -59,6 +74,22 @@ describe("playground environments", () => {
       expect(new Set(environment.enabledPluginPackages).size).toBe(
         environment.enabledPluginPackages.length,
       );
+    }
+  });
+});
+
+describe("playground capability coverage", () => {
+  it("resolves every covered capability to a registered probe", () => {
+    for (const capability of inventory()) {
+      if (capability.status !== "covered") continue;
+      expect(
+        capability.probes?.base,
+        `${capability.id} is covered without a base probe`,
+      ).toBeDefined();
+      expect(
+        scenariosById.has(capability.probes!.base!),
+        `${capability.id} points at unknown probe ${capability.probes!.base}`,
+      ).toBe(true);
     }
   });
 });
