@@ -484,6 +484,52 @@
       }
     },
     {
+      "id": "role-panel-membership",
+      "category": "routing",
+      "description": "面板角色的值是一份模型列表，每个条目跑一个子执行者，成员数量等于列表长度；成员必须来自角色配置，而不是从全局可用模型清单里另挑。",
+      "source": "playground/raw/dsh.md + upstream/cursor-plugins/pstack",
+      "sources": [
+        "playground/raw/dsh.md",
+        "upstream/cursor-plugins/pstack/docs/harness/claude-code.md",
+        "upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md",
+        "upstream/cursor-plugins/pstack/skills/arena/SKILL.md",
+        "upstream/cursor-plugins/pstack/skills/poteto-mode/SKILL.md"
+      ],
+      "requiredBy": ["arena", "architect", "interrogate", "poteto-mode", "swarm"],
+      "status": "covered",
+      "probes": {
+        "base": "capability-role-panel-membership"
+      }
+    },
+    {
+      "id": "role-effort-domain",
+      "category": "routing",
+      "description": "调整角色模型的推理档位时，只能从该模型实际公布的档位集合里选，不能凭经验猜或反复提交被拒绝的档位。",
+      "source": "playground/raw/dsh.md + upstream/cursor-plugins/pstack",
+      "sources": [
+        "playground/raw/dsh.md",
+        "upstream/cursor-plugins/pstack/docs/harness/claude-code.md",
+        "upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md",
+        "upstream/cursor-plugins/pstack/skills/poteto-mode/SKILL.md",
+        "upstream/cursor-plugins/pstack/skills/arena/SKILL.md",
+        "upstream/cursor-plugins/pstack/skills/swarm/SKILL.md"
+      ],
+      "requiredBy": [
+        "architect",
+        "arena",
+        "how",
+        "interrogate",
+        "poteto-mode",
+        "reflect",
+        "swarm",
+        "why"
+      ],
+      "status": "covered",
+      "probes": {
+        "base": "capability-role-effort-domain"
+      }
+    },
+    {
       "id": "environment-browser-screenshot",
       "category": "environment",
       "description": "驱动浏览器并截图的能力：启用时能真实驱动页面并产出截图，未启用时说明无法驱动并给出替代观察方式。",
