@@ -1,11 +1,15 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vite-plus/test";
 
+import type { LlmRuntime } from "@deepseek-ai/dsh-llm";
+
+import type { CatalogueResult } from "../src/models.ts";
 import { ROLE_MANIFEST } from "../src/roles/role-manifest.ts";
 import {
   TOOL_NAME,
+  annotateRoleCapabilities,
   createPstackRolesTool,
   renderRoleCapabilities,
   roleCapabilities,
@@ -61,6 +65,56 @@ describe("pstack_roles", () => {
     expect(text).toContain("routes=provider=p model=a reasoningEffort=low");
   });
 
+  it("attaches the served effort ladder and default from the catalogue", () => {
+    const entries = new Map([
+      [
+        "swarm workers",
+        { routes: [{ kind: "route" as const, provider: "p", model: "a", effort: "low" }] },
+      ],
+    ]);
+    const catalogue: CatalogueResult = {
+      providers: [
+        {
+          provider: "p",
+          name: "P",
+          models: [
+            {
+              route: "p/a",
+              id: "a",
+              name: "A",
+              efforts: ["low", "high"],
+              defaultEffort: "high",
+            },
+          ],
+        },
+      ],
+      truncated: false,
+    };
+    const roles = annotateRoleCapabilities(roleCapabilities(entries), catalogue);
+    expect(roles.find((role) => role.role === "swarm workers")?.routes).toEqual([
+      {
+        provider: "p",
+        model: "a",
+        reasoningEffort: "low",
+        efforts: ["low", "high"],
+        defaultEffort: "high",
+        served: true,
+      },
+    ]);
+    expect(renderRoleCapabilities(roles)).toContain("efforts=low,high default=high");
+  });
+
+  it("marks a configured route the catalogue no longer serves", () => {
+    const entries = new Map([
+      ["swarm workers", { routes: [{ kind: "route" as const, provider: "p", model: "gone" }] }],
+    ]);
+    const catalogue: CatalogueResult = { providers: [], truncated: false };
+    const routes = annotateRoleCapabilities(roleCapabilities(entries), catalogue).find(
+      (role) => role.role === "swarm workers",
+    )?.routes;
+    expect(routes).toEqual([{ provider: "p", model: "gone", served: false, efforts: [] }]);
+  });
+
   it("returns every role through the tool", async () => {
     const home = mkdtempSync(join(tmpdir(), "pstack-roles-"));
     try {
@@ -72,6 +126,43 @@ describe("pstack_roles", () => {
         roles: readonly unknown[];
       };
       expect(result.roles).toHaveLength(ROLE_MANIFEST.length);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  it("annotates role routes through the tool when the llm is available", async () => {
+    const home = mkdtempSync(join(tmpdir(), "pstack-roles-"));
+    try {
+      writeFileSync(
+        join(home, "pstack-models.json"),
+        JSON.stringify({ version: 1, roles: { "swarm workers": ["p/a [low]"] } }),
+      );
+      const llm = {
+        listProviders: () => [{ id: "p", name: "P" }],
+        listModels: async () => [{ id: "a", name: "A" }],
+        resolveModelInfo: async () => ({
+          id: "a",
+          name: "A",
+          reasoning: { efforts: [{ id: "low" }, { id: "high" }], defaultEffort: "high" },
+        }),
+      } as unknown as LlmRuntime;
+      const tool = createPstackRolesTool(home, llm);
+      const result = (await tool.execute({}, {
+        signal: new AbortController().signal,
+      } as never)) as {
+        roles: readonly { role: string; routes: readonly unknown[] }[];
+      };
+      expect(result.roles.find((role) => role.role === "swarm workers")?.routes).toEqual([
+        {
+          provider: "p",
+          model: "a",
+          reasoningEffort: "low",
+          efforts: ["low", "high"],
+          defaultEffort: "high",
+          served: true,
+        },
+      ]);
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

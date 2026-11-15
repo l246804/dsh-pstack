@@ -33,10 +33,10 @@ Use only tools visible in the current session. If a mapped tool or optional capa
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]` | Do not pass a Cursor slug. Call `pstack_models` (or `pstack_roles`) for the real `provider`, `model`, and advertised efforts, then pass those to `pstack_subagent`. Drop `-fast`; DSH has no speed parameter. |
+| `claude-<family>-<version>-<effort>[-fast]` | Do not pass a Cursor slug. Read `pstack_roles` for a role's `provider`, `model`, and `reasoningEffort`, plus that route's served `efforts` and default. To change the effort, pick another value from the route's `efforts` instead of guessing. Use `pstack_models` only to detect served routes during setup or to verify one exists. Drop `-fast`; DSH has no speed parameter. |
 | A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route, or omit `provider` and `model` so the child inherits the parent route, and say so. |
 | `auto` or `inherit-parent` | Omit `provider` and `model`; the child inherits the parent route. |
-| The pstack role file | `$DSH_HOME/pstack-models.json`. The calling agent reads it to map a role to its route; `pstack_subagent` does not parse it. A missing file leaves no configured route, so the child inherits the parent route. |
+| The pstack role file | `$DSH_HOME/pstack-models.json`. Read `pstack_roles` to map a role to its route; `pstack_subagent` does not parse it. A missing file leaves no configured route, so the child inherits the parent route. |
 | A role value such as `<model> <effort>` | Write `provider/model [effort]`; a role holds an array of these route strings. Split at the first `/`: `provider` is the first segment and the rest, which may contain `/`, is `model`. |
 
 ## setup-pstack
@@ -81,7 +81,7 @@ The package registers its own model-facing tools beyond the native DSH tools abo
 | `pstack_interrupt` | Stop one pstack child's current turn by id. Use it instead of the native `interrupt_agent` when the target came from `pstack_subagent`. |
 | `pstack_skill` | Load a packaged pstack skill by exact kebab-case name; `resource` reads a reference or playbook. |
 | `pstack_models` | List the provider, model, and reasoning-effort routes this deployment serves. |
-| `pstack_roles` | Report each pstack role and its configured routes as structured provider, model, and effort values. |
+| `pstack_roles` | Report each pstack role with its configured routes as provider, model, and reasoningEffort values, plus each route's served efforts and default. |
 
 ## Local replacements
 
