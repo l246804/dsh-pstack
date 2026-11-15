@@ -102,14 +102,18 @@ function record(phase: "raw" | "adapted", environmentId: string): RunRecord {
 
 describe("execution contracts", () => {
   it("keeps raw free of every plugin package and makes adapted additions explicit", () => {
-    const raw = profileManifest("raw", []);
+    const raw = profileManifest("raw", [], "0.2.2-rc.1");
     expect(raw.dependencies).toEqual({});
     expect(raw.dsh).toEqual({
       profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] },
     });
     expect(JSON.stringify(raw)).not.toContain("dsh-pstack");
-    expect(() => profileManifest("raw", ["dsh-pstack"])).toThrow(/must not install/);
-    const adapted = profileManifest("adapted", ["dsh-pstack", "@deepseek-ai/official-plugin"]);
+    expect(() => profileManifest("raw", ["dsh-pstack"], "0.2.2-rc.1")).toThrow(/must not install/);
+    const adapted = profileManifest(
+      "adapted",
+      ["dsh-pstack", "@deepseek-ai/official-plugin"],
+      "0.2.2-rc.1",
+    );
     expect(adapted.dsh).toEqual({
       profile: {
         bundles: [
@@ -119,6 +123,10 @@ describe("execution contracts", () => {
           "@deepseek-ai/official-plugin",
         ],
       },
+    });
+    expect(adapted.dependencies).toEqual({
+      "dsh-pstack": `link:${REPOSITORY_ROOT}`,
+      "@deepseek-ai/official-plugin": "0.2.2-rc.1",
     });
   });
 

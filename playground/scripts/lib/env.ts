@@ -307,6 +307,7 @@ export function mountRawTree(paths: WorkerPaths, source: string = RAW_ROOT): str
 export function profileManifest(
   phase: Phase,
   enabledPluginPackages: string[],
+  runtimeVersion: string,
 ): Record<string, unknown> {
   if (phase === "raw" && enabledPluginPackages.includes("dsh-pstack")) {
     throw new Error("raw profile must not install dsh-pstack");
@@ -319,7 +320,7 @@ export function profileManifest(
         : // Experimental DSH packages share the dsh version. A bare "*" resolves the older
           // `latest` tag, which no longer matches the dsh runtime API.
           name.startsWith("@deepseek-ai/")
-          ? dshVersion()
+          ? runtimeVersion
           : "*",
     ]),
   );
@@ -372,7 +373,7 @@ export function buildProfile(
     [];
   const patch = phase === "raw" ? rawProfileEntries(entries, paths.rawMount) : entries;
   writeFileSync(join(directory, "cordis.patch.yml"), yamlDump(patch, { lineWidth: 120 }));
-  const manifest = profileManifest(phase, enabledPluginPackages);
+  const manifest = profileManifest(phase, enabledPluginPackages, dshVersion());
   if (phase === "adapted" && !enabledPluginPackages.includes("dsh-pstack")) {
     throw new Error("adapted profile must explicitly include dsh-pstack");
   }
