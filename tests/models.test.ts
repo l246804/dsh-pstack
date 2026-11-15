@@ -33,10 +33,13 @@ describe("pstack_models", () => {
   it("lists live providers, routes, and efforts", async () => {
     const result = await collectCatalogue(llm, undefined, signal);
     expect(result.providers.map((provider) => provider.provider)).toEqual(["cpa", "broken"]);
-    expect(result.providers[0]?.models[0]?.route).toBe("cpa/vendor/model-a");
+    expect(result.providers[0]?.models[0]?.id).toBe("vendor/model-a");
     expect(result.providers[0]?.models[0]?.efforts).toEqual(["off", "low", "high"]);
     expect(result.providers[1]?.error).toMatch(/adapter went away/);
-    expect(renderCatalogue(result)).toContain("cpa/vendor/model-a — efforts: off, low, high");
+    const rendered = renderCatalogue(result);
+    expect(rendered).toContain("cpa (CPA)");
+    expect(rendered).toContain("  vendor/model-a — efforts: off, low, high");
+    expect(rendered).not.toContain("cpa/vendor/model-a —");
   });
 
   it("filters by provider id or display name", async () => {

@@ -18,7 +18,7 @@ describe("pstack_roles", () => {
     );
   });
 
-  it("reports configured routes as structured provider/model/effort values", () => {
+  it("reports configured routes as structured provider/model/reasoningEffort values", () => {
     const entries = new Map([
       [
         "arena cross-judge pool",
@@ -31,7 +31,7 @@ describe("pstack_roles", () => {
     ]);
     const roles = roleCapabilities(entries);
     expect(roles.find((role) => role.role === "swarm workers")?.routes).toEqual([
-      { provider: "p", model: "b", effort: "high" },
+      { provider: "p", model: "b", reasoningEffort: "high" },
     ]);
     expect(roles.find((role) => role.role === "arena cross-judge pool")?.routes).toEqual([
       { provider: "p", model: "a" },
@@ -58,7 +58,7 @@ describe("pstack_roles", () => {
     const text = renderRoleCapabilities(roleCapabilities(entries));
     expect(text).toContain("arena runners — shape=list");
     expect(text).toContain("arena cross-judge pool — shape=list");
-    expect(text).toContain("routes=p/a [low]");
+    expect(text).toContain("routes=provider=p model=a reasoningEffort=low");
   });
 
   it("returns every role through the tool", async () => {
