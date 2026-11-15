@@ -118,7 +118,7 @@ export function renderCatalogue(result: CatalogueResult): string {
           : `efforts: ${model.efforts.join(", ")}`;
       const fallback = model.defaultEffort === undefined ? "" : `; default: ${model.defaultEffort}`;
       const error = model.error === undefined ? "" : `; error: ${model.error}`;
-      lines.push(`  ${model.route} — ${efforts}${fallback}${error}`);
+      lines.push(`  ${model.id} — ${efforts}${fallback}${error}`);
     }
   }
   if (result.truncated) lines.push("", "Truncated at the provider/model page limits.");
@@ -149,7 +149,7 @@ const TOOL_DESCRIPTION = [
   "",
   "`provider` limits discovery to one registered provider id or display name; omit it to list every provider.",
   "",
-  "A route is written `<provider>/<model>`, and a role route may add `[effort]` using a token from that route's `efforts`.",
+  "Each heading is `<provider id> (<display name>)`. Each line under it is a model id. Pass the heading's provider id as `provider` and the listed id as `model` to `pstack_subagent`; do not pass a combined `provider/model` token as `model`. A route is written `<provider>/<model>`, splits at the first `/`, and may add `[effort]` using a token from that model's `efforts`.",
 ].join("\n");
 
 /** Build `pstack_models` for one LLM service. */

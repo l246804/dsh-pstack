@@ -10,7 +10,7 @@ pstack 工作流中的委派职责，由 `src/roles/role-manifest.ts` 的精确 
 
 一次子代理调用的模型选择，表示为以下两类之一：
 
-- `route`：明确的 `provider/model`，可以带该模型公布的 reasoning effort。
+- `route`：明确的 `provider/model`，可以带该模型公布的 reasoning effort。按第一个 `/` 拆分，`provider` 是首段，其余（可含 `/`）是 `model`；委派时把这三部分分别传给 `pstack_subagent`，不要传组合后的路由字符串。
 - `inherit`：不向子代理传递模型覆盖，沿用父级路由；文件中的别名为 `inherit-parent` 或 `auto`。
 
 角色文件中的 `routes: []` 是保存协议中的**删除该角色行**操作，不是一个继承路由。删除后角色处于未配置状态，委派时同样继承父级。

@@ -8,7 +8,7 @@ Use only tools visible in the current session. If a mapped tool or optional capa
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `pstack_subagent`. One call starts one subagent; fan out by calling it once per child in one message. Pass `provider`, `model`, and an optional `reasoningEffort` to override the route, or omit all three to inherit the parent route. Pass `model` verbatim as `pstack_models` reports it. |
+| `Task` | `pstack_subagent`. One call starts one subagent; fan out by calling it once per child in one message. Pass `provider`, `model`, and an optional `reasoningEffort` to override the route, or omit all three to inherit the parent route. `pstack_models` lists each model id on its own line under a provider heading: pass the heading's provider id as `provider` and the listed id as `model`, never the combined `provider/model` route. |
 | `AskQuestion` | `ask_user_question` takes a batch of questions with options and free input. Only a live root agent has a human answerer; a delegated child keeps its questions in its result. Ask in plain text when the tool is absent. |
 | Open a todolist | `todo_write` replaces the whole list and has no `skipped` status. Keep a skipped step visible as `skip: <reason> - <step>` in `content` and mark it `completed`. |
 | Run another pstack skill (`/name` or "the **name** skill") | `pstack_skill` loads a packaged pstack skill by exact kebab-case `name`. Pass `resource` to read a file beside its `SKILL.md`; a user `/name` loads the skill directly. The built-in help skill is `poteto-help`; read a playbook with `name: "poteto-mode"` and `resource: "playbooks/<name>.md"`. |

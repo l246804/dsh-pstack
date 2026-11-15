@@ -2,7 +2,7 @@
  * `pstack_roles`: a read-only discovery query over the role manifest.
  *
  * It reports each role, its shape, and the routes configured in the role file as
- * structured `{ provider, model, effort? }` values a caller can pass straight to
+ * structured `{ provider, model, reasoningEffort? }` values a caller can pass straight to
  * `pstack_subagent`.
  */
 
@@ -23,7 +23,7 @@ export const TOOL_NAME = "pstack_roles";
 export interface RoleRoute {
   readonly provider?: string;
   readonly model?: string;
-  readonly effort?: string;
+  readonly reasoningEffort?: string;
   readonly inherit?: true;
 }
 
@@ -58,7 +58,7 @@ export function roleCapabilities(
 /** Render the discovery records for the model. */
 export function renderRoleCapabilities(roles: readonly RoleCapability[]): string {
   return [
-    "pstack roles. Each role lists its configured routes as provider/model/effort; pass provider, model, and an optional reasoningEffort to `pstack_subagent`. Omit provider and model to inherit the parent route.",
+    "pstack roles. Each role lists its configured routes as provider, model, and optional reasoningEffort; pass them to `pstack_subagent`. Omit provider and model to inherit the parent route.",
     "",
     ...roles.map((role) => {
       const routes = role.routes.length
@@ -90,7 +90,7 @@ const OUTPUT_SCHEMA: JsonSchemaNode = {
               properties: {
                 provider: { type: "string" },
                 model: { type: "string" },
-                effort: { type: "string" },
+                reasoningEffort: { type: "string" },
                 inherit: { type: "boolean" },
               },
             },
@@ -104,7 +104,7 @@ const OUTPUT_SCHEMA: JsonSchemaNode = {
 };
 
 const TOOL_DESCRIPTION = [
-  "List every pstack role with its shape and configured routes as structured provider/model/effort values.",
+  "List every pstack role with its shape and configured routes as structured provider, model, and reasoningEffort values.",
   "",
   "Read-only. Use it to pick the provider, model, and optional reasoningEffort to pass to `pstack_subagent`; use `pstack_models` for the routes this deployment actually serves.",
   "",
@@ -151,15 +151,16 @@ function routeToChoice(route: Route): RoleRoute {
     ? {
         provider: route.provider,
         model: route.model,
-        ...(route.effort === undefined ? {} : { effort: route.effort }),
+        ...(route.effort === undefined ? {} : { reasoningEffort: route.effort }),
       }
     : { inherit: true };
 }
 
 function renderChoice(route: RoleRoute): string {
   if (route.inherit) return "inherit-parent";
-  const base = `${route.provider}/${route.model}`;
-  return route.effort === undefined ? base : `${base} [${route.effort}]`;
+  const effort =
+    route.reasoningEffort === undefined ? "" : ` reasoningEffort=${route.reasoningEffort}`;
+  return `provider=${route.provider} model=${route.model}${effort}`;
 }
 
 function usageFor(spec: RoleSpec, configured: boolean): string {
