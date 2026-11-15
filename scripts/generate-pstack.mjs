@@ -67,6 +67,10 @@ const TERMS = [
 const ROUTE_KEY = "Run another pstack skill";
 const ACTIVE_TERMS = isRaw ? TERMS.filter((term) => term.key !== "Custom Mode") : TERMS;
 
+function posixRelative(base, path) {
+  return relative(base, path).replace(/\\/g, "/");
+}
+
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {
     if (name === ".DS_Store" || name === "node_modules") return [];
@@ -139,9 +143,9 @@ function has(files, path) {
 
 function render() {
   const copies = [
-    ...walk(join(SOURCE, "skills")).map((path) => relative(SOURCE, path)),
-    ...walk(join(SOURCE, "agents")).map((path) => relative(SOURCE, path)),
-    ...walk(join(SOURCE, "docs/guide")).map((path) => relative(SOURCE, path)),
+    ...walk(join(SOURCE, "skills")).map((path) => posixRelative(SOURCE, path)),
+    ...walk(join(SOURCE, "agents")).map((path) => posixRelative(SOURCE, path)),
+    ...walk(join(SOURCE, "docs/guide")).map((path) => posixRelative(SOURCE, path)),
     "README.md",
     "plugin.json",
   ];
@@ -182,7 +186,7 @@ if (dangling.length > 0) process.exit(1);
 
 if (process.argv.includes("--check")) {
   const onDisk = new Map(
-    existsSync(OUT) ? walk(OUT).map((path) => [relative(OUT, path), file(path)]) : [],
+    existsSync(OUT) ? walk(OUT).map((path) => [posixRelative(OUT, path), file(path)]) : [],
   );
   const drifted = [...new Set([...rendered.keys(), ...onDisk.keys()])]
     .sort((left, right) => left.localeCompare(right))
