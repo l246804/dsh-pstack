@@ -8,6 +8,9 @@ import {
   Switch,
   Tooltip,
 } from "@deepseek-ai/dsh-client-ui-primitives";
+import type { PropsRuntime } from "@deepseek-ai/dsh-client-ui-slots";
+import type {} from "@deepseek-ai/dsh-client-ui-model-selection/client";
+import type {} from "../session-projection-types.ts";
 import { showToast } from "../lib/toast.ts";
 
 const STYLE_ID = "pstack-poteto-row-style";
@@ -55,37 +58,28 @@ function ensureStyle(): void {
   document.head.append(style);
 }
 
-export function PotetoModeToggle(props: PotetoModeToggleInjected): ReactElement {
-  const { sessionId, readMode, selectMode, t } = props;
-  const [enabled, setEnabled] = useState(false);
+export function PotetoModeToggle(
+  props: PotetoModeToggleInjected &
+    Pick<PropsRuntime<"conversation.input.model.options">, "useProjection">,
+): ReactElement | null {
+  const { sessionId, selectMode, t, useProjection } = props;
+  // Read the saved selection from the Session projection. The wire view ships it
+  // with the snapshot, so the first paint is the real value instead of a false
+  // initial state that flips after an async status call.
+  const mode = useProjection("potetoMode");
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
     ensureStyle();
-    let live = true;
-    void readMode().then(
-      (value) => {
-        if (live) setEnabled(value);
-      },
-      () => undefined,
-    );
-    const onChange = (event: Event): void => {
-      const detail = (event as CustomEvent<{ sessionId: string; enabled: boolean }>).detail;
-      if (detail.sessionId === sessionId) setEnabled(detail.enabled);
-    };
-    window.addEventListener(POTETO_MODE_EVENT, onChange);
-    return () => {
-      live = false;
-      window.removeEventListener(POTETO_MODE_EVENT, onChange);
-    };
-  }, [sessionId, readMode]);
+  }, []);
+
+  if (mode === undefined) return null;
 
   const select = (next: boolean): void => {
     setPending(true);
     void selectMode(next)
       .then((failure) => {
         if (failure === null) {
-          setEnabled(next);
           window.dispatchEvent(
             new CustomEvent(POTETO_MODE_EVENT, { detail: { sessionId, enabled: next } }),
           );
@@ -124,7 +118,7 @@ export function PotetoModeToggle(props: PotetoModeToggleInjected): ReactElement 
       </span>
       <Switch
         className="pstack-poteto-switch"
-        checked={enabled}
+        checked={mode.enabled}
         disabled={pending}
         label={t("label")}
         onChange={select}

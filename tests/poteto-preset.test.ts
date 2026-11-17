@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { potetoSupportsPreset, resolvePotetoEnabled } from "../src/poteto/preset-gate.ts";
+import {
+  potetoSupportsPreset,
+  resolvePotetoEnabled,
+  shouldSeedPotetoDefault,
+} from "../src/poteto/preset-gate.ts";
 
 describe("poteto preset gate", () => {
   it("blocks the Minimal preset", () => {
@@ -46,6 +50,35 @@ describe("resolvePotetoEnabled", () => {
     ).toBe(true);
     expect(
       resolvePotetoEnabled({ agentPreset: "standard", selected: undefined, byDefault: false }),
+    ).toBe(false);
+  });
+});
+
+describe("shouldSeedPotetoDefault", () => {
+  it("seeds an explicit on selection for a default-on capable session", () => {
+    expect(
+      shouldSeedPotetoDefault({ agentPreset: "standard", selected: undefined, byDefault: true }),
+    ).toBe(true);
+  });
+
+  it("does not seed when the default is off", () => {
+    expect(
+      shouldSeedPotetoDefault({ agentPreset: "standard", selected: undefined, byDefault: false }),
+    ).toBe(false);
+  });
+
+  it("does not overwrite an explicit selection", () => {
+    expect(
+      shouldSeedPotetoDefault({ agentPreset: "standard", selected: false, byDefault: true }),
+    ).toBe(false);
+    expect(
+      shouldSeedPotetoDefault({ agentPreset: "standard", selected: true, byDefault: true }),
+    ).toBe(false);
+  });
+
+  it("does not seed under the Minimal preset", () => {
+    expect(
+      shouldSeedPotetoDefault({ agentPreset: "minimal", selected: undefined, byDefault: true }),
     ).toBe(false);
   });
 });

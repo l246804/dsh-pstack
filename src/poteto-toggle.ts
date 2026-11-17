@@ -16,7 +16,11 @@ import type {} from "@deepseek-ai/dsh-tools";
 import type {} from "@deepseek-ai/dsh-system-prompt";
 import type {} from "@deepseek-ai/dsh-typert-registry";
 
-import { potetoSupportsPreset, resolvePotetoEnabled } from "./poteto/preset-gate.ts";
+import {
+  potetoSupportsPreset,
+  resolvePotetoEnabled,
+  shouldSeedPotetoDefault,
+} from "./poteto/preset-gate.ts";
 import { potetoProjectionDefinition, type PotetoProjectionState } from "./poteto/projection.ts";
 import { POTETO_SERVICE } from "./poteto/remote.ts";
 import { readSettings, writeSettings } from "./poteto/settings.ts";
@@ -43,6 +47,7 @@ export class PotetoModeService extends TypertRemoteService {
   private readonly lifts = new WeakMap<Agent, Array<() => void>>();
   private readonly appliedTools = new WeakMap<Agent, Set<string>>();
   private readonly restricting = new WeakSet<Agent>();
+  private readonly seededDefaults = new WeakSet<Agent>();
   private defaultEnabled = false;
   private sectionText = "";
   private projection!: ProjectionHandle<PotetoProjectionState>;
@@ -77,9 +82,11 @@ export class PotetoModeService extends TypertRemoteService {
 
     this.ctx.effect(
       () =>
-        this.ctx.on("agent/created", ({ agent }) => {
-          if (agent.session.header.origin === "subagent") return;
+        this.ctx.on("agent/created", async ({ agent }) => {
+          if (agent.session.header.origin === "subagent") return undefined;
+          await this.seedDefaultMode(agent);
           if (this.isEnabledFor(agent)) this.ensureNativeToolsRestricted(agent);
+          return undefined;
         }),
       "pstack.poteto-toggle.agent-created",
     );
@@ -212,6 +219,28 @@ export class PotetoModeService extends TypertRemoteService {
     if (enabled) this.ensureNativeToolsRestricted(agent);
     else this.clearNativeToolsRestriction(agent);
     return { enabled };
+  }
+
+  /**
+   * Record an explicit on selection for a Session that would run the workflow
+   * from the global default. Mirrors Agent Teams, whose Team projection carries
+   * the default as a real `team/mode` event so the client reads it synchronously.
+   */
+  private async seedDefaultMode(agent: Agent): Promise<void> {
+    if (this.seededDefaults.has(agent)) return;
+    const selected = this.projection.stateOf(agent.session).enabled;
+    const seed = shouldSeedPotetoDefault({
+      agentPreset: this.presetOf(agent),
+      selected,
+      byDefault: this.defaultEnabled,
+    });
+    if (!seed) return;
+    this.seededDefaults.add(agent);
+    agent.session.append("poteto/mode", { enabled: true });
+    if (!(await this.ctx.sessions.flush(agent.session))) {
+      this.seededDefaults.delete(agent);
+      throw new Error(`poteto default for session ${agent.session.id} was not persisted`);
+    }
   }
 
   /** Deny every native delegation tool currently registered for the Agent, once each. */
