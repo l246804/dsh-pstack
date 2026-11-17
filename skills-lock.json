@@ -11,7 +11,7 @@
     "decision-audit": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "f7fc54235d3cdfae7526d8e9efba9d09b89c25a5bdf0ef5346453e4b97d9072c"
+      "computedHash": "8b3851322d0bb81a2e589974f395360b7d64214eff203076b3b8fb48485adbe3"
     },
     "decision-write": {
       "source": "./skills/authored",

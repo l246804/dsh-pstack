@@ -84,20 +84,39 @@ git log --since=<Date> --format=%H <base> --
 
 ## 4. 报告与裁剪
 
-每条现行记录都必须归为待落地、无发现、未核验，或带一项或多项发现。按 `C`、`B`、`B′`、`E`、`D`、`A` 排列；同类中匹配文件更多的在前。
+每条现行记录都必须归为待落地、无发现、未核验，或带一项或多项发现。检查字母含义：A 路由、B 状态、B′ 范围失效、C 锚点断裂、D 复核逾期、E 取代记录；报告中要写出可读名称，不要只写字母。按 `C`、`B`、`B′`、`E`、`D`、`A` 排列；同类中匹配文件更多的在前。
 
-- `pr`：最多 15 项，随后给出省略数量。
-- `local`：最多 8 项，其中 A 类最多 3 项。
+按模式裁剪：
+- `pr`：最多 15 项发现，随后给出省略数量。
+- `local`：最多 8 项发现，其中 A 类最多 3 项。
 - `full`：不裁剪，报告每类计数，包括零。
 
-各项发现使用以下结构；每一类都要包含 `Evidence`：
+用表格报告，先总览后明细。
 
-```text
-[C] Decision title
-  Record: docs/decisions/2026-08-14-use-postgres.md
-  Basis: commit:3f9a1c2 is not in history
-  Evidence: git merge-base --is-ancestor 3f9a1c2 origin/main -> exit 1
-  Suggest: replace the anchor with commit:8ff9f762 (matching patch-id d064e03f4e53)
-```
+**处置总览。** 每种结果一行，列出对应记录：
 
-`Legacy` 与 `Unverified` 分别单列，不计为发现。`gh` 缺失或未认证时，将 PR 锚点标为未核验，继续其他检查。没有现行记录带发现时明确说明。所有修改都交给 `decision-write`；仅在决策目录或根指针缺失时建议使用 `/setup-project-docs`。
+| 结果 | 数量 | 记录 |
+|---|---|---|
+| 待落地 | <n> | <路径或 `-`> |
+| 无发现 | <n> | <路径或 `-`> |
+| 未核验 | <n> | <路径或 `-`> |
+| 有发现 | <n> | <路径或 `-`> |
+
+`full` 模式下，再补每个类别的计数，用可读名称，即使为零。
+
+**发现明细。** 每项发现一行，类别写可读名称：
+
+| 类别 | 记录 | 问题 | 证据 | 建议 |
+|---|---|---|---|---|
+| 锚点断裂 (C) | docs/decisions/2026-08-14-use-postgres.md | `commit:3f9a1c2` 不在历史中 | `git merge-base --is-ancestor 3f9a1c2 origin/main` 退出码 1 | 改用 `commit:8ff9f762`（patch-id d064e03f4e53） |
+
+每项发现都要有「证据」。
+
+**Legacy 与未核验。** 不放进发现明细，每项一行：
+
+| 类型 | 记录 | 原因 | 证据 |
+|---|---|---|---|
+| Legacy | docs/decisions/2026-08-01-x.md | 缺少 `Review` 字段 | 头部解析 |
+| 未核验 | docs/decisions/2026-08-14-use-postgres.md | `gh` 未认证 | `gh pr view 42` 失败 |
+
+没有现行记录带发现时明确说明。`gh` 缺失或未认证时，将 PR 锚点标为未核验，继续其他检查。所有修改都交给 `decision-write`；仅在决策目录或根指针缺失时建议使用 `/setup-project-docs`。

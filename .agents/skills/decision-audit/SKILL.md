@@ -84,20 +84,39 @@ List each commit's paths and filter them with the shared matcher before counting
 
 ## 4. Report and trim
 
-Account for every current record as pending, clean, unverified, or carrying one or more findings. Order findings `C`, `B`, `B′`, `E`, `D`, `A`; within each class, put more matched files first.
+Account for every current record as pending, clean, unverified, or carrying one or more findings. The check letters are A route, B status, B′ dead scope, C broken anchor, D overdue review, and E superseded; name them for the reader instead of showing a bare letter. Order findings `C`, `B`, `B′`, `E`, `D`, `A`; within each class, put more matched files first.
 
+Trim by mode:
 - `pr`: at most 15 findings, followed by the omitted count.
 - `local`: at most 8 findings, including at most 3 class-A findings.
 - `full`: no trimming; report every class count, including zeroes.
 
-Use this structure for findings; include `Evidence` for every class:
+Report with tables, summary first.
 
-```text
-[C] Decision title
-  Record: docs/decisions/2026-08-14-use-postgres.md
-  Basis: commit:3f9a1c2 is not in history
-  Evidence: git merge-base --is-ancestor 3f9a1c2 origin/main -> exit 1
-  Suggest: replace the anchor with commit:8ff9f762 (matching patch-id d064e03f4e53)
-```
+**Disposition.** One row per outcome, listing the records in it:
 
-List `Legacy` and `Unverified` separately from findings. An unavailable or unauthenticated `gh` leaves PR anchors unverified while the other checks continue. Say when no current record carries a finding. Route all edits to `decision-write`; suggest `/setup-project-docs` only when the decision directory or its root pointer is missing.
+| Outcome | Count | Records |
+|---|---|---|
+| Pending | <n> | <paths or `-`> |
+| Clean | <n> | <paths or `-`> |
+| Unverified | <n> | <paths or `-`> |
+| Findings | <n> | <paths or `-`> |
+
+In `full` mode, follow it with a count for each class under its readable name, even when zero.
+
+**Findings.** One row per finding. Name the class in words:
+
+| Class | Record | Problem | Evidence | Suggest |
+|---|---|---|---|---|
+| Broken anchor (C) | docs/decisions/2026-08-14-use-postgres.md | `commit:3f9a1c2` is not in history | `git merge-base --is-ancestor 3f9a1c2 origin/main` exits 1 | Replace the anchor with `commit:8ff9f762` (patch-id d064e03f4e53) |
+
+Include `Evidence` for every finding.
+
+**Legacy and unverified.** Keep these out of the findings table, one row per item:
+
+| Type | Record | Reason | Evidence |
+|---|---|---|---|
+| Legacy | docs/decisions/2026-08-01-x.md | Missing `Review` field | Header parse |
+| Unverified | docs/decisions/2026-08-14-use-postgres.md | `gh` not authenticated | `gh pr view 42` fails |
+
+Say when no current record carries a finding. An unavailable or unauthenticated `gh` leaves PR anchors unverified while the other checks continue. Route all edits to `decision-write`; suggest `/setup-project-docs` only when the decision directory or its root pointer is missing.
