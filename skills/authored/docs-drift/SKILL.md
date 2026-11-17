@@ -1,6 +1,6 @@
 ---
 name: docs-drift
-description: Audit living project documentation for drift and redundancy; repair approved findings.
+description: Audit living project documentation for drift, redundancy, and unsupported elaboration; repair approved findings.
 disable-model-invocation: true
 ---
 
@@ -46,19 +46,23 @@ Complete this step when every checkable claim in every maintained document has a
 
 ## 3. Apply every check
 
-**Implementation drift.** Find stale statements or statements contradicted by current evidence about architecture, behavior, paths, commands, interfaces, configuration, dependencies, counts, and status.
+Each check names the finding kind it reports. Apply every check to every maintained document, and give each potential finding the kind of the check that produced it. A finding with no kind is an unapplied check.
 
-**Contradictions.** Find incompatible statements within one document or across documents. Distinguish contradictions from intentionally different levels of detail.
+**Implementation drift.** Find stale statements or statements contradicted by current evidence about architecture, behavior, paths, commands, interfaces, configuration, dependencies, counts, and status. Report it as `Implementation drift`.
 
-**Terminology.** Find one concept with conflicting names, one name denoting incompatible concepts, and definitions that diverge from actual usage. Check intentional language variants for corresponding meaning.
+**Contradictions.** Find incompatible statements within one document or across documents. Distinguish contradictions from intentionally different levels of detail. Report it as `Contradiction`.
 
-**Links and pointers.** Resolve repository-relative links, referenced paths, and anchors from their containing document. Check external links when feasible; classify network or access failures as unverified rather than dead.
+**Terminology and language variants.** Find one concept with conflicting names, one name denoting incompatible concepts, and definitions that diverge from actual usage. Check intentional language variants for corresponding meaning. Report a conflicting name or definition as `Terminology`, and a language pair whose meaning diverges as `Language drift`.
 
-**Redundancy and unsupported elaboration.** Find semantic duplication, scattered rules, obsolete passages, and incidental guidance mirroring another document's current headings, inventory, or wording when its responsibility alone would suffice. Before flagging such coupling, establish whether a skill intentionally owns and maintains that structure as a discovery, parsing, generation, or record-format contract; check these contracts for consistency rather than proposing to generalize or remove them. A skill's own template or fixed pointer location is likewise intentional when its consumers rely on it; validate it against those consumers rather than presenting it as a removable-duplication example. Find unsupported facts, assumptions, or invented elaboration accumulated during iteration. Examples include fabricated module responsibilities, command behavior, configuration defaults, design rationale, compatibility, performance conclusions, test coverage, and acceptance status. Shrink disproven or unsupported elaboration to the smallest evidence-backed statement. Insufficient evidence alone makes a claim unverified, not a deletion candidate. Preserve the context of historical statements and explicit future plans.
+**Links and pointers.** Resolve repository-relative links, referenced paths, and anchors from their containing document. Check external links when feasible; classify network or access failures as unverified rather than dead. Report an unresolved link, path, or anchor as `Link`.
 
-Before proposing consolidation, identify an authoritative location. Preserve intentional summaries, audience-specific views, language variants, and unique qualifications.
+**Redundancy.** Find semantic duplication, scattered rules, and obsolete passages. Before proposing consolidation, identify an authoritative location. Preserve intentional summaries, audience-specific views, language variants, and unique qualifications. Report it as `Redundancy`.
 
-Report style, formatting, or completeness preferences only when they substantiate one of these findings. Complete this step when every check has been applied to every maintained document and every potential finding has a location, observed statement, supporting evidence or evidence boundary, and proposed action.
+**Implementation coupling.** Find guidance that repeats another document's current headings, inventory, or wording, or a changing set of implementation members, when that document's own responsibility would suffice with an applicability rule or a reference. Before flagging it, establish whether a skill intentionally owns the mirrored structure as a discovery, parsing, generation, or record-format contract, or a template or fixed pointer location its consumers rely on; validate such contracts against their consumers instead of proposing to generalize or remove them. Report it as `Implementation coupling`.
+
+**Unsupported elaboration.** Find unsupported facts, assumptions, or invented elaboration accumulated during iteration. Examples include fabricated module responsibilities, command behavior, configuration defaults, design rationale, compatibility, performance conclusions, test coverage, and acceptance status. Shrink disproven or unsupported elaboration to the smallest evidence-backed statement. Insufficient evidence alone makes a claim unverified, not a deletion candidate. Preserve the context of historical statements and explicit future plans. Report it as `Unsupported elaboration`.
+
+Report style, formatting, or completeness preferences only when they substantiate one of these findings. Complete this step when every check has been applied to every maintained document and every potential finding has a location, observed statement, supporting evidence or evidence boundary, a finding kind, and a proposed action.
 
 ## 4. Resolve authority and classify findings
 
@@ -89,15 +93,15 @@ Report the candidate and maintained scopes, ownership evidence, reference-only d
 Use one entry per finding:
 
 ```text
-[Implementation drift | Contradiction | Terminology | Link | Redundancy] Title
+[Implementation drift | Contradiction | Terminology | Language drift | Link | Redundancy | Implementation coupling | Unsupported elaboration] Title
   Location: <document>:<line or section>
-  Current: <statement, duplicated material, or unsupported elaboration>
+  Current: <statement, duplicated or coupled material, or unsupported elaboration>
   Evidence: <source and observed fact, or the evidence boundary>
   Proposal: <documentation-only correction, deletion, or consolidation>
   Disposition: repairable | needs-user-decision | unverified
 ```
 
-For redundancy, name the proposed authoritative location and what each other location will retain, merge, or link to. For unsupported elaboration, state whether to delete it or shrink it to an evidence-backed statement. When nothing needs attention, say so and list any remaining unverified items.
+For redundancy, name the proposed authoritative location and what each other location will retain, merge, or link to. For implementation coupling, name the authoritative structure the copy should defer to. For unsupported elaboration, state whether to delete it or shrink it to an evidence-backed statement. When nothing needs attention, say so and list any remaining unverified items.
 
 Report mode ends here without writing files or creating a report artifact. Complete this step when every maintained document and potential finding has a reported outcome, and every candidate has a reported classification or unresolved question.
 
