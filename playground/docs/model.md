@@ -8,8 +8,8 @@ isolation is enforced by authorship, not by directories.
 ## 1. Identity
 
 - `treatment`: `native` | `adapted`.
-  - `native`: no `dsh-pstack` plugin, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
-  - `adapted`: load `dsh-pstack` and `port/dsh.md`, verify the port.
+  - `native`: no plugin under test, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
+  - `adapted`: load the plugin under test and its port configuration, verify the adaptation.
 - `environment`: id from `environments.ts` (`base`, `render`, `agent-team`). Optional
   plugins and team mode belong here, not in a directory name.
 - Run record carries `treatment`, `environment.matrix.id`, `environment.dshVersion`,
@@ -34,19 +34,13 @@ isolation is enforced by authorship, not by directories.
 
 ## 4. Generated vs hand-written
 
-- Generated (must support `--check` so they cannot drift): per-cell status table and the
-  cross-cell pivot (`playground:status-table`), README badges and Requires, compare
-  report.
+- Generated (must support `--check` so they cannot drift): per-cell status table, the cross-cell pivot, README badges and Requires, and a comparison report.
 - Hand-written: probe definitions; `findings/<treatment>.md` root-cause Q&A tagged by
   capability; `dsh.md` / `port/dsh.md` review.
 
 ## 5. Commands
 
-- `run-batch --treatment native|adapted --environment ID (--full|--scenarios|--only-failed)`.
-- `prepare` / `bootstrap` / `stop` / `browser` / `collect` take `--treatment`.
-- `review --apply|--check` writes `semanticReview` back and recomputes `verdict`.
-- `status-table` pivots records; `compare` compares by `(dshVersion, pstackVersion,
-  scenario content hash, environment, model route)`, never `upstreamRevision`.
+运行命令、批次与参数见 [workflow.md](./workflow.md)；本文件不重复。
 
 ## 6. Invariants
 

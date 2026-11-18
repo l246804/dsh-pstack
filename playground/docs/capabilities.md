@@ -2,10 +2,12 @@
 
 本文件是 playground 场景用例的唯一规则来源。规则是缺口和价值驱动：只测 pstack 工作流需要、且 DSH 标准模式可能不保证的行为，以及本插件交付的契约。probe 保持实现中立，谁缺谁补由 native 运行结果决定。
 
+本文件只描述行为类别和判定规则，不写具体工具名、包名或技能名。这些会随实现和上游变化，生成用例时从当前运行时和上游读取；工具或技能改名、删除、新增都不要求修改本文档。
+
 ## 1. 两类 probe，不要混为一谈
 
-- **gap probe（native + adapted 都跑）**：一个实现中立的任务级探针，验证 pstack 工作流需要的某个行为在 DSH 里是否成立。`native` 不加载被测插件，只跑 DSH 标准模式；`adapted` 加载 `dsh-pstack`。两侧都跑，才能看出 DSH 是否原生支持、插件是否补齐。**不预设这个能力 DSH 一定缺**，谁缺谁补由 native 的运行结果决定。这样 DSH 更新后某个能力变成原生支持时，重跑 native 就能发现，不会被实现耦合掩盖。
-- **contract probe（仅 adapted）**：我们交付的插件契约，例如 `pstack_subagent`、`pstack_models`、`pstack_roles`、`pstack_interrupt` 的行为与返回、poteto 会话注入。native 没有对应物，只跑 adapted，验证交付物本身。
+- **gap probe（native + adapted 都跑）**：一个实现中立的任务级探针，验证 pstack 工作流需要的某个行为在 DSH 里是否成立。`native` 不加载被测插件，只跑 DSH 标准模式；`adapted` 加载被测插件。两侧都跑，才能看出 DSH 是否原生支持、插件是否补齐。**不预设这个能力 DSH 一定缺**，谁缺谁补由 native 的运行结果决定。这样 DSH 更新后某个能力变成原生支持时，重跑 native 就能发现，不会被实现耦合掩盖。
+- **contract probe（仅 adapted）**：我们交付的插件对外行为契约，例如子代理委派、模型发现、角色发现、中断、会话注入这些由插件提供的行为。按当前实现读取具体工具与返回结构。native 没有对应物，只跑 adapted，验证交付物本身。
 
 probe 的 prompt 一律用自然语言描述目标和约束，不写工具名、包名或实现路径，保持实现中立。
 
@@ -17,15 +19,15 @@ gap probe 从一个中性的问题出发：这个行为是 pstack 工作流需�
 
 - **子代理委派与角色路由**：工作流要求按角色表动态派发、并行、中断、续聊、只读、团队协同。native 观察 DSH 标准模式能否做到，adapted 验证插件把它补齐。
 - **输出渲染**：工作流需要内联渲染 mermaid、图表、图片、视频、音频、UI。native 观察是否只有文件卡片，adapted 或 `render` 环境观察内联是否成立。
-- **缺失的 cursor-only 技能**：`visualize`、`cursor-team-kit`（`deslop`、`control-ui`、`control-cli`）、`loop`、`create-skill`。native 观察缺失，adapted 验证 fallback 或 vendored。
-- **插件契约（contract probe）**：`pstack_models`、`pstack_roles`、`pstack_subagent`、`pstack_interrupt`、poteto 会话注入。
-- **会话工作流**：poteto 开关注入 `poteto-mode` 与会话投影。
+- **缺失的 cursor-only 技能**：DSH 没有、只在 Cursor 环境提供的技能，例如可视化、团队协作工具箱一类。native 观察缺失，adapted 验证 fallback 或 vendored。具体技能以当前上游为准。
+- **插件契约（contract probe）**：插件对外提供的委派、模型发现、角色发现、中断、会话注入等行为；具体工具以当前实现为准。
+- **会话工作流**：会话级工作流注入与会话投影；具体开关以当前实现为准。
 
 ## 3. 默认排除（写 reason，不写 probe）
 
-- 24 个 `principle-*` 技能：纯指导文本，没有可运行行为。
-- 纯 workflow playbook（`investigation`、`bug-fix`、`refactor` 等）：流程指导，不是可观察能力。
-- DSH 原生通用工具（file read/write、grep/glob、todo、askquestion、skill loading）：native 本就支持、插件不改，最多留一个冒烟。
+- 原则类指导技能：纯文本，没有可运行行为。
+- 纯流程类 playbook：流程指导，不是可观察能力。
+- DSH 稳定通用工具（file read/write、grep/glob、todo、askquestion、skill loading）：不是本插件的价值点，最多留一个冒烟。
 - environment extras（worktree、terminal、session-search、desktop、cloud、VM/SSH 虚拟机）：当前不缺或未支持，未来作为 `environment` 维度扩充，不进核心集。
 
 ## 4. 写一个 probe
@@ -48,7 +50,7 @@ gap probe 从一个中性的问题出发：这个行为是 pstack 工作流需�
 
 ## 6. 完成标准
 
-- 五个核心组每组至少一个 probe，且断言能在能力缺失时失败。
+- 第 2 节每个候选组至少一个 probe，且断言能在能力缺失时失败。
 - inventory 中每个 `covered` 的 `probes.base` 指向真实存在的 probe。
 - 每个 `excluded` 都有用户批准的原因。
 - 没有孤儿 probe：每个 probe 的 `capability` 都在 inventory 里。
