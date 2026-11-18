@@ -2,7 +2,7 @@
 
 Status: accepted
 Date: 2026-11-13
-Scope: playground/scripts/collect.ts, playground/scripts/lib/review-snapshot.ts, playground/scripts/run-batch.ts, playground/scripts/run-case.ts, playground/AGENTS.md, playground/docs/workflow.md, playground/docs/evidence-analysis.md, playground/reviews/**
+Scope: playground/harness/cli/collect.ts, playground/harness/lib/review-snapshot.ts, playground/harness/cli/run-batch.ts, playground/harness/cli/run-case.ts, playground/AGENTS.md, playground/docs/workflow.md, playground/docs/evidence-analysis.md, playground/evidence/runs/**
 Implemented-by: commit:ef01e56
 Review: 2026-11-13
 
@@ -12,7 +12,7 @@ Review: 2026-11-13
 
 ## 决策
 
-- 每个 `phase/environment` 只保留一份当前完整快照：`playground/reviews/<phase>-<environment>/`。
+- 每个 `phase/environment` 只保留一份当前完整快照：`playground/evidence/runs/<phase>-<environment>/`。
 - 快照包含 `manifest.json`、`index.md` 和 `scenarios/<scenario>/<phase>-<environment>/`；每个场景目录保存 `record.json` 和 `screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
 - `collect` 只更新当前快照，不生成 summary、runtime-review、approval 或 history。
 - `run-batch` 在批次开始时生成 `batchId`、mode 和 scope，并写入 `.workers` 的当前批次元数据；增量批次只替换本次跑到的场景。
@@ -30,7 +30,7 @@ Review: 2026-11-13
 
 ## 后果
 
-- `playground/reviews/<phase>-<environment>/` 是当前唯一审核快照；`reports/` 不再生成。
+- `playground/evidence/runs/<phase>-<environment>/` 是当前唯一审核快照；`reports/` 不再生成。
 - `index.md` 成为后续 dsh.md 和插件开发的问题来源。
 - 提交体积从完整的多轮 history 降低为当前快照；历史依赖 Git，不在工作区保留。
 - 本记录取代 [2026-11-11-test-driven-port-baseline.md](./2026-11-11-test-driven-port-baseline.md) 中 `reports/`、`reviews/scenarios`、`reviews/runtime-review` 和 `history` 相关部分；其余场景注册表与 baseline.json 决策仍有效。

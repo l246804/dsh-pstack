@@ -9,7 +9,7 @@ Superseded-by: docs/decisions/2026-11-16-structured-role-routes.md — 角色文
 
 ## 背景
 
-角色文件此前是 `$DSH_HOME/pstack-models.mdc`，沿用 Cursor 的 always-applied 规则行格式：`# budget:` 注释行加每角色一行 `<role>: <route>[, <route>...]`。DSH 从不把 `.mdc` 当作会话规则加载，这个文件只是本插件自己读写的配置；`playground/scripts/lib/env.ts` 的 `writeRoleFile` 已经改为写入 `{ "version": 1, "roles": { ... } }` 的 JSON。行格式因此带来几处实际成本：解析要维护逐行文档模型（`RoleFileDocument`/`RoleFileLine`），重复角色行要按“最后一行胜”合并，错误按行号报告，编辑器要按行替换与删除并处理 BOM/CRLF，预算应用要把计划重新渲染成 `# budget` 注释行与角色行。这些机制都服务于一个本插件独占、且已有结构化表示的配置文件，而不是任何外部约束。
+角色文件此前是 `$DSH_HOME/pstack-models.mdc`，沿用 Cursor 的 always-applied 规则行格式：`# budget:` 注释行加每角色一行 `<role>: <route>[, <route>...]`。DSH 从不把 `.mdc` 当作会话规则加载，这个文件只是本插件自己读写的配置；`playground/harness/lib/env.ts` 的 `writeRoleFile` 已经改为写入 `{ "version": 1, "roles": { ... } }` 的 JSON。行格式因此带来几处实际成本：解析要维护逐行文档模型（`RoleFileDocument`/`RoleFileLine`），重复角色行要按“最后一行胜”合并，错误按行号报告，编辑器要按行替换与删除并处理 BOM/CRLF，预算应用要把计划重新渲染成 `# budget` 注释行与角色行。这些机制都服务于一个本插件独占、且已有结构化表示的配置文件，而不是任何外部约束。
 
 ## 决策
 

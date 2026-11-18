@@ -90,8 +90,8 @@ RunRecord 的身份是 `scenarioId + treatment + environmentId`。记录包含�
 
 `run-case` 在 worker evidence 目录写机械脱敏后的 `record.json`，并写本地 `record.source.json`，只用于 `collect` 定位原始截图和 session。`record.source.json` 不提交。
 
-`collect` 读取 worker 的脱敏 RunRecord，并从 `record.source.json` 复制证据到 `reviews/<treatment>-<environment>/scenarios/<scenario>/<treatment>-<environment>/`。每个目录保存 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地。
+`collect` 读取 worker 的脱敏 RunRecord，并从 `record.source.json` 复制证据到 `evidence/runs/<treatment>-<environment>/scenarios/<scenario>/<treatment>-<environment>/`。每个目录保存 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地。
 
-`manifest.json` 记录当前快照的 `treatment`、`environment`、`dshVersion`、`pstackVersion` 和 `scenarioIds`。根因问答按 treatment 手写到 `findings/<treatment>.md`。未出现在当前快照中的场景目录会被删除，`findings` 里的对应问答也要清理。
+`manifest.json` 记录当前快照的 `treatment`、`environment`、`dshVersion`、`pstackVersion` 和 `scenarioIds`。根因问答按 treatment 手写到 `playground/evidence/findings/<treatment>.md`。未出现在当前快照中的场景目录会被删除，`findings` 里的对应问答也要清理。
 
 `--only-failed` 在 native 只选择 gap，在 adapted 只选择 not-verified。blocked、unobserved 和 inconclusive 需要显式选择或人工处理，不自动重试到变绿。

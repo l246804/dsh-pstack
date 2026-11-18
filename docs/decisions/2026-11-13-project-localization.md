@@ -21,7 +21,7 @@ Review: 2026-11-15
 
 ## 不需要泛化的内容
 
-- 具体文件名和路径是当前实现事实，保留具体名称，例如 `README.zh.md`、`port/dsh.zh.md`、`playground/raw/dsh.zh.md`。
+- 具体文件名和路径是当前实现事实，保留具体名称，例如 `README.zh.md`、`port/dsh.zh.md`、`playground/adapter/dsh.zh.md`。
 - 历史决策记录保留当时的语言表述和实现事实，不因本决策改写历史。
 - 决策记录的文件命名和正文语言属于当前项目写作约定，保持具体，不抽象成“某种语言”。
 - 能力 inventory 的 `description` 语言由当前数据来源和用户约定决定，保留实际语言说明，不为了国际化规则改成空泛描述。

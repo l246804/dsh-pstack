@@ -4,17 +4,17 @@
 
 ## 输入
 
-- `reviews/<treatment>-<environment>/manifest.json`：本轮覆盖的场景、最后批次，以及 `treatment`、`environment`、`dshVersion`、`pstackVersion`、`scenarioIds`。
-- `reviews/<treatment>-<environment>/scenarios/**`：每个场景的 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
+- `evidence/runs/<treatment>-<environment>/manifest.json`：本轮覆盖的场景、最后批次，以及 `treatment`、`environment`、`dshVersion`、`pstackVersion`、`scenarioIds`。
+- `evidence/runs/<treatment>-<environment>/scenarios/**`：每个场景的 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
 - `scenarios/*.ts`：场景 prompt、assertions、rubric、uiObservations；只作为判据，不把 rubric 当答案抄进结论。
-- `playground/raw/dsh.md`：只在 native 分析时逐条对照。
+- `playground/adapter/dsh.md`：只在 native 分析时逐条对照。
 - `port/dsh.md`：只在 adapted 分析时逐条对照。
-- 必要时读 `playground/raw/dsh-evidence.md` 和上游技能原文。
-- `playground/data/capability-inventory.json`：按 [capabilities.md](./capabilities.md) 维护的能力清单。
+- 必要时读 `playground/adapter/dsh-evidence.md` 和上游技能原文。
+- `playground/capabilities/capability-inventory.json`：按 [capabilities.md](./capabilities.md) 维护的能力清单。
 
 ## 阶段隔离
 
-- native 分析只能读 `reviews/native-*/`、`playground/raw/dsh.md`、`playground/raw/dsh-evidence.md`、场景文件和相关原始 session。
+- native 分析只能读 `evidence/runs/native-*/`、`playground/adapter/dsh.md`、`playground/adapter/dsh-evidence.md`、场景文件和相关原始 session。
 - native 分析不得读取 `port/dsh.md`、当前适配实现、当前插件树或 adapted 证据，也不得引用这些内容作为 native 结论。
 - adapted 分析只读 adapted 快照、`port/dsh.md` 和当前适配实现；不得用 native 的缺失直接替代 adapted 的验证。
 - 违反阶段隔离得出的结论视为无效，必须丢弃并重新分析。
@@ -30,9 +30,9 @@
 
 ## 输出
 
-按 treatment 手写 `findings/<treatment>.md`（`findings/native.md`、`findings/adapted.md`）。写完后必须先在 `reviews/<treatment>-<environment>/review.json` 里按 `scenarioId` 声明每个场景的 `{ status, reason, reviewer }`，运行 `vp run playground:review -- --treatment <treatment> --environment <environment> --apply`，再用 `--check` 确认没有 pending。这是记录从 pending 变为 verified / not-verified 的唯一路径。审核完成后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并通过 `playground:redact --apply`。
+按 treatment 手写 `playground/evidence/findings/<treatment>.md`（`playground/evidence/findings/native.md`、`playground/evidence/findings/adapted.md`）。写完后必须先在 `evidence/runs/<treatment>-<environment>/review.json` 里按 `scenarioId` 声明每个场景的 `{ status, reason, reviewer }`，运行 `vp run playground:review -- --treatment <treatment> --environment <environment> --apply`，再用 `--check` 确认没有 pending。这是记录从 pending 变为 verified / not-verified 的唯一路径。审核完成后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并通过 `playground:redact --apply`。
 
-`findings/<treatment>.md` 固定包含：
+`playground/evidence/findings/<treatment>.md` 固定包含：
 
 1. 本轮范围：mode（full / incremental）、覆盖场景、未覆盖但沿用当前快照的场景，以及本轮的 `dshVersion` / `pstackVersion`。
 2. 按 probe 汇总：每个 probe 的结论，通过、失败/未完成、未观察到、能力缺失分别列出。
@@ -51,12 +51,12 @@
 - 通过方式（仅机械断言相关的 tool）：first-pass | recovered-after-failure | failed
 - 影响场景：`a`、`b`
 - 证据：
-  - [record](reviews/native-base/scenarios/a/native-base/record.json)
-  - [截图](reviews/native-base/scenarios/a/native-base/screenshot.png)
+  - [record](evidence/runs/native-base/scenarios/a/native-base/record.json)
+  - [截图](evidence/runs/native-base/scenarios/a/native-base/screenshot.png)
   - session 只在本地 worker，按 `record.session.sessionId` 读取，不在快照中链接
 - 现象：
 - 根因：
-- 与当前 treatment dsh.md 的关系：native 写 `playground/raw/dsh.md`，adapted 写 `port/dsh.md`
+- 与当前 treatment dsh.md 的关系：native 写 `playground/adapter/dsh.md`，adapted 写 `port/dsh.md`
 - 建议动作：
 - 你的决定：
 ```
@@ -65,7 +65,7 @@
 
 ## dsh.md 审查格式
 
-native 分析只审查 `playground/raw/dsh.md`，adapted 分析只审查 `port/dsh.md`。不要把两个 treatment 合成一张表。
+native 分析只审查 `playground/adapter/dsh.md`，adapted 分析只审查 `port/dsh.md`。不要把两个 treatment 合成一张表。
 
 ```markdown
 | 章节/行 | 当前说明 | 相关证据 | 结论 | 建议 |
@@ -79,7 +79,7 @@ native 分析只审查 `playground/raw/dsh.md`，adapted 分析只审查 `port/d
 1. 先判问题是否真实：看 `record.json` 的 assistant 文本、工具调用、完整页面截图；需要完整事件时再按 sessionId 读取本地 worker session。
 2. 再判问题性质：先区分能力缺失和模型未完成；模型能力、复杂度、质量或输出不稳定属于 `inconclusive` 或 `待你判断`，只有能力、工具或环境确实不存在才是 `gap` 或 `ignore-environment`。
 3. 再判根因：场景 prompt、技能或依赖、环境前提、适配说明、上游文档是否覆盖。
-4. native 分析只判断 `playground/raw/dsh.md` 是否缺失或误导；adapted 分析只判断 `port/dsh.md` 是否缺失或误导。
+4. native 分析只判断 `playground/adapter/dsh.md` 是否缺失或误导；adapted 分析只判断 `port/dsh.md` 是否缺失或误导。
 5. 当前 treatment 的 `dsh-md` 结论只改当前 treatment 对应的 dsh.md；native 分析不改 `port/dsh.md`。
 6. 当前 treatment 的 `plugin` 结论才进入插件、工具或预设开发。
 7. 上游自身问题进入 `upstream`，不在本仓修。
@@ -90,6 +90,6 @@ native 分析只审查 `playground/raw/dsh.md`，adapted 分析只审查 `port/d
 
 ## 链接与提交
 
-- `findings/<treatment>.md` 使用相对链接直接指向对应 `reviews/<treatment>-<environment>/` 快照里的证据文件。
+- `playground/evidence/findings/<treatment>.md` 使用相对链接直接指向对应 `evidence/runs/<treatment>-<environment>/` 快照里的证据文件。
 - `record.json` 和截图提交；`session.jsonl.zstd` 只保留本地，不提交，避免泄露宿主路径或凭证。
 - `.staging` 不提交。

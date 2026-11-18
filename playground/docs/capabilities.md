@@ -34,9 +34,9 @@
 
 ## 4. inventory 与排除
 
-- `playground/data/capability-inventory.json`：每个能力一条，字段 `id`、`category`、`description`、`sources`、`requiredBy`、`status`（`covered` | `discovered` | `excluded`）、`probes`。
-- `playground/data/capability-exclusions.json`：`{ "<id>": { "reason": "...", "decidedBy": "user" } }`，只有用户明确批准才写。
-- `playground/data/capability-exclusions.proposed.json`：候选排除，agent 可写，不产生 `excluded` 状态。
+- `playground/capabilities/capability-inventory.json`：每个能力一条，字段 `id`、`category`、`description`、`sources`、`requiredBy`、`status`（`covered` | `discovered` | `excluded`）、`probes`。
+- `playground/capabilities/capability-exclusions.json`：`{ "<id>": { "reason": "...", "decidedBy": "user" } }`，只有用户明确批准才写。
+- `playground/capabilities/capability-exclusions.proposed.json`：候选排除，agent 可写，不产生 `excluded` 状态。
 
 ## 5. 完成标准
 

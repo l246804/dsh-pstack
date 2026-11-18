@@ -27,15 +27,15 @@ isolation is enforced by authorship, not by directories.
 
 ## 3. Evidence layout
 
-- `playground/reviews/<treatment>-<environment>/scenarios/<scenarioId>/<treatment>-<environment>/record.json`
+- `playground/evidence/runs/<treatment>-<environment>/scenarios/<scenarioId>/<treatment>-<environment>/record.json`
   and `screenshot.png`.
-- `playground/reviews/<treatment>-<environment>/manifest.json` records treatment,
+- `playground/evidence/runs/<treatment>-<environment>/manifest.json` records treatment,
   environment, `dshVersion`, `pstackVersion`, `scenarioIds`.
 
 ## 4. Generated vs hand-written
 
 - Generated (must support `--check` so they cannot drift): the per-cell status table, the cross-cell pivot, and the comparison report.
-- Hand-written: probe definitions; `findings/<treatment>.md` root-cause Q&A tagged by
+- Hand-written: probe definitions; `playground/evidence/findings/<treatment>.md` root-cause Q&A tagged by
   capability; `dsh.md` / `port/dsh.md` review.
 
 ## 5. Commands

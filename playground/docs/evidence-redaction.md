@@ -34,7 +34,7 @@ vp run playground:redact -- --treatment native --environment base --apply
 
 ## 提交门
 
-- `reviews/**/session.jsonl.zstd` 永不提交。
-- `reviews/**/record.safe.json` 永不提交。
+- `evidence/runs/**/session.jsonl.zstd` 永不提交。
+- `evidence/runs/**/record.safe.json` 永不提交。
 - 只有 `redact --apply` 成功后的 `record.json` 和截图进入提交。
 - 截图仍需人工确认不含账户名、凭证或其他敏感内容。

@@ -191,8 +191,8 @@ Steps that depend on a disabled plugin report skipped or blocked, never passed. 
 
 Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/workflow.md](./playground/docs/workflow.md) documents the full procedure.
 
-- **Raw baseline.** The generator copies upstream pstack into `playground/raw/pstack` and installs nothing else. `playground/raw/dsh.md` states each upstream capability as one of three cases: native in DSH, provided only by an official optional plugin, or absent. The generator copies that document and rewrites link references only, so the upstream wording stays intact.
-- **Capability-driven runs.** Coverage comes from `playground/data/capability-inventory.json`, a derived list maintained from pstack usage and `raw/dsh.md`. Skill and playbook files are consumers, not per-file test requirements.
+- **Raw baseline.** The generator copies upstream pstack into `playground/adapter/pstack` and installs nothing else. `playground/adapter/dsh.md` states each upstream capability as one of three cases: native in DSH, provided only by an official optional plugin, or absent. The generator copies that document and rewrites link references only, so the upstream wording stays intact.
+- **Capability-driven runs.** Coverage comes from `playground/capabilities/capability-inventory.json`, a derived list maintained from pstack usage and `raw/dsh.md`. Skill and playbook files are consumers, not per-file test requirements.
 - **Semantic review.** A skill that loads only proves it was reachable. Each scenario records a separate verdict (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason. The adapted run records `verified`, `not-verified`, or `inconclusive`.
 - **Adapted re-check.** Review findings drive [port/dsh.md](./port/dsh.md). Rebuild the adapted package with `vp run build`, then rerun the same scenarios to confirm the mapped behavior.
 - **Environment matrix.** Capability probes run in `base` by default. `render` is the rendering comparison environment. `agent-team` is the Team-on environment that verifies pstack delegation with Agent Teams enabled.
