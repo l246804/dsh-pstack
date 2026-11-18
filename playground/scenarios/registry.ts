@@ -1,33 +1,30 @@
-import type { BehaviorScenario } from "../types.ts";
-import { environments } from "./environments.ts";
+import type { BehaviorScenario, Treatment } from "../types.ts";
 
-const modules = import.meta.glob<{ default: BehaviorScenario }>("./*/*.ts", {
-  eager: true,
-});
+const DEFAULT_TREATMENTS: readonly Treatment[] = ["native", "adapted"];
+const DEFAULT_ENVIRONMENTS: readonly string[] = ["base"];
 
-const environmentIds = new Set([
-  "capabilities",
-  ...environments.map((environment) => environment.id),
-]);
+/**
+ * Every scenario file lives flat in this directory. The glob lists the files that are not
+ * scenarios (the registry, the barrel and the environment matrix) as explicit negatives, so
+ * there is no per-directory environment inference; each probe declares its own treatments
+ * and environments.
+ */
+const modules = import.meta.glob<{ default: BehaviorScenario }>(
+  ["./*.ts", "!./registry.ts", "!./index.ts", "!./environments.ts"],
+  { eager: true },
+);
 
-function environmentOf(path: string): string {
-  const directory = path.split("/")[1] ?? "";
-  if (!environmentIds.has(directory)) {
-    throw new Error(`scenario file is in unknown environment directory: ${path}`);
-  }
-  return directory === "capabilities" ? "base" : directory;
-}
-
-const collected = Object.entries(modules).map(([path, module]) => {
-  const environmentId = environmentOf(path);
-  const scenario = module.default;
-  if (scenario.environmentId !== undefined && scenario.environmentId !== environmentId) {
-    throw new Error(
-      `scenario ${scenario.id} declares ${scenario.environmentId}, but lives in ${environmentId}`,
-    );
-  }
-  return { ...scenario, environmentId };
-});
+const collected = Object.values(modules)
+  .map((module) => module.default)
+  .filter(
+    (scenario): scenario is BehaviorScenario =>
+      scenario !== undefined && typeof scenario.id === "string",
+  )
+  .map((scenario) => ({
+    ...scenario,
+    treatments: scenario.treatments ?? DEFAULT_TREATMENTS,
+    environments: scenario.environments ?? DEFAULT_ENVIRONMENTS,
+  }));
 
 const duplicates = collected
   .map((scenario) => scenario.id)

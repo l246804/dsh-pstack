@@ -89,9 +89,8 @@ function selectedScenarios(treatment: Treatment, environmentId: string): string[
       const scenario = loadScenario(id);
       const treatmentAllowed =
         scenario.treatments === undefined || scenario.treatments.includes(treatment);
-      const environmentAllowed =
-        scenario.environmentId === undefined || scenario.environmentId === environmentId;
-      return treatmentAllowed && environmentAllowed;
+      const environments = scenario.environments ?? ["base"];
+      return treatmentAllowed && environments.includes(environmentId);
     });
   }
   if (scenarios) return parseList(scenarios);

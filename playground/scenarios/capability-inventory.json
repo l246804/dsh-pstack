@@ -211,7 +211,7 @@
       }
     },
     {
-      "id": "multi-phase-collaboration",
+      "id": "multi-stage-collaboration",
       "category": "delegation",
       "description": "多阶段协作：不同阶段交接给不同执行者，前一阶段的产出作为后一阶段的输入。",
       "source": "playground/raw/dsh.md + upstream/cursor-plugins/pstack",
@@ -225,7 +225,7 @@
       "requiredBy": ["architect", "arena", "swarm"],
       "status": "covered",
       "probes": {
-        "base": "capability-multi-phase-collaboration"
+        "base": "capability-multi-stage-collaboration"
       }
     },
     {
@@ -642,7 +642,7 @@
       "status": "covered",
       "probes": {
         "base": "capability-render-audio",
-        "render": "capability-render-audio-render"
+        "render": "capability-render-audio"
       }
     },
     {
@@ -655,7 +655,7 @@
       "status": "covered",
       "probes": {
         "base": "capability-render-generated-image",
-        "render": "capability-render-generated-image-render"
+        "render": "capability-render-generated-image"
       }
     },
     {
@@ -672,7 +672,7 @@
       "status": "covered",
       "probes": {
         "base": "capability-render-mermaid-diagram",
-        "render": "capability-render-mermaid-diagram-render"
+        "render": "capability-render-mermaid-diagram"
       }
     },
     {
@@ -691,7 +691,7 @@
       "status": "covered",
       "probes": {
         "base": "capability-render-screenshot",
-        "render": "capability-render-screenshot-render"
+        "render": "capability-render-screenshot"
       }
     },
     {
@@ -707,7 +707,7 @@
       "status": "covered",
       "probes": {
         "base": "capability-render-svg-chart",
-        "render": "capability-render-svg-chart-render"
+        "render": "capability-render-svg-chart"
       }
     },
     {
@@ -723,7 +723,7 @@
       "status": "covered",
       "probes": {
         "base": "capability-render-ui",
-        "render": "capability-render-ui-render"
+        "render": "capability-render-ui"
       }
     },
     {
@@ -736,7 +736,7 @@
       "status": "covered",
       "probes": {
         "base": "capability-render-video",
-        "render": "capability-render-video-render"
+        "render": "capability-render-video"
       }
     },
     {

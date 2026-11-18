@@ -675,10 +675,9 @@ async function main(): Promise<void> {
         return found;
       })()
     : (await import("./lib/scenarios.ts")).loadScenario(scenarioId);
-  if (scenario.environmentId !== undefined && scenario.environmentId !== matrix.id) {
-    throw new Error(
-      `scenario ${scenarioId} belongs to ${scenario.environmentId}, not ${matrix.id}`,
-    );
+  const environments = scenario.environments ?? ["base"];
+  if (!environments.includes(matrix.id)) {
+    throw new Error(`scenario ${scenarioId} does not run in environment ${matrix.id}`);
   }
   if (scenario.treatments !== undefined && !scenario.treatments.includes(treatment)) {
     throw new Error(`scenario ${scenarioId} is not allowed in ${treatment}`);

@@ -61,7 +61,8 @@ export interface BehaviorScenario {
   uiObservations: UiObservation[];
   /** Treatments this probe is allowed to run in; omitted means both native and adapted. */
   treatments?: readonly Treatment[];
-  environmentId?: string;
+  /** Environments this probe runs in; omitted means only the base environment. */
+  environments?: readonly string[];
   answers?: Array<{ match: string; selected?: string[]; custom?: string }>;
   /** Capability id this probe covers. */
   capability: string;
