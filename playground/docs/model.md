@@ -10,8 +10,8 @@ isolation is enforced by authorship, not by directories.
 - `treatment`: `native` | `adapted`.
   - `native`: no plugin under test, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
   - `adapted`: load the plugin under test and its port configuration, verify the adaptation.
-- `environment`: id from `environments.ts` (`base`, `render`, `agent-team`, plus `preview`
-  for manual). Optional plugins and team mode belong here, not in a directory name.
+- `environment`: id from `environments.ts`; optional plugins and team mode belong to the
+  environment definition, never to a directory name.
 - Run record carries `treatment`, `environment.matrix.id`, `environment.dshVersion`,
   and `environment.pstackVersion`.
 - `pstackVersion`: the released pstack version pinned in `port/baseline.json`, recorded
@@ -21,8 +21,8 @@ isolation is enforced by authorship, not by directories.
 
 - One file per capability under `playground/scenarios/` (flat).
 - `BehaviorScenario` keeps `capability`, gains optional `treatments` (default both) and
-  `environments` (default `["base"]`). A render probe declares `environments: ["base",
-  "render"]` on its one definition.
+  `environments` (default `["base"]`); a probe can declare additional environments on its
+  one definition.
 - `registry.ts` collects every scenario file; each probe declares its own treatments and environments.
 
 ## 3. Evidence layout
@@ -34,7 +34,7 @@ isolation is enforced by authorship, not by directories.
 
 ## 4. Generated vs hand-written
 
-- Generated (must support `--check` so they cannot drift): per-cell status table, the cross-cell pivot, README badges and Requires, and a comparison report.
+- Generated (must support `--check` so they cannot drift): the per-cell status table, the cross-cell pivot, and the comparison report.
 - Hand-written: probe definitions; `findings/<treatment>.md` root-cause Q&A tagged by
   capability; `dsh.md` / `port/dsh.md` review.
 

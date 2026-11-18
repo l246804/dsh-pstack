@@ -4,7 +4,7 @@
 
 ## 文件职责
 
-- `playground/raw/dsh.md`：raw 阶段 DSH 能力答案，由 agent 依据 DSH 实际能力逐条填写并经用户确认。
+- `playground/raw/dsh.md`：native 基准的 DSH 能力答案，由 agent 依据 DSH 实际能力逐条填写并经用户确认。
 - `playground/raw/dsh.zh.md`：`dsh.md` 的本地化审阅译文；生成器不读取，只用于审阅。
 - `playground/raw/dsh-evidence.md`：记录 `dsh.md` 每个替换项对应的 DSH 事实证据。
 - `playground/raw/pstack/`：由生成器从上游 pstack 复制的 raw 生成树，不作为能力来源。

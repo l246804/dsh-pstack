@@ -1,65 +1,53 @@
 # 能力提取与 probe 编写规则
 
-本文件是 playground 场景用例的唯一规则来源。规则是缺口和价值驱动：只测 pstack 工作流需要、且 DSH 标准模式可能不保证的行为，以及本插件交付的契约。probe 保持实现中立，谁缺谁补由 native 运行结果决定。
+本文件定义如何从上游 pstack 工作流和 DSH 运行时推导需要验证的行为，并写成 probe。它只给方法与判定标准，不列出应当实现或提取的具体能力；每次生成时都从当前上游和当前运行时重新推导。
 
-本文件只描述行为类别和判定规则，不写具体工具名、包名或技能名。这些会随实现和上游变化，生成用例时从当前运行时和上游读取；工具或技能改名、删除、新增都不要求修改本文档。
+## 1. 判定一个行为是否值得 probe
 
-## 1. 两类 probe，不要混为一谈
+只有满足以下之一的行为才写 probe：
 
-- **gap probe（native + adapted 都跑）**：一个实现中立的任务级探针，验证 pstack 工作流需要的某个行为在 DSH 里是否成立。`native` 不加载被测插件，只跑 DSH 标准模式；`adapted` 加载被测插件。两侧都跑，才能看出 DSH 是否原生支持、插件是否补齐。**不预设这个能力 DSH 一定缺**，谁缺谁补由 native 的运行结果决定。这样 DSH 更新后某个能力变成原生支持时，重跑 native 就能发现，不会被实现耦合掩盖。
-- **contract probe（仅 adapted）**：我们交付的插件对外行为契约，例如子代理委派、模型发现、角色发现、中断、会话注入这些由插件提供的行为。按当前实现读取具体工具与返回结构。native 没有对应物，只跑 adapted，验证交付物本身。
+- 该行为是 pstack 工作流完成所必需的，且 DSH 标准模式（`native`，不加载被测插件）不能保证它。
+- 被测插件对外提供了该行为的契约（工具、返回结构、会话注入等），可能回归。
 
-probe 的 prompt 一律用自然语言描述目标和约束，不写工具名、包名或实现路径，保持实现中立。
+判定基于当前运行时与当前上游，不预设结论；`native` 的运行结果是最终仲裁。三条都不满足的行为记入排除清单并写明原因。
 
-## 2. 提取规则
+## 2. 提取流程
 
-gap probe 从一个中性的问题出发：这个行为是 pstack 工作流需要的吗，而且 DSH 标准模式可能不保证它吗？是，就建一个 gap probe，让 native 去观察、adapted 去验证。contract probe 则对应我们实际交付的插件工具与会话注入。其余不需要跑的行为默认排除（见第 3 节）。
+1. 读当前上游 pstack 的技能、playbook、命令和 agent 文档，列出工作流实际依赖的用户可观察行为。按行为组织，不按文件数量组织。
+2. 对每个行为写一个实现中立的任务级 probe：prompt 用自然语言描述目标和约束，不写工具名、包名或实现路径。
+3. 在 `native` 与 `adapted` 两个 treatment 上运行同一 probe；`native` 观察 DSH 标准模式，`adapted` 观察插件加入后的结果。
+4. 只保留能失败的行为：`assertions` 必须在行为缺失时失败，禁止只有 `turn-completed`。
+5. 不需要或无法验证的行为写进排除清单并写明原因（需用户批准）。
 
-候选范围按“工作流依赖”而不是“插件功能”来列：
+不写自动解析上游文档的脚本；提取每次由人从当前来源判断。
 
-- **子代理委派与角色路由**：工作流要求按角色表动态派发、并行、中断、续聊、只读、团队协同。native 观察 DSH 标准模式能否做到，adapted 验证插件把它补齐。
-- **输出渲染**：工作流需要内联渲染 mermaid、图表、图片、视频、音频、UI。native 观察是否只有文件卡片，adapted 或 `render` 环境观察内联是否成立。
-- **缺失的 cursor-only 技能**：DSH 没有、只在 Cursor 环境提供的技能，例如可视化、团队协作工具箱一类。native 观察缺失，adapted 验证 fallback 或 vendored。具体技能以当前上游为准。
-- **插件契约（contract probe）**：插件对外提供的委派、模型发现、角色发现、中断、会话注入等行为；具体工具以当前实现为准。
-- **会话工作流**：会话级工作流注入与会话投影；具体开关以当前实现为准。
-
-## 3. 默认排除（写 reason，不写 probe）
-
-- 原则类指导技能：纯文本，没有可运行行为。
-- 纯流程类 playbook：流程指导，不是可观察能力。
-- DSH 稳定通用工具（file read/write、grep/glob、todo、askquestion、skill loading）：不是本插件的价值点，最多留一个冒烟。
-- environment extras（worktree、terminal、session-search、desktop、cloud、VM/SSH 虚拟机）：当前不缺或未支持，未来作为 `environment` 维度扩充，不进核心集。
-
-## 4. 写一个 probe
+## 3. 写一个 probe
 
 - 一个文件一份 probe，放在 `playground/scenarios/`（扁平，无目录分组），默认导出 `BehaviorScenario`。
 - 声明 `capability`（稳定 id）、`treatments`（默认两者）、`environments`（默认 `["base"]`）。
 - `turns` 用自然语言描述用户目标，不写工具名或实现路径。
 - `workspace` 放必要 fixture。
-- `assertions` 只做机械事实，且必须能在能力缺失时失败；禁止只有 `turn-completed`。
+- `assertions` 只做机械事实，且必须能在行为缺失时失败。
 - `rubric` 描述用户可观察的最低合格边界，允许合理的替代实现和降级路径。
 - 需要看真实呈现时声明 `uiObservations`。
-- 一个 probe 只覆盖一个能力分支。
+- 一个 probe 只覆盖一个行为分支。
 
-## 5. inventory 与排除
+## 4. inventory 与排除
 
 - `playground/data/capability-inventory.json`：每个能力一条，字段 `id`、`category`、`description`、`sources`、`requiredBy`、`status`（`covered` | `discovered` | `excluded`）、`probes`。
 - `playground/data/capability-exclusions.json`：`{ "<id>": { "reason": "...", "decidedBy": "user" } }`，只有用户明确批准才写。
 - `playground/data/capability-exclusions.proposed.json`：候选排除，agent 可写，不产生 `excluded` 状态。
-- 不写自动解析上游文档的脚本；inventory 由 agent 手工维护。
 
-## 6. 完成标准
+## 5. 完成标准
 
-- 第 2 节每个候选组至少一个 probe，且断言能在能力缺失时失败。
+- 每个从当前上游推导出的行为，都有 `covered` 的 probe，或有用户批准的 `excluded` 记录。
 - inventory 中每个 `covered` 的 `probes.base` 指向真实存在的 probe。
-- 每个 `excluded` 都有用户批准的原因。
 - 没有孤儿 probe：每个 probe 的 `capability` 都在 inventory 里。
+- 每个 probe 的机械断言能在行为缺失时失败。
 - `vp run typecheck && vp run playground:typecheck && vp test` 通过。
 
-## 7. pstack 或 DSH 重大更新时
+## 6. 上游或 DSH 变化时
 
-- 先用 `git diff 旧pin..新pin -- upstream/cursor-plugins/pstack` 判定受影响的核心组，只重建受影响组的 probe。
-- 新增或改名的能力补 inventory 与 probe，删除或改名的同步移除。
-- 只靠 diff 判断不可靠时（major 变更），重新过一遍第 2 节的候选范围，确认没有新的真实缺口；其余按第 3 节默认排除。
-- **DSH 更新后必须重跑 native 基线**。native 不是预设，是权威观察：某个 gap probe 在 native 通过，说明 DSH 已原生支持它，要重评这个 probe 的语义（从“插件补缺口”改为“DSH 原生或回归”）以及插件是否还需要该能力。
-- 重建后重跑第 6 节的完成标准。
+- 从变化的来源重新推导受影响的行为；新增行为补 probe 与 inventory，删除或改名的同步移除或更新。
+- 重跑 `native` 基线，确认哪些行为已经由 DSH 原生支持；`native` 的结果改变 probe 的判定语义。
+- 重建后重跑第 5 节的完成标准。

@@ -28,7 +28,7 @@
 2. 运行 native probe，collect，写入 native 分析 `findings/native.md`。
 3. 根据 native 分析更新当前 treatment 的 dsh.md、适配代码和生成树，build 后运行 adapted。
 4. 运行 adapted probe，collect 并分析 `findings/adapted.md`。
-5. 通过后更新 README/兼容表并停在 release-ready；特殊环境只在用户明确指定时运行。
+5. 通过后更新 README/兼容表并停在 release-ready；可选环境按需启用，不默认运行。
 
 具体命令、阶段入口和交接条件见 [docs/workflow.md](./docs/workflow.md)。
 
