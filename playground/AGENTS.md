@@ -15,7 +15,7 @@
 | --- | --- |
 | [docs/model.md](./docs/model.md) | run-matrix 模型：identity、场景定义、证据布局、生成与手写边界 |
 | [docs/capabilities.md](./docs/capabilities.md) | 能力提取与 probe 编写规则、inventory 和排除规则 |
-| [docs/native-adapter.md](./docs/native-adapter.md) | native-adapter 目录文件职责、生成器和 dsh.md/dsh.zh.md/dsh-evidence 边界 |
+| [docs/native-fixture.md](./docs/native-fixture.md) | native fixture 目录文件职责、生成器和 dsh.md/dsh.zh.md/dsh-evidence 边界 |
 | [docs/adapted.md](./docs/adapted.md) | adapted 适配验证规则、环境矩阵和特殊环境处理 |
 | [docs/workflow.md](./docs/workflow.md) | 运行矩阵、命令、批次、交接条件和增量流程 |
 | [docs/worker.md](./docs/worker.md) | worker 隔离、prepare/bootstrap/run/stop 和就绪缓存 |

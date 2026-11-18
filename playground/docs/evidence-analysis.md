@@ -7,14 +7,14 @@
 - `evidence/runs/<treatment>-<environment>/manifest.json`：本轮覆盖的场景、最后批次，以及 `treatment`、`environment`、`dshVersion`、`pstackVersion`、`scenarioIds`。
 - `evidence/runs/<treatment>-<environment>/scenarios/**`：每个场景的 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
 - `scenarios/probes/*.ts`：场景 prompt、assertions、rubric、uiObservations；只作为判据，不把 rubric 当答案抄进结论。
-- `playground/native-adapter/dsh.md`：只在 native 分析时逐条对照。
+- `playground/fixtures/native/dsh.md`：只在 native 分析时逐条对照。
 - `port/dsh.md`：只在 adapted 分析时逐条对照。
-- 必要时读 `playground/native-adapter/dsh-evidence.md` 和上游技能原文。
+- 必要时读 `playground/fixtures/native/dsh-evidence.md` 和上游技能原文。
 - `playground/scenarios/inventory.json`：按 [capabilities.md](./capabilities.md) 维护的能力清单。
 
 ## 阶段隔离
 
-- native 分析只能读 `evidence/runs/native-*/`、`playground/native-adapter/dsh.md`、`playground/native-adapter/dsh-evidence.md`、场景文件和相关原始 session。
+- native 分析只能读 `evidence/runs/native-*/`、`playground/fixtures/native/dsh.md`、`playground/fixtures/native/dsh-evidence.md`、场景文件和相关原始 session。
 - native 分析不得读取 `port/dsh.md`、当前适配实现、当前插件树或 adapted 证据，也不得引用这些内容作为 native 结论。
 - adapted 分析只读 adapted 快照、`port/dsh.md` 和当前适配实现；不得用 native 的缺失直接替代 adapted 的验证。
 - 违反阶段隔离得出的结论视为无效，必须丢弃并重新分析。
@@ -56,7 +56,7 @@
   - session 只在本地 worker，按 `record.session.sessionId` 读取，不在快照中链接
 - 现象：
 - 根因：
-- 与当前 treatment dsh.md 的关系：native 写 `playground/native-adapter/dsh.md`，adapted 写 `port/dsh.md`
+- 与当前 treatment dsh.md 的关系：native 写 `playground/fixtures/native/dsh.md`，adapted 写 `port/dsh.md`
 - 建议动作：
 - 你的决定：
 ```
@@ -65,7 +65,7 @@
 
 ## dsh.md 审查格式
 
-native 分析只审查 `playground/native-adapter/dsh.md`，adapted 分析只审查 `port/dsh.md`。不要把两个 treatment 合成一张表。
+native 分析只审查 `playground/fixtures/native/dsh.md`，adapted 分析只审查 `port/dsh.md`。不要把两个 treatment 合成一张表。
 
 ```markdown
 | 章节/行 | 当前说明 | 相关证据 | 结论 | 建议 |
@@ -79,7 +79,7 @@ native 分析只审查 `playground/native-adapter/dsh.md`，adapted 分析只审
 1. 先判问题是否真实：看 `record.json` 的 assistant 文本、工具调用、完整页面截图；需要完整事件时再按 sessionId 读取本地 worker session。
 2. 再判问题性质：先区分能力缺失和模型未完成；模型能力、复杂度、质量或输出不稳定属于 `inconclusive` 或 `待你判断`，只有能力、工具或环境确实不存在才是 `gap` 或 `ignore-environment`。
 3. 再判根因：场景 prompt、技能或依赖、环境前提、适配说明、上游文档是否覆盖。
-4. native 分析只判断 `playground/native-adapter/dsh.md` 是否缺失或误导；adapted 分析只判断 `port/dsh.md` 是否缺失或误导。
+4. native 分析只判断 `playground/fixtures/native/dsh.md` 是否缺失或误导；adapted 分析只判断 `port/dsh.md` 是否缺失或误导。
 5. 当前 treatment 的 `dsh-md` 结论只改当前 treatment 对应的 dsh.md；native 分析不改 `port/dsh.md`。
 6. 当前 treatment 的 `plugin` 结论才进入插件、工具或预设开发。
 7. 上游自身问题进入 `upstream`，不在本仓修。

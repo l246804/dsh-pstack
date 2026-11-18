@@ -146,21 +146,21 @@ vp run playground:compare -- --environment <ID> --all
 
 每个问题只能落到以下一种结论。这里的“类型”是后续动作分流；判定原则见 [evidence-analysis.md](./evidence-analysis.md)。
 
-- `dsh-md`：改当前单元对应的 dsh.md；native 改 `playground/native-adapter/dsh.md`，adapted 改 `port/dsh.md`，必要时同步 `dsh.zh.md`。
+- `dsh-md`：改当前单元对应的 dsh.md；native 改 `playground/fixtures/native/dsh.md`，adapted 改 `port/dsh.md`，必要时同步 `dsh.zh.md`。
 - `plugin`：改插件、工具或预设，build 后跑受影响场景。
 - `upstream`：记录为上游问题，不在本仓修。
 - `ignore-environment`：记录环境权限、凭据、网络或无头限制。
 - `待你判断`：证据不足或分类会影响方案，交用户决定。
 
-native 分析只对照 `playground/native-adapter/dsh.md`，adapted 分析只对照 `port/dsh.md`。具体判定原则和 finding 格式见 [evidence-analysis.md](./evidence-analysis.md)，结论必须由证据和根因支撑，不能把单一观察直接等同于适配说明缺陷。
+native 分析只对照 `playground/fixtures/native/dsh.md`，adapted 分析只对照 `port/dsh.md`。具体判定原则和 finding 格式见 [evidence-analysis.md](./evidence-analysis.md)，结论必须由证据和根因支撑，不能把单一观察直接等同于适配说明缺陷。
 
 ## dsh.md
 
-- `playground/native-adapter/dsh.md` 是 native 基准答案，`port/dsh.md` 是最终随包答案，两者不能合并。
+- `playground/fixtures/native/dsh.md` 是 native 基准答案，`port/dsh.md` 是最终随包答案，两者不能合并。
 - 分析只提出适配说明的修改建议；实际修改由人确认后写入。
 - dsh.md 只描述 DSH 能力，不写具体插件、包、外部二进制或服务的安装建议；可选能力用能力名称说明。
 - 本地化版 `dsh.zh.md` 是逐行翻译，只供审阅，生成器不读；其他 locale 按同一规则扩展。
-- `playground/native-adapter/dsh-evidence.md` 保存判定依据。
+- `playground/fixtures/native/dsh-evidence.md` 保存判定依据。
 
 ## 发版
 

@@ -1,6 +1,6 @@
 # DSH 适配判定依据
 
-本文件只记录 `playground/native-adapter/dsh.md` 每个替换项背后的 DSH 事实和可复查位置。不记录 port 实现、插件建议、角色设计或任何推测结论。
+本文件只记录 `playground/fixtures/native/dsh.md` 每个替换项背后的 DSH 事实和可复查位置。不记录 port 实现、插件建议、角色设计或任何推测结论。
 
 ## Tools
 
