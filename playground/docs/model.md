@@ -8,7 +8,7 @@ isolation is enforced by authorship, not by directories.
 ## 1. Identity
 
 - `treatment`: `native` | `adapted`. Replaces the earlier `Phase` type and its per-run field.
-  - `native`: no `dsh-pstack` plugin, observe the DSH runtime.
+  - `native`（原 `raw` 基线）: no `dsh-pstack` plugin, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
   - `adapted`: load `dsh-pstack` and `port/dsh.md`, verify the port.
 - `environment`: id from `environments.ts` (`base`, `render`, `agent-team`). Optional
   plugins and team mode belong here, not in a directory name.
