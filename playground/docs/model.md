@@ -10,8 +10,8 @@ isolation is enforced by authorship, not by directories.
 - `treatment`: `native` | `adapted`.
   - `native`: no plugin under test, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
   - `adapted`: load the plugin under test and its port configuration, verify the adaptation.
-- `environment`: id from `environments.ts` (`base`, `render`, `agent-team`). Optional
-  plugins and team mode belong here, not in a directory name.
+- `environment`: id from `environments.ts` (`base`, `render`, `agent-team`, plus `preview`
+  for manual). Optional plugins and team mode belong here, not in a directory name.
 - Run record carries `treatment`, `environment.matrix.id`, `environment.dshVersion`,
   and `environment.pstackVersion`.
 - `pstackVersion`: the released pstack version pinned in `port/baseline.json`, recorded
@@ -27,8 +27,8 @@ isolation is enforced by authorship, not by directories.
 
 ## 3. Evidence layout
 
-- `playground/reviews/<treatment>-<environment>/scenarios/<scenarioId>/record.json` and
-  `screenshot.png`.
+- `playground/reviews/<treatment>-<environment>/scenarios/<scenarioId>/<treatment>-<environment>/record.json`
+  and `screenshot.png`.
 - `playground/reviews/<treatment>-<environment>/manifest.json` records treatment,
   environment, `dshVersion`, `pstackVersion`, `scenarioIds`.
 

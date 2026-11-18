@@ -21,6 +21,16 @@
 - `batchId` 在批次启动时生成，不按记录时间推导；它只写入 `current-batch.json` 和 `manifest.json`。
 - 同一单元只允许一个批次写入；批次失败时 `.staging` 丢弃，当前快照不动。
 
+## 语义审核（必需阶段）
+
+collect 之后、分析并写入 `findings/<treatment>.md` 之后，在进入 `playground:redact` 之前必须完成语义审核：
+
+1. 手写 `reviews/<treatment>-<environment>/review.json`，按 `scenarioId` 映射到 `{ "status": "supported" | "gap" | "inconclusive", "reason": "...", "reviewer": ... }`。`reviewer` 为 `{ "kind": "human", "name": "..." }` 或 `{ "kind": "model", "route": { "provider": "...", "model": "...", "effort": "..." } }`。
+2. 运行 `vp run playground:review -- --treatment <treatment> --environment <environment> --apply`，把每条审核写回对应 `record.json` 并重算 verdict。
+3. 运行 `vp run playground:review -- --treatment <treatment> --environment <environment> --check`，确认没有遗留 pending 记录。
+
+这是记录从 pending 变为 verified / not-verified 的唯一路径。缺这一步，native 记录停在 unobserved，adapted 记录停在 inconclusive。
+
 ## 闭环总览
 
 ```mermaid
@@ -55,6 +65,8 @@ flowchart TD
 | 6. 补充环境 probe | adapted/base 通过且用户明确指定补充环境 | `reviews/adapted-<supplemental-environment>/` 当前快照 | 补充环境分析 |
 | 7. 补充环境分析 | 补充环境快照完整 | `findings/adapted.md` 的补充环境问答 | 通过后进 README/release-ready |
 | 8. README + release-ready | 前面分析通过 | README/兼容表、`vp run ci` 通过 | 用户手动 `vp run release` |
+
+每个 treatment 的 collect 与分析之后，都要先按“语义审核（必需阶段）”写 `review.json` 并运行 `playground:review`，然后才能 redact 并进入下一阶段。
 
 ## 命令
 
@@ -119,6 +131,20 @@ vp run playground:collect -- --treatment adapted --environment base
 ```
 
 增量批次只替换本次跑到的场景；当前快照里其他场景保持不变。需要吸收增量、建立新基线时再跑一次 `--full`。
+
+### 审核与生成
+
+collect 与分析之后，用 `playground:review` 把 `review.json` 应用到记录；状态表和跨单元对比由生成器产出：
+
+```sh
+vp run playground:review -- --treatment <native|adapted> --environment <ID> --apply
+vp run playground:review -- --treatment <native|adapted> --environment <ID> --check
+vp run playground:status-table -- --write
+vp run playground:status-table -- --check
+vp run playground:compare -- --environment <ID> --all
+```
+
+`--check` 版本供 CI 和提交前校验使用；状态表没有任何快照时 `--check` 直接通过。
 
 ## 分析分流
 

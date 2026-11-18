@@ -51,7 +51,7 @@ playground 真实会话验证
 | 移植与生成 | `scripts/generate-pstack.mjs`、`port/dsh.md`、`port/dsh.zh.md`、`playground/raw/`（`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`）、`playground/scenarios/` | 从固定上游生成根 `pstack/` 和 `playground/raw/pstack/`；按 `playground/docs/raw.md` 的规则维护 DSH 适配文档，并在 `playground/data/capability-inventory.json` 登记能力和在 `playground/scenarios/` 维护能力探针（规则见 `playground/docs/capabilities.md`）。 |
 | 发布元数据与发布说明 | `scripts/release-compatibility.ts`、`scripts/release-surface.ts`、`scripts/release.sh`、`bump.config.ts`、`changes/AGENTS.md` | 按 DSH 兼容范围分组同步各本地化 README 的发布版本表，并把对应本地化 README 加入发布提交；分组与保留规则见 `port/docs/baseline.md`。发布说明由 agent 会话按 `changes/AGENTS.md` 从版本间提交生成到 `changes/RELEASE.md`；`release.sh` 要求该文件存在且已提交后才 bumpp，打完 tag 后删除它，发布工作流在 tag 上读取它作为 Release 正文；`release-surface.ts` 维护 `port/surface.json`。 |
 | 构建与打包 | `vite.config.ts`、`package.json` | 分别构建 Host 与浏览器 Client；导出 Host 模块，复制生成树和技能资源。 |
-| 自动化验证 | `tests/`、`playground/scripts/`（doctor、prepare、bootstrap、run-case、run-batch、collect、redact、status、stop、stop-task、browser） | 运行单元和 DOM 交互测试；在真实 DSH playground 中运行 capability probes，收集 RunRecord、SessionAnalysis 和当前评审快照。 |
+| 自动化验证 | `tests/`、`playground/scripts/`（doctor、prepare、bootstrap、run-case、run-batch、collect、review、status-table、compare、redact、status、stop、stop-task、browser） | 运行单元和 DOM 交互测试；在真实 DSH playground 中运行 capability probes，收集 RunRecord、SessionAnalysis 和当前评审快照。 |
 
 ## 依赖方向
 

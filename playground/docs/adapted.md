@@ -4,7 +4,7 @@
 
 ## 目标
 
-adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。它不重新定义 raw 的能力答案，也不回到 raw 证据中找通过理由。
+adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。它不重新定义 native 的能力答案，也不回到 native 证据中找通过理由。
 
 ## 环境矩阵
 
@@ -39,8 +39,8 @@ adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。�
 ## 阶段边界
 
 - adapted 只读取 adapted 快照、`port/dsh.md`、当前适配实现和环境文件、当前 adapted session。
-- adapted 不读取 `reviews/raw-*`、raw 分析结论或 raw 证据。
-- raw 的缺失不能直接替代 adapted 的验证；adapted 的不支持也不能反推 raw 的能力。
+- adapted 不读取 `reviews/native-*`、native 分析结论或 native 证据。
+- native 的缺失不能直接替代 adapted 的验证；adapted 的不支持也不能反推 native 的能力。
 - 跨阶段引用一旦发现，停止当前分析并重新基于当前阶段输入完成。
 
 ## 通过条件

@@ -31,6 +31,6 @@
 - 需要重新生成 raw 树时运行 `vp run playground:raw-generate`。
 - `dsh-evidence.md` 只记录证据，不把证据当成能力来源或能力清单。
 
-## 与 raw probe 的关系
+## 与 native probe 的关系
 
-`playground/raw/dsh.md` 是 raw probe 的对照答案，但不是能力清单本身。能力提取和 probe 编写规则见 [capabilities.md](./capabilities.md)。
+`playground/raw/dsh.md` 是 native probe 的对照答案，但不是能力清单本身。能力提取和 probe 编写规则见 [capabilities.md](./capabilities.md)。

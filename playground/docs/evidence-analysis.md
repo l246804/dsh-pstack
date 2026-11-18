@@ -131,7 +131,7 @@
 
 ## 输出
 
-按 treatment 手写 `findings/<treatment>.md`（`findings/native.md`、`findings/adapted.md`）。分析完成后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并通过 `playground:redact --apply`。
+按 treatment 手写 `findings/<treatment>.md`（`findings/native.md`、`findings/adapted.md`）。写完后必须先在 `reviews/<treatment>-<environment>/review.json` 里按 `scenarioId` 声明每个场景的 `{ status, reason, reviewer }`，运行 `vp run playground:review -- --treatment <treatment> --environment <environment> --apply`，再用 `--check` 确认没有 pending。这是记录从 pending 变为 verified / not-verified 的唯一路径。审核完成后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并通过 `playground:redact --apply`。
 
 `findings/<treatment>.md` 固定包含：
 
