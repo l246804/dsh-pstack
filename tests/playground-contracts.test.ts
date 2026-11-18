@@ -12,7 +12,7 @@ interface InventoryCapability {
 
 function inventory(): InventoryCapability[] {
   const text = readFileSync(
-    new URL("../playground/scenarios/capability-inventory.json", import.meta.url),
+    new URL("../playground/data/capability-inventory.json", import.meta.url),
     "utf8",
   );
   return (JSON.parse(text) as { capabilities: InventoryCapability[] }).capabilities;

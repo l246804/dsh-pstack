@@ -7,12 +7,14 @@
 ```text
 playground/scenarios/
 ├── <capability>.ts                  # 每个能力一份 probe（扁平，无目录分组）
-├── capability-inventory.json        # 手工维护的能力清单
-├── capability-exclusions.json       # 用户批准的排除决定
-├── capability-exclusions.proposed.json
 ├── environments.ts                  # 环境矩阵
 ├── index.ts
 └── registry.ts                      # 收集所有扁平 probe，不推导环境
+
+playground/data/
+├── capability-inventory.json        # 手工维护的能力清单
+├── capability-exclusions.json       # 用户批准的排除决定
+└── capability-exclusions.proposed.json
 ```
 
 - 一个文件只放一个独立 probe，默认导出 `BehaviorScenario`。
@@ -122,7 +124,7 @@ export default scenario;
 2. 对照 `playground/raw/dsh.md` 的映射行，确认该行为在 raw DSH 中应如何观察。
 3. 将同一行为归并为稳定的 capability id；一个 capability 只对应一个 base probe。
 4. 为每个 capability 设计自然语言 prompt、workspace fixture、机械 assertions、语义 rubric 和 UI 观察点。
-5. 在 `capability-inventory.json` 中记录能力、来源、`probes`、状态和用户批准过的排除原因。
+5. 在 `playground/data/capability-inventory.json` 中记录能力、来源、`probes`、状态和用户批准过的排除原因。
 6. 新增或删除 probe 后同步 inventory，确保 `probes.base` 指向实际场景。
 
 ## 完整生成检查
@@ -177,12 +179,12 @@ export default scenario;
 
 ## inventory 与排除
 
-- `capability-inventory.json` 是 agent 手工维护的派生清单；不写自动解析上游文档的脚本。
+- `playground/data/capability-inventory.json` 是 agent 手工维护的派生清单；不写自动解析上游文档的脚本。
 - `probes` 按环境记录场景 id：普通能力为 `probes.base`，对照环境追加对应环境键。
 - `status` 只能是 `discovered`、`covered` 或 `excluded`。
 - `covered` 必须有 `probes.base` 或对应环境 probe；`excluded` 必须写 `exclusionReason`。
-- agent 可以把候选排除理由写入 `capability-exclusions.proposed.json`；该文件不产生 `excluded` 状态。
-- 只有用户明确批准时，才把决定写入 `capability-exclusions.json`，格式为：
+- agent 可以把候选排除理由写入 `playground/data/capability-exclusions.proposed.json`；该文件不产生 `excluded` 状态。
+- 只有用户明确批准时，才把决定写入 `playground/data/capability-exclusions.json`，格式为：
 
 ```json
 {
