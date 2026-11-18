@@ -1,4 +1,4 @@
-# 能力提取与 probe 编写规则
+# 场景与缺口规则
 
 本文件定义 playground 的生成顺序：先产出 native 缺口清单，再从缺口清单生成场景。场景只描述 treatment 中立的用户可观察结果；native 与 adapted 的判定规则分开，不写进场景。
 

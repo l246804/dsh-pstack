@@ -33,4 +33,4 @@
 
 ## 与 native probe 的关系
 
-`playground/native/dsh.md` 是 native probe 的对照答案，但不是能力清单本身。能力提取和 probe 编写规则见 [capabilities.md](./capabilities.md)。
+`playground/native/dsh.md` 是 native probe 的对照答案，但不是能力清单本身。场景与缺口规则见 [scenario-rules.md](./scenario-rules.md)。

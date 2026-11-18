@@ -11,7 +11,7 @@
 - `playground/native/dsh.md`：只在 native 分析时逐条对照。
 - `port/dsh.md`：只在 adapted 分析时逐条对照。
 - 必要时读 `playground/native/dsh-evidence.md` 和上游技能原文。
-- `playground/scenarios/native-gaps.json`：按 [capabilities.md](./capabilities.md) 维护的 native 缺口清单。
+- `playground/scenarios/native-gaps.json`：按 [scenario-rules.md](./scenario-rules.md) 维护的 native 缺口清单。
 
 ## 阶段隔离
 

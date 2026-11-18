@@ -15,7 +15,7 @@
 
 ## native 缺口清单
 
-在运行 native probe 之前，先按 [capabilities.md](./capabilities.md) 产出 `playground/scenarios/native-gaps.json`，只记录上游 pstack 工作流需要、DSH 标准模式不能保证的行为。插件自身工具、preset、角色文件和 DSH 原生已有能力不进入清单。缺口由用户确认后，才从 `confirmed` 的缺口生成 `kind: "gap"` 的场景。
+在运行 native probe 之前，先按 [scenario-rules.md](./scenario-rules.md) 产出 `playground/scenarios/native-gaps.json`，只记录上游 pstack 工作流需要、DSH 标准模式不能保证的行为。插件自身工具、preset、角色文件和 DSH 原生已有能力不进入清单。缺口由用户确认后，才从 `confirmed` 的缺口生成 `kind: "gap"` 的场景。
 
 ## 批次
 

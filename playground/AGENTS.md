@@ -14,7 +14,7 @@
 | 文档 | 职责 |
 | --- | --- |
 | [docs/model.md](./docs/model.md) | run-matrix 模型：identity、场景定义、证据布局、生成与手写边界 |
-| [docs/capabilities.md](./docs/capabilities.md) | native 缺口清单、场景生成与 probe 编写规则 |
+| [docs/scenario-rules.md](./docs/scenario-rules.md) | native 缺口清单、场景生成与 probe 编写规则 |
 | [docs/native.md](./docs/native.md) | native 目录文件职责、生成器和 dsh.md/dsh.zh.md/dsh-evidence 边界 |
 | [docs/adapted.md](./docs/adapted.md) | adapted 适配验证规则、环境矩阵和特殊环境处理 |
 | [docs/workflow.md](./docs/workflow.md) | 运行矩阵、命令、批次、交接条件和增量流程 |
@@ -35,7 +35,7 @@
 
 ## 硬约束
 
-- 阶段隔离按 [docs/evidence-analysis.md](./docs/evidence-analysis.md) 执行；能力提取与 probe 编写按 [docs/capabilities.md](./docs/capabilities.md)。
+- 阶段隔离按 [docs/evidence-analysis.md](./docs/evidence-analysis.md) 执行；场景与缺口规则按 [docs/scenario-rules.md](./docs/scenario-rules.md)。
 - `prepare → bootstrap → run-batch → collect` 必须在同一个长期存活的 background job 中串行执行，shell 保持到 collect 结束。
 - dsh.md 的分离、修改和描述边界见 [docs/workflow.md](./docs/workflow.md#dshmd)。
 - `scripts/generate-pstack.mjs --target port|native` 是唯一生成器。
