@@ -1,11 +1,13 @@
 # raw/base 证据分析
 
 > 本文件是 raw 分析会话的产物，依据 `reviews/raw-base/` 快照、`playground/raw/dsh.md`、`playground/raw/dsh-evidence.md`、场景文件与本地 raw session 写成。只审查 raw 基准，不读取 `port/dsh.md` 或适配实现。
+>
+> 本文件中的 DSH、adapted、pstack 版本是**采集时**的历史值，不代表当前仓库版本；当前版本以 `package.json` 的 `engines.dsh` 与 `version`、以及各 `manifest.json` 为准。
 
 ## 1. 本轮范围
 
 - 模式：基线为 `full` 批次 `raw-base-20261115180550`，50 个场景全跑，无遗漏，`0 blocked`。
-- 环境：`base`（默认环境，不加载额外插件），DSH `0.2.2-rc.2`，上游 revision `ae5650febf4320793844c12c4adaa937f417f8da`，配置 hash `3aa7db10df9015190040d91bf76064369bc294f09f37408e26a33a7804a5fbcb`。
+- 环境（采集时）：`base`（默认环境，不加载额外插件），DSH `0.2.2-rc.2`，上游 revision `ae5650febf4320793844c12c4adaa937f417f8da`，配置 hash `3aa7db10df9015190040d91bf76064369bc294f09f37408e26a33a7804a5fbcb`。
 - 实际模型路由（全部记录一致）：`magpie / workbuddy/minimax-m3.1-flash / low`；会话 preset 均为 `standard`。
 - 全部记录 `verdict=unobserved`、`semanticReview=pending`，这是 `run-case` 的既定行为：语义判定留给本分析。下表的“结论”是本分析会话按 rubric 与截图/会话事实给出的语义判定。
 - 本轮关键修复：`playground/scripts/run-case.ts` 的 `activeSubagents` 改为按 catalog 里的 `name` 与 `childId` 两种句柄识别完成通知。rc.2 的完成通知写成 `Background subagent <name> finished`，修复前按 `childId` 匹配不上，带委派的场景会白等满 10 分钟再误判 `blocked`。修复后本轮委派场景全部正常收口。

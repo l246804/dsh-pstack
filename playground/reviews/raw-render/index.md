@@ -1,11 +1,13 @@
 # raw/render 证据分析（能力对照）
 
 > 本文件是 raw 阶段 render 对照环境的分析产物，依据 `reviews/raw-render/` 快照、`playground/raw/dsh.md`、场景文件与本地 raw session 写成。render 只用于同题能力对照，结论必须与 `reviews/raw-base/index.md` 的同题结果一起看。
+>
+> 本文件中的 DSH、adapted、pstack 版本是**采集时**的历史值，不代表当前仓库版本；当前版本以 `package.json` 的 `engines.dsh` 与 `version`、以及各 `manifest.json` 为准。
 
 ## 1. 本轮范围
 
 - 模式：基线为 `full` 批次 `raw-render-20261114144531`（7 场景全跑）；随后按裁定把 `render-video`、`render-svg-chart` 两条用例改为“必须在界面看到效果”并增量重跑（manifest 当前 `lastMode=incremental`、`lastScope=["capability-render-video-render","capability-render-svg-chart-render"]`），快照 `scenarioIds` 仍为 7。
-- 环境：`render`（`kind=capability`，启用 `@changfenhuang/dsh-genui 0.16.0`），DSH `0.2.2-rc.1`，上游 revision `ae5650febf4320793844c12c4adaa937f417f8da`，配置 hash `7930c484ab4a0db58aa90b7d8be1e532bb1a3b58ee58fb2fd1902ed76374b416`。
+- 环境（采集时）：`render`（`kind=capability`，启用 `@changfenhuang/dsh-genui 0.16.0`），DSH `0.2.2-rc.1`（低于 `engines.dsh` 声明下界 `>=0.2.2-rc.2`，属采集时历史证据），上游 revision `ae5650febf4320793844c12c4adaa937f417f8da`，配置 hash `7930c484ab4a0db58aa90b7d8be1e532bb1a3b58ee58fb2fd1902ed76374b416`。
 - 实际模型路由：`magpie / workbuddy/minimax-m3.1-flash / low`；preset `standard`。
 - 所有记录同样 `verdict=unobserved`、`semanticReview=pending`（`run-case` 既定行为），“结论”为本分析的语义判定。
 - render 场景是对应 base 场景的 re-export（同 prompt/rubric，仅环境不同）。本文件逐条与 raw/base 同题结果对照。

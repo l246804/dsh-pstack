@@ -1,12 +1,14 @@
 # adapted/base 证据分析
 
 > 本文件由 adapted 分析会话依据 `reviews/adapted-base/` 快照、`port/dsh.md`、当前适配实现写入。只审查适配实现，不读取 raw 证据结论。
+>
+> 本文件中的 DSH、adapted、pstack 版本是**采集时**的历史值，不代表当前仓库版本；当前版本以 `package.json` 的 `engines.dsh` 与 `version`、以及各 `manifest.json` 为准。
 
 ## 1. 本轮范围
 
 - 基线批次：`full`，`adapted-base-20261117111536`，覆盖 adapted/base 全部 45 个适用场景，6 个 worker，2026-11-17 11:15 到 12:00（CST）。
 - 决策后增量：按分析结论重跑 3 个场景。`adapted-base-20261117121719` 重跑 `skill-loading` 与 `role-panel-membership`；`adapted-base-20261117123653` 重跑 `stop-subagent`。三批合并成当前快照，未重跑的场景沿用基线。
-- 环境：`adapted` / `base`，加载 `dsh-pstack`（本地 link 构建）；DSH `0.2.2-rc.2`，adapted `0.4.1`，上游 revision `2f87c854fe3e2fcda44ca86b46ede35aad3c46b7`，config hash `3aa7db10df9015190040d91bf76064369bc294f09f374408e26a33a7804a5fbcb`。
+- 环境（采集时）：`adapted` / `base`，加载 `dsh-pstack`（本地 link 构建）；DSH `0.2.2-rc.2`，adapted `0.4.1`，上游 revision `2f87c854fe3e2fcda44ca86b46ede35aad3c46b7`，config hash `3aa7db10df9015190040d91bf76064369bc294f09f374408e26a33a7804a5fbcb`。
 - 会话配置：所有根会话跑内置 `standard` 预设（`agentPreset=standard`，路由 `magpie/workbuddy/minimax-m3.1-flash[low]`），并通过会话级开关注入 Poteto 工作流（截图页面顶部显示「标准模式 + Poteto 工作流」，系统提示实测包含 `Poteto workflow is enabled for this session`）。
 - 覆盖：45 份 `record.json` + 45 张 `screenshot.png` 齐全，机械断言失败 0，无 blocked、无 `turnEnd=null`；`session.jsonl.zstd` 仅保留本地。
 - 记录 verdict 全为 `inconclusive`（自动化运行的 `semanticReview` 恒为 `pending`，语义判定由本文件给出）。

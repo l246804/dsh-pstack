@@ -1,11 +1,13 @@
 # adapted/agent-team 证据分析
 
 > 本文件由 adapted 分析会话依据 `reviews/adapted-agent-team/` 快照、`port/dsh.md` 与当前适配实现写成。只审查 Agent Teams 与 pstack 子代理在团队任务上的配合，不读取 raw 证据结论。
+>
+> 本文件中的 DSH、adapted、pstack 版本是**采集时**的历史值，不代表当前仓库版本；当前版本以 `package.json` 的 `engines.dsh` 与 `version`、以及各 `manifest.json` 为准。
 
 ## 1. 本轮范围
 
 - 环境：`adapted` / `agent-team`，`kind: "capability"`，`teamMode: true`，加载 `dsh-pstack`（本地 link 构建）。
-- 版本：DSH `0.2.2-rc.2`，adapted `0.4.1`，上游 revision `2f87c854fe3e2fcda44ca86b46ede35aad3c46b7`，config hash `3aa7db10df9015190040d91bf76064369bc294f09f374408e26a33a7804a5fbcb`。
+- 版本（采集时）：DSH `0.2.2-rc.2`，adapted `0.4.1`，上游 revision `2f87c854fe3e2fcda44ca86b46ede35aad3c46b7`，config hash `3aa7db10df9015190040d91bf76064369bc294f09f374408e26a33a7804a5fbcb`。
 - 批次：`full`，`adapted-agent-team-20261117125331`，覆盖该环境全部 4 个场景；worker 数用自动计算值 12（24 核、约 46.7GB 空闲），实际并行 4 个场景。
 - 覆盖：4 份 `record.json` + 4 张 `screenshot.png` 齐全；`session.jsonl.zstd` 仅保留本地。
 - 记录 verdict 全为 `inconclusive`（自动化运行的 `semanticReview` 恒为 `pending`，语义判定由本文件给出）。
