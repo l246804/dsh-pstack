@@ -152,6 +152,8 @@ function scenarioDirectory(
 export interface ReviewSnapshotManifest {
   treatment: Treatment;
   environment: string;
+  dshVersion: string;
+  pstackVersion: string;
   updatedAt: string;
   lastBatchId: string | null;
   lastMode: "full" | "incremental" | null;
@@ -197,6 +199,8 @@ export function writeReviewSnapshot(
   const manifest: ReviewSnapshotManifest = {
     treatment,
     environment,
+    dshVersion: current[0]?.environment.dshVersion ?? "",
+    pstackVersion: current[0]?.environment.pstackVersion ?? "",
     updatedAt: new Date().toISOString(),
     lastBatchId: batch?.batchId ?? null,
     lastMode: batch?.mode ?? null,
@@ -211,18 +215,6 @@ export function writeReviewSnapshot(
   };
   mkdirSync(snapshot, { recursive: true });
   writeFileSync(join(snapshot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  const indexPath = join(snapshot, "index.md");
-  if (!existsSync(indexPath)) {
-    writeFileSync(
-      indexPath,
-      [
-        `# ${treatment}/${environment} 证据分析`,
-        "",
-        "> 当前快照由 collect 生成；问题问答和 dsh.md 适配审查由分析会话填写。",
-        "",
-      ].join("\n"),
-    );
-  }
   return manifest;
 }
 
