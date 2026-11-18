@@ -15,7 +15,6 @@ import {
 } from "../playground/scripts/lib/env.ts";
 import {
   assertSafeRecord,
-  assertSameEntry,
   digestEvents,
   evaluateAssertions,
   firstUserText,
@@ -165,23 +164,14 @@ describe("execution contracts", () => {
     expect(record("adapted", "base").verdict.status).toBe("inconclusive");
   });
 
-  it("compares actual routes, natural language, upstream and public config hashes", () => {
+  it("rejects a record that carries an api key", () => {
     const raw = record("native", "base");
-    const adapted = record("adapted", "base");
-    expect(assertSameEntry(raw, adapted, testScenario)).toEqual([]);
     expect(JSON.stringify(raw)).not.toContain("secret-value");
     expect(() =>
       assertSafeRecord({ ...raw, artifacts: { recordFile: "secret-value", observed: [] } }, [
         "secret-value",
       ]),
     ).toThrow(/apiKey/);
-    const wrongRoute = {
-      ...adapted,
-      target: { ...adapted.target, effort: "high" } as RunRecord["target"],
-    };
-    expect(assertSameEntry(raw, wrongRoute, testScenario)).toContain(
-      "raw and adapted actual model routes differ",
-    );
   });
 
   it("contains no probe timeout or automatic stop in the execution scripts", () => {

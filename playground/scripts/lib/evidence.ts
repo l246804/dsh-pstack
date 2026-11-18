@@ -449,33 +449,6 @@ export function assertExpectedEntry(
   return failures;
 }
 
-export function assertSameEntry(
-  raw: RunRecord,
-  adapted: RunRecord,
-  scenario: BehaviorScenario,
-): string[] {
-  const failures: string[] = [];
-  if (raw.scenarioId !== scenario.id || adapted.scenarioId !== scenario.id) {
-    failures.push("records do not belong to the selected scenario");
-  }
-  if (raw.environment.configHash !== adapted.environment.configHash) {
-    failures.push("raw and adapted configuration hashes differ");
-  }
-  if (raw.environment.upstreamRevision !== adapted.environment.upstreamRevision) {
-    failures.push("raw and adapted upstream revisions differ");
-  }
-  if (JSON.stringify(raw.target) !== JSON.stringify(adapted.target)) {
-    failures.push("raw and adapted actual model routes differ");
-  }
-  if (
-    raw.session?.userText !== scenario.turns[0]?.prompt ||
-    adapted.session?.userText !== scenario.turns[0]?.prompt
-  ) {
-    failures.push("raw and adapted natural-language entries differ from the scenario");
-  }
-  return failures;
-}
-
 export function expectedWorkspace(workspace: string, session: SessionFacts): string[] {
   return session.workspacePath !== null && session.workspacePath !== workspace
     ? [`session ran in ${session.workspacePath}, expected ${workspace}`]
