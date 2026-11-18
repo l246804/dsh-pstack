@@ -31,7 +31,7 @@ adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。�
 
 ## 特殊环境
 
-- `kind: "conflict"` 或用户明确指定的特殊环境，使用独立 probe，不复用 base prompt，也不走 re-export。
+- 需要独立对照的特殊环境，使用独立 probe，不复用 base prompt，也不走 re-export。
 - 可选环境按需启用，不默认运行。
 - 环境是否冲突、是否支持某项能力，由实际会话和 UI 结果判断，不在文档里预设。
 
