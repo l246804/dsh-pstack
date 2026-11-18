@@ -1,6 +1,6 @@
 import { zstdDecompressSync } from "node:zlib";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 
 import { SKILL_TOOL_NAMES } from "../../types.ts";
 import type {
@@ -500,8 +500,4 @@ export function recordFileName(
   stamp: string,
 ): string {
   return `${scenarioId}-${treatment}-${environmentId}-${stamp}.json`;
-}
-
-export function archivedRecordPath(root: string, record: RunRecord): string {
-  return join(root, record.environment.matrix.id, record.treatment, `${record.scenarioId}.json`);
 }

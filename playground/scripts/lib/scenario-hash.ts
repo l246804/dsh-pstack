@@ -1,16 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { BehaviorScenario } from "../../types.ts";
-
-/** Recursively sort object keys so the same scenario always yields the same text. */
-function canonical(value: unknown): string {
-  if (value === undefined) return "null";
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${canonical(record[key])}`).join(",")}}`;
-}
+import { stableStringify } from "./stable-json.ts";
 
 /**
  * Stable hash over everything that defines what a probe asks for. Two records are only
@@ -27,6 +18,7 @@ export function scenarioContentHash(scenario: BehaviorScenario): string {
     assertions: scenario.assertions,
     rubric: scenario.rubric,
     uiObservations: scenario.uiObservations,
+    answers: scenario.answers,
   };
-  return createHash("sha256").update(canonical(payload)).digest("hex");
+  return createHash("sha256").update(stableStringify(payload)).digest("hex");
 }

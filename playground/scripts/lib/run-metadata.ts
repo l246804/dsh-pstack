@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import type { PlaygroundConfig, RunEnvironment, Treatment } from "../../types.ts";
 import { environments } from "../../scenarios/environments.ts";
+import { stableStringify } from "./stable-json.ts";
 
 export const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 export const PLAYGROUND_DIRECTORY = join(REPOSITORY_ROOT, "playground");
@@ -59,10 +60,11 @@ export function publicConfigHash(
     providers: Object.fromEntries(
       Object.entries(config.providers).map(([provider, entry]) => [provider, entry.models]),
     ),
+    roleModels: config.roleModels ?? null,
     ...(config.hostPatchFile === undefined ? {} : { hostPatchFile: config.hostPatchFile }),
     environment: matrix,
   };
-  return createHash("sha256").update(JSON.stringify(publicConfig)).digest("hex");
+  return createHash("sha256").update(stableStringify(publicConfig)).digest("hex");
 }
 
 function versionFromPackage(file: string): string {

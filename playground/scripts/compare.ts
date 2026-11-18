@@ -28,10 +28,8 @@ export interface CompareResult {
 
 /**
  * The comparability check for one scenario. Two records are comparable on the run-identity
- * tuple `(dshVersion, pstackVersion, scenario content hash, environment matrix id, target
- * route)`; `upstreamRevision` is never an identity key. `pstackVersion` is adapted
- * provenance but still recorded on both cells, so a difference means the two runs cannot be
- * compared.
+ * tuple `(dshVersion, scenario content hash, environment matrix id, target route)`;
+ * `upstreamRevision` and `pstackVersion` are provenance, never comparability keys.
  */
 export function compareOne(
   native: RunRecord,
@@ -44,9 +42,6 @@ export function compareOne(
   }
   if (native.environment.dshVersion !== adapted.environment.dshVersion) {
     problems.push("native and adapted DSH versions differ");
-  }
-  if (native.environment.pstackVersion !== adapted.environment.pstackVersion) {
-    problems.push("native and adapted pstack versions differ");
   }
   if (native.environment.matrix.id !== adapted.environment.matrix.id) {
     problems.push("native and adapted environment matrices differ");
@@ -138,6 +133,10 @@ async function main(): Promise<void> {
     `[compare] compared ${result.compared.length} scenario(s), ${result.failures.length} with problems`,
   );
   if (result.failures.length > 0) process.exitCode = 1;
+  if (all && result.compared.length === 0) {
+    console.error("[compare] no comparable scenarios");
+    process.exitCode = 1;
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

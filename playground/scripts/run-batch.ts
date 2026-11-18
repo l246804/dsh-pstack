@@ -155,6 +155,9 @@ function statusFor(record: RunRecord | undefined, treatment: Treatment): Verdict
 }
 
 async function main(): Promise<void> {
+  if (listScenarioIds().length === 0) {
+    throw new Error("no scenarios are registered; generate probes first");
+  }
   const treatment = argValue("--treatment") as Treatment | undefined;
   if (!isTreatment(treatment)) {
     throw new Error(
@@ -165,6 +168,19 @@ async function main(): Promise<void> {
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
   const ids = selectedScenarios(treatment, matrix.id);
+  if (argValue("--scenarios") !== undefined) {
+    const offenders = ids.filter((id) => {
+      const scenario = loadScenario(id);
+      const treatments = scenario.treatments ?? ["native", "adapted"];
+      const environments = scenario.environments ?? ["base"];
+      return !treatments.includes(treatment) || !environments.includes(matrix.id);
+    });
+    if (offenders.length > 0) {
+      throw new Error(
+        `--scenarios ids not allowed in ${treatment}-${matrix.id}: ${offenders.join(", ")}`,
+      );
+    }
+  }
   if (ids.length === 0) {
     console.log("[run-batch] no scenarios selected");
     return;
@@ -254,11 +270,14 @@ async function main(): Promise<void> {
             logFile,
             `\n===== ${scenarioId} ${treatment} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
           );
-          const records = latestRecords(
-            readRecords(join(workersDirectory(), treatment, matrix.id, `w${worker}/evidence`)),
+          const records = readRecords(
+            join(workersDirectory(), treatment, matrix.id, `w${worker}/evidence`),
           );
           const record = records.find(
-            (entry) => entry.scenarioId === scenarioId && entry.treatment === treatment,
+            (entry) =>
+              entry.scenarioId === scenarioId &&
+              entry.treatment === treatment &&
+              entry.batchId === batchId,
           );
           const status = statusFor(record, treatment);
           updateProgress(file, (current) => {
@@ -273,7 +292,7 @@ async function main(): Promise<void> {
               current.failures.push({
                 scenarioId,
                 worker,
-                reason: record?.verdict.status ?? result.output.slice(-500),
+                reason: record?.verdict.status ?? "no record for this batch",
               });
             }
           });

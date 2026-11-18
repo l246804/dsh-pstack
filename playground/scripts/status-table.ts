@@ -115,8 +115,7 @@ export function statusPivot(target: StatusPivotTarget = {}): StatusPivot {
   return { columns: sortedColumns, rows };
 }
 
-export function statusTableContent(target: StatusPivotTarget = {}): string {
-  const pivot = statusPivot(target);
+function statusTableText(pivot: StatusPivot): string {
   const header = ["capability", "scenario", ...pivot.columns.map((column) => column.key)];
   const separator = header.map(() => "---");
   const body = pivot.rows.map((row) => {
@@ -130,6 +129,10 @@ export function statusTableContent(target: StatusPivotTarget = {}): string {
   });
   const lines = [header, separator, ...body].map((cells) => `| ${cells.join(" | ")} |`);
   return `${STATUS_HEADER}\n\n${lines.join("\n")}\n`;
+}
+
+export function statusTableContent(target: StatusPivotTarget = {}): string {
+  return statusTableText(statusPivot(target));
 }
 
 export function statusFilePath(target: StatusPivotTarget = {}): string {
@@ -148,8 +151,10 @@ export function writeStatusTable(target: StatusPivotTarget = {}): {
 
 export function checkStatusTable(target: StatusPivotTarget = {}): { ok: boolean; file: string } {
   const file = statusFilePath(target);
-  const ok = existsSync(file) && readFileSync(file, "utf8") === statusTableContent(target);
-  return { ok, file };
+  const pivot = statusPivot(target);
+  // Nothing is generated yet, so there is no committed pivot to be stale against.
+  if (pivot.columns.length === 0) return { ok: true, file };
+  return { ok: existsSync(file) && readFileSync(file, "utf8") === statusTableText(pivot), file };
 }
 
 async function registryCapabilityResolver(): Promise<

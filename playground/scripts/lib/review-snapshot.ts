@@ -180,11 +180,18 @@ export function writeReviewSnapshot(
   const current = latest.filter(
     (record) => record.treatment === treatment && record.environment.matrix.id === environment,
   );
+  if (current.length === 0) {
+    throw new Error(
+      `no records for ${treatment}-${environment}; refusing to write an empty snapshot`,
+    );
+  }
   const currentIds = new Set(current.map((record) => record.scenarioId));
   const snapshot = reviewSnapshotDirectory(treatment, environment, reviewsDirectory);
   const scenarios = join(snapshot, EVIDENCE_DIRECTORIES.scenarios);
 
-  if (existsSync(scenarios)) {
+  // Only a full batch owns the whole snapshot, so only it may drop scenario dirs that this
+  // batch did not rerun. An incremental batch preserves every unrerun scenario.
+  if (batch?.mode === "full" && existsSync(scenarios)) {
     for (const scenario of readdirSync(scenarios, { withFileTypes: true })) {
       if (scenario.isDirectory() && !currentIds.has(scenario.name)) {
         rmSync(join(scenarios, scenario.name), { recursive: true, force: true });

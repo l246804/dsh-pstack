@@ -119,11 +119,13 @@ describe("compareOne", () => {
     );
   });
 
-  it("flags a pstack version mismatch", () => {
+  it("does not compare pstack versions while still flagging a DSH version mismatch", () => {
     const adapted = record("adapted");
     adapted.environment = { ...adapted.environment, pstackVersion: "other-pstack" };
+    expect(compareOne(record("native"), adapted, scenario)).toEqual([]);
+    adapted.environment = { ...adapted.environment, dshVersion: "other-dsh" };
     expect(compareOne(record("native"), adapted, scenario)).toContain(
-      "native and adapted pstack versions differ",
+      "native and adapted DSH versions differ",
     );
   });
 
