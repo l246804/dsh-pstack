@@ -3,7 +3,7 @@
 // capture must happen in a single invocation.
 //
 // Usage:
-//   vpx playground/harness/cli/browser.ts --environment <id> --treatment <native|adapted> [--worker <k>] [url] [steps...]
+//   vpx playground/runner/cli/browser.ts --environment <id> --treatment <native|adapted> [--worker <k>] [url] [steps...]
 //   --worker defaults to 0; url defaults to that worker's web-url.txt.
 // Steps (run in the order given):
 //   --wait <ms>            wait for a duration

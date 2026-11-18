@@ -82,74 +82,74 @@ export default defineConfig({
         cache: false,
       },
       "playground:doctor": {
-        command: "vpx playground/harness/cli/doctor.ts",
+        command: "vpx playground/runner/cli/doctor.ts",
         cache: false,
       },
       "playground:prepare": {
-        command: "vpx playground/harness/cli/prepare.ts",
+        command: "vpx playground/runner/cli/prepare.ts",
         cache: false,
       },
       "playground:open": {
         command:
-          "vpx playground/harness/cli/prepare.ts --treatment adapted --environment preview --workers 1",
+          "vpx playground/runner/cli/prepare.ts --treatment adapted --environment preview --workers 1",
         cache: false,
         dependsOn: ["build", "playground:close"],
       },
       "playground:close": {
-        command: "vpx playground/harness/cli/stop.ts --treatment adapted --environment preview",
+        command: "vpx playground/runner/cli/stop.ts --treatment adapted --environment preview",
         cache: false,
       },
       "playground:reset": {
         command:
-          "vpx playground/harness/cli/prepare.ts --treatment adapted --environment preview --workers 1 --reset",
+          "vpx playground/runner/cli/prepare.ts --treatment adapted --environment preview --workers 1 --reset",
         cache: false,
       },
       "playground:bootstrap": {
-        command: "vpx playground/harness/cli/bootstrap.ts",
+        command: "vpx playground/runner/cli/bootstrap.ts",
         cache: false,
       },
       "playground:stop": {
-        command: "vpx playground/harness/cli/stop.ts",
+        command: "vpx playground/runner/cli/stop.ts",
         cache: false,
       },
       "playground:status": {
-        command: "vpx playground/harness/cli/status.ts",
+        command: "vpx playground/runner/cli/status.ts",
         cache: false,
       },
       "playground:stop-task": {
-        command: "vpx playground/harness/cli/stop-task.ts",
+        command: "vpx playground/runner/cli/stop-task.ts",
         cache: false,
       },
       "playground:redact": {
-        command: "vpx playground/harness/cli/redact.ts",
+        command: "vpx playground/runner/cli/redact.ts",
         cache: false,
       },
       "playground:run": {
-        command: "vpx playground/harness/cli/run-case.ts",
+        command: "vpx playground/runner/cli/run-case.ts",
         cache: false,
       },
       "playground:run-batch": {
-        command: "vpx playground/harness/cli/run-batch.ts",
+        command: "vpx playground/runner/cli/run-batch.ts",
         cache: false,
       },
       "playground:collect": {
-        command: "vpx playground/harness/cli/collect.ts",
+        command: "vpx playground/runner/cli/collect.ts",
         cache: false,
       },
       "playground:review": {
-        command: "vpx playground/harness/cli/review.ts",
+        command: "vpx playground/runner/cli/review.ts",
         cache: false,
       },
       "playground:status-table": {
-        command: "vpx playground/harness/cli/status-table.ts",
+        command: "vpx playground/runner/cli/status-table.ts",
         cache: false,
       },
       "playground:compare": {
-        command: "vpx playground/harness/cli/compare.ts",
+        command: "vpx playground/runner/cli/compare.ts",
         cache: false,
       },
       "playground:browser": {
-        command: "vpx playground/harness/cli/browser.ts",
+        command: "vpx playground/runner/cli/browser.ts",
         cache: false,
       },
     },

@@ -19,7 +19,7 @@ isolation is enforced by authorship, not by directories.
 
 ## 2. Scenario definition
 
-- One file per capability under `playground/scenarios/` (flat).
+- One file per capability under `playground/scenarios/probes/` (flat).
 - `BehaviorScenario` keeps `capability`, gains optional `treatments` (default both) and
   `environments` (default `["base"]`); a probe can declare additional environments on its
   one definition.

@@ -23,7 +23,7 @@
 
 ## 3. 写一个 probe
 
-- 一个文件一份 probe，放在 `playground/scenarios/`（扁平，无目录分组），默认导出 `BehaviorScenario`。
+- 一个文件一份 probe，放在 `playground/scenarios/probes/`（扁平，无目录分组），默认导出 `BehaviorScenario`。
 - 声明 `capability`（稳定 id）、`treatments`（默认两者）、`environments`（默认 `["base"]`）。
 - `turns` 用自然语言描述用户目标，不写工具名或实现路径。
 - `workspace` 放必要 fixture。
@@ -34,9 +34,9 @@
 
 ## 4. inventory 与排除
 
-- `playground/capabilities/capability-inventory.json`：每个能力一条，字段 `id`、`category`、`description`、`sources`、`requiredBy`、`status`（`covered` | `discovered` | `excluded`）、`probes`。
-- `playground/capabilities/capability-exclusions.json`：`{ "<id>": { "reason": "...", "decidedBy": "user" } }`，只有用户明确批准才写。
-- `playground/capabilities/capability-exclusions.proposed.json`：候选排除，agent 可写，不产生 `excluded` 状态。
+- `playground/scenarios/inventory.json`：每个能力一条，字段 `id`、`category`、`description`、`sources`、`requiredBy`、`status`（`covered` | `discovered` | `excluded`）、`probes`。
+- `playground/scenarios/exclusions.json`：`{ "<id>": { "reason": "...", "decidedBy": "user" } }`，只有用户明确批准才写。
+- `playground/scenarios/exclusions.proposed.json`：候选排除，agent 可写，不产生 `excluded` 状态。
 
 ## 5. 完成标准
 

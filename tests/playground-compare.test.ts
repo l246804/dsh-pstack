@@ -7,13 +7,13 @@ import {
   compareOne,
   compareSnapshot,
   scenarioContentHash,
-} from "../playground/harness/cli/compare.ts";
+} from "../playground/runner/cli/compare.ts";
 import type {
   BehaviorScenario,
   RunRecord,
   SessionFacts,
   Treatment,
-} from "../playground/harness/types.ts";
+} from "../playground/runner/types.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-compare-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));

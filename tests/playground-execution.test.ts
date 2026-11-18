@@ -8,7 +8,7 @@ import type {
   BehaviorScenario,
   RunRecord,
   SessionFacts,
-} from "../playground/harness/types.ts";
+} from "../playground/runner/types.ts";
 import {
   mountNativeTree,
   profileManifest,
@@ -17,7 +17,7 @@ import {
   resetHome,
   writeHomePatch,
   type ProviderPlan,
-} from "../playground/harness/lib/env.ts";
+} from "../playground/runner/lib/env.ts";
 import {
   assertSafeRecord,
   digestEvents,
@@ -31,19 +31,19 @@ import {
   summarizeToolArguments,
   type SessionEvent,
   verdictFor,
-} from "../playground/harness/lib/evidence.ts";
+} from "../playground/runner/lib/evidence.ts";
 import {
   ISOLATED_ROOT,
   isolatedRootDirectory,
   publicConfigHash,
   REPOSITORY_ROOT,
-} from "../playground/harness/lib/run-metadata.ts";
+} from "../playground/runner/lib/run-metadata.ts";
 import {
   workerPaths,
   treatmentWorkersDirectory,
   resetTreatment,
   type WorkerPaths,
-} from "../playground/harness/lib/worker.ts";
+} from "../playground/runner/lib/worker.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -180,7 +180,7 @@ describe("execution contracts", () => {
   });
 
   it("contains no probe timeout or automatic stop in the execution scripts", () => {
-    const root = resolve(__dirname, "../playground/harness/cli");
+    const root = resolve(__dirname, "../playground/runner/cli");
     for (const file of ["run-case.ts", "run-batch.ts", "prepare.ts", "collect.ts"]) {
       const source = readFileSync(join(root, file), "utf8");
       expect(source).not.toMatch(
@@ -333,7 +333,7 @@ describe("tool call argument summaries", () => {
           data: {
             name: "read",
             callId: "c1",
-            arguments: { file_path: "../../playground/scenarios/tdd.ts" },
+            arguments: { file_path: "../../playground/scenarios/probes/tdd.ts" },
           },
         },
         {
@@ -344,7 +344,7 @@ describe("tool call argument summaries", () => {
       "session-4",
     );
     expect(digest.toolCalls[0]?.argsSummary).toBe(
-      "read file_path=../../playground/scenarios/tdd.ts",
+      "read file_path=../../playground/scenarios/probes/tdd.ts",
     );
     expect(digest.toolCalls[0]?.status).toBe("ok");
   });

@@ -6,11 +6,11 @@
 
 - `evidence/runs/<treatment>-<environment>/manifest.json`：本轮覆盖的场景、最后批次，以及 `treatment`、`environment`、`dshVersion`、`pstackVersion`、`scenarioIds`。
 - `evidence/runs/<treatment>-<environment>/scenarios/**`：每个场景的 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
-- `scenarios/*.ts`：场景 prompt、assertions、rubric、uiObservations；只作为判据，不把 rubric 当答案抄进结论。
+- `scenarios/probes/*.ts`：场景 prompt、assertions、rubric、uiObservations；只作为判据，不把 rubric 当答案抄进结论。
 - `playground/native-adapter/dsh.md`：只在 native 分析时逐条对照。
 - `port/dsh.md`：只在 adapted 分析时逐条对照。
 - 必要时读 `playground/native-adapter/dsh-evidence.md` 和上游技能原文。
-- `playground/capabilities/capability-inventory.json`：按 [capabilities.md](./capabilities.md) 维护的能力清单。
+- `playground/scenarios/inventory.json`：按 [capabilities.md](./capabilities.md) 维护的能力清单。
 
 ## 阶段隔离
 

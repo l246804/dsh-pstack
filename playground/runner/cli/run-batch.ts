@@ -251,7 +251,7 @@ async function main(): Promise<void> {
             `${JSON.stringify({ scenarioId, startedAt: new Date().toISOString(), batchId }, null, 2)}\n`,
           );
           const args = [
-            "playground/harness/cli/run-case.ts",
+            "playground/runner/cli/run-case.ts",
             "--worker",
             String(worker),
             "--scenario",

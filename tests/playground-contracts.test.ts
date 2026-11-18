@@ -1,18 +1,18 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vite-plus/test";
 
-import { parseConfig } from "../playground/harness/lib/config.ts";
+import { parseConfig } from "../playground/runner/lib/config.ts";
 import {
   coverageProblems,
   type CoverageExclusions,
   type CoverageInventoryEntry,
   type CoverageScenario,
-} from "../playground/harness/lib/coverage.ts";
-import { environments, scenariosById } from "../playground/harness/scenario/index.ts";
+} from "../playground/runner/lib/coverage.ts";
+import { environments, scenariosById } from "../playground/runner/scenario/index.ts";
 
 function inventory(): CoverageInventoryEntry[] {
   const text = readFileSync(
-    new URL("../playground/capabilities/capability-inventory.json", import.meta.url),
+    new URL("../playground/scenarios/inventory.json", import.meta.url),
     "utf8",
   );
   return (JSON.parse(text) as { capabilities: CoverageInventoryEntry[] }).capabilities;
@@ -20,7 +20,7 @@ function inventory(): CoverageInventoryEntry[] {
 
 function exclusions(): CoverageExclusions {
   const text = readFileSync(
-    new URL("../playground/capabilities/capability-exclusions.json", import.meta.url),
+    new URL("../playground/scenarios/exclusions.json", import.meta.url),
     "utf8",
   );
   return JSON.parse(text) as CoverageExclusions;

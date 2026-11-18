@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { RunRecord } from "../playground/harness/types.ts";
-import { residualKinds, sanitizeRecord } from "../playground/harness/lib/redaction.ts";
+import type { RunRecord } from "../playground/runner/types.ts";
+import { residualKinds, sanitizeRecord } from "../playground/runner/lib/redaction.ts";
 
 function record(): RunRecord {
   return {
