@@ -48,6 +48,7 @@ import {
 } from "./lib/runtime.ts";
 import { createEnvironment, environmentMatrix } from "./lib/run-metadata.ts";
 import { reviewSnapshotDirectory } from "./lib/review-snapshot.ts";
+import { scenarioContentHash } from "./lib/scenario-hash.ts";
 import { stopRequestFile, workerPaths, type WorkerPaths } from "./lib/worker.ts";
 
 const {
@@ -763,6 +764,7 @@ async function main(): Promise<void> {
     record,
     Object.values(config.providers).map((provider) => provider.apiKey),
   );
+  record.scenarioHash = scenarioContentHash(scenario);
   const sourceFile = recordFile.replace(/\.json$/, EVIDENCE_FILES.sourceSuffix);
   writeFileSync(
     sourceFile,

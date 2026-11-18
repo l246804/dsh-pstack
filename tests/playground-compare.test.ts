@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { compareOne, compareSnapshot } from "../playground/scripts/compare.ts";
+import { compareOne, compareSnapshot, scenarioContentHash } from "../playground/scripts/compare.ts";
 import type { BehaviorScenario, RunRecord, SessionFacts, Treatment } from "../playground/types.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-compare-test-"));
@@ -73,16 +73,63 @@ function writeRecord(root: string, treatment: Treatment, environment: string, en
   writeFileSync(join(dir, "record.json"), `${JSON.stringify(entry, null, 2)}\n`);
 }
 
+describe("scenarioContentHash", () => {
+  it("is stable for the same content and ignores key order", () => {
+    const reordered: BehaviorScenario = {
+      uiObservations: [],
+      rubric: { prompt: "" },
+      assertions: [],
+      workspace: { files: {} },
+      turns: [{ prompt: "do the thing" }],
+      capability: "x",
+      id: "cap-1",
+    };
+    expect(scenarioContentHash(scenario)).toBe(scenarioContentHash(reordered));
+    expect(scenarioContentHash(scenario)).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("changes when the probe content changes", () => {
+    expect(scenarioContentHash(scenario)).not.toBe(
+      scenarioContentHash({ ...scenario, turns: [{ prompt: "do a different thing" }] }),
+    );
+    expect(scenarioContentHash(scenario)).not.toBe(
+      scenarioContentHash({ ...scenario, treatments: ["native"] }),
+    );
+    expect(scenarioContentHash(scenario)).not.toBe(
+      scenarioContentHash({ ...scenario, environments: ["base", "render"] }),
+    );
+  });
+});
+
 describe("compareOne", () => {
-  it("returns no problems when native and adapted describe the same setup", () => {
+  it("returns no problems when native and adapted share one run-identity tuple", () => {
     expect(compareOne(record("native"), record("adapted"), scenario)).toEqual([]);
   });
 
-  it("flags a configuration hash mismatch", () => {
+  it("flags a DSH version mismatch", () => {
     const adapted = record("adapted");
-    adapted.environment = { ...adapted.environment, configHash: "other-hash" };
+    adapted.environment = { ...adapted.environment, dshVersion: "other-dsh" };
     expect(compareOne(record("native"), adapted, scenario)).toContain(
-      "raw and adapted configuration hashes differ",
+      "native and adapted DSH versions differ",
+    );
+  });
+
+  it("flags a pstack version mismatch", () => {
+    const adapted = record("adapted");
+    adapted.environment = { ...adapted.environment, pstackVersion: "other-pstack" };
+    expect(compareOne(record("native"), adapted, scenario)).toContain(
+      "native and adapted pstack versions differ",
+    );
+  });
+
+  it("flags an environment matrix mismatch", () => {
+    const adapted = record("adapted");
+    adapted.environment = {
+      ...adapted.environment,
+      matrix: { ...adapted.environment.matrix, id: "other" },
+    };
+    expect(compareOne(record("native"), adapted, scenario)).toContain(
+      "native and adapted environment matrices differ",
     );
   });
 
@@ -90,15 +137,15 @@ describe("compareOne", () => {
     const adapted = record("adapted");
     adapted.target = { provider: "provider-a", model: "model-b", effort: "low" };
     expect(compareOne(record("native"), adapted, scenario)).toContain(
-      "raw and adapted actual model routes differ",
+      "native and adapted actual model routes differ",
     );
   });
 
-  it("flags a natural-language entry mismatch", () => {
+  it("flags a record whose scenario content hash drifted from the definition", () => {
     const adapted = record("adapted");
-    adapted.session = session("do something else");
+    adapted.scenarioHash = "deadbeef";
     expect(compareOne(record("native"), adapted, scenario)).toContain(
-      "raw and adapted natural-language entries differ from the scenario",
+      "adapted record scenario content differs from the current definition",
     );
   });
 });

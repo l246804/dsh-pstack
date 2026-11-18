@@ -1,9 +1,11 @@
 import { pathToFileURL } from "node:url";
 
 import type { BehaviorScenario, RunRecord } from "../types.ts";
-import { assertSameEntry } from "./lib/evidence.ts";
 import { listSnapshotRecords } from "./lib/review.ts";
 import { environmentMatrix } from "./lib/run-metadata.ts";
+import { scenarioContentHash } from "./lib/scenario-hash.ts";
+
+export { scenarioContentHash } from "./lib/scenario-hash.ts";
 
 export interface CompareSnapshotInput {
   environment: string;
@@ -25,15 +27,48 @@ export interface CompareResult {
 }
 
 /**
- * The comparability check for one scenario. Thin on purpose: it returns the problems
- * `assertSameEntry` already reports so the CLI and the unit test share one rule.
+ * The comparability check for one scenario. Two records are comparable on the run-identity
+ * tuple `(dshVersion, pstackVersion, scenario content hash, environment matrix id, target
+ * route)`; `upstreamRevision` is never an identity key. `pstackVersion` is adapted
+ * provenance but still recorded on both cells, so a difference means the two runs cannot be
+ * compared.
  */
 export function compareOne(
-  raw: RunRecord,
+  native: RunRecord,
   adapted: RunRecord,
   scenario: BehaviorScenario,
 ): string[] {
-  return assertSameEntry(raw, adapted, scenario);
+  const problems: string[] = [];
+  if (native.scenarioId !== scenario.id || adapted.scenarioId !== scenario.id) {
+    problems.push("records do not belong to the selected scenario");
+  }
+  if (native.environment.dshVersion !== adapted.environment.dshVersion) {
+    problems.push("native and adapted DSH versions differ");
+  }
+  if (native.environment.pstackVersion !== adapted.environment.pstackVersion) {
+    problems.push("native and adapted pstack versions differ");
+  }
+  if (native.environment.matrix.id !== adapted.environment.matrix.id) {
+    problems.push("native and adapted environment matrices differ");
+  }
+  if (JSON.stringify(native.target) !== JSON.stringify(adapted.target)) {
+    problems.push("native and adapted actual model routes differ");
+  }
+  const hash = scenarioContentHash(scenario);
+  if (native.scenarioHash !== undefined && native.scenarioHash !== hash) {
+    problems.push("native record scenario content differs from the current definition");
+  }
+  if (adapted.scenarioHash !== undefined && adapted.scenarioHash !== hash) {
+    problems.push("adapted record scenario content differs from the current definition");
+  }
+  if (
+    native.scenarioHash !== undefined &&
+    adapted.scenarioHash !== undefined &&
+    native.scenarioHash !== adapted.scenarioHash
+  ) {
+    problems.push("native and adapted scenario contents differ");
+  }
+  return problems;
 }
 
 function byScenarioId(
@@ -43,7 +78,7 @@ function byScenarioId(
 }
 
 /**
- * Compare one environment's committed raw and adapted records. A scenario present on only
+ * Compare one environment's committed native and adapted records. A scenario present on only
  * one side is a problem; a scenario present on both is compared field by field. Read-only:
  * it never writes a record.
  */
@@ -67,7 +102,9 @@ export function compareSnapshot(input: CompareSnapshotInput): CompareResult {
     if (!native) problems.push(`${id}: missing on native`);
     if (!adapted) problems.push(`${id}: missing on adapted`);
     if (native && adapted) {
-      problems.push(...compareOne(native, adapted, input.loadScenario(id)).map((p) => `${id}: ${p}`));
+      problems.push(
+        ...compareOne(native, adapted, input.loadScenario(id)).map((p) => `${id}: ${p}`),
+      );
       compared.push(id);
     }
     if (problems.length > 0) failures.push({ scenarioId: id, problems });
