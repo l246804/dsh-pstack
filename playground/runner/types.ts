@@ -66,6 +66,10 @@ export interface BehaviorScenario {
   answers?: Array<{ match: string; selected?: string[]; custom?: string }>;
   /** Capability id this probe covers. */
   capability: string;
+  /** Scenario kind: gap (linked to the native gap list) or regression. */
+  kind?: "gap" | "regression";
+  /** Native gap id this scenario verifies; required for gap scenarios. */
+  gap?: string;
 }
 
 export type EnvironmentKind = "base" | "capability" | "conflict";

@@ -13,6 +13,10 @@
 - `evidence/runs/.staging/` 是批次运行中的临时目录，不提交。
 - 状态表和跨单元透视由 `playground:status-table` 从记录生成；对比由 `playground:compare` 按运行身份生成。
 
+## native 缺口清单
+
+在运行 native probe 之前，先按 [capabilities.md](./capabilities.md) 产出 `playground/scenarios/native-gaps.json`，只记录上游 pstack 工作流需要、DSH 标准模式不能保证的行为。插件自身工具、preset、角色文件和 DSH 原生已有能力不进入清单。缺口由用户确认后，才从 `confirmed` 的缺口生成 `kind: "gap"` 的场景。
+
 ## 批次
 
 - `run-batch --treatment <native|adapted> --environment <ID> --full`：覆盖该单元声明的全部适用场景（`scenario.treatments` 含该 treatment 且 `scenario.environments` 含该 environment），成功后整份当前快照更新。
@@ -35,7 +39,9 @@ collect 之后、分析并写入 `playground/evidence/findings/<treatment>.md` �
 
 ```mermaid
 flowchart TD
-  nativeFull[native full] --> collectNative[collect]
+  upstream[上游或 DSH 变化] --> gapList[生成 native 缺口清单]
+  gapList --> nativeFull[native full]
+  nativeFull --> collectNative[collect]
   collectNative --> analyzeNative[新会话分析 native 证据]
   analyzeNative -->|native 结论| portChange[适配开发]
   portChange --> build[generate + build]
@@ -44,7 +50,7 @@ flowchart TD
   collectAdapted --> analyzeAdapted[新会话分析 adapted 证据]
   analyzeAdapted -->|dsh-md / plugin| portChange
   analyzeAdapted -->|通过| release[README + release-ready]
-  upstream[上游只更新部分来源] --> nativeDelta[native incremental]
+  upstream --> nativeDelta[native incremental]
   nativeDelta --> analyzeNative
   analyzeNative --> adaptedDelta[adapted incremental]
   adaptedDelta --> analyzeAdapted
@@ -54,6 +60,7 @@ flowchart TD
 
 | 阶段 | 进入条件 | 产物 | 出口 |
 | --- | --- | --- | --- |
+| 0. native 缺口清单 | 上游或 DSH 变化，需要重建用例 | `playground/scenarios/native-gaps.json`（用户确认 `confirmed`） | 从缺口生成 gap 场景 |
 | 1. native 验证 | 无当前 native 快照 | `evidence/runs/native-<environment>/` 当前快照 | 分析写入 `playground/evidence/findings/native.md` |
 | 2. native 分析 | native 快照完整 | `playground/evidence/findings/native.md` 与 dsh.md 审查 | `dsh-md` / `plugin` / `upstream` / `ignore-environment` / `待你判断` 分流 |
 | 3. 适配开发 | 分析给出当前单元的结论 | 更新当前单元的 dsh.md、适配代码、生成树和 build | adapted/<environment> |

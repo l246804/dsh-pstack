@@ -24,11 +24,12 @@
 
 ## 流程概览
 
-1. 生成 native 生成树，准备 `native` worker。
-2. 运行 native probe，collect，写入 native 分析 `playground/evidence/findings/native.md`。
-3. 根据 native 分析更新当前 treatment 的 dsh.md、适配代码和生成树，build 后运行 adapted。
-4. 运行 adapted probe，collect 并分析 `playground/evidence/findings/adapted.md`。
-5. 通过后更新 README/兼容表并停在 release-ready；可选环境按需启用，不默认运行。
+1. 生成并确认 native 缺口清单 `playground/scenarios/native-gaps.json`。
+2. 生成 native 生成树，准备 `native` worker。
+3. 运行 native probe，collect，写入 native 分析 `playground/evidence/findings/native.md`。
+4. 根据 native 分析更新当前 treatment 的 dsh.md、适配代码和生成树，build 后运行 adapted。
+5. 运行 adapted probe，collect 并分析 `playground/evidence/findings/adapted.md`。
+6. 通过后更新 README/兼容表并停在 release-ready；可选环境按需启用，不默认运行。
 
 具体命令、阶段入口和交接条件见 [docs/workflow.md](./docs/workflow.md)。
 

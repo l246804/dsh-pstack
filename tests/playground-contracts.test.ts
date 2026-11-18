@@ -4,9 +4,12 @@ import { describe, expect, it } from "vite-plus/test";
 import { parseConfig } from "../playground/runner/lib/config.ts";
 import {
   coverageProblems,
+  gapCoverageProblems,
   type CoverageExclusions,
+  type CoverageGap,
   type CoverageInventoryEntry,
   type CoverageScenario,
+  type GapCoverageScenario,
 } from "../playground/runner/lib/coverage.ts";
 import { environments, scenariosById } from "../playground/runner/scenario/index.ts";
 
@@ -26,10 +29,21 @@ function exclusions(): CoverageExclusions {
   return JSON.parse(text) as CoverageExclusions;
 }
 
+function gaps(): CoverageGap[] {
+  const text = readFileSync(
+    new URL("../playground/scenarios/native-gaps.json", import.meta.url),
+    "utf8",
+  );
+  return (JSON.parse(text) as { gaps: CoverageGap[] }).gaps;
+}
+
 function scenarios(): CoverageScenario[] {
   return [...scenariosById.values()].map((scenario) => ({
     id: scenario.id,
     capability: scenario.capability,
+    kind: scenario.kind,
+    gap: scenario.gap,
+    treatments: scenario.treatments,
   }));
 }
 
@@ -154,5 +168,66 @@ describe("coverageProblems", () => {
 describe("playground capability coverage", () => {
   it("reports no problems for the real scenarios, inventory, and exclusions", () => {
     expect(coverageProblems(scenarios(), inventory(), exclusions())).toEqual([]);
+  });
+
+  it("reports no problems for the real gaps and gap scenarios", () => {
+    expect(gapCoverageProblems(scenarios(), gaps())).toEqual([]);
+  });
+});
+
+describe("gapCoverageProblems", () => {
+  const scenario = (
+    id: string,
+    kind?: string,
+    gap?: string,
+    treatments?: readonly string[],
+  ): GapCoverageScenario => ({ id, kind, gap, treatments });
+
+  it("allows an empty gap list and empty scenarios", () => {
+    expect(gapCoverageProblems([], [])).toEqual([]);
+  });
+
+  it("requires every confirmed gap to have a gap scenario", () => {
+    expect(gapCoverageProblems([], [{ id: "gap-a", status: "confirmed" }])).toEqual([
+      "confirmed gap gap-a has no gap scenario",
+    ]);
+  });
+
+  it("reports gap scenarios without a gap or with an unknown gap", () => {
+    expect(
+      gapCoverageProblems([scenario("probe-a", "gap")], [{ id: "gap-a", status: "confirmed" }]),
+    ).toEqual(expect.arrayContaining(["gap scenario probe-a has no gap id"]));
+    expect(
+      gapCoverageProblems(
+        [scenario("probe-a", "gap", "gap-x", ["native", "adapted"])],
+        [{ id: "gap-a", status: "confirmed" }],
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        "gap scenario probe-a references unknown gap gap-x",
+        "confirmed gap gap-a has no gap scenario",
+      ]),
+    );
+  });
+
+  it("requires a gap scenario to run in both treatments and a regression to have no gap", () => {
+    expect(
+      gapCoverageProblems(
+        [scenario("probe-a", "gap", "gap-a", ["adapted"])],
+        [{ id: "gap-a", status: "confirmed" }],
+      ),
+    ).toContain("gap scenario probe-a must run in both native and adapted");
+    expect(
+      gapCoverageProblems(
+        [scenario("probe-r", "regression", "gap-a")],
+        [{ id: "gap-a", status: "confirmed" }],
+      ),
+    ).toContain("regression scenario probe-r must not declare a gap");
+  });
+
+  it("reports a scenario without a kind", () => {
+    expect(gapCoverageProblems([scenario("probe-a")], [])).toContain(
+      "scenario probe-a has no kind",
+    );
   });
 });

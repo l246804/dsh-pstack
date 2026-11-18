@@ -20,9 +20,7 @@ isolation is enforced by authorship, not by directories.
 ## 2. Scenario definition
 
 - One file per capability under `playground/scenarios/probes/` (flat).
-- `BehaviorScenario` keeps `capability`, gains optional `treatments` (default both) and
-  `environments` (default `["base"]`); a probe can declare additional environments on its
-  one definition.
+- `BehaviorScenario` keeps `capability`, gains optional `treatments` (default both), `environments` (default `["base"]`), `kind` (`gap` | `regression`), and `gap` (the native gap id for gap scenarios). A probe can declare additional environments on its one definition.
 - `registry.ts` collects every scenario file; each probe declares its own treatments and environments.
 
 ## 3. Evidence layout
@@ -35,8 +33,7 @@ isolation is enforced by authorship, not by directories.
 ## 4. Generated vs hand-written
 
 - Generated (must support `--check` so they cannot drift): the per-cell status table, the cross-cell pivot, and the comparison report.
-- Hand-written: probe definitions; `playground/evidence/findings/<treatment>.md` root-cause Q&A tagged by
-  capability; `dsh.md` / `port/dsh.md` review.
+- Hand-written: the native gap list (`playground/scenarios/native-gaps.json`); probe definitions; `playground/evidence/findings/<treatment>.md` root-cause Q&A tagged by capability; `dsh.md` / `port/dsh.md` review.
 
 ## 5. Commands
 
@@ -50,6 +47,8 @@ isolation is enforced by authorship, not by directories.
 - Comparability: same `dshVersion`, same scenario content hash, same environment, same
   model route. `pstackVersion` is adapted provenance, not a hard equality for native
   behavior.
+- Treatment-neutral scenarios: the same scenario definition runs in native and adapted;
+  treatment-specific judging lives in the analysis rules, never in the scenario.
 - Generated artifacts carry `--check` guards.
 
 
