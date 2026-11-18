@@ -34,7 +34,7 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 由 `scripts/generate-pstack.mjs --target port` 从固定上游和 `port/dsh.md` 整体生成的根 `pstack/` 目录，构建时复制到 `dist/pstack/`。
 
-手工变更应落在生成来源、插件源码、测试或技能工作区。发布兼容范围由 `package.json` 的 `engines.dsh` 提供，pstack 版本记在 `port/baseline.json`；能力探针位于 `playground/scenarios/`，场景注册表在 `playground/runner/scenario/`，当前证据快照在 `playground/evidence/runs/`，都不属于本仓工程决策记录目录。
+手工变更应落在生成来源、插件源码、测试或技能工作区。发布兼容范围由 `package.json` 的 `engines.dsh` 提供，pstack 版本记在 `port/baseline.json`；能力探针位于 `playground/scenarios/probes/`，场景注册表在 `playground/runner/scenario/`，当前证据快照在 `playground/evidence/runs/`，都不属于本仓工程决策记录目录。
 
 ## Port（移植产物目录）
 
