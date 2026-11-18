@@ -48,7 +48,7 @@ playground 真实会话验证
 | Client 入口与对话框 | `src/client/index.ts`、`src/client/pages/PstackConfigDialog.tsx`、`src/client/pages/GeneralSettingsPage.tsx` | 挂载 Remote 描述符、注册 locale 和插件详情动作；管理配置对话框、页签、未保存草稿和通用默认开关。 |
 | 角色与插件页面 | `src/client/pages/RoleSettingsPage.tsx`、`src/client/pages/RecommendedPluginsPage.tsx`、`src/client/components/RoleCard.tsx`、`src/client/components/BudgetDialog.tsx` | 编辑角色草稿并展示保存结果；按预算批量预览并应用推理档位；展示关联插件及其变更结果。 |
 | Client 支撑 | `src/client/components/`（`ui.tsx`、`icons.tsx`、`DiscardConfirmation.tsx`、`PotetoModeToggle.tsx`、`PotetoModeBadge.tsx`）、`src/client/lib/`（`styles.ts`、`toast.ts`、`message.ts`）、`src/client/roles/`（`role-copy.ts`、`role-draft.ts`、`role-selectors.ts`）、`src/client/locales/` | 提供本插件的 UI 组件、样式、共享提示、翻译、角色草稿和选择器文案。 |
-| 移植与生成 | `scripts/generate-pstack.mjs`、`port/dsh.md`、`port/dsh.zh.md`、`playground/fixtures/native/`（`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`）、`playground/scenarios/probes/` | 从固定上游生成根 `pstack/` 和 `playground/fixtures/native/pstack/`；按 `playground/docs/native-fixture.md` 的规则维护 DSH 适配文档，并在 `playground/scenarios/inventory.json` 登记能力和在 `playground/scenarios/probes/` 维护能力探针（规则见 `playground/docs/capabilities.md`）。 |
+| 移植与生成 | `scripts/generate-pstack.mjs`、`port/dsh.md`、`port/dsh.zh.md`、`playground/native/`（`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`）、`playground/scenarios/probes/` | 从固定上游生成根 `pstack/` 和 `playground/native/pstack/`；按 `playground/docs/native.md` 的规则维护 DSH 适配文档，并在 `playground/scenarios/inventory.json` 登记能力和在 `playground/scenarios/probes/` 维护能力探针（规则见 `playground/docs/capabilities.md`）。 |
 | 发布元数据与发布说明 | `scripts/release-compatibility.ts`、`scripts/release-surface.ts`、`scripts/release.sh`、`bump.config.ts`、`changes/AGENTS.md` | 按 DSH 兼容范围分组同步各本地化 README 的发布版本表，并把对应本地化 README 加入发布提交；分组与保留规则见 `port/docs/baseline.md`。发布说明由 agent 会话按 `changes/AGENTS.md` 从版本间提交生成到 `changes/RELEASE.md`；`release.sh` 要求该文件存在且已提交后才 bumpp，打完 tag 后删除它，发布工作流在 tag 上读取它作为 Release 正文；`release-surface.ts` 维护 `port/surface.json`。 |
 | 构建与打包 | `vite.config.ts`、`package.json` | 分别构建 Host 与浏览器 Client；导出 Host 模块，复制生成树和技能资源。 |
 | 自动化验证 | `tests/`、`playground/runner/cli/`（doctor、prepare、bootstrap、run-case、run-batch、collect、review、status-table、compare、redact、status、stop、stop-task、browser） | 运行单元和 DOM 交互测试；在真实 DSH playground 中运行 capability probes，收集 RunRecord、SessionAnalysis 和当前评审快照。 |
@@ -98,9 +98,9 @@ upstream/cursor-plugins/pstack + port/dsh.md
   → vite.config.ts
   → dist/pstack/
 
-upstream/cursor-plugins/pstack + playground/fixtures/native/dsh.md
+upstream/cursor-plugins/pstack + playground/native/dsh.md
   → scripts/generate-pstack.mjs --target native
-  → playground/fixtures/native/pstack/
+  → playground/native/pstack/
 ```
 
 `skills/.agents/skills/` 与 `skills/authored/` 由构建配置分别复制到 `dist/skills/vendored/` 和 `dist/skills/authored/`；vendored 与 authored 技能目录由 `cordis.patch.yml` 的 `bundledSkillDir` 值在 `dist/skills/...` 下定位。`src/lib/paths.ts` 在发布后的 `dist/pstack/` 下定位 pstack 资源。

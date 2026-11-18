@@ -16,5 +16,5 @@
     "skipLibCheck": true
   },
   "include": ["**/*.ts"],
-  "exclude": ["node_modules", "fixtures/native/pstack", ".workers", ".workers-*"]
+  "exclude": ["node_modules", "native/pstack", ".workers", ".workers-*"]
 }

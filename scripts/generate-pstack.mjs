@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generate one pstack tree from the pinned upstream pstack tree and its adapter.
 // --target port writes the shipped root pstack/ from port/dsh.md.
-// --target native writes playground/fixtures/native/pstack/ from playground/fixtures/native/dsh.md.
+// --target native writes playground/native/pstack/ from playground/native/dsh.md.
 
 import {
   chmodSync,
@@ -25,9 +25,9 @@ if (TARGET !== "port" && TARGET !== "native") {
 }
 
 const isNative = TARGET === "native";
-const ADAPTER_SOURCE = isNative ? "playground/fixtures/native/dsh.md" : "port/dsh.md";
+const ADAPTER_SOURCE = isNative ? "playground/native/dsh.md" : "port/dsh.md";
 const ADAPTER_TREE = "docs/harness/dsh.md";
-const OUT = isNative ? join(ROOT, "playground/fixtures/native/pstack") : join(ROOT, "pstack");
+const OUT = isNative ? join(ROOT, "playground/native/pstack") : join(ROOT, "pstack");
 const COMMAND = `vpx scripts/generate-pstack.mjs --target ${TARGET}`;
 const INJECTION = isNative
   ? `In DSH, read [the DSH adapter](../../${ADAPTER_TREE}) once per session before you follow this skill. It maps the Cursor names in pstack skills to DSH.`

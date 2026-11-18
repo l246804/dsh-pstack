@@ -9,7 +9,7 @@ node_modules
 .DS_Store
 
 # Regenerated native baseline. The generator never writes the upstream checkout.
-fixtures/native/pstack/
+native/pstack/
 
 # Review snapshots under evidence/runs/ are committed source; only in-flight staging is transient.
 evidence/runs/.staging/
