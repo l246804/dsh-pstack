@@ -26,7 +26,11 @@ export interface WorkerPaths {
   treatmentFile: string;
 }
 
-export function workerPaths(index: number, environmentId: string, treatment: Treatment): WorkerPaths {
+export function workerPaths(
+  index: number,
+  environmentId: string,
+  treatment: Treatment,
+): WorkerPaths {
   if (!/^[a-z0-9-]+$/.test(environmentId))
     throw new Error(`invalid environment id: ${environmentId}`);
   const root = join(workersDirectory(), treatment, environmentId, `w${index}`);

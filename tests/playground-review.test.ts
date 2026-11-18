@@ -178,7 +178,9 @@ describe("applyReview", () => {
 
     applyReview({ treatment, environment, root });
 
-    expect(readRecord(root, treatment, environment, "cap-verified").verdict.status).toBe("verified");
+    expect(readRecord(root, treatment, environment, "cap-verified").verdict.status).toBe(
+      "verified",
+    );
     expect(readRecord(root, treatment, environment, "cap-gap").verdict.status).toBe("not-verified");
     const failed = readRecord(root, treatment, environment, "cap-fail");
     expect(failed.verdict.status).toBe("not-verified");
@@ -189,9 +191,7 @@ describe("applyReview", () => {
     const root = mkdtempSync(join(temporary, "ids-"));
     const treatment: Treatment = "native";
     const environment = "base";
-    writeSnapshot(root, treatment, environment, [
-      makeRecord(treatment, environment, "cap-a"),
-    ]);
+    writeSnapshot(root, treatment, environment, [makeRecord(treatment, environment, "cap-a")]);
 
     writeReview(root, treatment, environment, {
       "cap-a": review("supported"),
@@ -211,9 +211,7 @@ describe("checkReview", () => {
     const root = mkdtempSync(join(temporary, "pending-"));
     const treatment: Treatment = "native";
     const environment = "base";
-    writeSnapshot(root, treatment, environment, [
-      makeRecord(treatment, environment, "cap-a"),
-    ]);
+    writeSnapshot(root, treatment, environment, [makeRecord(treatment, environment, "cap-a")]);
     writeReview(root, treatment, environment, { "cap-a": review("supported") });
 
     const result = checkReview({ treatment, environment, root });
@@ -283,7 +281,9 @@ describe("status table", () => {
     expect(checkStatusTable(target).ok).toBe(true);
 
     // Changing a record makes the committed pivot stale.
-    const changed = JSON.parse(readFileSync(recordPath(root, "native", "base", "cap-alpha"), "utf8"));
+    const changed = JSON.parse(
+      readFileSync(recordPath(root, "native", "base", "cap-alpha"), "utf8"),
+    );
     changed.verdict.status = "gap";
     writeFileSync(
       recordPath(root, "native", "base", "cap-alpha"),

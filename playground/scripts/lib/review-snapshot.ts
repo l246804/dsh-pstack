@@ -111,10 +111,12 @@ function sourceFor(record: RunRecord): RecordSource {
   const stamp = record.capturedAt.replace(/[:.]/g, "-");
   const sourceFile = join(
     paths.evidenceDir,
-    recordFileName(record.scenarioId, record.treatment, record.environment.matrix.id, stamp).replace(
-      /\.json$/,
-      EVIDENCE_FILES.sourceSuffix,
-    ),
+    recordFileName(
+      record.scenarioId,
+      record.treatment,
+      record.environment.matrix.id,
+      stamp,
+    ).replace(/\.json$/, EVIDENCE_FILES.sourceSuffix),
   );
   if (!existsSync(sourceFile)) throw new Error(`missing evidence source file: ${sourceFile}`);
   return JSON.parse(readFileSync(sourceFile, "utf8")) as RecordSource;
@@ -191,7 +193,12 @@ export function writeReviewSnapshot(
   }
 
   for (const record of current) {
-    const directory = scenarioDirectory(treatment, environment, record.scenarioId, reviewsDirectory);
+    const directory = scenarioDirectory(
+      treatment,
+      environment,
+      record.scenarioId,
+      reviewsDirectory,
+    );
     rmSync(directory, { recursive: true, force: true });
     copyRunEvidence(record, directory);
   }
@@ -218,7 +225,10 @@ export function writeReviewSnapshot(
   return manifest;
 }
 
-export function collectReviewSnapshot(treatment: Treatment, environment: string): ReviewSnapshotManifest {
+export function collectReviewSnapshot(
+  treatment: Treatment,
+  environment: string,
+): ReviewSnapshotManifest {
   return writeReviewSnapshot(
     treatment,
     environment,

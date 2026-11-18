@@ -246,7 +246,11 @@ export function writePstackSettings(paths: WorkerPaths, potetoDefault: boolean):
   );
 }
 
-export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan, _treatment: Treatment): void {
+export function writeHomePatch(
+  paths: WorkerPaths,
+  plan: ProviderPlan,
+  _treatment: Treatment,
+): void {
   mkdirSync(paths.home, { recursive: true });
   const patch = [
     {

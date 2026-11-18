@@ -61,7 +61,12 @@ function record(treatment: Treatment, scenarioId = scenario.id): RunRecord {
   };
 }
 
-function writeRecord(root: string, treatment: Treatment, environment: string, entry: RunRecord): void {
+function writeRecord(
+  root: string,
+  treatment: Treatment,
+  environment: string,
+  entry: RunRecord,
+): void {
   const dir = join(
     root,
     `${treatment}-${environment}`,

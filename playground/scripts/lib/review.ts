@@ -13,9 +13,7 @@ import { isRunRecord } from "./evidence.ts";
 import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "./evidence-files.ts";
 import { reviewSnapshotDirectory } from "./review-snapshot.ts";
 
-export type ReviewReviewer =
-  | { kind: "human"; name: string }
-  | { kind: "model"; route: TestTarget };
+export type ReviewReviewer = { kind: "human"; name: string } | { kind: "model"; route: TestTarget };
 
 /** One scenario's reviewed result, matching the non-pending `SemanticReview` variant. */
 export interface ReviewEntry {
@@ -34,11 +32,7 @@ export interface SnapshotRecord {
 
 export const REVIEW_FILE = "review.json";
 
-export function reviewInputPath(
-  treatment: Treatment,
-  environment: string,
-  root?: string,
-): string {
+export function reviewInputPath(treatment: Treatment, environment: string, root?: string): string {
   return join(reviewSnapshotDirectory(treatment, environment, root), REVIEW_FILE);
 }
 

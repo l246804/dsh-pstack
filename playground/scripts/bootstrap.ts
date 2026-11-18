@@ -45,7 +45,9 @@ function selectWorkers(): WorkerPaths[] {
     return [workerPaths(index, environment, treatment)];
   }
   const workers = listWorkers({ environmentId: environment, treatment });
-  return workers.length > 0 ? [workers[0] as WorkerPaths] : [workerPaths(0, environment, treatment)];
+  return workers.length > 0
+    ? [workers[0] as WorkerPaths]
+    : [workerPaths(0, environment, treatment)];
 }
 
 function validateWorker(paths: WorkerPaths): string[] {

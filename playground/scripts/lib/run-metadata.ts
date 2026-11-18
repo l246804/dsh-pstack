@@ -95,8 +95,9 @@ export function pstackVersion(): string {
   if (!existsSync(PORT_BASELINE_FILE)) {
     throw new Error(`cannot read the pstack baseline: ${PORT_BASELINE_FILE}`);
   }
-  const version = (JSON.parse(readFileSync(PORT_BASELINE_FILE, "utf8")) as { pstackVersion?: string })
-    .pstackVersion;
+  const version = (
+    JSON.parse(readFileSync(PORT_BASELINE_FILE, "utf8")) as { pstackVersion?: string }
+  ).pstackVersion;
   if (!version) throw new Error(`pstack baseline has no pstackVersion: ${PORT_BASELINE_FILE}`);
   return version;
 }

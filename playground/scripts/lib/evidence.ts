@@ -371,7 +371,11 @@ export function verdictFor(input: {
   }
   if (input.treatment === "native") {
     return input.failures.length > 0 || input.semanticReview.status === "gap"
-      ? { treatment: "native", status: "gap", gaps: [...input.failures, input.semanticReview.reason] }
+      ? {
+          treatment: "native",
+          status: "gap",
+          gaps: [...input.failures, input.semanticReview.reason],
+        }
       : { treatment: "native", status: "observed", gaps: [] };
   }
   return input.failures.length === 0 && input.semanticReview.status === "supported"

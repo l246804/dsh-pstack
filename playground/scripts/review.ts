@@ -43,7 +43,8 @@ export function applyReview(target: ReviewTarget): ApplyResult {
     const lines: string[] = [];
     if (unknown.length > 0)
       lines.push(`review.json references unknown scenarios: ${unknown.join(", ")}`);
-    if (missing.length > 0) lines.push(`snapshot records with no review entry: ${missing.join(", ")}`);
+    if (missing.length > 0)
+      lines.push(`snapshot records with no review entry: ${missing.join(", ")}`);
     throw new Error(lines.join("\n"));
   }
   const updated: string[] = [];

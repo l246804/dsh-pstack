@@ -109,7 +109,8 @@ export function statusPivot(target: StatusPivotTarget = {}): StatusPivot {
   );
   const rows = [...rowsByScenario.values()].sort(
     (left, right) =>
-      left.capability.localeCompare(right.capability) || left.scenario.localeCompare(right.scenario),
+      left.capability.localeCompare(right.capability) ||
+      left.scenario.localeCompare(right.scenario),
   );
   return { columns: sortedColumns, rows };
 }
@@ -135,7 +136,10 @@ export function statusFilePath(target: StatusPivotTarget = {}): string {
   return join(target.root ?? REVIEWS_DIRECTORY, STATUS_FILE);
 }
 
-export function writeStatusTable(target: StatusPivotTarget = {}): { file: string; content: string } {
+export function writeStatusTable(target: StatusPivotTarget = {}): {
+  file: string;
+  content: string;
+} {
   const content = statusTableContent(target);
   const file = statusFilePath(target);
   writeFileSync(file, content);

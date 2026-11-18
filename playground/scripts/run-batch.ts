@@ -97,7 +97,8 @@ function selectedScenarios(treatment: Treatment, environmentId: string): string[
   if (failed) {
     return latestRecords(allRecords())
       .filter(
-        (record) => record.treatment === treatment && record.environment.matrix.id === environmentId,
+        (record) =>
+          record.treatment === treatment && record.environment.matrix.id === environmentId,
       )
       .filter((record) =>
         treatment === "native"
