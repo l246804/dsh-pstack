@@ -11,8 +11,8 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { isPhase } from "../types.ts";
-import type { BehaviorScenario, Phase, RunRecord, SessionFacts, TestTarget } from "../types.ts";
+import { isTreatment } from "../types.ts";
+import type { BehaviorScenario, RunRecord, SessionFacts, TestTarget, Treatment } from "../types.ts";
 import { analyzeSession } from "./lib/analysis.ts";
 import {
   captureFullPage,
@@ -590,7 +590,7 @@ function attemptScenario(input: AttemptInput): {
 
 function blockedRecord(input: {
   scenarioId: string;
-  phase: Phase;
+  treatment: Treatment;
   paths: WorkerPaths;
   configFile: string;
   recordFile: string;
@@ -619,12 +619,12 @@ function blockedRecord(input: {
     : null;
   return {
     scenarioId: input.scenarioId,
-    phase: input.phase,
+    treatment: input.treatment,
     environment: createEnvironment({
       worker: input.paths.index,
       matrix,
       config,
-      phase: input.phase,
+      treatment: input.treatment,
       paths: input.paths,
     }),
     target: null,
@@ -637,7 +637,7 @@ function blockedRecord(input: {
     semanticReview: pendingSemanticReview(),
     mechanicalFailures: [],
     verdict: verdictFor({
-      phase: input.phase,
+      treatment: input.treatment,
       failures: [],
       semanticReview: pendingSemanticReview(),
       blockedReason: input.reason,
@@ -648,11 +648,11 @@ function blockedRecord(input: {
 }
 
 async function main(): Promise<void> {
-  const phase = argValue("--phase") as Phase | undefined;
+  const treatment = argValue("--treatment") as Treatment | undefined;
   const scenarioId = argValue("--scenario");
-  if (!isPhase(phase) || !scenarioId) {
+  if (!isTreatment(treatment) || !scenarioId) {
     throw new Error(
-      "usage: run-case.ts --worker N --scenario ID --phase raw|adapted --environment ID [--config FILE]",
+      "usage: run-case.ts --worker N --scenario ID --treatment native|adapted --environment ID [--config FILE]",
     );
   }
   const worker = Number(argValue("--worker") ?? "0");
@@ -660,12 +660,12 @@ async function main(): Promise<void> {
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
-  const paths = workerPaths(worker, matrix.id, phase);
-  const preparedPhase = existsSync(paths.phaseFile)
-    ? readFileSync(paths.phaseFile, "utf8").trim()
+  const paths = workerPaths(worker, matrix.id, treatment);
+  const preparedTreatment = existsSync(paths.treatmentFile)
+    ? readFileSync(paths.treatmentFile, "utf8").trim()
     : "";
-  if (preparedPhase !== phase)
-    throw new Error(`worker is prepared for ${preparedPhase || "nothing"}, not ${phase}`);
+  if (preparedTreatment !== treatment)
+    throw new Error(`worker is prepared for ${preparedTreatment || "nothing"}, not ${treatment}`);
   const bundlePath = process.env.PLAYGROUND_SCENARIO_BUNDLE;
   const scenario = bundlePath
     ? (() => {
@@ -680,21 +680,24 @@ async function main(): Promise<void> {
       `scenario ${scenarioId} belongs to ${scenario.environmentId}, not ${matrix.id}`,
     );
   }
-  if (scenario.phases !== undefined && !scenario.phases.includes(phase)) {
-    throw new Error(`scenario ${scenarioId} is not allowed in phase ${phase}`);
+  if (scenario.treatments !== undefined && !scenario.treatments.includes(treatment)) {
+    throw new Error(`scenario ${scenarioId} is not allowed in ${treatment}`);
   }
   const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
   const config = readPlaygroundConfig(configFile);
   const expectedTarget = readHomePlan(paths);
   // DSH starts every session on its default Standard preset; the poteto workflow is a
-  // session toggle, not a root preset, so both phases assert the same preset id.
+  // session toggle, not a root preset, so both treatments assert the same preset id.
   const expectedPreset = "standard";
   const workspace = materializeWorkspace(paths, scenario);
   rmSync(stopRequestFile(paths), { force: true });
   const capturedAt = new Date().toISOString();
   const stamp = capturedAt.replace(/[:.]/g, "-");
   mkdirSync(paths.evidenceDir, { recursive: true });
-  const recordFile = join(paths.evidenceDir, recordFileName(scenarioId, phase, matrix.id, stamp));
+  const recordFile = join(
+    paths.evidenceDir,
+    recordFileName(scenarioId, treatment, matrix.id, stamp),
+  );
   const screenshotFile = recordFile.replace(/\.json$/, ".png");
   let record: RunRecord;
   try {
@@ -719,8 +722,8 @@ async function main(): Promise<void> {
     const semanticReview = pendingSemanticReview();
     record = {
       scenarioId,
-      phase,
-      environment: createEnvironment({ worker, matrix, config, phase, paths }),
+      treatment,
+      environment: createEnvironment({ worker, matrix, config, treatment, paths }),
       target: outcome.digest.route,
       session,
       artifacts: {
@@ -734,7 +737,7 @@ async function main(): Promise<void> {
       },
       semanticReview,
       mechanicalFailures: failures,
-      verdict: verdictFor({ phase, failures, semanticReview }),
+      verdict: verdictFor({ treatment, failures, semanticReview }),
       batchId: process.env.PLAYGROUND_BATCH_ID,
       capturedAt,
     };
@@ -743,7 +746,7 @@ async function main(): Promise<void> {
     const lastSession = latestSessionFile(paths);
     record = blockedRecord({
       scenarioId,
-      phase,
+      treatment,
       paths,
       configFile,
       recordFile,
@@ -775,9 +778,9 @@ async function main(): Promise<void> {
     )}\n`,
   );
   writeFileSync(recordFile, `${JSON.stringify(sanitizeRecord(record), null, 2)}\n`);
-  console.log(`[run-case] ${scenarioId} ${phase} ${matrix.id} ${record.verdict.status}`);
+  console.log(`[run-case] ${scenarioId} ${treatment} ${matrix.id} ${record.verdict.status}`);
   console.log(`[run-case] evidence=${recordFile}`);
-  console.log(`[run-case] reviews=${reviewSnapshotDirectory(phase, matrix.id)}`);
+  console.log(`[run-case] reviews=${reviewSnapshotDirectory(treatment, matrix.id)}`);
   process.exitCode =
     record.verdict.status === "verified"
       ? 0

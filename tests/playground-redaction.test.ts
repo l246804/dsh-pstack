@@ -6,10 +6,11 @@ import { residualKinds, sanitizeRecord } from "../playground/scripts/lib/redacti
 function record(): RunRecord {
   return {
     scenarioId: "redaction-test",
-    phase: "raw",
+    treatment: "native",
     environment: {
       worker: 0,
       dshVersion: "test",
+      pstackVersion: "test-pstack",
       adaptedVersion: null,
       matrix: { id: "base", description: "测试环境", kind: "base", enabledPluginPackages: [] },
       upstreamRevision: "upstream",
@@ -50,7 +51,7 @@ function record(): RunRecord {
     },
     semanticReview: { status: "pending", reason: "pending" },
     mechanicalFailures: [],
-    verdict: { phase: "raw", status: "unobserved", reason: "test" },
+    verdict: { treatment: "native", status: "unobserved", reason: "test" },
     capturedAt: "2026-11-13T00:00:00.000Z",
   };
 }

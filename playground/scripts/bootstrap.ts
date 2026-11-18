@@ -16,7 +16,7 @@ import {
   workerPaths,
   type WorkerPaths,
 } from "./lib/worker.ts";
-import type { Phase } from "../types.ts";
+import type { Treatment } from "../types.ts";
 
 const { continue: CONTINUE_LABEL, previewNotice: PREVIEW_NOTICE } = UI_LABELS;
 
@@ -28,10 +28,11 @@ function argValue(flag: string): string | undefined {
 function selectWorkers(): WorkerPaths[] {
   const environment = argValue("--environment");
   if (environment === undefined) throw new Error("--environment is required");
-  const phase = argValue("--phase") as Phase;
-  if (phase !== "raw" && phase !== "adapted") throw new Error("--phase must be raw or adapted");
+  const treatment = argValue("--treatment") as Treatment;
+  if (treatment !== "native" && treatment !== "adapted")
+    throw new Error("--treatment must be native or adapted");
   if (process.argv.includes("--all")) {
-    const workers = listWorkers({ environmentId: environment, phase });
+    const workers = listWorkers({ environmentId: environment, treatment });
     if (workers.length === 0)
       throw new Error("no prepared workers found; run playground:prepare first");
     return workers;
@@ -41,10 +42,10 @@ function selectWorkers(): WorkerPaths[] {
     const index = Number(workerFlag);
     if (!Number.isInteger(index) || index < 0)
       throw new Error("--worker must be a non-negative integer");
-    return [workerPaths(index, environment, phase)];
+    return [workerPaths(index, environment, treatment)];
   }
-  const workers = listWorkers({ environmentId: environment, phase });
-  return workers.length > 0 ? [workers[0] as WorkerPaths] : [workerPaths(0, environment, phase)];
+  const workers = listWorkers({ environmentId: environment, treatment });
+  return workers.length > 0 ? [workers[0] as WorkerPaths] : [workerPaths(0, environment, treatment)];
 }
 
 function validateWorker(paths: WorkerPaths): string[] {
@@ -53,7 +54,7 @@ function validateWorker(paths: WorkerPaths): string[] {
   const { defaultTitle } = readWorkspaceStore(paths);
 
   const session = createBrowserSession({
-    session: `${paths.phase}-${paths.environmentId}-w${paths.index}`,
+    session: `${paths.treatment}-${paths.environmentId}-w${paths.index}`,
     browserDir: paths.browserDir,
   });
   const failures: string[] = [];
@@ -151,9 +152,9 @@ async function main(): Promise<void> {
   const workers = selectWorkers();
   const environment = argValue("--environment");
   if (environment === undefined) throw new Error("--environment is required");
-  const phase = argValue("--phase") as Phase;
-  if (hasBootstrapReady(environment, phase)) {
-    console.log(`[bootstrap] environment ${environment}/${phase} already ready`);
+  const treatment = argValue("--treatment") as Treatment;
+  if (hasBootstrapReady(environment, treatment)) {
+    console.log(`[bootstrap] environment ${environment}/${treatment} already ready`);
     return;
   }
   let failed = 0;
@@ -167,7 +168,7 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes("--all")) {
     writeFileSync(
-      bootstrapReadyFile(environment, phase),
+      bootstrapReadyFile(environment, treatment),
       `${JSON.stringify({ checkedAt: new Date().toISOString(), workers: workers.map((worker) => worker.index) }, null, 2)}\n`,
     );
   }

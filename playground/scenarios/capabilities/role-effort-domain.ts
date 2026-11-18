@@ -3,7 +3,7 @@ import type { BehaviorScenario } from "../../types.ts";
 const scenario: BehaviorScenario = {
   id: "capability-role-effort-domain",
   capability: "role-effort-domain",
-  phases: ["adapted"],
+  treatments: ["adapted"],
   turns: [
     {
       prompt:

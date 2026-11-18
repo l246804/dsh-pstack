@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { Phase, RunEnvironment, RunRecord } from "../../types.ts";
+import type { RunEnvironment, RunRecord, Treatment } from "../../types.ts";
 import { isRunRecord, latestRecords, recordFileName } from "./evidence.ts";
 import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "./evidence-files.ts";
 import { sanitizeRecord } from "./redaction.ts";
@@ -21,7 +21,7 @@ export const STAGING_DIRECTORY = join(REVIEWS_DIRECTORY, ".staging");
 
 export interface BatchMetadata {
   batchId: string;
-  phase: Phase;
+  treatment: Treatment;
   environment: string;
   mode: "full" | "incremental";
   scope: string[];
@@ -30,25 +30,25 @@ export interface BatchMetadata {
 }
 
 export function reviewSnapshotDirectory(
-  phase: Phase,
+  treatment: Treatment,
   environment: string,
   root = REVIEWS_DIRECTORY,
 ): string {
-  return join(root, `${phase}-${environment}`);
+  return join(root, `${treatment}-${environment}`);
 }
 
-export function batchMetadataFile(phase: Phase, environment: string): string {
-  return join(workersDirectory(), phase, environment, "current-batch.json");
+export function batchMetadataFile(treatment: Treatment, environment: string): string {
+  return join(workersDirectory(), treatment, environment, "current-batch.json");
 }
 
-export function readBatchMetadata(phase: Phase, environment: string): BatchMetadata | null {
-  const file = batchMetadataFile(phase, environment);
+export function readBatchMetadata(treatment: Treatment, environment: string): BatchMetadata | null {
+  const file = batchMetadataFile(treatment, environment);
   if (!existsSync(file)) return null;
   try {
     const parsed = JSON.parse(readFileSync(file, "utf8")) as Partial<BatchMetadata>;
     if (
       typeof parsed.batchId !== "string" ||
-      parsed.phase !== phase ||
+      parsed.treatment !== treatment ||
       parsed.environment !== environment ||
       (parsed.mode !== "full" && parsed.mode !== "incremental") ||
       !Array.isArray(parsed.scope)
@@ -57,7 +57,7 @@ export function readBatchMetadata(phase: Phase, environment: string): BatchMetad
     }
     return {
       batchId: parsed.batchId,
-      phase: parsed.phase,
+      treatment: parsed.treatment,
       environment: parsed.environment,
       mode: parsed.mode,
       scope: parsed.scope.filter((entry): entry is string => typeof entry === "string"),
@@ -74,7 +74,7 @@ export function readBatchMetadata(phase: Phase, environment: string): BatchMetad
 }
 
 export function writeBatchMetadata(metadata: BatchMetadata): void {
-  const file = batchMetadataFile(metadata.phase, metadata.environment);
+  const file = batchMetadataFile(metadata.treatment, metadata.environment);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(metadata, null, 2)}\n`);
 }
@@ -103,11 +103,15 @@ interface RecordSource {
 }
 
 function sourceFor(record: RunRecord): RecordSource {
-  const paths = workerPaths(record.environment.worker, record.environment.matrix.id, record.phase);
+  const paths = workerPaths(
+    record.environment.worker,
+    record.environment.matrix.id,
+    record.treatment,
+  );
   const stamp = record.capturedAt.replace(/[:.]/g, "-");
   const sourceFile = join(
     paths.evidenceDir,
-    recordFileName(record.scenarioId, record.phase, record.environment.matrix.id, stamp).replace(
+    recordFileName(record.scenarioId, record.treatment, record.environment.matrix.id, stamp).replace(
       /\.json$/,
       EVIDENCE_FILES.sourceSuffix,
     ),
@@ -132,21 +136,21 @@ function copyRunEvidence(record: RunRecord, directory: string): void {
 }
 
 function scenarioDirectory(
-  phase: Phase,
+  treatment: Treatment,
   environment: string,
   scenarioId: string,
   root = REVIEWS_DIRECTORY,
 ): string {
   return join(
-    reviewSnapshotDirectory(phase, environment, root),
+    reviewSnapshotDirectory(treatment, environment, root),
     "scenarios",
     scenarioId,
-    `${phase}-${environment}`,
+    `${treatment}-${environment}`,
   );
 }
 
 export interface ReviewSnapshotManifest {
-  phase: Phase;
+  treatment: Treatment;
   environment: string;
   updatedAt: string;
   lastBatchId: string | null;
@@ -162,7 +166,7 @@ export interface ReviewSnapshotManifest {
 }
 
 export function writeReviewSnapshot(
-  phase: Phase,
+  treatment: Treatment,
   environment: string,
   batch: BatchMetadata | null,
   allRecords: RunRecord[],
@@ -170,10 +174,10 @@ export function writeReviewSnapshot(
 ): ReviewSnapshotManifest {
   const latest = latestRecords(allRecords);
   const current = latest.filter(
-    (record) => record.phase === phase && record.environment.matrix.id === environment,
+    (record) => record.treatment === treatment && record.environment.matrix.id === environment,
   );
   const currentIds = new Set(current.map((record) => record.scenarioId));
-  const snapshot = reviewSnapshotDirectory(phase, environment, reviewsDirectory);
+  const snapshot = reviewSnapshotDirectory(treatment, environment, reviewsDirectory);
   const scenarios = join(snapshot, EVIDENCE_DIRECTORIES.scenarios);
 
   if (existsSync(scenarios)) {
@@ -185,13 +189,13 @@ export function writeReviewSnapshot(
   }
 
   for (const record of current) {
-    const directory = scenarioDirectory(phase, environment, record.scenarioId, reviewsDirectory);
+    const directory = scenarioDirectory(treatment, environment, record.scenarioId, reviewsDirectory);
     rmSync(directory, { recursive: true, force: true });
     copyRunEvidence(record, directory);
   }
 
   const manifest: ReviewSnapshotManifest = {
-    phase,
+    treatment,
     environment,
     updatedAt: new Date().toISOString(),
     lastBatchId: batch?.batchId ?? null,
@@ -212,7 +216,7 @@ export function writeReviewSnapshot(
     writeFileSync(
       indexPath,
       [
-        `# ${phase}/${environment} 证据分析`,
+        `# ${treatment}/${environment} 证据分析`,
         "",
         "> 当前快照由 collect 生成；问题问答和 dsh.md 适配审查由分析会话填写。",
         "",
@@ -222,11 +226,11 @@ export function writeReviewSnapshot(
   return manifest;
 }
 
-export function collectReviewSnapshot(phase: Phase, environment: string): ReviewSnapshotManifest {
+export function collectReviewSnapshot(treatment: Treatment, environment: string): ReviewSnapshotManifest {
   return writeReviewSnapshot(
-    phase,
+    treatment,
     environment,
-    readBatchMetadata(phase, environment),
+    readBatchMetadata(treatment, environment),
     readRecords(workersDirectory()),
   );
 }

@@ -36,8 +36,8 @@ import {
 } from "../playground/scripts/lib/run-metadata.ts";
 import {
   workerPaths,
-  phaseWorkersDirectory,
-  resetPhase,
+  treatmentWorkersDirectory,
+  resetTreatment,
   type WorkerPaths,
 } from "../playground/scripts/lib/worker.ts";
 
@@ -54,7 +54,7 @@ const testScenario: BehaviorScenario = {
   uiObservations: [],
 };
 
-function record(phase: "raw" | "adapted", environmentId: string): RunRecord {
+function record(treatment: "native" | "adapted", environmentId: string): RunRecord {
   const scenario = testScenario;
   const target = { provider: "provider-a", model: "model-a", effort: "low" };
   const config = {
@@ -69,11 +69,12 @@ function record(phase: "raw" | "adapted", environmentId: string): RunRecord {
   };
   return {
     scenarioId: scenario.id,
-    phase,
+    treatment,
     environment: {
       worker: 0,
       dshVersion: "test-dsh",
-      adaptedVersion: phase === "raw" ? null : "test-adapted",
+      pstackVersion: "test-pstack",
+      adaptedVersion: treatment === "native" ? null : "test-adapted",
       matrix,
       upstreamRevision: "test-upstream",
       configHash: publicConfigHash(config, matrix),
@@ -83,7 +84,7 @@ function record(phase: "raw" | "adapted", environmentId: string): RunRecord {
       sessionId: "session",
       sessionFile: "session-file",
       workspacePath: null,
-      agentPreset: phase === "raw" ? "standard" : "poteto-mode",
+      agentPreset: treatment === "native" ? "standard" : "poteto-mode",
       skillLoads: ["poteto-help"],
       toolCalls: [],
       turnEndReason: "completed",
@@ -95,20 +96,22 @@ function record(phase: "raw" | "adapted", environmentId: string): RunRecord {
     artifacts: { recordFile: "record.json", observed: [] },
     semanticReview: pendingSemanticReview(),
     mechanicalFailures: [],
-    verdict: verdictFor({ phase, failures: [], semanticReview: pendingSemanticReview() }),
+    verdict: verdictFor({ treatment, failures: [], semanticReview: pendingSemanticReview() }),
     capturedAt: "2026-11-11T00:00:00.000Z",
   };
 }
 
 describe("execution contracts", () => {
-  it("keeps raw free of every plugin package and makes adapted additions explicit", () => {
-    const raw = profileManifest("raw", [], "0.2.2-rc.2");
-    expect(raw.dependencies).toEqual({});
-    expect(raw.dsh).toEqual({
+  it("keeps native free of every plugin package and makes adapted additions explicit", () => {
+    const native = profileManifest("native", [], "0.2.2-rc.2");
+    expect(native.dependencies).toEqual({});
+    expect(native.dsh).toEqual({
       profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] },
     });
-    expect(JSON.stringify(raw)).not.toContain("dsh-pstack");
-    expect(() => profileManifest("raw", ["dsh-pstack"], "0.2.2-rc.2")).toThrow(/must not install/);
+    expect(JSON.stringify(native)).not.toContain("dsh-pstack");
+    expect(() => profileManifest("native", ["dsh-pstack"], "0.2.2-rc.2")).toThrow(
+      /must not install/,
+    );
     const adapted = profileManifest(
       "adapted",
       ["dsh-pstack", "@deepseek-ai/official-plugin"],
@@ -130,40 +133,40 @@ describe("execution contracts", () => {
     });
   });
 
-  it("keys latest evidence by scenario, phase, and environment", () => {
-    const raw = record("raw", "base");
+  it("keys latest evidence by scenario, treatment, and environment", () => {
+    const native = record("native", "base");
     const adapted = record("adapted", "base");
-    const otherEnvironment = record("raw", "other");
-    expect(latestRecords([raw, adapted, otherEnvironment])).toHaveLength(3);
+    const otherEnvironment = record("native", "other");
+    expect(latestRecords([native, adapted, otherEnvironment])).toHaveLength(3);
     expect(workerPaths(0, "base", "adapted").home).not.toBe(
       workerPaths(0, "other", "adapted").home,
     );
     expect(workerPaths(0, "base", "adapted").browserDir).not.toBe(
       workerPaths(0, "other", "adapted").browserDir,
     );
-    // Phase isolates the same environment and worker index into its own evidence tree.
-    expect(workerPaths(0, "base", "raw").home).not.toBe(workerPaths(0, "base", "adapted").home);
+    // Treatment isolates the same environment and worker index into its own evidence tree.
+    expect(workerPaths(0, "base", "native").home).not.toBe(workerPaths(0, "base", "adapted").home);
   });
 
   it("skips worker state JSON that sits beside evidence instead of treating it as a RunRecord", () => {
-    const valid = record("raw", "base");
+    const valid = record("native", "base");
     expect(isRunRecord(valid)).toBe(true);
     const workspaceStore = { unit: { name: "workspace", version: 2 }, global: {}, tables: {} };
     const profileManifestFile = {
-      name: "dsh-playground-raw",
+      name: "dsh-playground-native",
       dsh: { profile: { bundles: ["@deepseek-ai/dsh-base"] } },
     };
     expect(isRunRecord(workspaceStore)).toBe(false);
     expect(isRunRecord(profileManifestFile)).toBe(false);
   });
 
-  it("does not pass an unreviewed semantic effect in either phase", () => {
-    expect(record("raw", "base").verdict.status).toBe("unobserved");
+  it("does not pass an unreviewed semantic effect in either treatment", () => {
+    expect(record("native", "base").verdict.status).toBe("unobserved");
     expect(record("adapted", "base").verdict.status).toBe("inconclusive");
   });
 
   it("compares actual routes, natural language, upstream and public config hashes", () => {
-    const raw = record("raw", "base");
+    const raw = record("native", "base");
     const adapted = record("adapted", "base");
     expect(assertSameEntry(raw, adapted, testScenario)).toEqual([]);
     expect(JSON.stringify(raw)).not.toContain("secret-value");
@@ -465,7 +468,7 @@ describe("mechanical failures", () => {
     );
     // The pending verdict stays unobserved while the list is already on the record.
     expect(
-      verdictFor({ phase: "raw", failures, semanticReview: pendingSemanticReview() }).status,
+      verdictFor({ treatment: "native", failures, semanticReview: pendingSemanticReview() }).status,
     ).toBe("unobserved");
   });
 });
@@ -505,7 +508,7 @@ function tempWorkerPaths(index: number): WorkerPaths {
   return {
     index,
     environmentId: "base",
-    phase: "adapted",
+    treatment: "adapted",
     root,
     isolatedRoot,
     home: join(root, "home"),
@@ -516,7 +519,7 @@ function tempWorkerPaths(index: number): WorkerPaths {
     urlFile: join(root, "web-url.txt"),
     pidFile: join(root, "web.pid"),
     logFile: join(root, "web.log"),
-    phaseFile: join(root, "phase.txt"),
+    treatmentFile: join(root, "treatment.txt"),
   };
 }
 
@@ -548,9 +551,9 @@ describe("read isolation from the repository tree", () => {
     for (const dir of [paths.home, paths.browserDir, paths.evidenceDir]) {
       expect(dir.startsWith(`${REPOSITORY_ROOT}/playground/.workers/`)).toBe(true);
     }
-    // The isolated root layers per phase, per environment, and per worker.
+    // The isolated root layers per treatment, per environment, and per worker.
     expect(workerPaths(1, "other", "adapted").workspaceRoot).not.toBe(paths.workspaceRoot);
-    expect(workerPaths(1, "base", "raw").workspaceRoot).not.toBe(paths.workspaceRoot);
+    expect(workerPaths(1, "base", "native").workspaceRoot).not.toBe(paths.workspaceRoot);
     expect(workerPaths(2, "base", "adapted").isolatedRoot).not.toBe(paths.isolatedRoot);
   });
 
@@ -583,7 +586,7 @@ describe("read isolation from the repository tree", () => {
     expect(JSON.stringify(entries)).not.toContain(REPOSITORY_ROOT);
     expect(() => rawProfileEntries([], join(temporary, "absent"))).toThrow(/raw mount is missing/);
 
-    writeHomePatch(paths, isolationPlan, "raw");
+    writeHomePatch(paths, isolationPlan, "native");
     const patch = readFileSync(join(paths.home, "cordis.patch.yml"), "utf8");
     expect(patch).not.toContain("system-prompt");
     expect(patch).not.toContain(join(paths.rawMount, "pstack/skills/poteto-mode/SKILL.md"));
@@ -616,38 +619,38 @@ describe("read isolation from the repository tree", () => {
   });
 });
 
-describe("phase isolation of worker evidence", () => {
-  it("separates one environment and worker index by phase", () => {
-    const raw = workerPaths(0, "base", "raw");
+describe("treatment isolation of worker evidence", () => {
+  it("separates one environment and worker index by treatment", () => {
+    const native = workerPaths(0, "base", "native");
     const adapted = workerPaths(0, "base", "adapted");
-    expect(raw.root).not.toBe(adapted.root);
-    expect(raw.evidenceDir).not.toBe(adapted.evidenceDir);
-    expect(raw.isolatedRoot).not.toBe(adapted.isolatedRoot);
-    expect(raw.root.endsWith(join("raw", "base", "w0"))).toBe(true);
+    expect(native.root).not.toBe(adapted.root);
+    expect(native.evidenceDir).not.toBe(adapted.evidenceDir);
+    expect(native.isolatedRoot).not.toBe(adapted.isolatedRoot);
+    expect(native.root.endsWith(join("native", "base", "w0"))).toBe(true);
     expect(adapted.root.endsWith(join("adapted", "base", "w0"))).toBe(true);
-    expect(raw.phase).toBe("raw");
-    expect(adapted.phase).toBe("adapted");
+    expect(native.treatment).toBe("native");
+    expect(adapted.treatment).toBe("adapted");
   });
 
-  it("resets only one phase and leaves the other phase's evidence on disk", () => {
-    const workersRoot = join(temporary, "phase-workers");
-    const isolatedRoot = join(temporary, "phase-isolated");
+  it("resets only one treatment and leaves the other treatment's evidence on disk", () => {
+    const workersRoot = join(temporary, "treatment-workers");
+    const isolatedRoot = join(temporary, "treatment-isolated");
     process.env.PLAYGROUND_WORKERS_DIR = workersRoot;
     process.env.PLAYGROUND_WORKSPACE_ROOT = isolatedRoot;
     try {
-      const raw = workerPaths(0, "base", "raw");
+      const native = workerPaths(0, "base", "native");
       const adapted = workerPaths(0, "base", "adapted");
-      const rawRecord = join(raw.evidenceDir, "raw-record.json");
-      mkdirSync(raw.evidenceDir, { recursive: true });
-      writeFileSync(rawRecord, "{}");
+      const nativeRecord = join(native.evidenceDir, "native-record.json");
+      mkdirSync(native.evidenceDir, { recursive: true });
+      writeFileSync(nativeRecord, "{}");
       mkdirSync(adapted.evidenceDir, { recursive: true });
       writeFileSync(join(adapted.evidenceDir, "adapted-record.json"), "{}");
 
-      resetPhase("base", "adapted");
+      resetTreatment("base", "adapted");
 
-      expect(existsSync(rawRecord)).toBe(true);
+      expect(existsSync(nativeRecord)).toBe(true);
       expect(existsSync(adapted.evidenceDir)).toBe(false);
-      expect(existsSync(phaseWorkersDirectory("base", "raw"))).toBe(true);
+      expect(existsSync(treatmentWorkersDirectory("base", "native"))).toBe(true);
     } finally {
       delete process.env.PLAYGROUND_WORKERS_DIR;
       delete process.env.PLAYGROUND_WORKSPACE_ROOT;

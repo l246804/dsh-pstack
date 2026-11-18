@@ -1,8 +1,8 @@
-export const PHASES = ["raw", "adapted"] as const;
-export type Phase = (typeof PHASES)[number];
+export const TREATMENTS = ["native", "adapted"] as const;
+export type Treatment = (typeof TREATMENTS)[number];
 
-export function isPhase(value: unknown): value is Phase {
-  return typeof value === "string" && PHASES.some((phase) => phase === value);
+export function isTreatment(value: unknown): value is Treatment {
+  return typeof value === "string" && TREATMENTS.some((treatment) => treatment === value);
 }
 
 export interface TestTarget {
@@ -59,8 +59,8 @@ export interface BehaviorScenario {
   assertions: Assertion[];
   rubric: SemanticRubric;
   uiObservations: UiObservation[];
-  /** Phases this probe is allowed to run in; omitted means both raw and adapted. */
-  phases?: readonly Phase[];
+  /** Treatments this probe is allowed to run in; omitted means both native and adapted. */
+  treatments?: readonly Treatment[];
   environmentId?: string;
   answers?: Array<{ match: string; selected?: string[]; custom?: string }>;
   /** Capability id this probe covers. */
@@ -84,6 +84,8 @@ export interface EnvironmentMatrix {
 export interface RunEnvironment {
   worker: number;
   dshVersion: string;
+  /** The released pstack version pinned in port/baseline.json at capture time. */
+  pstackVersion: string;
   adaptedVersion: string | null;
   matrix: EnvironmentMatrix;
   upstreamRevision: string;
@@ -165,19 +167,19 @@ export const VERDICT_STATUSES = [
 ] as const;
 
 export type Verdict =
-  | { phase: "raw"; status: "observed"; gaps: string[] }
-  | { phase: "raw"; status: "gap"; gaps: string[] }
-  | { phase: "raw"; status: "blocked"; reason: string }
-  | { phase: "raw"; status: "unobserved"; reason: string }
-  | { phase: "adapted"; status: "verified" }
-  | { phase: "adapted"; status: "not-verified"; failures: string[] }
+  | { treatment: "native"; status: "observed"; gaps: string[] }
+  | { treatment: "native"; status: "gap"; gaps: string[] }
+  | { treatment: "native"; status: "blocked"; reason: string }
+  | { treatment: "native"; status: "unobserved"; reason: string }
+  | { treatment: "adapted"; status: "verified" }
+  | { treatment: "adapted"; status: "not-verified"; failures: string[] }
   /** A conflict regression whose expected startup conflict reproduced: blocked by design. */
-  | { phase: "adapted"; status: "blocked"; reason: string }
-  | { phase: "adapted"; status: "inconclusive"; reason: string };
+  | { treatment: "adapted"; status: "blocked"; reason: string }
+  | { treatment: "adapted"; status: "inconclusive"; reason: string };
 
 export interface RunRecord {
   scenarioId: string;
-  phase: Phase;
+  treatment: Treatment;
   environment: RunEnvironment;
   target: TestTarget | null;
   session: SessionFacts | null;

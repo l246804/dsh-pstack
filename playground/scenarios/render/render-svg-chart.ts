@@ -3,7 +3,7 @@ import base from "../capabilities/render-svg-chart.ts";
 const scenario = {
   ...base,
   id: "capability-render-svg-chart-render",
-  phases: ["raw"],
+  treatments: ["native"],
 };
 
 export default scenario;

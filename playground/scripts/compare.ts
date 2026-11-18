@@ -48,7 +48,7 @@ function byScenarioId(
  * it never writes a record.
  */
 export function compareSnapshot(input: CompareSnapshotInput): CompareResult {
-  const rawRecords = byScenarioId(listSnapshotRecords("raw", input.environment, input.root));
+  const nativeRecords = byScenarioId(listSnapshotRecords("native", input.environment, input.root));
   const adaptedRecords = byScenarioId(
     listSnapshotRecords("adapted", input.environment, input.root),
   );
@@ -56,18 +56,18 @@ export function compareSnapshot(input: CompareSnapshotInput): CompareResult {
   const ids =
     input.scenario !== undefined
       ? [input.scenario]
-      : [...new Set([...rawRecords.keys(), ...adaptedRecords.keys()])].sort();
+      : [...new Set([...nativeRecords.keys(), ...adaptedRecords.keys()])].sort();
 
   const compared: string[] = [];
   const failures: CompareFailure[] = [];
   for (const id of ids) {
-    const raw = rawRecords.get(id);
+    const native = nativeRecords.get(id);
     const adapted = adaptedRecords.get(id);
     const problems: string[] = [];
-    if (!raw) problems.push(`${id}: missing on raw`);
+    if (!native) problems.push(`${id}: missing on native`);
     if (!adapted) problems.push(`${id}: missing on adapted`);
-    if (raw && adapted) {
-      problems.push(...compareOne(raw, adapted, input.loadScenario(id)).map((p) => `${id}: ${p}`));
+    if (native && adapted) {
+      problems.push(...compareOne(native, adapted, input.loadScenario(id)).map((p) => `${id}: ${p}`));
       compared.push(id);
     }
     if (problems.length > 0) failures.push({ scenarioId: id, problems });

@@ -6,12 +6,12 @@ import { SKILL_TOOL_NAMES } from "../../types.ts";
 import type {
   Assertion,
   BehaviorScenario,
-  Phase,
   RunRecord,
   SemanticReview,
   SessionFacts,
   TestTarget,
   ToolCallEvidence,
+  Treatment,
   Verdict,
 } from "../../types.ts";
 
@@ -353,31 +353,31 @@ export function pendingSemanticReview(): SemanticReview {
 }
 
 export function verdictFor(input: {
-  phase: Phase;
+  treatment: Treatment;
   failures: string[];
   semanticReview: SemanticReview;
   blockedReason?: string;
 }): Verdict {
   if (input.blockedReason) {
-    return input.phase === "raw"
-      ? { phase: "raw", status: "blocked", reason: input.blockedReason }
-      : { phase: "adapted", status: "inconclusive", reason: input.blockedReason };
+    return input.treatment === "native"
+      ? { treatment: "native", status: "blocked", reason: input.blockedReason }
+      : { treatment: "adapted", status: "inconclusive", reason: input.blockedReason };
   }
   if (input.semanticReview.status === "pending" || input.semanticReview.status === "inconclusive") {
     const reason = input.semanticReview.reason;
-    return input.phase === "raw"
-      ? { phase: "raw", status: "unobserved", reason }
-      : { phase: "adapted", status: "inconclusive", reason };
+    return input.treatment === "native"
+      ? { treatment: "native", status: "unobserved", reason }
+      : { treatment: "adapted", status: "inconclusive", reason };
   }
-  if (input.phase === "raw") {
+  if (input.treatment === "native") {
     return input.failures.length > 0 || input.semanticReview.status === "gap"
-      ? { phase: "raw", status: "gap", gaps: [...input.failures, input.semanticReview.reason] }
-      : { phase: "raw", status: "observed", gaps: [] };
+      ? { treatment: "native", status: "gap", gaps: [...input.failures, input.semanticReview.reason] }
+      : { treatment: "native", status: "observed", gaps: [] };
   }
   return input.failures.length === 0 && input.semanticReview.status === "supported"
-    ? { phase: "adapted", status: "verified" }
+    ? { treatment: "adapted", status: "verified" }
     : {
-        phase: "adapted",
+        treatment: "adapted",
         status: "not-verified",
         failures: [...input.failures, input.semanticReview.reason],
       };
@@ -396,7 +396,7 @@ export function isRunRecord(value: unknown): value is RunRecord {
   const candidate = value as Partial<RunRecord> & { environment?: { matrix?: { id?: unknown } } };
   return (
     typeof candidate.scenarioId === "string" &&
-    (candidate.phase === "raw" || candidate.phase === "adapted") &&
+    (candidate.treatment === "native" || candidate.treatment === "adapted") &&
     typeof candidate.environment === "object" &&
     candidate.environment !== null &&
     typeof candidate.environment.matrix?.id === "string" &&
@@ -407,7 +407,7 @@ export function isRunRecord(value: unknown): value is RunRecord {
 export function latestRecords(records: RunRecord[]): RunRecord[] {
   const latest = new Map<string, RunRecord>();
   for (const record of records) {
-    const key = `${record.scenarioId}\0${record.phase}\0${record.environment.matrix.id}`;
+    const key = `${record.scenarioId}\0${record.treatment}\0${record.environment.matrix.id}`;
     const current = latest.get(key);
     if (!current || record.capturedAt > current.capturedAt) latest.set(key, record);
   }
@@ -518,13 +518,13 @@ export function mechanicalFailures(input: {
 
 export function recordFileName(
   scenarioId: string,
-  phase: Phase,
+  treatment: Treatment,
   environmentId: string,
   stamp: string,
 ): string {
-  return `${scenarioId}-${phase}-${environmentId}-${stamp}.json`;
+  return `${scenarioId}-${treatment}-${environmentId}-${stamp}.json`;
 }
 
 export function archivedRecordPath(root: string, record: RunRecord): string {
-  return join(root, record.environment.matrix.id, record.phase, `${record.scenarioId}.json`);
+  return join(root, record.environment.matrix.id, record.treatment, `${record.scenarioId}.json`);
 }

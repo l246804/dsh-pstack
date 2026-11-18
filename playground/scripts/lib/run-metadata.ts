@@ -5,12 +5,13 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { PlaygroundConfig, RunEnvironment } from "../../types.ts";
+import type { PlaygroundConfig, RunEnvironment, Treatment } from "../../types.ts";
 import { environments } from "../../scenarios/environments.ts";
 
 export const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 export const PLAYGROUND_DIRECTORY = join(REPOSITORY_ROOT, "playground");
 export const DEFAULT_CONFIG_FILE = join(PLAYGROUND_DIRECTORY, "config.json");
+export const PORT_BASELINE_FILE = join(REPOSITORY_ROOT, "port", "baseline.json");
 export const RAW_ROOT = join(PLAYGROUND_DIRECTORY, "raw");
 export const RAW_TREE = join(RAW_ROOT, "pstack");
 export const RAW_SKILLS = join(RAW_TREE, "skills");
@@ -79,11 +80,25 @@ export function dshVersion(): string {
   return result.stdout.trim();
 }
 
-export function adaptedVersion(paths: { home: string }, phase: "raw" | "adapted"): string | null {
-  if (phase === "raw") return null;
+export function adaptedVersion(paths: { home: string }, treatment: Treatment): string | null {
+  if (treatment === "native") return null;
   return versionFromPackage(
     join(paths.home, "profiles/playground/node_modules/dsh-pstack/package.json"),
   );
+}
+
+/**
+ * The released pstack version pinned in port/baseline.json. It is run identity and an
+ * invalidation axis, recorded on every RunEnvironment at capture time.
+ */
+export function pstackVersion(): string {
+  if (!existsSync(PORT_BASELINE_FILE)) {
+    throw new Error(`cannot read the pstack baseline: ${PORT_BASELINE_FILE}`);
+  }
+  const version = (JSON.parse(readFileSync(PORT_BASELINE_FILE, "utf8")) as { pstackVersion?: string })
+    .pstackVersion;
+  if (!version) throw new Error(`pstack baseline has no pstackVersion: ${PORT_BASELINE_FILE}`);
+  return version;
 }
 
 export function upstreamRevision(): string {
@@ -102,13 +117,14 @@ export function createEnvironment(input: {
   worker: number;
   matrix: RunEnvironment["matrix"];
   config: PlaygroundConfig;
-  phase: "raw" | "adapted";
+  treatment: Treatment;
   paths: { home: string };
 }): RunEnvironment {
   return {
     worker: input.worker,
     dshVersion: dshVersion(),
-    adaptedVersion: adaptedVersion(input.paths, input.phase),
+    pstackVersion: pstackVersion(),
+    adaptedVersion: adaptedVersion(input.paths, input.treatment),
     matrix: input.matrix,
     upstreamRevision: upstreamRevision(),
     configHash: publicConfigHash(input.config, input.matrix),

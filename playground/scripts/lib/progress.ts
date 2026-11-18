@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { Phase, Verdict } from "../../types.ts";
+import type { Treatment, Verdict } from "../../types.ts";
 import { workersDirectory } from "./run-metadata.ts";
 
 export interface ProgressState {
-  phase: Phase;
+  treatment: Treatment;
   environmentId: string;
   round: number;
   total: number;
@@ -19,8 +19,8 @@ export interface ProgressState {
   workers: number;
 }
 
-export function progressFilePath(environmentId: string, phase: Phase): string {
-  return join(workersDirectory(), phase, environmentId, "progress.json");
+export function progressFilePath(environmentId: string, treatment: Treatment): string {
+  return join(workersDirectory(), treatment, environmentId, "progress.json");
 }
 
 /** Local-time `YYYY-MM-DD HH:mm:ss`, hand-padded so the output is locale-independent. */

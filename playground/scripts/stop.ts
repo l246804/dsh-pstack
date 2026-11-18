@@ -2,8 +2,8 @@ import { createBrowserSession } from "./lib/browser.ts";
 import { stopWeb } from "./lib/env.ts";
 import { environmentMatrix } from "./lib/run-metadata.ts";
 import { clearBootstrapReady, listWorkers } from "./lib/worker.ts";
-import { isPhase } from "../types.ts";
-import type { Phase } from "../types.ts";
+import { isTreatment } from "../types.ts";
+import type { Treatment } from "../types.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
@@ -12,23 +12,26 @@ function argValue(flag: string): string | undefined {
 
 const environment = argValue("--environment");
 if (environment) environmentMatrix(environment);
-const phase = argValue("--phase") as Phase | undefined;
-if (phase !== undefined && !isPhase(phase)) throw new Error("--phase must be raw or adapted");
+const treatment = argValue("--treatment") as Treatment | undefined;
+if (treatment !== undefined && !isTreatment(treatment))
+  throw new Error("--treatment must be native or adapted");
 for (const paths of listWorkers({
   ...(environment === undefined ? {} : { environmentId: environment }),
-  ...(phase === undefined ? {} : { phase }),
+  ...(treatment === undefined ? {} : { treatment }),
 })) {
   const result = stopWeb(paths);
-  clearBootstrapReady(paths.environmentId, paths.phase);
+  clearBootstrapReady(paths.environmentId, paths.treatment);
   console.log(
-    `[stop] ${paths.phase}/${paths.environmentId}/w${paths.index} stopped=${result.stopped}`,
+    `[stop] ${paths.treatment}/${paths.environmentId}/w${paths.index} stopped=${result.stopped}`,
   );
   try {
     createBrowserSession({
-      session: `${paths.phase}-${paths.environmentId}-w${paths.index}`,
+      session: `${paths.treatment}-${paths.environmentId}-w${paths.index}`,
       browserDir: paths.browserDir,
     }).raw(["close", "--all"]);
   } catch {
-    console.log(`[stop] ${paths.phase}/${paths.environmentId}/w${paths.index} no browser to close`);
+    console.log(
+      `[stop] ${paths.treatment}/${paths.environmentId}/w${paths.index} no browser to close`,
+    );
   }
 }

@@ -3,7 +3,7 @@ import type { BehaviorScenario } from "../../types.ts";
 const scenario: BehaviorScenario = {
   id: "capability-render-svg-chart",
   capability: "render-svg-chart",
-  phases: ["raw"],
+  treatments: ["native"],
   turns: [
     {
       prompt:

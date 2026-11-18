@@ -3,7 +3,7 @@ import type { BehaviorScenario } from "../../types.ts";
 const scenario: BehaviorScenario = {
   id: "capability-render-ui",
   capability: "render-ui",
-  phases: ["raw"],
+  treatments: ["native"],
   turns: [
     {
       prompt:

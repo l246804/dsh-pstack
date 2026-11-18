@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-import { isPhase } from "../types.ts";
-import type { Phase } from "../types.ts";
+import { isTreatment } from "../types.ts";
+import type { Treatment } from "../types.ts";
 import { environmentMatrix, workersDirectory } from "./lib/run-metadata.ts";
 import {
   buildProfile,
@@ -27,7 +27,7 @@ import { computeWorkers } from "./lib/capacity.ts";
 import {
   clearBootstrapReady,
   listWorkers,
-  resetPhase,
+  resetTreatment,
   workerPaths,
   type WorkerPaths,
 } from "./lib/worker.ts";
@@ -37,8 +37,8 @@ function argValue(flag: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-function readPhase(paths: WorkerPaths): string {
-  return existsSync(paths.phaseFile) ? readFileSync(paths.phaseFile, "utf8").trim() : "";
+function readTreatment(paths: WorkerPaths): string {
+  return existsSync(paths.treatmentFile) ? readFileSync(paths.treatmentFile, "utf8").trim() : "";
 }
 
 async function waitReachable(url: string): Promise<boolean> {
@@ -76,21 +76,27 @@ async function startWorkers(
 }
 
 async function main(): Promise<void> {
-  const phase = argValue("--phase") as Phase | undefined;
-  if (!isPhase(phase)) {
+  const treatment = argValue("--treatment") as Treatment | undefined;
+  if (!isTreatment(treatment)) {
     throw new Error(
-      "usage: prepare.ts --phase raw|adapted --environment ID [--workers N] [--port N] [--reset|--reuse]",
+      "usage: prepare.ts --treatment native|adapted --environment ID [--workers N] [--port N] [--reset|--reuse]",
     );
   }
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
-  clearBootstrapReady(matrix.id, phase);
-  if (phase === "raw" && matrix.enabledPluginPackages.length > 0 && matrix.kind !== "capability") {
-    throw new Error("raw only accepts additional packages in an explicit capability environment");
+  clearBootstrapReady(matrix.id, treatment);
+  if (
+    treatment === "native" &&
+    matrix.enabledPluginPackages.length > 0 &&
+    matrix.kind !== "capability"
+  ) {
+    throw new Error(
+      "native only accepts additional packages in an explicit capability environment",
+    );
   }
   const enabledPackages =
-    phase === "adapted"
+    treatment === "adapted"
       ? ["dsh-pstack", ...matrix.enabledPluginPackages]
       : matrix.enabledPluginPackages;
   const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
@@ -112,27 +118,29 @@ async function main(): Promise<void> {
   if (reset && reuse) throw new Error("--reset and --reuse are mutually exclusive");
   if (reuse) {
     const workers = Array.from({ length: count }, (_, index) =>
-      workerPaths(index, matrix.id, phase),
+      workerPaths(index, matrix.id, treatment),
     );
     for (const worker of workers) stopWeb(worker);
     // The reused profile points at the worker's raw mount outside the repo; refresh it so a
-    // cleared temp root does not restart raw workers with missing skills.
+    // cleared temp root does not restart native workers with missing skills.
     for (const worker of workers) {
-      if (readPhase(worker) === "raw") mountRawTree(worker);
+      if (readTreatment(worker) === "native") mountRawTree(worker);
       writeWorkerInstructions(worker);
       writeRoleFile(worker, config);
-      writePstackSettings(worker, phase === "adapted");
+      writePstackSettings(worker, treatment === "adapted");
     }
     await startWorkers(workers, plan, port);
     return;
   }
 
-  const workers = Array.from({ length: count }, (_, index) => workerPaths(index, matrix.id, phase));
+  const workers = Array.from({ length: count }, (_, index) =>
+    workerPaths(index, matrix.id, treatment),
+  );
   if (reset) {
-    for (const worker of listWorkers({ environmentId: matrix.id, phase })) stopWeb(worker);
-    resetPhase(matrix.id, phase);
+    for (const worker of listWorkers({ environmentId: matrix.id, treatment })) stopWeb(worker);
+    resetTreatment(matrix.id, treatment);
   } else {
-    for (const worker of listWorkers({ environmentId: matrix.id, phase })) {
+    for (const worker of listWorkers({ environmentId: matrix.id, treatment })) {
       if (worker.index >= count) stopWeb(worker);
     }
   }
@@ -141,13 +149,13 @@ async function main(): Promise<void> {
   for (const worker of workers) {
     if (reset) resetHome(worker);
     else mkdirSync(worker.home, { recursive: true });
-    if (phase === "raw") mountRawTree(worker);
-    buildProfile(worker, phase, enabledPackages, matrix.teamMode === true);
-    writeFileSync(worker.phaseFile, `${phase}\n`);
+    if (treatment === "native") mountRawTree(worker);
+    buildProfile(worker, treatment, enabledPackages, matrix.teamMode === true);
+    writeFileSync(worker.treatmentFile, `${treatment}\n`);
     copyCredentials(worker, config.credentialsFile);
-    writeHomePatch(worker, plan, phase);
+    writeHomePatch(worker, plan, treatment);
     writeRoleFile(worker, config);
-    writePstackSettings(worker, phase === "adapted");
+    writePstackSettings(worker, treatment === "adapted");
     registerWorkspaces(worker, listScenarioIds());
     if (enabledPackages.length > 0) {
       if (installed === null) {
@@ -160,7 +168,7 @@ async function main(): Promise<void> {
   }
   await startWorkers(workers, plan, port);
   console.log(
-    `[prepare] phase=${phase} environment=${matrix.id} workers=${count} model=${plan.main.provider}/${plan.main.model}[${plan.main.effort}]`,
+    `[prepare] treatment=${treatment} environment=${matrix.id} workers=${count} model=${plan.main.provider}/${plan.main.model}[${plan.main.effort}]`,
   );
 }
 

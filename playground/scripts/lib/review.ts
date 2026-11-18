@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import {
   SEMANTIC_REVIEW_STATUSES,
-  type Phase,
+  type Treatment,
   type RunRecord,
   type SemanticReview,
   type SemanticReviewStatus,
@@ -35,11 +35,11 @@ export interface SnapshotRecord {
 export const REVIEW_FILE = "review.json";
 
 export function reviewInputPath(
-  phase: Phase,
+  treatment: Treatment,
   environment: string,
   root?: string,
 ): string {
-  return join(reviewSnapshotDirectory(phase, environment, root), REVIEW_FILE);
+  return join(reviewSnapshotDirectory(treatment, environment, root), REVIEW_FILE);
 }
 
 function routeOf(value: unknown, context: string): TestTarget {
@@ -118,11 +118,11 @@ export function parseReviewEntries(text: string, file = REVIEW_FILE): ReviewEntr
 }
 
 export function readReviewEntries(
-  phase: Phase,
+  treatment: Treatment,
   environment: string,
   root?: string,
 ): ReviewEntries {
-  const file = reviewInputPath(phase, environment, root);
+  const file = reviewInputPath(treatment, environment, root);
   if (!existsSync(file)) throw new Error(`review.json is missing: ${file}`);
   return parseReviewEntries(readFileSync(file, "utf8"), file);
 }
@@ -134,22 +134,22 @@ export function toSemanticReview(entry: ReviewEntry): SemanticReview {
 
 /**
  * Every committed record.json in one review snapshot, ordered by scenario id. A record is
- * a `record.json` under `scenarios/<scenarioId>/<phase>-<environment>/`.
+ * a `record.json` under `scenarios/<scenarioId>/<treatment>-<environment>/`.
  */
 export function listSnapshotRecords(
-  phase: Phase,
+  treatment: Treatment,
   environment: string,
   root?: string,
 ): SnapshotRecord[] {
   const scenarios = join(
-    reviewSnapshotDirectory(phase, environment, root),
+    reviewSnapshotDirectory(treatment, environment, root),
     EVIDENCE_DIRECTORIES.scenarios,
   );
   if (!existsSync(scenarios)) return [];
   const found: SnapshotRecord[] = [];
   for (const entry of readdirSync(scenarios, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const file = join(scenarios, entry.name, `${phase}-${environment}`, EVIDENCE_FILES.record);
+    const file = join(scenarios, entry.name, `${treatment}-${environment}`, EVIDENCE_FILES.record);
     if (!existsSync(file)) continue;
     let parsed: unknown;
     try {

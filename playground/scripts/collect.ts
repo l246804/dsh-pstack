@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url";
 
-import { isPhase } from "../types.ts";
-import type { Phase } from "../types.ts";
+import { isTreatment } from "../types.ts";
+import type { Treatment } from "../types.ts";
 import { environmentMatrix } from "./lib/run-metadata.ts";
 import { collectReviewSnapshot, REVIEWS_DIRECTORY } from "./lib/review-snapshot.ts";
 
@@ -11,12 +11,13 @@ function argValue(flag: string): string | undefined {
 }
 
 function main(): void {
-  const phase = argValue("--phase") as Phase | undefined;
-  if (!isPhase(phase)) throw new Error("collect requires --phase raw|adapted --environment ID");
+  const treatment = argValue("--treatment") as Treatment | undefined;
+  if (!isTreatment(treatment))
+    throw new Error("collect requires --treatment native|adapted --environment ID");
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
-  collectReviewSnapshot(phase, matrix.id);
+  collectReviewSnapshot(treatment, matrix.id);
   console.log(`[collect] reviews=${REVIEWS_DIRECTORY}`);
 }
 

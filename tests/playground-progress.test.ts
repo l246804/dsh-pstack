@@ -17,7 +17,7 @@ afterAll(() => rmSync(temporary, { recursive: true, force: true }));
 
 function state(startedAt: string, updatedAt: string): ProgressState {
   return {
-    phase: "raw",
+    treatment: "native",
     environmentId: "base",
     round: 1,
     total: 2,

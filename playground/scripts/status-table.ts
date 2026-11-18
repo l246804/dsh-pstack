@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { isPhase } from "../types.ts";
-import type { Phase } from "../types.ts";
+import { isTreatment } from "../types.ts";
+import type { Treatment } from "../types.ts";
 import { listSnapshotRecords } from "./lib/review.ts";
 import { reviewSnapshotDirectory } from "./lib/review-snapshot.ts";
 import { environmentMatrix, PLAYGROUND_DIRECTORY } from "./lib/run-metadata.ts";
@@ -21,7 +21,7 @@ export interface StatusRow {
 }
 
 export interface StatusTarget {
-  phase: Phase;
+  treatment: Treatment;
   environment: string;
   root?: string;
   inventoryFile?: string;
@@ -50,7 +50,7 @@ function inventoryCapabilities(file: string): Map<string, string> {
 }
 
 export function statusRows(target: StatusTarget): StatusRow[] {
-  const records = listSnapshotRecords(target.phase, target.environment, target.root);
+  const records = listSnapshotRecords(target.treatment, target.environment, target.root);
   const inventory = inventoryCapabilities(target.inventoryFile ?? DEFAULT_INVENTORY);
   return records.map(({ scenarioId, record }) => ({
     capability:
@@ -58,7 +58,7 @@ export function statusRows(target: StatusTarget): StatusRow[] {
     scenario: scenarioId,
     verdict: record.verdict.status,
     mechanicalFailures: (record.mechanicalFailures ?? []).length,
-    recordLink: `scenarios/${scenarioId}/${target.phase}-${target.environment}/record.json`,
+    recordLink: `scenarios/${scenarioId}/${target.treatment}-${target.environment}/record.json`,
   }));
 }
 
@@ -76,7 +76,7 @@ export function statusTableContent(target: StatusTarget): string {
 }
 
 export function statusFilePath(target: StatusTarget): string {
-  return join(reviewSnapshotDirectory(target.phase, target.environment, target.root), STATUS_FILE);
+  return join(reviewSnapshotDirectory(target.treatment, target.environment, target.root), STATUS_FILE);
 }
 
 export function writeStatusTable(target: StatusTarget): { file: string; content: string } {
@@ -115,11 +115,11 @@ function argValue(flag: string): string | undefined {
 }
 
 async function main(): Promise<void> {
-  const phase = argValue("--phase") as Phase | undefined;
+  const treatment = argValue("--treatment") as Treatment | undefined;
   const environment = argValue("--environment");
-  if (!isPhase(phase) || environment === undefined) {
+  if (!isTreatment(treatment) || environment === undefined) {
     throw new Error(
-      "usage: status-table.ts --phase raw|adapted --environment ID [--write | --check]",
+      "usage: status-table.ts --treatment native|adapted --environment ID [--write | --check]",
     );
   }
   environmentMatrix(environment);
@@ -127,7 +127,7 @@ async function main(): Promise<void> {
   const check = process.argv.includes("--check");
   if (write && check) throw new Error("pass at most one of --write or --check");
   const target: StatusTarget = {
-    phase,
+    treatment,
     environment,
     resolveCapability: await registryCapabilityResolver(),
   };

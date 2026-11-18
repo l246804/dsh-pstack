@@ -3,7 +3,7 @@ import base from "../capabilities/render-ui.ts";
 const scenario = {
   ...base,
   id: "capability-render-ui-render",
-  phases: ["raw"],
+  treatments: ["native"],
 };
 
 export default scenario;

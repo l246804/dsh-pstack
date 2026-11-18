@@ -15,7 +15,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
-import type { AllowedRoute, Phase, PlaygroundConfig, TestTarget } from "../../types.ts";
+import type { AllowedRoute, PlaygroundConfig, TestTarget, Treatment } from "../../types.ts";
 import { readConfig } from "./config.ts";
 import { RAW_ROOT, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
@@ -246,7 +246,7 @@ export function writePstackSettings(paths: WorkerPaths, potetoDefault: boolean):
   );
 }
 
-export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan, _phase: Phase): void {
+export function writeHomePatch(paths: WorkerPaths, plan: ProviderPlan, _treatment: Treatment): void {
   mkdirSync(paths.home, { recursive: true });
   const patch = [
     {
@@ -354,12 +354,12 @@ export function mountRawTree(paths: WorkerPaths, source: string = RAW_ROOT): str
 }
 
 export function profileManifest(
-  phase: Phase,
+  treatment: Treatment,
   enabledPluginPackages: string[],
   runtimeVersion: string,
 ): Record<string, unknown> {
-  if (phase === "raw" && enabledPluginPackages.includes("dsh-pstack")) {
-    throw new Error("raw profile must not install dsh-pstack");
+  if (treatment === "native" && enabledPluginPackages.includes("dsh-pstack")) {
+    throw new Error("native profile must not install dsh-pstack");
   }
   const dependencies = Object.fromEntries(
     enabledPluginPackages.map((name) => [
@@ -375,7 +375,7 @@ export function profileManifest(
   );
   const bundles = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", ...enabledPluginPackages];
   return {
-    name: `dsh-playground-${phase}`,
+    name: `dsh-playground-${treatment}`,
     private: true,
     dependencies,
     dsh: { profile: { bundles } },
@@ -385,7 +385,7 @@ export function profileManifest(
 export function rawProfileEntries(template: unknown[], rawMount: string): unknown[] {
   const skills = join(rawMount, "pstack/skills");
   if (!existsSync(skills))
-    throw new Error("raw mount is missing; run playground:prepare for the raw phase first");
+    throw new Error("raw mount is missing; run playground:prepare for the native treatment first");
   return [
     ...template,
     {
@@ -407,8 +407,8 @@ export function rawProfileEntries(template: unknown[], rawMount: string): unknow
 
 export function buildProfile(
   paths: WorkerPaths,
-  phase: Phase,
-  enabledPluginPackages: string[] = phase === "adapted" ? ["dsh-pstack"] : [],
+  treatment: Treatment,
+  enabledPluginPackages: string[] = treatment === "adapted" ? ["dsh-pstack"] : [],
   teamMode = false,
 ): void {
   const directory = profileDirectory(paths);
@@ -421,13 +421,13 @@ export function buildProfile(
   const entries =
     (yamlLoad(readFileSync(join(PROFILE_TEMPLATE_DIR, "cordis.patch.yml"), "utf8")) as unknown[]) ??
     [];
-  const patch = phase === "raw" ? rawProfileEntries(entries, paths.rawMount) : entries;
+  const patch = treatment === "native" ? rawProfileEntries(entries, paths.rawMount) : entries;
   if (teamMode) {
     (patch as unknown[]).push({ id: "agent-team", config: { defaultEnabled: true } });
   }
   writeFileSync(join(directory, "cordis.patch.yml"), yamlDump(patch, { lineWidth: 120 }));
-  const manifest = profileManifest(phase, enabledPluginPackages, dshVersion());
-  if (phase === "adapted" && !enabledPluginPackages.includes("dsh-pstack")) {
+  const manifest = profileManifest(treatment, enabledPluginPackages, dshVersion());
+  if (treatment === "adapted" && !enabledPluginPackages.includes("dsh-pstack")) {
     throw new Error("adapted profile must explicitly include dsh-pstack");
   }
   writeFileSync(join(directory, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);

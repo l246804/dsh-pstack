@@ -3,7 +3,7 @@ import type { BehaviorScenario } from "../../types.ts";
 const scenario: BehaviorScenario = {
   id: "agent-team-send-message-contract",
   capability: "agent-team.send-message-contract",
-  phases: ["adapted"],
+  treatments: ["adapted"],
   turns: [
     {
       prompt:

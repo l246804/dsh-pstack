@@ -3,7 +3,7 @@
 // capture must happen in a single invocation.
 //
 // Usage:
-//   vpx playground/scripts/browser.ts --environment <id> --phase <raw|adapted> [--worker <k>] [url] [steps...]
+//   vpx playground/scripts/browser.ts --environment <id> --treatment <native|adapted> [--worker <k>] [url] [steps...]
 //   --worker defaults to 0; url defaults to that worker's web-url.txt.
 // Steps (run in the order given):
 //   --wait <ms>            wait for a duration
@@ -21,8 +21,8 @@ import { createBrowserSession } from "./lib/browser.ts";
 import { readWebUrl } from "./lib/env.ts";
 import { environmentMatrix } from "./lib/run-metadata.ts";
 import { workerPaths } from "./lib/worker.ts";
-import { isPhase } from "../types.ts";
-import type { Phase } from "../types.ts";
+import { isTreatment } from "../types.ts";
+import type { Treatment } from "../types.ts";
 
 function main(): void {
   const argv = process.argv.slice(2);
@@ -32,10 +32,13 @@ function main(): void {
   if (environmentId === undefined) throw new Error("--environment is required");
   environmentMatrix(environmentId);
   if (environmentPos >= 0) argv.splice(environmentPos, 2);
-  const phasePos = argv.indexOf("--phase");
-  const phase = (phasePos >= 0 ? argv[phasePos + 1] : undefined) as Phase | undefined;
-  if (phase === undefined || !isPhase(phase)) throw new Error("--phase must be raw or adapted");
-  if (phasePos >= 0) argv.splice(phasePos, 2);
+  const treatmentPos = argv.indexOf("--treatment");
+  const treatment = (treatmentPos >= 0 ? argv[treatmentPos + 1] : undefined) as
+    | Treatment
+    | undefined;
+  if (treatment === undefined || !isTreatment(treatment))
+    throw new Error("--treatment must be native or adapted");
+  if (treatmentPos >= 0) argv.splice(treatmentPos, 2);
   const workerPos = argv.indexOf("--worker");
   if (workerPos >= 0) {
     const parsed = Number(argv[workerPos + 1]);
@@ -44,7 +47,7 @@ function main(): void {
     workerIndex = parsed;
     argv.splice(workerPos, 2);
   }
-  const paths = workerPaths(workerIndex, environmentId, phase);
+  const paths = workerPaths(workerIndex, environmentId, treatment);
 
   let url: string | undefined;
   if (argv.length > 0 && !argv[0].startsWith("--")) url = argv.shift();

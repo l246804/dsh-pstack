@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { compareOne, compareSnapshot } from "../playground/scripts/compare.ts";
-import type { BehaviorScenario, Phase, RunRecord, SessionFacts } from "../playground/types.ts";
+import type { BehaviorScenario, RunRecord, SessionFacts, Treatment } from "../playground/types.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-compare-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -35,14 +35,15 @@ function session(userText: string): SessionFacts {
   };
 }
 
-function record(phase: Phase, scenarioId = scenario.id): RunRecord {
+function record(treatment: Treatment, scenarioId = scenario.id): RunRecord {
   return {
     scenarioId,
-    phase,
+    treatment,
     environment: {
       worker: 0,
       dshVersion: "test-dsh",
-      adaptedVersion: phase === "raw" ? null : "test-adapted",
+      pstackVersion: "test-pstack",
+      adaptedVersion: treatment === "native" ? null : "test-adapted",
       matrix: { id: "base", description: "test", kind: "base", enabledPluginPackages: [] },
       upstreamRevision: "rev-1",
       configHash: "hash-1",
@@ -53,34 +54,34 @@ function record(phase: Phase, scenarioId = scenario.id): RunRecord {
     semanticReview: { status: "pending", reason: "pending" },
     mechanicalFailures: [],
     verdict:
-      phase === "raw"
-        ? { phase: "raw", status: "unobserved", reason: "pending" }
-        : { phase: "adapted", status: "inconclusive", reason: "pending" },
+      treatment === "native"
+        ? { treatment: "native", status: "unobserved", reason: "pending" }
+        : { treatment: "adapted", status: "inconclusive", reason: "pending" },
     capturedAt: "2026-11-11T00:00:00.000Z",
   };
 }
 
-function writeRecord(root: string, phase: Phase, environment: string, entry: RunRecord): void {
+function writeRecord(root: string, treatment: Treatment, environment: string, entry: RunRecord): void {
   const dir = join(
     root,
-    `${phase}-${environment}`,
+    `${treatment}-${environment}`,
     "scenarios",
     entry.scenarioId,
-    `${phase}-${environment}`,
+    `${treatment}-${environment}`,
   );
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "record.json"), `${JSON.stringify(entry, null, 2)}\n`);
 }
 
 describe("compareOne", () => {
-  it("returns no problems when raw and adapted describe the same setup", () => {
-    expect(compareOne(record("raw"), record("adapted"), scenario)).toEqual([]);
+  it("returns no problems when native and adapted describe the same setup", () => {
+    expect(compareOne(record("native"), record("adapted"), scenario)).toEqual([]);
   });
 
   it("flags a configuration hash mismatch", () => {
     const adapted = record("adapted");
     adapted.environment = { ...adapted.environment, configHash: "other-hash" };
-    expect(compareOne(record("raw"), adapted, scenario)).toContain(
+    expect(compareOne(record("native"), adapted, scenario)).toContain(
       "raw and adapted configuration hashes differ",
     );
   });
@@ -88,7 +89,7 @@ describe("compareOne", () => {
   it("flags a model route mismatch", () => {
     const adapted = record("adapted");
     adapted.target = { provider: "provider-a", model: "model-b", effort: "low" };
-    expect(compareOne(record("raw"), adapted, scenario)).toContain(
+    expect(compareOne(record("native"), adapted, scenario)).toContain(
       "raw and adapted actual model routes differ",
     );
   });
@@ -96,7 +97,7 @@ describe("compareOne", () => {
   it("flags a natural-language entry mismatch", () => {
     const adapted = record("adapted");
     adapted.session = session("do something else");
-    expect(compareOne(record("raw"), adapted, scenario)).toContain(
+    expect(compareOne(record("native"), adapted, scenario)).toContain(
       "raw and adapted natural-language entries differ from the scenario",
     );
   });
@@ -105,7 +106,7 @@ describe("compareOne", () => {
 describe("compareSnapshot", () => {
   it("compares a scenario present on both sides", () => {
     const root = mkdtempSync(join(temporary, "both-"));
-    writeRecord(root, "raw", "base", record("raw"));
+    writeRecord(root, "native", "base", record("native"));
     writeRecord(root, "adapted", "base", record("adapted"));
 
     const result = compareSnapshot({ environment: "base", root, loadScenario: () => scenario });
@@ -113,25 +114,25 @@ describe("compareSnapshot", () => {
     expect(result.failures).toEqual([]);
   });
 
-  it("reports a scenario missing on raw when only adapted exists", () => {
-    const root = mkdtempSync(join(temporary, "missing-raw-"));
+  it("reports a scenario missing on native when only adapted exists", () => {
+    const root = mkdtempSync(join(temporary, "missing-native-"));
     writeRecord(root, "adapted", "base", record("adapted", "cap-adapted-only"));
 
     const result = compareSnapshot({ environment: "base", root, loadScenario: () => scenario });
     expect(result.compared).toEqual([]);
     expect(result.failures).toHaveLength(1);
     expect(result.failures[0]!.scenarioId).toBe("cap-adapted-only");
-    expect(result.failures[0]!.problems.join(" ")).toContain("missing on raw");
+    expect(result.failures[0]!.problems.join(" ")).toContain("missing on native");
   });
 
-  it("reports a scenario missing on adapted when only raw exists", () => {
+  it("reports a scenario missing on adapted when only native exists", () => {
     const root = mkdtempSync(join(temporary, "missing-adapted-"));
-    writeRecord(root, "raw", "base", record("raw", "cap-raw-only"));
+    writeRecord(root, "native", "base", record("native", "cap-native-only"));
 
     const result = compareSnapshot({ environment: "base", root, loadScenario: () => scenario });
     expect(result.compared).toEqual([]);
     expect(result.failures).toHaveLength(1);
-    expect(result.failures[0]!.scenarioId).toBe("cap-raw-only");
+    expect(result.failures[0]!.scenarioId).toBe("cap-native-only");
     expect(result.failures[0]!.problems.join(" ")).toContain("missing on adapted");
   });
 });

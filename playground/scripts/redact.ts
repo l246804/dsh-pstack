@@ -2,8 +2,8 @@ import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "no
 import { dirname, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { isPhase } from "../types.ts";
-import type { Phase } from "../types.ts";
+import { isTreatment } from "../types.ts";
+import type { Treatment } from "../types.ts";
 import { environmentMatrix } from "./lib/run-metadata.ts";
 import { EVIDENCE_FILES } from "./lib/evidence-files.ts";
 import { residualKinds } from "./lib/redaction.ts";
@@ -23,13 +23,13 @@ function walk(dir: string): string[] {
 }
 
 function main(): void {
-  const phase = argValue("--phase") as Phase | undefined;
-  if (!isPhase(phase)) throw new Error("redact requires --phase raw|adapted");
+  const treatment = argValue("--treatment") as Treatment | undefined;
+  if (!isTreatment(treatment)) throw new Error("redact requires --treatment native|adapted");
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const environment = environmentMatrix(environmentId).id;
   const apply = process.argv.includes("--apply");
-  const root = reviewSnapshotDirectory(phase, environment);
+  const root = reviewSnapshotDirectory(treatment, environment);
   const records = walk(root);
   if (records.length === 0) throw new Error(`no review records under ${root}`);
 
