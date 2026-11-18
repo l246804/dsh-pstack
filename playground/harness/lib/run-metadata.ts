@@ -13,9 +13,9 @@ export const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), 
 export const PLAYGROUND_DIRECTORY = join(REPOSITORY_ROOT, "playground");
 export const DEFAULT_CONFIG_FILE = join(PLAYGROUND_DIRECTORY, "config.json");
 export const PORT_BASELINE_FILE = join(REPOSITORY_ROOT, "port", "baseline.json");
-export const RAW_ROOT = join(PLAYGROUND_DIRECTORY, "adapter");
-export const RAW_TREE = join(RAW_ROOT, "pstack");
-export const RAW_SKILLS = join(RAW_TREE, "skills");
+export const NATIVE_ROOT = join(PLAYGROUND_DIRECTORY, "native-adapter");
+export const NATIVE_TREE = join(NATIVE_ROOT, "pstack");
+export const NATIVE_SKILLS = join(NATIVE_TREE, "skills");
 export const WORKERS_ROOT = join(PLAYGROUND_DIRECTORY, ".workers");
 export const ISOLATED_ROOT = join(tmpdir(), "dsh-pstack-playground");
 
@@ -26,7 +26,7 @@ export function workersDirectory(): string {
 
 /**
  * Root of the per-worker directories the tested session can reach: its workspace and the
- * raw skill mount. The sandbox limits writes but not reads, so this root must stay outside
+ * native skill mount. The sandbox limits writes but not reads, so this root must stay outside
  * the repository tree; a workspace inside the repo lets the session read scenario rubrics
  * and assertions and answer to them.
  */

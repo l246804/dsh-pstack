@@ -20,7 +20,7 @@
 | [docs/baseline.md](./docs/baseline.md) | baseline.json 字段、兼容表分组和发布同步规则 |
 | [docs/extensions.md](./docs/extensions.md) | 非 gap 移植的本地扩展 |
 | [docs/regressions.md](./docs/regressions.md) | 反复出现的移植问题和验证方式 |
-| [../docs/dsh-adapter.md](../docs/dsh-adapter.md) | dsh.md 模板、分块规则和 raw/port 差异 |
+| [../docs/dsh-adapter.md](../docs/dsh-adapter.md) | dsh.md 模板、分块规则和 native/port 差异 |
 | [../src/AGENTS.md](../src/AGENTS.md) | src 长期实现规范和边界原则 |
 
 `dsh.md` 的编写规则只链接 `docs/dsh-adapter.md`，不在 port 内复制。可选插件清单以根 `README.md` 为准，不在 port 重复维护。

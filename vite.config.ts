@@ -77,8 +77,8 @@ export default defineConfig({
         command: "vpx scripts/release-compatibility.ts --check",
         cache: false,
       },
-      "playground:raw-generate": {
-        command: "vpx scripts/generate-pstack.mjs --target raw",
+      "playground:native-generate": {
+        command: "vpx scripts/generate-pstack.mjs --target native",
         cache: false,
       },
       "playground:doctor": {

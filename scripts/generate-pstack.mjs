@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generate one pstack tree from the pinned upstream pstack tree and its adapter.
 // --target port writes the shipped root pstack/ from port/dsh.md.
-// --target raw writes playground/adapter/pstack/ from playground/adapter/dsh.md.
+// --target native writes playground/native-adapter/pstack/ from playground/native-adapter/dsh.md.
 
 import {
   chmodSync,
@@ -20,16 +20,16 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = join(ROOT, "upstream/cursor-plugins/pstack");
 const targetIndex = process.argv.indexOf("--target");
 const TARGET = targetIndex >= 0 ? process.argv[targetIndex + 1] : "port";
-if (TARGET !== "port" && TARGET !== "raw") {
-  throw new Error("usage: generate-pstack.mjs --target port|raw [--check]");
+if (TARGET !== "port" && TARGET !== "native") {
+  throw new Error("usage: generate-pstack.mjs --target port|native [--check]");
 }
 
-const isRaw = TARGET === "raw";
-const ADAPTER_SOURCE = isRaw ? "playground/adapter/dsh.md" : "port/dsh.md";
+const isNative = TARGET === "native";
+const ADAPTER_SOURCE = isNative ? "playground/native-adapter/dsh.md" : "port/dsh.md";
 const ADAPTER_TREE = "docs/harness/dsh.md";
-const OUT = isRaw ? join(ROOT, "playground/adapter/pstack") : join(ROOT, "pstack");
+const OUT = isNative ? join(ROOT, "playground/native-adapter/pstack") : join(ROOT, "pstack");
 const COMMAND = `vpx scripts/generate-pstack.mjs --target ${TARGET}`;
-const INJECTION = isRaw
+const INJECTION = isNative
   ? `In DSH, read [the DSH adapter](../../${ADAPTER_TREE}) once per session before you follow this skill. It maps the Cursor names in pstack skills to DSH.`
   : `In DeepSeek Harness, read [the DSH adapter](../../${ADAPTER_TREE}) once per session before you follow this skill. It maps the Cursor names in pstack skills to DeepSeek Harness.`;
 const GITHUB = "https://github.com/cursor/plugins";
@@ -65,7 +65,7 @@ const TERMS = [
   },
 ];
 const ROUTE_KEY = "Run another pstack skill";
-const ACTIVE_TERMS = isRaw ? TERMS.filter((term) => term.key !== "Custom Mode") : TERMS;
+const ACTIVE_TERMS = isNative ? TERMS.filter((term) => term.key !== "Custom Mode") : TERMS;
 
 function walk(dir) {
   return readdirSync(dir).flatMap((name) => {

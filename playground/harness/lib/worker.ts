@@ -18,7 +18,7 @@ export interface WorkerPaths {
   home: string;
   browserDir: string;
   workspaceRoot: string;
-  rawMount: string;
+  nativeMount: string;
   evidenceDir: string;
   urlFile: string;
   pidFile: string;
@@ -44,7 +44,7 @@ export function workerPaths(
     home: join(root, "home"),
     browserDir: join(root, "browser"),
     workspaceRoot: join(isolatedRoot, "workspace"),
-    rawMount: join(isolatedRoot, "raw"),
+    nativeMount: join(isolatedRoot, "native"),
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
     pidFile: join(root, "web.pid"),

@@ -17,7 +17,7 @@ import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
 import type { AllowedRoute, PlaygroundConfig, TestTarget, Treatment } from "../types.ts";
 import { readConfig } from "./config.ts";
-import { RAW_ROOT, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
+import { NATIVE_ROOT, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
 
 export const PROFILE_NAME = "playground";
@@ -27,7 +27,7 @@ export const DEFAULT_CREDENTIALS_FILE = join(homedir(), ".dsh/.credentials.yaml"
 export const HOST = "127.0.0.1";
 const DSH_BIN = process.env.DSH_BIN ?? "dsh";
 
-export { DEFAULT_CONFIG_FILE as CONFIG_FILE, RAW_ROOT, RAW_SKILLS } from "./run-metadata.ts";
+export { DEFAULT_CONFIG_FILE as CONFIG_FILE, NATIVE_ROOT, NATIVE_SKILLS } from "./run-metadata.ts";
 
 function runtimeEnv(paths: WorkerPaths): Record<string, string> {
   // Every tool child of the worker inherits these, so they must not point into the
@@ -236,7 +236,7 @@ export function writeRoleFile(paths: WorkerPaths, config: PlaygroundConfig): voi
 /**
  * Seed `$DSH_HOME/pstack-settings.json`. The poteto workflow is a session toggle whose
  * global default applies to new Sessions, so this replaces the removed poteto-mode root
- * preset: adapted workers start with the workflow on, raw keeps it off.
+ * preset: adapted workers start with the workflow on, native keeps it off.
  */
 export function writePstackSettings(paths: WorkerPaths, potetoDefault: boolean): void {
   mkdirSync(paths.home, { recursive: true });
@@ -344,17 +344,17 @@ export function resetHome(paths: WorkerPaths): void {
 }
 
 /**
- * Copy the generated raw tree to the worker's mount outside the repository and return the
- * mount root. The raw profile and persona reference this copy only; the in-repo path would
+ * Copy the generated native tree to the worker's mount outside the repository and return the
+ * mount root. The native profile and persona reference this copy only; the in-repo path would
  * hand the tested session the repository root, and with it the scenario rubrics.
  */
-export function mountRawTree(paths: WorkerPaths, source: string = RAW_ROOT): string {
+export function mountNativeTree(paths: WorkerPaths, source: string = NATIVE_ROOT): string {
   if (!existsSync(source))
-    throw new Error("raw tree is missing; run playground:raw-generate first");
-  rmSync(paths.rawMount, { recursive: true, force: true });
+    throw new Error("native tree is missing; run playground:native-generate first");
+  rmSync(paths.nativeMount, { recursive: true, force: true });
   mkdirSync(paths.isolatedRoot, { recursive: true });
-  cpSync(source, paths.rawMount, { recursive: true });
-  return paths.rawMount;
+  cpSync(source, paths.nativeMount, { recursive: true });
+  return paths.nativeMount;
 }
 
 export function profileManifest(
@@ -386,19 +386,21 @@ export function profileManifest(
   };
 }
 
-export function rawProfileEntries(template: unknown[], rawMount: string): unknown[] {
-  const skills = join(rawMount, "pstack/skills");
+export function nativeProfileEntries(template: unknown[], mount: string): unknown[] {
+  const skills = join(mount, "pstack/skills");
   if (!existsSync(skills))
-    throw new Error("raw mount is missing; run playground:prepare for the native treatment first");
+    throw new Error(
+      "native mount is missing; run playground:prepare for the native treatment first",
+    );
   return [
     ...template,
     {
       insert: [
         {
-          id: "pstack-raw-skills",
+          id: "pstack-native-skills",
           name: "@deepseek-ai/dsh-skill-filesystem",
           config: {
-            providerName: "pstack-raw",
+            providerName: "pstack-native",
             includeDefaultRoots: false,
             watch: false,
             bundledSkillDir: skills,
@@ -425,7 +427,7 @@ export function buildProfile(
   const entries =
     (yamlLoad(readFileSync(join(PROFILE_TEMPLATE_DIR, "cordis.patch.yml"), "utf8")) as unknown[]) ??
     [];
-  const patch = treatment === "native" ? rawProfileEntries(entries, paths.rawMount) : entries;
+  const patch = treatment === "native" ? nativeProfileEntries(entries, paths.nativeMount) : entries;
   if (teamMode) {
     (patch as unknown[]).push({ id: "agent-team", config: { defaultEnabled: true } });
   }

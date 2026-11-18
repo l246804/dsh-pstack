@@ -13,7 +13,7 @@
   - pid 和日志
 - repo 外隔离工作区：`<isolatedRoot>/<treatment>/<environmentId>/w<k>`
   - 被测会话工作区
-  - raw 资源挂载
+  - native 资源挂载
 
 `isolatedRoot` 默认使用系统临时目录，可用 `PLAYGROUND_WORKSPACE_ROOT` 覆盖。沙箱只限制写，不限制读，因此工作区和挂载路径都不能暴露仓库根。
 

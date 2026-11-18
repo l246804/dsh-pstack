@@ -10,9 +10,9 @@ import type {
   SessionFacts,
 } from "../playground/harness/types.ts";
 import {
-  mountRawTree,
+  mountNativeTree,
   profileManifest,
-  rawProfileEntries,
+  nativeProfileEntries,
   registerWorkspaces,
   resetHome,
   writeHomePatch,
@@ -509,7 +509,7 @@ function tempWorkerPaths(index: number): WorkerPaths {
     home: join(root, "home"),
     browserDir: join(root, "browser"),
     workspaceRoot: join(isolatedRoot, "workspace"),
-    rawMount: join(isolatedRoot, "raw"),
+    nativeMount: join(isolatedRoot, "native"),
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
     pidFile: join(root, "web.pid"),
@@ -526,22 +526,22 @@ const isolationPlan: ProviderPlan = {
   main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
 };
 
-function writeFakeRawTree(root: string): void {
+function writeFakeNativeTree(root: string): void {
   mkdirSync(join(root, "pstack/skills/poteto-mode"), { recursive: true });
-  writeFileSync(join(root, "dsh.md"), "# raw harness adapter\n");
+  writeFileSync(join(root, "dsh.md"), "# native harness adapter\n");
   writeFileSync(
     join(root, "pstack/skills/poteto-mode/SKILL.md"),
-    "---\nname: poteto-mode\n---\n\n# Raw poteto mode body\n",
+    "---\nname: poteto-mode\n---\n\n# Native poteto mode body\n",
   );
 }
 
 describe("read isolation from the repository tree", () => {
-  it("keeps the session workspace and raw mount outside the repository", () => {
+  it("keeps the session workspace and native mount outside the repository", () => {
     const paths = workerPaths(1, "base", "adapted");
     expect(paths.workspaceRoot.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
-    expect(paths.rawMount.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
+    expect(paths.nativeMount.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
     expect(paths.workspaceRoot).toBe(join(ISOLATED_ROOT, "adapted", "base", "w1", "workspace"));
-    expect(paths.rawMount).toBe(join(ISOLATED_ROOT, "adapted", "base", "w1", "raw"));
+    expect(paths.nativeMount).toBe(join(ISOLATED_ROOT, "adapted", "base", "w1", "native"));
     // Audited state stays inside the repository.
     for (const dir of [paths.home, paths.browserDir, paths.evidenceDir]) {
       expect(dir.startsWith(`${REPOSITORY_ROOT}/playground/.workers/`)).toBe(true);
@@ -567,25 +567,29 @@ describe("read isolation from the repository tree", () => {
     expect(ISOLATED_ROOT.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
   });
 
-  it("mounts a raw copy so no worker profile path exposes the repository root", () => {
+  it("mounts a native copy so no worker profile path exposes the repository root", () => {
     const paths = tempWorkerPaths(10);
-    const source = join(temporary, "raw-source");
-    writeFakeRawTree(source);
-    expect(mountRawTree(paths, source)).toBe(paths.rawMount);
-    expect(existsSync(join(paths.rawMount, "dsh.md"))).toBe(true);
-    expect(existsSync(join(paths.rawMount, "pstack/skills/poteto-mode/SKILL.md"))).toBe(true);
-    expect(() => mountRawTree(paths, join(temporary, "absent"))).toThrow(/raw tree is missing/);
+    const source = join(temporary, "native-source");
+    writeFakeNativeTree(source);
+    expect(mountNativeTree(paths, source)).toBe(paths.nativeMount);
+    expect(existsSync(join(paths.nativeMount, "dsh.md"))).toBe(true);
+    expect(existsSync(join(paths.nativeMount, "pstack/skills/poteto-mode/SKILL.md"))).toBe(true);
+    expect(() => mountNativeTree(paths, join(temporary, "absent"))).toThrow(
+      /native tree is missing/,
+    );
 
-    const entries = rawProfileEntries([], paths.rawMount);
-    expect(JSON.stringify(entries)).toContain(join(paths.rawMount, "pstack/skills"));
+    const entries = nativeProfileEntries([], paths.nativeMount);
+    expect(JSON.stringify(entries)).toContain(join(paths.nativeMount, "pstack/skills"));
     expect(JSON.stringify(entries)).not.toContain(REPOSITORY_ROOT);
-    expect(() => rawProfileEntries([], join(temporary, "absent"))).toThrow(/raw mount is missing/);
+    expect(() => nativeProfileEntries([], join(temporary, "absent"))).toThrow(
+      /native mount is missing/,
+    );
 
     writeHomePatch(paths, isolationPlan, "native");
     const patch = readFileSync(join(paths.home, "cordis.patch.yml"), "utf8");
     expect(patch).not.toContain("system-prompt");
-    expect(patch).not.toContain(join(paths.rawMount, "pstack/skills/poteto-mode/SKILL.md"));
-    expect(patch).not.toContain(join(paths.rawMount, "dsh.md"));
+    expect(patch).not.toContain(join(paths.nativeMount, "pstack/skills/poteto-mode/SKILL.md"));
+    expect(patch).not.toContain(join(paths.nativeMount, "dsh.md"));
     expect(patch).not.toContain(REPOSITORY_ROOT);
   });
 
@@ -606,11 +610,11 @@ describe("read isolation from the repository tree", () => {
     const paths = tempWorkerPaths(12);
     mkdirSync(paths.workspaceRoot, { recursive: true });
     writeFileSync(join(paths.workspaceRoot, "leftover.txt"), "x");
-    mountRawTree(paths, join(temporary, "raw-source"));
+    mountNativeTree(paths, join(temporary, "native-source"));
     resetHome(paths);
     expect(existsSync(paths.home)).toBe(true);
     expect(existsSync(paths.workspaceRoot)).toBe(false);
-    expect(existsSync(paths.rawMount)).toBe(false);
+    expect(existsSync(paths.nativeMount)).toBe(false);
   });
 });
 

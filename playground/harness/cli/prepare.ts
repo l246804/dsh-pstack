@@ -9,7 +9,7 @@ import {
   copyCredentials,
   installPlugins,
   loadProviderPlan,
-  mountRawTree,
+  mountNativeTree,
   readPlaygroundConfig,
   registerWorkspaces,
   resetHome,
@@ -121,10 +121,10 @@ async function main(): Promise<void> {
       workerPaths(index, matrix.id, treatment),
     );
     for (const worker of workers) stopWeb(worker);
-    // The reused profile points at the worker's raw mount outside the repo; refresh it so a
+    // The reused profile points at the worker's native mount outside the repo; refresh it so a
     // cleared temp root does not restart native workers with missing skills.
     for (const worker of workers) {
-      if (readTreatment(worker) === "native") mountRawTree(worker);
+      if (readTreatment(worker) === "native") mountNativeTree(worker);
       writeWorkerInstructions(worker);
       writeRoleFile(worker, config);
       writePstackSettings(worker, treatment === "adapted");
@@ -149,7 +149,7 @@ async function main(): Promise<void> {
   for (const worker of workers) {
     if (reset) resetHome(worker);
     else mkdirSync(worker.home, { recursive: true });
-    if (treatment === "native") mountRawTree(worker);
+    if (treatment === "native") mountNativeTree(worker);
     buildProfile(worker, treatment, enabledPackages, matrix.teamMode === true);
     writeFileSync(worker.treatmentFile, `${treatment}\n`);
     copyCredentials(worker, config.credentialsFile);

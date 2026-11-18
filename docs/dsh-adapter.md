@@ -1,6 +1,6 @@
 # DSH 适配文档编写规则
 
-适用于 `playground/adapter/dsh.md`、`playground/adapter/dsh.zh.md`、`port/dsh.md` 和 `port/dsh.zh.md`。本文件定义模板、块职责和写法约束。
+适用于 `playground/native-adapter/dsh.md`、`playground/native-adapter/dsh.zh.md`、`port/dsh.md` 和 `port/dsh.zh.md`。本文件定义模板、块职责和写法约束。
 
 ## 模板
 
@@ -34,7 +34,7 @@ Use only tools visible in the current session. If a mapped tool or optional capa
 ## Local replacements
 ```
 
-`raw/dsh.md` 不写 `Plugin tools`、`Local replacements` 或 `Optional plugins`。`port/dsh.md` 也不写 `Optional plugins`；具体可选项和安装方式放在根 `README.md`。
+`native/dsh.md` 不写 `Plugin tools`、`Local replacements` 或 `Optional plugins`。`port/dsh.md` 也不写 `Optional plugins`；具体可选项和安装方式放在根 `README.md`。
 
 ## 通用写作约束
 
@@ -116,8 +116,8 @@ Use only tools visible in the current session. If a mapped tool or optional capa
 
 ## 证据和检查
 
-- raw 的逐行证据放在 `playground/adapter/dsh-evidence.md`；每条核心表格行必须有对应证据。
+- native 的逐行证据放在 `playground/native-adapter/dsh-evidence.md`；每条核心表格行必须有对应证据。
 - 修改任一 `dsh.md` 后同步对应的 `dsh.zh.md`，保持 section 数、行数、Cursor 单元格和代码标识符一致。
 - 生成前对照本文件自检：没有抄运行时 schema 字面量，没有跨块重复，没有未定义的内部简称，`Local replacements` 只含真实替代项。
-- `scripts/generate-pstack.mjs --target port|raw` 负责生成树；修改后人工检查结构并运行 `vp run generate:check`。
+- `scripts/generate-pstack.mjs --target port|native` 负责生成树；修改后人工检查结构并运行 `vp run generate:check`。
 - 结构只允许模板中的核心块；`port` 只追加 `Plugin tools`、`Agent Teams` 和 `Local replacements`。
