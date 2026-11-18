@@ -34,15 +34,19 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 由 `scripts/generate-pstack.mjs --target port` 从固定上游和 `port/dsh.md` 整体生成的根 `pstack/` 目录，构建时复制到 `dist/pstack/`。
 
-手工变更应落在生成来源、插件源码、测试或技能工作区。发布兼容范围由 `package.json` 的 `engines.dsh` 提供，pstack 版本记在 `port/baseline.json`；场景注册表与当前审核快照分别位于 `playground/scenarios/` 和 `playground/evidence/runs/`，都不属于本仓工程决策记录目录。
+手工变更应落在生成来源、插件源码、测试或技能工作区。发布兼容范围由 `package.json` 的 `engines.dsh` 提供，pstack 版本记在 `port/baseline.json`；能力探针位于 `playground/scenarios/`，场景注册表在 `playground/harness/scenario/`，当前证据快照在 `playground/evidence/runs/`，都不属于本仓工程决策记录目录。
+
+## Port（移植产物目录）
+
+`port/` 保存最终移植产物与发布边界：`dsh.md`、`dsh.zh.md` 是随包适配文案的唯一手写来源，`baseline.json` 记录 pstack 版本，`surface.json` 记录公开工具清单，`docs/` 保存移植规则与回归记录。`scripts/generate-pstack.mjs --target port` 由它生成根 `pstack/`，构建时复制到 `dist/pstack/`。
 
 ## Playground（验证场）
 
-`playground/` 的真实 DSH Web 会话验证环境。它运行 raw/adapted 能力 probe，收集 RunRecord、SessionAnalysis 和评审快照，为 port 和 src 提供缺口与结论。
+`playground/` 的真实 DSH Web 会话验证环境。它运行 native/adapted 能力 probe，收集 RunRecord、SessionAnalysis 和评审快照，为 port 和 src 提供缺口与结论。
 
-## Raw 与 Adapted
+## Native 与 Adapted
 
-`raw` 是原生 DSH 基线阶段，只能观察 DSH 原生能力；`adapted` 是适配实现验证阶段，只使用当前适配实现和 `port/dsh.md`。两个阶段证据和结论隔离，不能互相替代。
+`native` 是不加载被测插件的 DSH 标准运行时基线，只能观察 DSH 原生能力；`adapted` 加载被测插件并使用当前适配实现和 `port/dsh.md`。两个 treatment 的证据和结论隔离，不能互相替代。
 
 ## Capability probe（能力探针）
 
@@ -50,7 +54,7 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 ## Capability environment（能力对照环境）
 
-在 `environments.ts` 中登记的可选环境，用于比较某个可选依赖是否改变行为。它只作为对照，不代表原生 DSH 能力，也不进入 base 通过条件。
+在 `playground/harness/scenario/environments.ts` 中登记的可选环境，用于比较某个可选依赖是否改变行为。它只作为对照，不代表原生 DSH 能力，也不进入 base 通过条件。
 
 ## Baseline（发布基线）
 
