@@ -14,7 +14,7 @@
       "description": "<上游 pstack 需要、DSH 标准模式不能保证的行为>",
       "sources": ["<上游文件或运行时证据>"],
       "evidence": "<native 观察或文档依据>",
-      "status": "proposed | confirmed | refuted"
+      "status": "proposed | confirmed | refuted | excluded"
     }
   ]
 }
@@ -28,6 +28,8 @@
 判定基于当前上游与当前运行时；`native` 的运行结果是最终仲裁。能通过 `native` 的行为不是缺口。
 
 不要写进清单：插件自身提供的工具、preset、角色文件或命令，它们是实现而不是能力；DSH 标准模式已经提供的能力；可选插件或团队模式的内部契约，除非上游 pstack 工作流明确依赖且 DSH 标准模式缺失。
+
+缺口提取的输入边界：只读当前上游 pstack 和 DSH 标准运行时资料（`playground/native/dsh.md`、`dsh-evidence.md`、当前安装的 DSH 公开文档与类型）。不得读 `src/`、`port/`、`cordis.patch.yml`、插件 manifest、插件源码、历史决策记录或会话记录。缺口必须由 native 观察或 DSH 运行时证据支撑，不能由插件功能反推。
 
 `status` 由用户在 gap 生成会话中确认；只有 `confirmed` 的缺口进入第二阶段。
 
