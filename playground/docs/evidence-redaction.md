@@ -9,13 +9,13 @@
 3. 运行：
 
 ```sh
-vp run playground:redact -- --phase raw --environment base
+vp run playground:redact -- --treatment native --environment base
 ```
 
 检查候选文件。无残留后执行：
 
 ```sh
-vp run playground:redact -- --phase raw --environment base --apply
+vp run playground:redact -- --treatment native --environment base --apply
 ```
 
 只有校验通过的 `record.safe.json` 才会替换 `record.json`。`record.safe.json` 不提交。

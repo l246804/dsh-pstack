@@ -10,7 +10,7 @@ adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。�
 
 `playground/scenarios/environments.ts` 定义环境：
 
-- `id`：环境目录名和 RunRecord 的 environment id。
+- `id`：环境 id，也是 RunRecord 的 `environment.matrix.id`。
 - `description`：中文说明为什么需要该环境。
 - `kind`：`base`、`capability` 或 `conflict`。
 - `enabledPluginPackages`：该环境额外加载的插件包。
@@ -27,7 +27,7 @@ adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。�
 
 - `render` 是 `kind: "capability"` 的渲染对照环境。
 - 具体插件配置以 `environments.ts` 为准。
-- `render/` 下的 probe 从对应 `capabilities/` base 场景 import 默认对象，spread 后只覆盖环境身份和阶段字段；任务和观察保持不变。
+- 同一个 render probe 是单份定义，声明 `environments: ["base", "render"]`，在 base 和 render 两个单元跑同一份任务和观察；不再有 `*-render` 的 re-export stub。
 - 同一能力在 base 和对照环境中的结果要同时保留，才能判断差异来自环境还是 port。
 
 ## 特殊环境

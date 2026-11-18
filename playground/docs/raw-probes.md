@@ -6,24 +6,22 @@
 
 ```text
 playground/scenarios/
-├── capabilities/                    # base 环境的 probe
-├── <environment>/                   # 该环境专用的 probe 或环境对照
+├── <capability>.ts                  # 每个能力一份 probe（扁平，无目录分组）
 ├── capability-inventory.json        # 手工维护的能力清单
 ├── capability-exclusions.json       # 用户批准的排除决定
 ├── capability-exclusions.proposed.json
-├── environments.ts
+├── environments.ts                  # 环境矩阵
 ├── index.ts
-└── registry.ts
+└── registry.ts                      # 收集所有扁平 probe，不推导环境
 ```
 
 - 一个文件只放一个独立 probe，默认导出 `BehaviorScenario`。
-- `capabilities/` 对应 `base`。
-- 其他目录名必须与 `environments.ts` 中的环境 id 完全一致。
-- 目录按环境组织，能力通过场景的 `capability` 字段表达。
-- 只有实际存在 probe 时才建立环境目录。
+- 目录是扁平的：`registry.ts` 收集 `playground/scenarios/*.ts` 下的每个 probe，不再从目录名推导环境，也不再有 re-export stub。
+- probe 用 `treatments`（`native` | `adapted`，默认两者都允许）和 `environments`（环境 id 数组，默认 `["base"]`）声明自己在哪些运行单元成立。
+- 能力通过场景的 `capability` 字段表达。
 
 ```ts
-import type { BehaviorScenario } from "../../types.ts";
+import type { BehaviorScenario } from "../types.ts";
 
 const scenario: BehaviorScenario = { ... };
 export default scenario;
@@ -131,8 +129,8 @@ export default scenario;
 
 - 六个类别都扫描过，不因当前没有 probe 就漏掉整类。
 - 上游文档中的工具、模型、环境、输出和技能依赖都有对应 capability，或者有明确记录的原因。
-- 所有 base probe 默认允许 raw；不得在 `capabilities/` 中静默写 `phases: ["adapted"]`。
-- 每个 capability 有 `probes.base`；需要环境对照时追加对应环境键。
+- 所有 base probe 默认允许 native 和 adapted；需要限定 treatment 时显式写 `treatments`，不要在 base probe 上静默限制。
+- 每个 capability 有 `probes.base`；需要环境对照时在该能力的 probe 上追加 `environments` 键。
 - 每个 `render-*` 和 `skill-dependency.*` 都有 probe，不能只写文档说明。
 - 新增 probe 后重新运行 `vp check --fix` 和 `vp test`。
 
@@ -140,20 +138,21 @@ export default scenario;
 
 | 阶段 | 允许输入 | 禁止输入 | 观察目标 |
 | --- | --- | --- | --- |
-| raw | `reviews/raw-*`、`playground/raw/dsh.md`、上游 pstack 源树、场景 fixture、当前 raw session、已登记的 capability 对照环境 | `port/dsh.md`、`src/**`、已发布端口实现、`reviews/adapted-*`、adapted 证据 | 原生 DSH 能力；capability 环境只做对照 |
-| adapted | `reviews/adapted-*`、`port/dsh.md`、`src/**`、当前适配实现和环境文件、当前 adapted session | `reviews/raw-*`、raw 分析结论、raw 证据 | 适配实现 |
+| native | `reviews/native-*`、`playground/raw/dsh.md`、上游 pstack 源树、场景 fixture、当前 native session、已登记的 capability 对照环境 | `port/dsh.md`、`src/**`、已发布端口实现、`reviews/adapted-*`、adapted 证据 | 原生 DSH 能力；capability 环境只做对照 |
+| adapted | `reviews/adapted-*`、`port/dsh.md`、`src/**`、当前适配实现和环境文件、当前 adapted session | `reviews/native-*`、native 分析结论、native 证据 | 适配实现 |
 
-- 场景声明 `phases` 时，只能在该阶段运行；不声明表示 raw/adapted 都允许。
-- `raw/base` 是 native baseline；`raw/<capability-environment>` 只用于证明可选依赖是否改变结果，不能替代 base 对照。
+- 场景声明 `treatments` 时，只能在这些 treatment 运行；不声明表示 native/adapted 都允许。
+- 场景声明 `environments` 时，只能在这些环境运行；不声明表示只在 `base` 运行。
+- `native/base` 是 native baseline；`native/<capability-environment>` 只用于证明可选依赖是否改变结果，不能替代 base 对照。
 - 发现需要读取跨阶段文件时，停止该 probe 或分析，重新选择来源。
-- raw 不预置适配工具或环境文件；adapted 不反推 raw 结论。
+- native 不预置适配工具或环境文件；adapted 不反推 native 结论。
 
-## 环境与 re-export
+## 环境
 
 - `base` 是默认环境，不加载额外插件。
 - 其他环境必须在 `environments.ts` 中登记 `description`、`kind` 和 `enabledPluginPackages`。
 - 具体第三方包名只写在 `environments.ts`，文档只写环境 id、用途和对照方式。
-- 只有同题能力对照环境（如 `render`）可以使用 re-export：从对应 `capabilities/` base 场景 import 默认对象，spread 后只覆盖环境身份和阶段字段。
+- 同题能力对照环境（如 `render`）由单份 probe 声明 `environments: ["base", "render"]` 覆盖，不再从 base 场景 import 后覆盖环境身份。
 - 非同题对照的特殊目的场景使用独立用例，不能复用 base prompt。
 - 环境文档不提前假设某个环境一定是冲突环境；用途由 `environments.ts` 的 `description` 和 `kind` 表达。
 

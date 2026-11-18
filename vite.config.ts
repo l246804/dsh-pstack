@@ -91,17 +91,17 @@ export default defineConfig({
       },
       "playground:open": {
         command:
-          "vpx playground/scripts/prepare.ts --phase adapted --environment preview --workers 1",
+          "vpx playground/scripts/prepare.ts --treatment adapted --environment preview --workers 1",
         cache: false,
         dependsOn: ["build", "playground:close"],
       },
       "playground:close": {
-        command: "vpx playground/scripts/stop.ts --phase adapted --environment preview",
+        command: "vpx playground/scripts/stop.ts --treatment adapted --environment preview",
         cache: false,
       },
       "playground:reset": {
         command:
-          "vpx playground/scripts/prepare.ts --phase adapted --environment preview --workers 1 --reset",
+          "vpx playground/scripts/prepare.ts --treatment adapted --environment preview --workers 1 --reset",
         cache: false,
       },
       "playground:bootstrap": {
