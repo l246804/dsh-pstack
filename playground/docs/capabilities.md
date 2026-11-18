@@ -55,20 +55,19 @@
 - adapted 分析：判断同一场景在插件环境下是否达成同一用户可观察结果，即缺口是否闭合。
 - 插件实现变化时，场景和缺口清单保持不变；只有 adapted 分析读取工具调用、截图等证据的方式可能随实现更新。
 
-## 5. inventory 与排除
+## 5. 缺口清单与场景
 
-- `playground/scenarios/native-gaps.json`：native 缺口清单，第一阶段产物。
-- `playground/scenarios/inventory.json`：已生成场景的映射，字段 `id`、`category`、`description`、`sources`、`requiredBy`、`status`（`covered` | `discovered` | `excluded`）、`probes`，gap 场景可带 `gap`。
-- `playground/scenarios/exclusions.json`：`{ "<id>": { "reason": "...", "decidedBy": "user" } }`，只有用户明确批准才写。
-- `playground/scenarios/exclusions.proposed.json`：候选排除，agent 可写，不产生 `excluded` 状态。
+- `playground/scenarios/native-gaps.json` 是唯一人工维护的清单：`{ "gaps": [{ "id", "description", "sources", "evidence", "status", "reason"? }] }`，`status` 取 `proposed` | `confirmed` | `refuted` | `excluded`。`refuted` 和 `excluded` 必须写 `reason` 并由用户确认。
+- 已生成的场景就是场景集合本身：每个 `playground/scenarios/probes/*.ts` 文件声明自己的 `capability`、`kind`、`gap`、`treatments`、`environments`，不再维护单独的 inventory 或 exclusions 文件。
+- 覆盖率由缺口清单和场景文件计算（见 `gapCoverageProblems`），不靠第三份清单同步。
 - 不写自动解析上游文档的脚本；缺口与场景由 agent 从当前来源判断。
 
 ## 6. 完成标准
 
 - `native-gaps.json` 中每个 `confirmed` 缺口至少有一个 `kind: "gap"` 且 `gap` 指向它的场景。
-- 每个 gap 场景的 `gap` 都存在于 `native-gaps.json`。
-- inventory 中每个 `covered` 的 `probes.base` 指向真实存在的场景。
-- 没有孤儿场景：每个场景的 `capability` 都在 inventory 里。
+- 每个 gap 场景的 `gap` 都存在于 `native-gaps.json`，且同时运行在 native 与 adapted。
+- 每个 regression 场景不声明 `gap`。
+- 每个场景都有 `kind` 和非空的 `capability`。
 - 每个场景的机械断言能在行为缺失时失败。
 - `vp run typecheck && vp run playground:typecheck && vp test` 通过。
 

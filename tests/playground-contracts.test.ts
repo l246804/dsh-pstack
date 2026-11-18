@@ -3,31 +3,11 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { parseConfig } from "../playground/runner/lib/config.ts";
 import {
-  coverageProblems,
   gapCoverageProblems,
-  type CoverageExclusions,
   type CoverageGap,
-  type CoverageInventoryEntry,
-  type CoverageScenario,
   type GapCoverageScenario,
 } from "../playground/runner/lib/coverage.ts";
 import { environments, scenariosById } from "../playground/runner/scenario/index.ts";
-
-function inventory(): CoverageInventoryEntry[] {
-  const text = readFileSync(
-    new URL("../playground/scenarios/inventory.json", import.meta.url),
-    "utf8",
-  );
-  return (JSON.parse(text) as { capabilities: CoverageInventoryEntry[] }).capabilities;
-}
-
-function exclusions(): CoverageExclusions {
-  const text = readFileSync(
-    new URL("../playground/scenarios/exclusions.json", import.meta.url),
-    "utf8",
-  );
-  return JSON.parse(text) as CoverageExclusions;
-}
 
 function gaps(): CoverageGap[] {
   const text = readFileSync(
@@ -37,10 +17,9 @@ function gaps(): CoverageGap[] {
   return (JSON.parse(text) as { gaps: CoverageGap[] }).gaps;
 }
 
-function scenarios(): CoverageScenario[] {
+function scenarios(): GapCoverageScenario[] {
   return [...scenariosById.values()].map((scenario) => ({
     id: scenario.id,
-    capability: scenario.capability,
     kind: scenario.kind,
     gap: scenario.gap,
     treatments: scenario.treatments,
@@ -107,74 +86,6 @@ describe("playground environments", () => {
   });
 });
 
-describe("coverageProblems", () => {
-  const scenario = (id: string, capability: string): CoverageScenario => ({ id, capability });
-  const covered = (id: string, base?: string): CoverageInventoryEntry => ({
-    id,
-    status: "covered",
-    probes: base === undefined ? {} : { base },
-  });
-
-  it("allows an empty registry and empty inventory", () => {
-    expect(coverageProblems([], [], {})).toEqual([]);
-  });
-
-  it("reports scenarios without an inventory", () => {
-    expect(coverageProblems([scenario("probe-a", "cap-a")], [], {})).toContain(
-      "scenarios are registered but the capability inventory is empty",
-    );
-  });
-
-  it("reports an inventory without scenarios", () => {
-    expect(coverageProblems([], [covered("cap-a", "probe-a")], {})).toContain(
-      "the capability inventory has entries but no scenarios are registered",
-    );
-  });
-
-  it("reports a scenario whose capability is not in the inventory", () => {
-    expect(
-      coverageProblems([scenario("probe-a", "cap-x")], [covered("cap-a", "probe-a")], {}),
-    ).toContain("scenario probe-a references unknown capability cap-x");
-  });
-
-  it("reports a covered capability whose base probe is not registered", () => {
-    expect(
-      coverageProblems([scenario("probe-a", "cap-a")], [covered("cap-a", "probe-b")], {}),
-    ).toEqual(["covered capability cap-a points at unknown probe probe-b"]);
-    expect(coverageProblems([scenario("probe-a", "cap-a")], [covered("cap-a")], {})).toEqual([
-      "covered capability cap-a has no base probe",
-    ]);
-  });
-
-  it("reports an excluded capability with no user exclusion", () => {
-    const registered = [scenario("probe-a", "cap-a")];
-    const entries = [covered("cap-a", "probe-a"), { id: "cap-x", status: "excluded" }];
-    const problem = "excluded capability cap-x needs a user exclusion with a non-empty reason";
-    expect(coverageProblems(registered, entries, {})).toContain(problem);
-    expect(
-      coverageProblems(registered, entries, { "cap-x": { reason: "", decidedBy: "user" } }),
-    ).toContain(problem);
-    expect(
-      coverageProblems(registered, entries, {
-        "cap-x": { reason: "not ours", decidedBy: "agent" },
-      }),
-    ).toContain(problem);
-    expect(
-      coverageProblems(registered, entries, { "cap-x": { reason: "not ours", decidedBy: "user" } }),
-    ).toEqual([]);
-  });
-});
-
-describe("playground capability coverage", () => {
-  it("reports no problems for the real scenarios, inventory, and exclusions", () => {
-    expect(coverageProblems(scenarios(), inventory(), exclusions())).toEqual([]);
-  });
-
-  it("reports no problems for the real gaps and gap scenarios", () => {
-    expect(gapCoverageProblems(scenarios(), gaps())).toEqual([]);
-  });
-});
-
 describe("gapCoverageProblems", () => {
   const scenario = (
     id: string,
@@ -185,6 +96,10 @@ describe("gapCoverageProblems", () => {
 
   it("allows an empty gap list and empty scenarios", () => {
     expect(gapCoverageProblems([], [])).toEqual([]);
+  });
+
+  it("reports no problems for the real gaps and gap scenarios", () => {
+    expect(gapCoverageProblems(scenarios(), gaps())).toEqual([]);
   });
 
   it("requires every confirmed gap to have a gap scenario", () => {

@@ -249,14 +249,11 @@ describe("status table", () => {
       }),
     ]);
     writeSnapshot(root, "adapted", "base", [makeRecord("adapted", "base", "cap-alpha")]);
-    const inventoryFile = join(root, "inventory.json");
-    writeFileSync(
-      inventoryFile,
-      `${JSON.stringify({
-        capabilities: [{ id: "capability-alpha", probes: { base: "cap-alpha" } }],
-      })}\n`,
-    );
-    const target = { root, inventoryFile };
+    const target = {
+      root,
+      resolveCapability: (scenarioId: string) =>
+        scenarioId === "cap-alpha" ? "capability-alpha" : undefined,
+    };
 
     const content = statusTableContent(target);
     const lines = content.split("\n");
