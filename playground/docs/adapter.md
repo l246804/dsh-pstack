@@ -1,4 +1,4 @@
-# raw 目录说明
+# adapter 目录说明
 
 本文件说明 `playground/adapter/` 的文件职责和生成规则。`dsh.md` 的逐行编写规则不在 playground 内维护，统一链接根目录的 [docs/dsh-adapter.md](../../docs/dsh-adapter.md)。
 
