@@ -10,7 +10,7 @@
 - `playground/raw/dsh.md`：只在 native 分析时逐条对照。
 - `port/dsh.md`：只在 adapted 分析时逐条对照。
 - 必要时读 `playground/raw/dsh-evidence.md` 和上游技能原文。
-- `playground/scenarios/capability-inventory.json`：agent 从上游和 raw/dsh 手工维护的派生能力清单；不要从 DSH 运行时反推 native 能力需求。
+- `playground/data/capability-inventory.json`：agent 按 [capabilities.md](./capabilities.md) 手工维护的能力清单；不要从 DSH 运行时反推 native 能力需求。
 
 ## 阶段隔离
 
@@ -30,7 +30,7 @@
 
 ## 按能力类别分析
 
-分析不能只写一段总体结论。每个 finding 必须先落到一个能力类别，再按该类别的证据维度判断。能力类别定义见 [raw-probes.md](./raw-probes.md)；问题条目里的“类型”是后续动作分流，不是能力类别。
+分析不能只写一段总体结论。每个 finding 必须先落到一个能力类别，再按该类别的证据维度判断。能力组与提取规则见 [capabilities.md](./capabilities.md)，下面给出的证据维度只对存在的 probe 适用；问题条目里的“类型”是后续动作分流，不是能力类别。
 
 ### tool
 
