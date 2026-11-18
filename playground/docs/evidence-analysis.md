@@ -131,7 +131,7 @@
 
 ## 输出
 
-按 treatment 手写 `findings/<treatment>.md`（`findings/native.md`、`findings/adapted.md`），不再生成每快照的 `index.md`。分析完成后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并通过 `playground:redact --apply`。
+按 treatment 手写 `findings/<treatment>.md`（`findings/native.md`、`findings/adapted.md`）。分析完成后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并通过 `playground:redact --apply`。
 
 `findings/<treatment>.md` 固定包含：
 

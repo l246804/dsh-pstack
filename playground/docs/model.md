@@ -1,14 +1,14 @@
 # Playground run-matrix model
 
-Replaces the earlier folder-split model. One probe definition per capability.
+One probe definition per capability.
 Treatment and environment are run dimensions. DSH and pstack versions are run identity
 and invalidation axes. Every status/analysis view is generated from records. Stage
 isolation is enforced by authorship, not by directories.
 
 ## 1. Identity
 
-- `treatment`: `native` | `adapted`. Replaces the earlier `Phase` type and its per-run field.
-  - `native`（原 `raw` 基线）: no `dsh-pstack` plugin, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
+- `treatment`: `native` | `adapted`.
+  - `native`: no `dsh-pstack` plugin, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
   - `adapted`: load `dsh-pstack` and `port/dsh.md`, verify the port.
 - `environment`: id from `environments.ts` (`base`, `render`, `agent-team`). Optional
   plugins and team mode belong here, not in a directory name.
@@ -19,13 +19,11 @@ isolation is enforced by authorship, not by directories.
 
 ## 2. Scenario definition
 
-- One file per capability under `playground/scenarios/` (flat). Delete the
-  `capabilities/`, `render/`, `agent-team/` directory split and all re-export stubs.
+- One file per capability under `playground/scenarios/` (flat).
 - `BehaviorScenario` keeps `capability`, gains optional `treatments` (default both) and
   `environments` (default `["base"]`). A render probe declares `environments: ["base",
   "render"]` on its one definition.
-- `registry.ts` collects every scenario file; it no longer infers an environment from a
-  directory and no longer requires per-environment directories.
+- `registry.ts` collects every scenario file; each probe declares its own treatments and environments.
 
 ## 3. Evidence layout
 
@@ -33,7 +31,6 @@ isolation is enforced by authorship, not by directories.
   `screenshot.png`.
 - `playground/reviews/<treatment>-<environment>/manifest.json` records treatment,
   environment, `dshVersion`, `pstackVersion`, `scenarioIds`.
-- No hand-written `index.md` per snapshot.
 
 ## 4. Generated vs hand-written
 
@@ -61,16 +58,4 @@ isolation is enforced by authorship, not by directories.
   behavior.
 - Generated artifacts carry `--check` guards.
 
-## 7. Deletion policy (no legacy)
 
-Delete: the `Phase` type and its per-run identifier; the scenario directory split and
-re-export stubs; per-snapshot `index.md`; the committed `reviews/*` snapshots (known
-stale: raw captured at pstack 0.15.36); any compatibility shims or dual-read paths. Git
-history is the archive. Re-capture evidence after the rewrite.
-
-## 8. Verification gates
-
-- After each unit: `vp run typecheck`, `vp run playground:typecheck`, `vp test` all green.
-- Final: no legacy per-run identifier remains in `playground/`, `src/`, `skills/`; no
-  `scenarios/render/` or `scenarios/agent-team/` directories; docs updated to the new
-  commands and model.

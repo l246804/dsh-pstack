@@ -9,7 +9,7 @@
 - 每个单元只保留一份当前完整快照：`reviews/<treatment>-<environment>/`。
 - `manifest.json` 记录 `treatment`、`environment`、`dshVersion`、`pstackVersion`、`scenarioIds`，以及最后批次、mode 和覆盖场景。
 - `reviews/<treatment>-<environment>/scenarios/**` 保存每个场景的 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
-- 不再生成每快照的 `index.md`；根因问答按 treatment 手写到 `findings/<treatment>.md`，按能力打标签。
+- 根因问答按 treatment 手写到 `findings/<treatment>.md`，按能力打标签。
 - `reviews/.staging/` 是批次运行中的临时目录，不提交。
 - 状态表和跨单元透视由 `playground:status-table` 从记录生成；对比由 `playground:compare` 按运行身份生成。
 
@@ -81,7 +81,7 @@ vp run playground:collect -- --treatment adapted --environment base
 
 ### render 对照 probe
 
-render 环境只用于同题能力对照。render probe 是单份定义声明 `environments: ["base", "render"]`，在 base 和 render 两个单元都跑同一份任务和观察，不再有 `*-render` 的 re-export stub。
+render 环境只用于同题能力对照。render probe 是单份定义声明 `environments: ["base", "render"]`，在 base 和 render 两个单元都跑同一份任务和观察。
 
 ```sh
 vp run playground:prepare -- --treatment native --environment render --reset

@@ -27,7 +27,7 @@ adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。�
 
 - `render` 是 `kind: "capability"` 的渲染对照环境。
 - 具体插件配置以 `environments.ts` 为准。
-- 同一个 render probe 是单份定义，声明 `environments: ["base", "render"]`，在 base 和 render 两个单元跑同一份任务和观察；不再有 `*-render` 的 re-export stub。
+- 同一个 render probe 是单份定义，声明 `environments: ["base", "render"]`，在 base 和 render 两个单元跑同一份任务和观察。
 - 同一能力在 base 和对照环境中的结果要同时保留，才能判断差异来自环境还是 port。
 
 ## 特殊环境
