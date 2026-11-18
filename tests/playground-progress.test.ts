@@ -8,7 +8,7 @@ import {
   updateProgress,
   writeProgress,
   type ProgressState,
-} from "../playground/scripts/lib/progress.ts";
+} from "../playground/harness/lib/progress.ts";
 
 const timestampPattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 

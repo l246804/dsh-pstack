@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generate one pstack tree from the pinned upstream pstack tree and its adapter.
 // --target port writes the shipped root pstack/ from port/dsh.md.
-// --target raw writes playground/raw/pstack/ from playground/raw/dsh.md.
+// --target raw writes playground/adapter/pstack/ from playground/adapter/dsh.md.
 
 import {
   chmodSync,
@@ -25,9 +25,9 @@ if (TARGET !== "port" && TARGET !== "raw") {
 }
 
 const isRaw = TARGET === "raw";
-const ADAPTER_SOURCE = isRaw ? "playground/raw/dsh.md" : "port/dsh.md";
+const ADAPTER_SOURCE = isRaw ? "playground/adapter/dsh.md" : "port/dsh.md";
 const ADAPTER_TREE = "docs/harness/dsh.md";
-const OUT = isRaw ? join(ROOT, "playground/raw/pstack") : join(ROOT, "pstack");
+const OUT = isRaw ? join(ROOT, "playground/adapter/pstack") : join(ROOT, "pstack");
 const COMMAND = `vpx scripts/generate-pstack.mjs --target ${TARGET}`;
 const INJECTION = isRaw
   ? `In DSH, read [the DSH adapter](../../${ADAPTER_TREE}) once per session before you follow this skill. It maps the Cursor names in pstack skills to DSH.`

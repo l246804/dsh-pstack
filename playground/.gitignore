@@ -9,13 +9,13 @@ node_modules
 .DS_Store
 
 # Regenerated raw baseline. The generator never writes the upstream checkout.
-raw/pstack/
+adapter/pstack/
 
-# Review snapshots under reviews/ are committed source; only in-flight staging is transient.
-reviews/.staging/
+# Review snapshots under evidence/runs/ are committed source; only in-flight staging is transient.
+evidence/runs/.staging/
 
 # Session logs contain host paths and may contain credentials; keep local only.
-reviews/**/session.jsonl.zstd
+evidence/runs/**/session.jsonl.zstd
 
 # Agent redaction candidate; only validated record.json is committed.
-reviews/**/record.safe.json
+evidence/runs/**/record.safe.json

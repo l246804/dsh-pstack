@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { RunRecord } from "../playground/types.ts";
-import { residualKinds, sanitizeRecord } from "../playground/scripts/lib/redaction.ts";
+import type { RunRecord } from "../playground/harness/types.ts";
+import { residualKinds, sanitizeRecord } from "../playground/harness/lib/redaction.ts";
 
 function record(): RunRecord {
   return {
@@ -20,7 +20,7 @@ function record(): RunRecord {
     session: {
       sessionId: "session-1",
       sessionFile: "/home/user/.dsh/sessions/x/session.v4.jsonl.zstd",
-      workspacePath: "/tmp/dsh-pstack-playground/raw/base/w0/workspace/x",
+      workspacePath: "/tmp/dsh-pstack-playground/adapter/base/w0/workspace/x",
       agentPreset: "standard",
       skillLoads: [],
       toolCalls: [

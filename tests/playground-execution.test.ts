@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import type { Assertion, BehaviorScenario, RunRecord, SessionFacts } from "../playground/types.ts";
+import type {
+  Assertion,
+  BehaviorScenario,
+  RunRecord,
+  SessionFacts,
+} from "../playground/harness/types.ts";
 import {
   mountRawTree,
   profileManifest,
@@ -12,7 +17,7 @@ import {
   resetHome,
   writeHomePatch,
   type ProviderPlan,
-} from "../playground/scripts/lib/env.ts";
+} from "../playground/harness/lib/env.ts";
 import {
   assertSafeRecord,
   digestEvents,
@@ -26,19 +31,19 @@ import {
   summarizeToolArguments,
   type SessionEvent,
   verdictFor,
-} from "../playground/scripts/lib/evidence.ts";
+} from "../playground/harness/lib/evidence.ts";
 import {
   ISOLATED_ROOT,
   isolatedRootDirectory,
   publicConfigHash,
   REPOSITORY_ROOT,
-} from "../playground/scripts/lib/run-metadata.ts";
+} from "../playground/harness/lib/run-metadata.ts";
 import {
   workerPaths,
   treatmentWorkersDirectory,
   resetTreatment,
   type WorkerPaths,
-} from "../playground/scripts/lib/worker.ts";
+} from "../playground/harness/lib/worker.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -175,7 +180,7 @@ describe("execution contracts", () => {
   });
 
   it("contains no probe timeout or automatic stop in the execution scripts", () => {
-    const root = resolve(__dirname, "../playground/scripts");
+    const root = resolve(__dirname, "../playground/harness/cli");
     for (const file of ["run-case.ts", "run-batch.ts", "prepare.ts", "collect.ts"]) {
       const source = readFileSync(join(root, file), "utf8");
       expect(source).not.toMatch(
