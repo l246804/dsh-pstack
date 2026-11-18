@@ -8,7 +8,7 @@ import {
   type CoverageInventoryEntry,
   type CoverageScenario,
 } from "../playground/scripts/lib/coverage.ts";
-import { environments, scenariosById } from "../playground/scenarios/index.ts";
+import { environments, scenariosById } from "../playground/scenario-system/index.ts";
 
 function inventory(): CoverageInventoryEntry[] {
   const text = readFileSync(

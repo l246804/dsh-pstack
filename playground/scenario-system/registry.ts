@@ -9,10 +9,9 @@ const DEFAULT_ENVIRONMENTS: readonly string[] = ["base"];
  * there is no per-directory environment inference; each probe declares its own treatments
  * and environments.
  */
-const modules = import.meta.glob<{ default: BehaviorScenario }>(
-  ["./*.ts", "!./registry.ts", "!./index.ts", "!./environments.ts"],
-  { eager: true },
-);
+const modules = import.meta.glob<{ default: BehaviorScenario }>("../scenarios/*.ts", {
+  eager: true,
+});
 
 const collected = Object.values(modules)
   .map((module) => module.default)

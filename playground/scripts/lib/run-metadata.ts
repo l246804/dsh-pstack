@@ -6,7 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { PlaygroundConfig, RunEnvironment, Treatment } from "../../types.ts";
-import { environments } from "../../scenarios/environments.ts";
+import { environments } from "../../scenario-system/environments.ts";
 import { stableStringify } from "./stable-json.ts";
 
 export const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");

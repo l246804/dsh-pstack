@@ -8,7 +8,7 @@ adapted 验证 pstack 的适配实现在真实 DSH Web 会话中是否成立。�
 
 ## 环境矩阵
 
-`playground/scenarios/environments.ts` 定义环境：
+`playground/scenario-system/environments.ts` 定义环境：
 
 - `id`：环境 id，也是 RunRecord 的 `environment.matrix.id`。
 - `description`：中文说明为什么需要该环境。

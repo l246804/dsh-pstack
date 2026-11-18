@@ -9,7 +9,7 @@ interface ScenarioRegistry {
   behaviorScenario: (id: string) => BehaviorScenario;
 }
 
-const registryPath = fileURLToPath(new URL("../../scenarios/registry.ts", import.meta.url));
+const registryPath = fileURLToPath(new URL("../../scenario-system/registry.ts", import.meta.url));
 const loaded = (await runnerImport(registryPath)) as { module: ScenarioRegistry };
 const registry = loaded.module;
 

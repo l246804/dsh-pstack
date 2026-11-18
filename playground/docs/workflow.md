@@ -5,7 +5,7 @@
 ## 运行矩阵模型
 
 - 一个 probe 定义只写一份，位于 `playground/scenarios/*.ts`（扁平，一文件一能力）；probe 用 `treatments`（默认 native + adapted）和 `environments`（默认 `["base"]`）声明自己在哪些运行单元里成立。
-- 运行单元是 treatment × environment：`treatment` 取 `native` | `adapted`；`environment` 的 id、可选插件与 team 模式都定义在 `scenarios/environments.ts`，文档不枚举。
+- 运行单元是 treatment × environment：`treatment` 取 `native` | `adapted`；`environment` 的 id、可选插件与 team 模式都定义在 `scenario-system/environments.ts`，文档不枚举。
 - 每个单元只保留一份当前完整快照：`reviews/<treatment>-<environment>/`。
 - `manifest.json` 记录 `treatment`、`environment`、`dshVersion`、`pstackVersion`、`scenarioIds`，以及最后批次、mode 和覆盖场景。
 - `reviews/<treatment>-<environment>/scenarios/**` 保存每个场景的 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
@@ -89,7 +89,7 @@ vp run playground:collect -- --treatment adapted --environment base
 
 ### 可选环境对照
 
-可选环境用于同题对照，具体环境 id 与插件配置由 `scenarios/environments.ts` 定义。一个 probe 可声明多个 `environments`，在 base 与该环境各跑一次同一任务和观察。
+可选环境用于同题对照，具体环境 id 与插件配置由 `scenario-system/environments.ts` 定义。一个 probe 可声明多个 `environments`，在 base 与该环境各跑一次同一任务和观察。
 
 ```sh
 vp run playground:prepare -- --treatment <native|adapted> --environment <environment> --reset
