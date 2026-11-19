@@ -9,13 +9,18 @@
 //
 // Usage:
 //   vpx native/scripts/fetch-upstream.mjs                 # restore from the lock, no version needed
-//   vpx native/scripts/fetch-upstream.mjs --version 0.15.43   # move the pin to a released version
+//   vpx native/scripts/fetch-upstream.mjs --latest        # pin what pstack's plugin.json says on main
+//   vpx native/scripts/fetch-upstream.mjs --version 0.15.43   # pin an exact released version
 //        [--source <git url or local path>] [--path pstack] [--commit <sha>]
 //
 // Rules:
-// - Without --version the script reads native/upstream.lock.json and restores
-//   native/upstream/ at the pinned commit; when the tree is already at the
-//   pinned version it does nothing and touches no network.
+// - Without --version or --latest the script reads native/upstream.lock.json and
+//   restores native/upstream/ at the pinned commit; when the tree is already at
+//   the pinned version it does nothing and touches no network.
+// - --latest resolves the version from <path>/plugin.json on the remote main
+//   branch and pins that version's bump commit. Main may carry a version the
+//   marketplace has not published yet; use --version when the pin must match a
+//   marketplace-confirmed release exactly.
 // - The default upgrade pin is the bump commit: the newest commit whose tree
 //   switched plugin.json to the requested version relative to its parent.
 // - Commits after the bump that touch <path>/ while the version is unchanged are
@@ -23,8 +28,6 @@
 //   pass --commit explicitly to move the pin; the script never moves it for you.
 // - A --commit pin must still resolve to the requested version.
 // - Rerunning with the same version is byte-stable for both tree and lock.
-// - "Latest" is never resolved automatically: the version on main may already be
-//   the unreleased next release, and the marketplace has no public API.
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -48,15 +51,17 @@ function arg(name, fallback) {
   return value;
 }
 
-const restoreFromLock = !process.argv.includes("--version");
+const latest = process.argv.includes("--latest");
+const restoreFromLock = !process.argv.includes("--version") && !latest;
 const LOCK_FILE = join(NATIVE, "upstream.lock.json");
 const lockOnDisk = existsSync(LOCK_FILE) ? JSON.parse(readFileSync(LOCK_FILE, "utf8")) : undefined;
 if (restoreFromLock && !lockOnDisk?.pstackVersion) {
   throw new Error(
-    "no usable native/upstream.lock.json; pass --version <x.y.z> to pin a released version first",
+    "no usable native/upstream.lock.json; pass --latest or --version <x.y.z> to pin first",
   );
 }
-const version = restoreFromLock ? lockOnDisk.pstackVersion : arg("version");
+// For --latest the version is resolved from origin/main after the work tree exists.
+let version = restoreFromLock ? lockOnDisk.pstackVersion : latest ? null : arg("version");
 const path = restoreFromLock ? (lockOnDisk.path ?? "pstack") : arg("path", "pstack");
 const source = arg("source", lockOnDisk?.source ?? DEFAULT_SOURCE);
 const commitOverride = restoreFromLock ? lockOnDisk.commit : arg("commit");
@@ -95,6 +100,14 @@ const manifest = `${path}/plugin.json`;
 function versionAt(work, sha) {
   const text = git(["show", `${sha}:${manifest}`], work);
   return JSON.parse(text).version;
+}
+
+if (latest) {
+  version = versionAt(work, "origin/main");
+  if (!version) {
+    throw new Error(`origin/main carries no version in ${manifest}`);
+  }
+  console.log(`origin/main carries ${path}@${version}; resolving its bump commit.`);
 }
 
 /** Expand to a full sha without a redundant spawn when the input is already full. */
