@@ -66,6 +66,7 @@ function record(treatment: "native" | "adapted", environmentId: string): RunReco
         kind: "pi-ai" as const,
         apiKey: "secret-value",
         apiKeyEnv: "PROVIDER_A_KEY",
+        reasoning: "low",
         models: [{ id: "model-a", reasoningEfforts: { low: "low" } }],
       },
     },

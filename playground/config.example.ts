@@ -12,7 +12,7 @@ export default {
 
   // Providers become the worker's $DSH_HOME/cordis.patch.yml model rows.
   // fromHost extracts selected provider/model/effort subsets from the host profile.
-  // DeepSeek account: fromHost({ "deepseek-account": {} }) with copyCredentials: true.
+  // DeepSeek account: fromHost({ "deepseek-account": { account: true } }) with copyCredentials: true.
   providers: fromHost(
     {
       "your-provider": {

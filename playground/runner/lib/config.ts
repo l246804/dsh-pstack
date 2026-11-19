@@ -121,28 +121,21 @@ function provider(value: unknown, label: string, credentialsFile: string): Provi
       ...(parsed.baseURL === undefined
         ? {}
         : { baseURL: string(parsed.baseURL, `${label}.baseURL`) }),
-      ...(parsed.reasoning === undefined
-        ? {}
-        : { reasoning: string(parsed.reasoning, `${label}.reasoning`) }),
+      reasoning: string(parsed.reasoning, `${label}.reasoning`),
       models: parsed.models.map((entry, index) => model(entry, `${label}.models[${index}]`)),
     };
   }
   if (kind === "deepseek-api-key") {
+    if (!Array.isArray(parsed.models) || parsed.models.length === 0) {
+      throw new Error(`${label}.models must be a non-empty array`);
+    }
     return {
       kind,
       apiKey: parseApiKey(),
       ...(parsed.apiKeyEnv === undefined
         ? {}
         : { apiKeyEnv: string(parsed.apiKeyEnv, `${label}.apiKeyEnv`) }),
-      ...(parsed.models === undefined
-        ? {}
-        : {
-            models: (() => {
-              if (!Array.isArray(parsed.models))
-                throw new Error(`${label}.models must be an array`);
-              return parsed.models.map((entry, index) => model(entry, `${label}.models[${index}]`));
-            })(),
-          }),
+      models: parsed.models.map((entry, index) => model(entry, `${label}.models[${index}]`)),
     };
   }
   if (kind === "deepseek-account") {

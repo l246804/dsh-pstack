@@ -49,7 +49,7 @@ function modelEfforts(model: ProviderModel): string[] {
 
 function modelsFor(provider: ProviderConfig): ProviderModel[] | undefined {
   if (provider.kind === "pi-ai") return provider.models;
-  if (provider.kind === "deepseek-api-key") return provider.models ?? DEEPSEEK_BUILTIN_MODELS;
+  if (provider.kind === "deepseek-api-key") return provider.models;
   return undefined;
 }
 

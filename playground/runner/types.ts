@@ -27,14 +27,14 @@ export type ProviderConfig =
       apiKeyEnv: string;
       api?: string;
       baseURL?: string;
-      reasoning?: string;
+      reasoning: string;
       models: ProviderModel[];
     }
   | {
       kind: "deepseek-api-key";
       apiKey: string;
       apiKeyEnv?: string;
-      models?: ProviderModel[];
+      models: ProviderModel[];
     }
   | {
       kind: "deepseek-account";

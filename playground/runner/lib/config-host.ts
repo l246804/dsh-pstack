@@ -8,18 +8,17 @@ import { DEEPSEEK_BUILTIN_MODELS } from "./provider.ts";
 
 export interface HostModelSelection {
   id: string;
-  /** Effort tiers for this model; omitted uses the provider-level default. */
+  /** Effort tiers for this model; default low/high. */
   efforts?: string[];
 }
 
-export interface HostProviderSelection {
-  /** Models to keep; omitted keeps every model the host lists. */
-  models?: Array<string | HostModelSelection>;
-  /** Provider-level reasoning default; low unless explicitly raised. */
-  reasoning?: string;
-  /** Effort tiers for models that do not set their own; default low/high. */
-  efforts?: string[];
-}
+export type HostProviderSelection =
+  | {
+      models: HostModelSelection[];
+      /** Provider-level reasoning is required. */
+      reasoning: string;
+    }
+  | { account: true };
 
 interface HostPatchRow {
   id?: string;
@@ -49,25 +48,20 @@ function selectModel(model: ProviderModel, efforts: string[]): ProviderModel | n
 
 function selectedModels(
   models: ProviderModel[],
-  selection: HostProviderSelection,
+  wanted: HostModelSelection[],
   label: string,
 ): ProviderModel[] {
-  const wanted = selection.models;
+  if (wanted.length === 0) throw new Error(`${label} must select at least one model`);
   const perModel = new Map<string, string[] | undefined>();
-  if (wanted !== undefined) {
-    for (const entry of wanted) {
-      const id = typeof entry === "string" ? entry : entry.id;
-      if (!models.some((model) => model.id === id)) {
-        throw new Error(`${label} does not list model ${id}`);
-      }
-      perModel.set(id, typeof entry === "string" ? undefined : entry.efforts);
+  for (const entry of wanted) {
+    if (!models.some((model) => model.id === entry.id)) {
+      throw new Error(`${label} does not list model ${entry.id}`);
     }
+    perModel.set(entry.id, entry.efforts);
   }
   const picked = models
-    .filter((model) => wanted === undefined || perModel.has(model.id))
-    .map((model) =>
-      selectModel(model, perModel.get(model.id) ?? selection.efforts ?? ["low", "high"]),
-    )
+    .filter((model) => perModel.has(model.id))
+    .map((model) => selectModel(model, perModel.get(model.id) ?? ["low", "high"]))
     .filter((model): model is ProviderModel => model !== null);
   if (picked.length === 0) throw new Error(`${label} has no model with the selected efforts`);
   return picked;
@@ -112,6 +106,7 @@ export function fromHost(
   for (const [name, selection] of Object.entries(selections)) {
     const host = pi[name];
     if (host !== undefined) {
+      if ("account" in selection) throw new Error(`host provider ${name} is not an account route`);
       if (!host.apiKeyEnv) throw new Error(`host pi-ai provider ${name} has no apiKeyEnv`);
       if (!host.models || host.models.length === 0) {
         throw new Error(`host pi-ai provider ${name} has no explicit models`);
@@ -122,12 +117,13 @@ export function fromHost(
         apiKeyEnv: host.apiKeyEnv,
         ...(host.api === undefined ? {} : { api: host.api }),
         ...(host.baseURL === undefined ? {} : { baseURL: host.baseURL }),
-        reasoning: selection.reasoning ?? "low",
-        models: selectedModels(host.models, selection, `host pi-ai provider ${name}`),
+        reasoning: selection.reasoning,
+        models: selectedModels(host.models, selection.models, `host pi-ai provider ${name}`),
       };
       continue;
     }
     if (name === "deepseek-official") {
+      if ("account" in selection) throw new Error("deepseek-official is not an account route");
       const config = hostProvider(patch, "llm-deepseek");
       const apiKeyEnv = (config.apiKeyEnv as string | undefined) ?? "DEEPSEEK_API_KEY";
       const models = (config.models as ProviderModel[] | undefined) ?? DEEPSEEK_BUILTIN_MODELS;
@@ -135,11 +131,14 @@ export function fromHost(
         kind: "deepseek-api-key",
         apiKey: env[apiKeyEnv] ?? `\${${apiKeyEnv}}`,
         apiKeyEnv,
-        models: selectedModels(models, selection, "host DeepSeek API-key route"),
+        models: selectedModels(models, selection.models, "host DeepSeek API-key route"),
       };
       continue;
     }
     if (name === "deepseek-account") {
+      if (!("account" in selection)) {
+        throw new Error("deepseek-account must be selected with { account: true }");
+      }
       const config = hostProvider(patch, "llm-deepseek-account");
       result[name] = {
         kind: "deepseek-account",
