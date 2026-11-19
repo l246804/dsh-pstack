@@ -1,5 +1,6 @@
 import { loadEnv } from "vite-plus";
 
+import { fromHost } from "./runner/lib/config-host.ts";
 import type { PlaygroundConfig } from "./runner/types.ts";
 
 // Vite's env loader: .env, .env.local, .env.playground, .env.playground.local.
@@ -7,54 +8,26 @@ import type { PlaygroundConfig } from "./runner/types.ts";
 const env = loadEnv("playground", process.cwd(), "PLAYGROUND_");
 
 export default {
+  copyCredentials: false,
+
+  // Providers become the worker's $DSH_HOME/cordis.patch.yml model rows.
+  // fromHost extracts selected provider/model/effort subsets from the host profile.
+  // DeepSeek account: fromHost({ "deepseek-account": {} }) with copyCredentials: true.
+  providers: fromHost(
+    {
+      "your-provider": { models: ["your-model"], efforts: ["low", "high"] },
+    },
+    { env },
+  ),
+
   testModel: {
     provider: "your-provider",
     model: "your-model",
     effort: "low",
   },
-  providers: {
-    "your-provider": {
-      kind: "pi-ai",
-      apiKey: env.PLAYGROUND_PROVIDER_API_KEY ?? "",
-      apiKeyEnv: "PROVIDER_API_KEY",
-      api: "openai-responses",
-      baseURL: "https://your-gateway.example/v1",
-      reasoning: "low",
-      models: [
-        {
-          id: "your-model",
-          name: "Your Model",
-          contextWindow: 1_000_000,
-          maxTokens: 128_000,
-          input: ["text"],
-          reasoningEfforts: { low: "low", high: "high" },
-        },
-      ],
-    },
-    // DeepSeek API-key route (provider key must stay deepseek-official):
-    //
-    // "deepseek-official": {
-    //   kind: "deepseek-api-key",
-    //   apiKey: env.PLAYGROUND_DEEPSEEK_API_KEY ?? "",
-    //   apiKeyEnv: "DEEPSEEK_API_KEY",
-    //   models: [
-    //     {
-    //       id: "your-deepseek-model",
-    //       name: "Your DeepSeek Model",
-    //       reasoningEfforts: { low: "low", high: "high" },
-    //     },
-    //   ],
-    // },
-    //
-    // DeepSeek account route (provider key must stay deepseek-account):
-    // The model list comes from the signed-in account; only field overrides are config.
-    //
-    // "deepseek-account": {
-    //   kind: "deepseek-account",
-    //   modelOverrides: {},
-    // },
-  },
+
   roleModels: {},
+
   browser: {
     mode: "managed",
     headed: false,
@@ -62,6 +35,4 @@ export default {
     // mode: "cdp",
     // cdpUrl: "http://127.0.0.1:9222",
   },
-  // Copying the host DSH credential file is opt-in. Model API keys come from env above.
-  copyCredentials: false,
 } satisfies PlaygroundConfig;

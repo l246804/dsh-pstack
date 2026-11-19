@@ -20,6 +20,7 @@
 - 本地配置是 `playground/config.ts`，复制 [config.example.ts](./config.example.ts) 后填写；`config.ts` 与 `*.local` 不入库。
 - `config.ts` 用 `vite-plus` 的 `loadEnv("playground", process.cwd(), "PLAYGROUND_")` 读取 `.env`、`.env.local` 和 mode 文件。
 - provider 按 `kind` 区分 `pi-ai`、`deepseek-api-key` 和 `deepseek-account`；模型、endpoint 和 `apiKeyEnv` 都写在 `config.ts`，不再维护 `host.patch.yml`。
+- `fromHost` 从宿主 DSH web profile 按 provider/model/effort 选择提取 provider 配置；手写 `ProviderConfig` 仍可用。
 - 模型密钥从环境变量进入容器；`copyCredentials` 默认 false，只有显式开启才复制宿主 `.credentials.yaml`。
 - 浏览器默认 `browser.mode: "managed"`（独立无头 Chrome）；`"cdp"` 连接宿主 Chrome，必须使用专用 Chrome profile。
 

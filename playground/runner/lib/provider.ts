@@ -12,7 +12,7 @@ export const DEFAULT_DEEPSEEK_API_KEY_ENV = "DEEPSEEK_API_KEY";
 
 const DEFAULT_EFFORTS = ["low", "high"];
 
-const DEEPSEEK_BUILTIN_MODELS: ProviderModel[] = [
+export const DEEPSEEK_BUILTIN_MODELS: ProviderModel[] = [
   {
     id: "deepseek-flash",
     name: "DeepSeek Flash",
