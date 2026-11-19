@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Export the stable public tool surface from the tool factories to port/surface.json.
+// Export the stable public tool surface from the tool factories to src/surface.json.
 //
 // Each factory only reads its own tool schema, so a stub runtime is enough; no
 // live DSH service or real $DSH_HOME is read here.
@@ -15,7 +15,7 @@ import { createPstackRolesTool } from "../src/role-catalog.ts";
 import { createPstackInterruptTool, createPstackSubagentTool } from "../src/subagent.ts";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const SURFACE_PATH = join(ROOT, "port", "surface.json");
+const SURFACE_PATH = join(ROOT, "src", "surface.json");
 
 /** A value the factories never dereference; they read only their tool schema. */
 const STUB = undefined as never;
@@ -46,7 +46,7 @@ export function buildSurface(): Surface {
 async function renderSurface(surface: Surface): Promise<string> {
   const result = await format(SURFACE_PATH, `${JSON.stringify(surface, null, 2)}\n`);
   if (result.errors.length > 0) {
-    throw new Error(`cannot format port/surface.json: ${result.errors[0]?.message ?? "unknown"}`);
+    throw new Error(`cannot format src/surface.json: ${result.errors[0]?.message ?? "unknown"}`);
   }
   return result.code;
 }
@@ -56,7 +56,7 @@ function diffSummary(text: string, surface: Surface): string {
   try {
     previous = JSON.parse(text) as Surface;
   } catch {
-    return "port/surface.json is not valid JSON.";
+    return "src/surface.json is not valid JSON.";
   }
   const before = new Map(previous.tools.map((tool) => [tool.name, tool]));
   const after = new Map(surface.tools.map((tool) => [tool.name, tool]));
@@ -84,7 +84,7 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
     try {
       current = readFileSync(SURFACE_PATH, "utf8");
     } catch {
-      console.error("port/surface.json is missing; run vpx scripts/release-surface.ts --write");
+      console.error("src/surface.json is missing; run vpx scripts/release-surface.ts --write");
       return 1;
     }
     if (current === text) {
@@ -96,7 +96,7 @@ export async function main(argv: readonly string[] = process.argv.slice(2)): Pro
   }
   if (argv.includes("--write")) {
     writeFileSync(SURFACE_PATH, text);
-    console.log(`Wrote ${surface.tools.length} tools to port/surface.json.`);
+    console.log(`Wrote ${surface.tools.length} tools to src/surface.json.`);
     return 0;
   }
   process.stdout.write(text);

@@ -13,7 +13,7 @@
 ## 数据来源与归纳
 
 - 提交：`git log --no-merges <上一 tag>..HEAD` 的标题与正文。上一 tag 用 `git describe --tags --abbrev=0 --match 'v[0-9]*'` 取，HEAD 就在该 tag 上说明没有新提交，停止。
-- 改动：关键 `git diff`、`port/dsh.md`、`port/surface.json`、`port/baseline.json`。
+- 改动：关键 `git diff`、`src/dsh.md`、`src/surface.json`、`native/upstream.lock.json`。
 - 差异：之前怎样、现在怎样，从提交和 diff 归纳；新增能力没有「之前」，写新增了什么。
 - 结果：使用者能感知什么、要不要迁移，从行为、测试、接口形状判断，但按工具粒度写，不抄具体字段。
 - 原因：驱动它的真实约束或事件，比如上游 Cursor / Claude Code 的对应实现、DSH 平台哪里不支持、实践中踩过的坑，出自 `docs/decisions/` 决策记录和用户确认。

@@ -58,7 +58,7 @@ export default defineConfig({
   run: {
     tasks: {
       build: {
-        command: "vp pack && cp port/dsh.md dist/pstack/docs/harness/dsh.md",
+        command: "vp pack && cp src/dsh.md dist/pstack/docs/harness/dsh.md",
         dependsOn: ["generate"],
       },
       typecheck: {
