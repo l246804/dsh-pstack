@@ -11,7 +11,6 @@
 - `native/dsh.md`：只在 native 分析时逐条对照。
 - `src/dsh.md`：只在 adapted 分析时逐条对照。
 - 必要时读 `native/dsh-evidence.md` 和上游技能原文。
-- `native/gaps.json`：按 [scenario-rules.md](./scenario-rules.md) 维护的 native 缺口清单。
 
 ## 阶段隔离
 
@@ -64,7 +63,7 @@
   - session 只在本地 worker，按 `record.session.sessionId` 读取，不在快照中链接
 - 现象：
 - 根因：
-- 与当前 treatment dsh.md 的关系：native 写 `native/dsh.md`，adapted 写 `src/dsh.md`
+- 与当前 treatment dsh.md 的关系：
 - 建议动作：
 - 你的决定：
 ```
@@ -88,7 +87,7 @@ native 分析只审查 `native/dsh.md`，adapted 分析只审查 `src/dsh.md`。
 2. 再判问题性质：先区分能力缺失和模型未完成；模型能力、复杂度、质量或输出不稳定属于 `inconclusive` 或 `待你判断`，只有能力、工具或环境确实不存在才是 `gap` 或 `ignore-environment`。
 3. 再判根因：场景 prompt、技能或依赖、环境前提、适配说明、上游文档是否覆盖。
 4. native 分析只判断 `native/dsh.md` 是否缺失或误导；adapted 分析只判断 `src/dsh.md` 是否缺失或误导。
-5. 当前 treatment 的 `dsh-md` 结论只改当前 treatment 对应的 dsh.md；native 分析不改 `src/dsh.md`。
+5. dsh-md 结论只针对当前 treatment 的适配答案；另一侧的答案不在本次分析范围内，修改归属见对应包 `AGENTS.md`。
 6. 当前 treatment 的 `plugin` 结论才进入插件、工具或预设开发。
 7. 上游自身问题进入 `upstream`，不在本仓修。
 8. 环境权限、凭据、网络或无头限制进入 `ignore-environment`。

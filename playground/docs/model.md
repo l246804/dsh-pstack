@@ -9,37 +9,34 @@ isolation is enforced by authorship, not by directories.
 
 - `treatment`: `native` | `adapted`.
   - `native`: no plugin under test, run the DSH standard runtime only. This is the implementation-neutral baseline: it never loads the plugin under test, so re-running it after a DSH update reveals capabilities DSH has since made native, and it cannot be coupled to the current implementation.
-  - `adapted`: load the plugin under test and its port configuration, verify the adaptation.
+  - `adapted`: load the plugin under test and its adapter configuration, verify the adaptation.
 - `environment`: id from `environments.ts`; optional plugins and team mode belong to the
   environment definition, never to a directory name.
+  - `base` loads no extra plugin and is the default comparison.
+  - Optional environments are enabled on demand for comparison only; keep the base result
+    for the same probe to tell an environment effect from an adaptation effect.
 - Run record carries `treatment`, `environment.matrix.id`, `environment.dshVersion`,
   and `environment.pstackVersion`.
 - `pstackVersion`: the released pstack version pinned in `native/upstream.lock.json`, recorded
   per run. `upstreamRevision` is kept only for reproducibility, never as an identity key.
 
-## 2. Scenario definition
-
-- One file per capability under `playground/scenarios/probes/` (flat).
-- `BehaviorScenario` keeps `capability`, gains optional `treatments` (default both), `environments` (default `["base"]`), `kind` (`gap` | `regression`), and `gap` (the native gap id for gap scenarios). A probe can declare additional environments on its one definition.
-- `registry.ts` collects every scenario file; each probe declares its own treatments and environments.
-
-## 3. Evidence layout
+## 2. Evidence layout
 
 - `playground/evidence/runs/<treatment>-<environment>/scenarios/<scenarioId>/<treatment>-<environment>/record.json`
   and `screenshot.png`.
 - `playground/evidence/runs/<treatment>-<environment>/manifest.json` records treatment,
   environment, `dshVersion`, `pstackVersion`, `scenarioIds`.
 
-## 4. Generated vs hand-written
+## 3. Generated vs hand-written
 
-- Generated (must support `--check` so they cannot drift): the per-cell status table, the cross-cell pivot, and the comparison report.
-- Hand-written: the native gap list (`native/gaps.json`); probe definitions; `playground/evidence/findings/<treatment>.md` root-cause Q&A tagged by capability; `dsh.md` / `src/dsh.md` review.
+- Generated (must support `--check` so they cannot drift): the per-cell status table, the cross-cell pivot, the comparison report, and the gap lock.
+- Hand-written: probe definitions; `playground/evidence/findings/<treatment>.md` root-cause Q&A tagged by capability; adapter-answer review.
 
-## 5. Commands
+## 4. Commands
 
 运行命令、批次与参数见 [workflow.md](./workflow.md)；本文件不重复。
 
-## 6. Invariants
+## 5. Invariants
 
 - Stage isolation: a native analysis reads only native cells; an adapted analysis reads
   only adapted cells; the merge in generated views is read-only. Each cell carries its
@@ -50,5 +47,3 @@ isolation is enforced by authorship, not by directories.
 - Treatment-neutral scenarios: the same scenario definition runs in native and adapted;
   treatment-specific judging lives in the analysis rules, never in the scenario.
 - Generated artifacts carry `--check` guards.
-
-

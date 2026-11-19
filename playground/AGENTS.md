@@ -13,20 +13,19 @@
 
 | 文档 | 职责 |
 | --- | --- |
-| [docs/model.md](./docs/model.md) | run-matrix 模型：identity、场景定义、证据布局、生成与手写边界 |
-| [docs/scenario-rules.md](./docs/scenario-rules.md) | native 缺口清单、场景生成与 probe 编写规则 |
-| [docs/adapted.md](./docs/adapted.md) | adapted 适配验证规则、环境矩阵和特殊环境处理 |
-| [docs/workflow.md](./docs/workflow.md) | 运行矩阵、命令、批次、交接条件和增量流程 |
+| [docs/model.md](./docs/model.md) | run-matrix 模型：treatment/environment、run identity、证据布局和不变量 |
+| [docs/scenario-rules.md](./docs/scenario-rules.md) | 场景写法、缺口绑定与 gap-lock 同步 |
+| [docs/workflow.md](./docs/workflow.md) | 阶段、批次、命令、交接条件和增量流程 |
 | [docs/worker.md](./docs/worker.md) | worker 隔离、prepare/bootstrap/run/stop 和就绪缓存 |
 | [docs/evidence-analysis.md](./docs/evidence-analysis.md) | 证据分析输入、输出、treatment 隔离和 findings 格式 |
 | [docs/evidence-redaction.md](./docs/evidence-redaction.md) | 证据脱敏和提交门 |
 
 ## 流程概览
 
-1. 生成并确认 native 缺口清单 `native/gaps.json`。
+1. 前置：`native/gaps.json` 存在 `confirmed` 缺口，且缺口场景已建好。
 2. 生成 native 生成树，准备 `native` worker。
 3. 运行 native probe，collect，写入 native 分析 `playground/evidence/findings/native.md`。
-4. 根据 native 分析更新当前 treatment 的 dsh.md、适配代码和生成树，build 后运行 adapted。
+4. 根据 native 分析更新适配答案、适配代码和生成树，build 后运行 adapted。
 5. 运行 adapted probe，collect 并分析 `playground/evidence/findings/adapted.md`。
 6. 通过后更新 README/兼容表并停在 release-ready；可选环境按需启用，不默认运行。
 
@@ -34,7 +33,6 @@
 
 ## 硬约束
 
-- 阶段隔离按 [docs/evidence-analysis.md](./docs/evidence-analysis.md) 执行；场景与缺口规则按 [docs/scenario-rules.md](./docs/scenario-rules.md)。
+- 阶段隔离按 [docs/evidence-analysis.md](./docs/evidence-analysis.md) 执行；场景与缺口绑定按 [docs/scenario-rules.md](./docs/scenario-rules.md) 执行。
 - `prepare → bootstrap → run-batch → collect` 必须在同一个长期存活的 background job 中串行执行，shell 保持到 collect 结束。
-- dsh.md 的分离、修改和描述边界见 [docs/workflow.md](./docs/workflow.md#dshmd)。
-- `native/scripts/generate-pstack.ts` 是唯一生成器；native 目录职责与缺口提取规则见 [../native/AGENTS.md](../native/AGENTS.md)。
+- `native/scripts/generate-pstack.ts` 是唯一生成器；`vp run playground:gap-lock -- --check` 守卫缺口与场景的同步。
