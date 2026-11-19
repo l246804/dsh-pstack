@@ -258,6 +258,7 @@ describe("digest granularity", () => {
 });
 
 const dirAssertion: Assertion = { kind: "artifact-dir-nonempty", path: "verify/features" };
+const absentAssertion: Assertion = { kind: "artifact-absent", path: "protected/child-write.txt" };
 
 describe("tool call argument summaries", () => {
   it("records the path for write tools and drops unlisted parameters", () => {
@@ -401,6 +402,14 @@ describe("artifact-dir-nonempty assertion", () => {
         workspace,
       ),
     ).toEqual(["artifact escapes workspace: ../../etc/passwd"]);
+  });
+
+  it("fails when an artifact that the scenario forbids was created", () => {
+    const workspace = workspaceWith({ "protected/child-write.txt": "written" });
+    expect(evaluateAssertions([absentAssertion], emptySession, workspace)).toEqual([
+      "unexpected artifact: protected/child-write.txt",
+    ]);
+    expect(evaluateAssertions([absentAssertion], emptySession, workspaceWith({}))).toEqual([]);
   });
 });
 

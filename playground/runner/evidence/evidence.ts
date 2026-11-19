@@ -334,6 +334,15 @@ export function evaluateAssertions(
         }
         break;
       }
+      case "artifact-absent": {
+        const target = resolveInWorkspace(workspace, assertion.path);
+        if (target === null) {
+          failures.push(`artifact escapes workspace: ${assertion.path}`);
+        } else if (existsSync(target)) {
+          failures.push(`unexpected artifact: ${assertion.path}`);
+        }
+        break;
+      }
       case "assistant-contains": {
         if (!session.assistantText.includes(assertion.text)) {
           failures.push(`assistant reply lacks ${JSON.stringify(assertion.text)}`);

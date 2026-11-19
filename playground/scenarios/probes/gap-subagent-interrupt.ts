@@ -9,13 +9,33 @@ const scenario: BehaviorScenario = {
   environments: ["base"],
   turns: [
     {
-      prompt: "启动一个会运行一段时间的子代理，在它完成前停止它，然后确认它没有继续工作。",
+      prompt: [
+        "启动一个名为 `slow-checker` 的子代理。它必须读取 `tasks/slow-check.md`，等待约 30 秒，然后创建 `slow-result.txt` 作为完成标记。",
+        "在它完成前使用可用的中断能力停止它，不要等它自然结束。",
+        "把停止结果写入 `interrupt-report.md`，明确写出子代理名称和 interrupted=true/false，并确认 slow-result.txt 没有被创建。",
+      ].join("\n"),
     },
   ],
-  workspace: { files: {} },
-  assertions: [{ kind: "turn-completed" }, { kind: "assistant-contains", text: "停止" }],
+  workspace: {
+    files: {
+      "tasks/slow-check.md": [
+        "# 慢任务",
+        "",
+        "1. 等待约 30 秒。",
+        "2. 创建 `slow-result.txt`，内容为 `completed`。",
+        "3. 返回完成摘要。",
+      ].join("\n"),
+    },
+  },
+  assertions: [
+    { kind: "turn-completed" },
+    { kind: "artifact-absent", path: "slow-result.txt" },
+    { kind: "artifact-contains", path: "interrupt-report.md", text: "interrupted" },
+    { kind: "assistant-contains", text: "停止" },
+  ],
   rubric: {
-    prompt: "回复确认正在运行的子代理已经停止，且没有继续产生新的工作结果。",
+    prompt:
+      "报告明确显示 slow-checker 在完成前被停止，slow-result.txt 不存在；不是只写“会停止”或等待子代理自然结束。",
   },
   uiObservations: [],
 };

@@ -30,6 +30,8 @@
 | `uiObservations` | 需要真实呈现时声明 |
 | `answers` | 需要自动回答 ask_user_question 时声明 |
 
+`assertions` 可用：`turn-completed`、`skill-loaded`、`no-tool-error`、`artifact-contains`、`artifact-dir-nonempty`、`artifact-absent`、`assistant-contains`。`turn-completed` 只能作为基础项，必须至少有一个能随目标行为缺失而失败的断言。
+
 一个场景只覆盖一个行为分支。场景定义是 treatment 中立的；同一个 probe 不在文件内分支 treatment。
 
 ## Gap 同步

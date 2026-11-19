@@ -9,14 +9,39 @@ const scenario: BehaviorScenario = {
   environments: ["base"],
   turns: [
     {
-      prompt:
-        "请安排两个不同厂商的评审者独立评审同一份设计，并在报告里写明每个评审者使用的模型和推理档位。",
+      prompt: [
+        "读取工作区的 `review-brief.md` 和 `proposal.md`。",
+        "从两个不同的模型路由各委派一名独立评审者；两名评审者必须使用不同的 provider 或 model，并在评审结果中写出实际 provider、model 和 reasoning_effort。",
+        "把合并评审写入 `review/report.md`，每个评审者一行 `reviewer:`，不要只写计划或声称已经委派。",
+      ].join("\n"),
     },
   ],
-  workspace: { files: {} },
-  assertions: [{ kind: "turn-completed" }, { kind: "assistant-contains", text: "评审" }],
+  workspace: {
+    files: {
+      "review-brief.md": [
+        "# 评审简报",
+        "",
+        "独立评审 `proposal.md`，每名评审者必须使用不同的模型路由。",
+        "报告格式：每个评审者一行 `reviewer: provider=... model=... effort=...`，后接结论。",
+      ].join("\n"),
+      "proposal.md": [
+        "# 缓存迁移提案",
+        "",
+        "把进程内缓存迁移到共享缓存服务，保留现有 API，并增加失败回退。",
+        "请从正确性、可回滚性和可观测性三方面评审。",
+      ].join("\n"),
+    },
+  },
+  assertions: [
+    { kind: "turn-completed" },
+    { kind: "artifact-contains", path: "review/report.md", text: "reviewer:" },
+    { kind: "artifact-contains", path: "review/report.md", text: "provider=" },
+    { kind: "artifact-contains", path: "review/report.md", text: "model=" },
+    { kind: "assistant-contains", text: "评审" },
+  ],
   rubric: {
-    prompt: "报告能区分每个评审者使用的模型与推理档位，并至少列出两个不同厂商的评审者。",
+    prompt:
+      "报告中有两个独立评审者，各自实际使用不同 provider 或 model，并给出与其实际调用一致的 provider/model/effort；不是只列父级路由或声称已经委派。",
   },
   uiObservations: [],
 };

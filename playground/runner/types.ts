@@ -69,6 +69,7 @@ export type Assertion =
   | { kind: "no-tool-error" }
   | { kind: "artifact-contains"; path: string; text: string }
   | { kind: "artifact-dir-nonempty"; path: string }
+  | { kind: "artifact-absent"; path: string }
   | { kind: "assistant-contains"; text: string };
 
 export interface WorkspaceFixture {
