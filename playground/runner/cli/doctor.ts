@@ -69,7 +69,13 @@ try {
 }
 
 check("config", existsSync(CONFIG_FILE), CONFIG_FILE);
-check("credentials", existsSync(DEFAULT_CREDENTIALS_FILE), DEFAULT_CREDENTIALS_FILE);
+check(
+  "credentials",
+  true,
+  existsSync(DEFAULT_CREDENTIALS_FILE)
+    ? `${DEFAULT_CREDENTIALS_FILE} (copied only when copyCredentials is true)`
+    : "absent; optional unless copyCredentials is true",
+);
 
 if (failures.length > 0) {
   console.error(`[doctor] ${failures.length} prerequisite(s) missing`);

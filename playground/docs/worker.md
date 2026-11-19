@@ -24,6 +24,8 @@ repo 内状态仍保存在 `playground/.workers/<treatment>/<environmentId>/w<k>
 
 - prepare 为每个 worker 初始化 stock `web` profile，并在 home 写 `AGENTS.md` 读边界、`pstack-models.json` 角色文件和 `cordis.patch.yml`。
 - adapted 的插件以 `pnpm pack` 产物安装进 profile，不挂载仓库。
+- 模型密钥通过容器环境变量传入；宿主 `.credentials.yaml` 只在 `config.ts` 设置 `copyCredentials: true` 时复制。
+- 浏览器默认由 `agent-browser` 启动独立无头 Chrome；`config.ts` 的 `browser.mode: "cdp"` 可连接宿主 Chrome（专用 profile），详细风险见 [workflow.md](./workflow.md) 的配置说明。
 - scenario workspace 初始化本地 `git init`，不设置 origin。
 - worker 不携带 Git/GitHub 凭证。
 

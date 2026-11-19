@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { parseConfig } from "../playground/runner/lib/config.ts";
+import { loadProviderPlan } from "../playground/runner/lib/provider.ts";
 import {
   gapCoverageProblems,
   type CoverageGap,
@@ -109,8 +110,18 @@ function config(provider = "provider-a", model = "model-a", effort = "low") {
   return {
     testModel: { provider, model, effort },
     providers: {
-      "provider-a": { apiKey: "secret-a", models: { "model-a": ["low", "high"] } },
-      "provider-b": { apiKey: "secret-b", models: { "model-b": ["medium"] } },
+      "provider-a": {
+        kind: "pi-ai",
+        apiKey: "secret-a",
+        apiKeyEnv: "PROVIDER_A_KEY",
+        models: [{ id: "model-a", reasoningEfforts: { low: "low", high: "high" } }],
+      },
+      "provider-b": {
+        kind: "pi-ai",
+        apiKey: "secret-b",
+        apiKeyEnv: "PROVIDER_B_KEY",
+        models: [{ id: "model-b", reasoningEfforts: { medium: "medium" } }],
+      },
     },
   };
 }
@@ -120,7 +131,7 @@ describe("playground configuration", () => {
     ["provider-a", "model-a", "high"],
     ["provider-b", "model-b", "medium"],
   ])("selects an allowed target %s/%s[%s]", (provider, model, effort) => {
-    expect(parseConfig(config(provider, model, effort)).testModel).toEqual({
+    expect(loadProviderPlan(parseConfig(config(provider, model, effort))).main).toMatchObject({
       provider,
       model,
       effort,
@@ -132,11 +143,15 @@ describe("playground configuration", () => {
     ["provider-a", "unknown-model", "low"],
     ["provider-b", "model-b", "low"],
   ])("rejects a target outside the allowance %s/%s[%s]", (provider, model, effort) => {
-    expect(() => parseConfig(config(provider, model, effort))).toThrow(/testModel/);
+    expect(() => loadProviderPlan(parseConfig(config(provider, model, effort)))).toThrow(
+      /testModel/,
+    );
   });
 
   it("uses the existing bare model ids in the provider allowlist", () => {
-    expect(parseConfig(config()).providers["provider-a"]?.models).toHaveProperty("model-a");
+    expect(
+      loadProviderPlan(parseConfig(config())).routes.some((route) => route.model === "model-a"),
+    ).toBe(true);
   });
 
   it("accepts role model routes that resolve against the provider allowlist", () => {
@@ -151,6 +166,40 @@ describe("playground configuration", () => {
       model: "model-a",
       effort: "low",
     });
+  });
+
+  it("accepts a managed or CDP browser config and rejects CDP without a URL", () => {
+    expect(
+      parseConfig({ ...config(), browser: { mode: "managed", headed: true } }).browser,
+    ).toEqual({ mode: "managed", headed: true });
+    expect(
+      parseConfig({ ...config(), browser: { mode: "cdp", cdpUrl: "http://127.0.0.1:9222" } })
+        .browser,
+    ).toEqual({ mode: "cdp", cdpUrl: "http://127.0.0.1:9222" });
+    expect(() => parseConfig({ ...config(), browser: { mode: "cdp" } })).toThrow(/browser\.cdpUrl/);
+  });
+
+  it("accepts DeepSeek API-key and account provider kinds", () => {
+    expect(() =>
+      parseConfig({
+        ...config(),
+        testModel: { provider: "deepseek-official", model: "deepseek-flash", effort: "high" },
+        providers: {
+          "deepseek-official": {
+            kind: "deepseek-api-key",
+            apiKey: "secret",
+            models: [{ id: "deepseek-flash", reasoningEfforts: { high: "high" } }],
+          },
+        },
+      }),
+    ).not.toThrow();
+    expect(() =>
+      parseConfig({
+        ...config(),
+        testModel: { provider: "deepseek-account", model: "deepseek-flash", effort: "high" },
+        providers: { "deepseek-account": { kind: "deepseek-account", modelOverrides: {} } },
+      }),
+    ).not.toThrow();
   });
 });
 

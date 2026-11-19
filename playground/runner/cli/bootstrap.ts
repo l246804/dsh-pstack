@@ -8,7 +8,12 @@ import { join } from "node:path";
 
 import { collapseSidebar, createBrowserSession } from "../lib/browser.ts";
 import { UI_LABELS } from "../lib/runtime.ts";
-import { readHomePlan, readWorkspaceStore } from "../lib/home.ts";
+import {
+  CONFIG_FILE,
+  readHomePlan,
+  readPlaygroundConfig,
+  readWorkspaceStore,
+} from "../lib/home.ts";
 import { readWebUrl } from "../lib/web.ts";
 import {
   bootstrapReadyFile,
@@ -17,7 +22,7 @@ import {
   workerPaths,
   type WorkerPaths,
 } from "../lib/worker.ts";
-import type { Treatment } from "../types.ts";
+import type { BrowserConfig, Treatment } from "../types.ts";
 
 const { continue: CONTINUE_LABEL, previewNotice: PREVIEW_NOTICE } = UI_LABELS;
 
@@ -51,7 +56,7 @@ function selectWorkers(): WorkerPaths[] {
     : [workerPaths(0, environment, treatment)];
 }
 
-function validateWorker(paths: WorkerPaths): string[] {
+function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
   const url = readWebUrl(paths);
   const plan = readHomePlan(paths);
   const { defaultTitle } = readWorkspaceStore(paths);
@@ -59,6 +64,7 @@ function validateWorker(paths: WorkerPaths): string[] {
   const session = createBrowserSession({
     session: `${paths.treatment}-${paths.environmentId}-w${paths.index}`,
     browserDir: paths.browserDir,
+    ...(browser === undefined ? {} : { browser }),
   });
   const failures: string[] = [];
   try {
@@ -160,9 +166,10 @@ async function main(): Promise<void> {
     console.log(`[bootstrap] environment ${environment}/${treatment} already ready`);
     return;
   }
+  const config = await readPlaygroundConfig(CONFIG_FILE);
   let failed = 0;
   for (const paths of workers) {
-    const failures = validateWorker(paths);
+    const failures = validateWorker(paths, config.browser);
     if (failures.length > 0) failed += 1;
   }
   if (failed > 0) {

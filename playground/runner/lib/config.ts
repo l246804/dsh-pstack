@@ -1,9 +1,16 @@
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { load as yamlLoad } from "js-yaml";
 
-import type { PlaygroundConfig, TestTarget } from "../types.ts";
+import type {
+  BrowserConfig,
+  PlaygroundConfig,
+  ProviderConfig,
+  ProviderModel,
+  TestTarget,
+} from "../types.ts";
 
 function object(value: unknown, label: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -15,6 +22,14 @@ function object(value: unknown, label: string): Record<string, unknown> {
 function string(value: unknown, label: string): string {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error(`${label} must be a non-empty string`);
+  }
+  return value;
+}
+
+function number(value: unknown, label: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(`${label} must be a finite number`);
   }
   return value;
 }
@@ -32,7 +47,7 @@ function credentialReference(name: string, file: string): string | undefined {
   return undefined;
 }
 
-function environmentReference(value: string, label: string, credentialsFile: string): string {
+function resolveSecret(value: string, label: string, credentialsFile: string): string {
   const match = /^\$\{([A-Z][A-Z0-9_]*)\}$/.exec(value);
   if (!match) return value;
   const name = match[1] as string;
@@ -51,71 +66,168 @@ function target(value: unknown, label: string): TestTarget {
   };
 }
 
+function model(value: unknown, label: string): ProviderModel {
+  const parsed = object(value, label);
+  const reasoningEfforts = parsed.reasoningEfforts;
+  if (reasoningEfforts !== undefined) {
+    const efforts = object(reasoningEfforts, `${label}.reasoningEfforts`);
+    for (const [effort, mapped] of Object.entries(efforts)) {
+      if (mapped !== null && typeof mapped !== "string") {
+        throw new Error(`${label}.reasoningEfforts.${effort} must be a string or null`);
+      }
+    }
+  }
+  const input = parsed.input;
+  if (
+    input !== undefined &&
+    (!Array.isArray(input) || input.some((entry) => entry !== "text" && entry !== "image"))
+  ) {
+    throw new Error(`${label}.input must be an array of text/image`);
+  }
+  return {
+    id: string(parsed.id, `${label}.id`),
+    ...(parsed.name === undefined ? {} : { name: string(parsed.name, `${label}.name`) }),
+    ...(number(parsed.contextWindow, `${label}.contextWindow`) === undefined
+      ? {}
+      : { contextWindow: number(parsed.contextWindow, `${label}.contextWindow`) }),
+    ...(number(parsed.maxTokens, `${label}.maxTokens`) === undefined
+      ? {}
+      : { maxTokens: number(parsed.maxTokens, `${label}.maxTokens`) }),
+    ...(input === undefined ? {} : { input: [...input] }),
+    ...(reasoningEfforts === undefined
+      ? {}
+      : {
+          reasoningEfforts: Object.fromEntries(
+            Object.entries(reasoningEfforts as Record<string, string | null>),
+          ),
+        }),
+  };
+}
+
+function provider(value: unknown, label: string, credentialsFile: string): ProviderConfig {
+  const parsed = object(value, label);
+  const kind = string(parsed.kind, `${label}.kind`);
+  const parseApiKey = (): string =>
+    resolveSecret(string(parsed.apiKey, `${label}.apiKey`), `${label}.apiKey`, credentialsFile);
+  if (kind === "pi-ai") {
+    if (!Array.isArray(parsed.models) || parsed.models.length === 0) {
+      throw new Error(`${label}.models must be a non-empty array`);
+    }
+    return {
+      kind,
+      apiKey: parseApiKey(),
+      apiKeyEnv: string(parsed.apiKeyEnv, `${label}.apiKeyEnv`),
+      ...(parsed.api === undefined ? {} : { api: string(parsed.api, `${label}.api`) }),
+      ...(parsed.baseURL === undefined
+        ? {}
+        : { baseURL: string(parsed.baseURL, `${label}.baseURL`) }),
+      ...(parsed.reasoning === undefined
+        ? {}
+        : { reasoning: string(parsed.reasoning, `${label}.reasoning`) }),
+      models: parsed.models.map((entry, index) => model(entry, `${label}.models[${index}]`)),
+    };
+  }
+  if (kind === "deepseek-api-key") {
+    return {
+      kind,
+      apiKey: parseApiKey(),
+      ...(parsed.apiKeyEnv === undefined
+        ? {}
+        : { apiKeyEnv: string(parsed.apiKeyEnv, `${label}.apiKeyEnv`) }),
+      ...(parsed.models === undefined
+        ? {}
+        : {
+            models: (() => {
+              if (!Array.isArray(parsed.models))
+                throw new Error(`${label}.models must be an array`);
+              return parsed.models.map((entry, index) => model(entry, `${label}.models[${index}]`));
+            })(),
+          }),
+    };
+  }
+  if (kind === "deepseek-account") {
+    return {
+      kind,
+      ...(parsed.modelOverrides === undefined
+        ? {}
+        : { modelOverrides: object(parsed.modelOverrides, `${label}.modelOverrides`) }),
+    };
+  }
+  throw new Error(`${label}.kind must be pi-ai, deepseek-api-key, or deepseek-account`);
+}
+
+function browser(value: unknown): BrowserConfig {
+  const parsed = object(value, "browser");
+  const mode = parsed.mode === undefined ? "managed" : string(parsed.mode, "browser.mode");
+  if (mode !== "managed" && mode !== "cdp") {
+    throw new Error("browser.mode must be managed or cdp");
+  }
+  if (mode === "cdp" && parsed.cdpUrl === undefined) {
+    throw new Error("browser.cdpUrl is required when browser.mode is cdp");
+  }
+  return {
+    mode,
+    ...(parsed.cdpUrl === undefined ? {} : { cdpUrl: string(parsed.cdpUrl, "browser.cdpUrl") }),
+    ...(parsed.headed === undefined
+      ? {}
+      : (() => {
+          if (typeof parsed.headed !== "boolean") throw new Error("browser.headed must be boolean");
+          return { headed: parsed.headed };
+        })()),
+  };
+}
+
 export function parseConfig(
   value: unknown,
   credentialsFile = join(homedir(), ".dsh/.credentials.yaml"),
 ): PlaygroundConfig {
   const input = object(value, "playground config");
   const providersInput = object(input.providers, "providers");
-  const providers: PlaygroundConfig["providers"] = {};
-  for (const [provider, value] of Object.entries(providersInput)) {
-    const entry = object(value, `providers.${provider}`);
-    const modelsInput = object(entry.models, `providers.${provider}.models`);
-    const models: Record<string, string[]> = {};
-    for (const [model, value] of Object.entries(modelsInput)) {
-      if (!Array.isArray(value) || value.some((effort) => typeof effort !== "string")) {
-        throw new Error(`providers.${provider}.models.${model} must be an array of efforts`);
-      }
-      models[model] = [...new Set(value)];
-    }
-    providers[provider] = {
-      apiKey: environmentReference(
-        string(entry.apiKey, `providers.${provider}.apiKey`),
-        `providers.${provider}.apiKey`,
-        credentialsFile,
-      ),
-      models,
-    };
+  const providers: Record<string, ProviderConfig> = {};
+  for (const [name, value] of Object.entries(providersInput)) {
+    providers[name] = provider(value, `providers.${name}`, credentialsFile);
   }
   if (Object.keys(providers).length === 0) throw new Error("providers must not be empty");
   const testModel = target(input.testModel, "testModel");
-  const efforts = providers[testModel.provider]?.models[testModel.model];
-  if (efforts === undefined) throw new Error("testModel must name an allowed provider and model");
-  if (!efforts.includes(testModel.effort)) {
-    throw new Error("testModel effort must be allowed for the selected model");
+  if (providers[testModel.provider] === undefined) {
+    throw new Error("testModel must name a configured provider");
   }
   const roleModels: PlaygroundConfig["roleModels"] = {};
   if (input.roleModels !== undefined) {
     for (const [role, value] of Object.entries(object(input.roleModels, "roleModels"))) {
       const values = Array.isArray(value) ? value : [value];
-      const routes = values.map((entry, index) =>
-        target(entry, `roleModels.${role}${Array.isArray(value) ? `[${index}]` : ""}`),
-      );
-      for (const route of routes) {
-        const allowed = providers[route.provider]?.models[route.model];
-        if (allowed === undefined) {
-          throw new Error(`roleModels.${role} names an unknown provider or model`);
-        }
-        if (!allowed.includes(route.effort)) {
-          throw new Error(`roleModels.${role} effort is not allowed`);
-        }
-      }
-      roleModels[role] = Array.isArray(value) ? routes : routes[0]!;
+      roleModels[role] = Array.isArray(value)
+        ? values.map((entry, index) => target(entry, `roleModels.${role}[${index}]`))
+        : target(value, `roleModels.${role}`);
     }
   }
   return {
     testModel,
     providers,
     ...(Object.keys(roleModels).length === 0 ? {} : { roleModels }),
-    ...(input.hostPatchFile === undefined
+    ...(input.browser === undefined ? {} : { browser: browser(input.browser) }),
+    ...(input.copyCredentials === undefined
       ? {}
-      : { hostPatchFile: string(input.hostPatchFile, "hostPatchFile") }),
+      : (() => {
+          if (typeof input.copyCredentials !== "boolean") {
+            throw new Error("copyCredentials must be boolean");
+          }
+          return { copyCredentials: input.copyCredentials };
+        })()),
     ...(input.credentialsFile === undefined
       ? {}
       : { credentialsFile: string(input.credentialsFile, "credentialsFile") }),
   };
 }
 
-export function readConfig(file: string): PlaygroundConfig {
-  return parseConfig(JSON.parse(readFileSync(file, "utf8")));
+/** Load a TS or JSON config. TS is imported through the same runtime as every other script. */
+export async function readConfig(file: string): Promise<PlaygroundConfig> {
+  if (file.endsWith(".json")) {
+    return parseConfig(JSON.parse(readFileSync(file, "utf8")));
+  }
+  const module = (await import(pathToFileURL(file).href)) as {
+    default?: unknown;
+    config?: unknown;
+  };
+  return parseConfig(module.default ?? module.config);
 }

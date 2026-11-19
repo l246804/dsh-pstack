@@ -2,8 +2,10 @@
 .workers/
 .workers-*/
 
-# Local config with provider keys and allowed routes; copy config.example.json and fill the real values.
+# Local config; copy config.example.ts and fill the real values.
 config.json
+# Legacy machine-local host provider patch; config.ts carries provider definitions now.
+host.patch.yml
 node_modules
 *.log
 .DS_Store
@@ -17,3 +19,6 @@ evidence/runs/**/session.jsonl.zstd
 
 # Agent redaction candidate; only validated record.json is committed.
 evidence/runs/**/record.safe.json
+
+# Local playground config; copy config.example.ts and fill real values.
+config.ts

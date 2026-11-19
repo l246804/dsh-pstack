@@ -15,6 +15,14 @@
 - `scripts/`：结果后处理与报表，负责 compare、status-table、review、redact 和 gap-lock；只消费 runner 产出的记录。
 - `scenarios/`：probe 定义与 `gap-lock.json`。
 
+## 配置
+
+- 本地配置是 `playground/config.ts`，复制 [config.example.ts](./config.example.ts) 后填写；`config.ts` 与 `*.local` 不入库。
+- `config.ts` 用 `vite-plus` 的 `loadEnv("playground", process.cwd(), "PLAYGROUND_")` 读取 `.env`、`.env.local` 和 mode 文件。
+- provider 按 `kind` 区分 `pi-ai`、`deepseek-api-key` 和 `deepseek-account`；模型、endpoint 和 `apiKeyEnv` 都写在 `config.ts`，不再维护 `host.patch.yml`。
+- 模型密钥从环境变量进入容器；`copyCredentials` 默认 false，只有显式开启才复制宿主 `.credentials.yaml`。
+- 浏览器默认 `browser.mode: "managed"`（独立无头 Chrome）；`"cdp"` 连接宿主 Chrome，必须使用专用 Chrome profile。
+
 ## 文档指针
 
 | 文档 | 职责 |

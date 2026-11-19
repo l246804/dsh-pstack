@@ -1,94 +1,148 @@
-import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
-import { load as yamlLoad } from "js-yaml";
+import type {
+  AllowedRoute,
+  PlaygroundConfig,
+  ProviderConfig,
+  ProviderModel,
+  TestTarget,
+} from "../types.ts";
 
-import type { AllowedRoute, PlaygroundConfig, TestTarget } from "../types.ts";
+export const DEEPSEEK_OFFICIAL_ROUTE = "deepseek-official";
+export const DEEPSEEK_ACCOUNT_ROUTE = "deepseek-account";
+export const DEFAULT_DEEPSEEK_API_KEY_ENV = "DEEPSEEK_API_KEY";
 
-export const DEFAULT_HOST_PATCH_FILE = join(homedir(), ".dsh/profiles/web/cordis.patch.yml");
+const DEFAULT_EFFORTS = ["off", "low", "high", "max"];
 
-interface HostModel {
-  id: string;
-  name?: string;
-  reasoningEfforts?: Record<string, string | null>;
-}
-
-interface HostProvider {
-  apiKeyEnv?: string;
-  models?: HostModel[];
-  [key: string]: unknown;
-}
+const DEEPSEEK_BUILTIN_MODELS: ProviderModel[] = [
+  {
+    id: "deepseek-flash",
+    name: "DeepSeek Flash",
+    reasoningEfforts: { off: null, low: "low", high: "high", max: "max" },
+  },
+  {
+    id: "deepseek-v4-pro",
+    name: "DeepSeek V4 Pro",
+    reasoningEfforts: { off: null, low: "low", high: "high", max: "max" },
+  },
+];
 
 export interface ProviderPlan {
   routes: AllowedRoute[];
-  providers: Record<string, HostProvider>;
-  apiKeyEnv: string;
-  apiKey: string;
+  providers: Record<string, ProviderConfig>;
+  /** The main route's credential environment, when the route uses one. */
+  apiKeyEnv?: string;
+  apiKey?: string;
+  /** Every configured secret, for record redaction checks. */
+  secrets: string[];
   main: TestTarget & { name: string };
 }
 
-function readHostProviders(file: string): Record<string, HostProvider> {
-  if (!existsSync(file)) {
-    throw new Error(
-      `host provider patch not found at ${file}; set hostPatchFile in playground/config.json`,
-    );
-  }
-  const entries = yamlLoad(readFileSync(file, "utf8")) as Array<{
-    id?: string;
-    config?: { providers?: Record<string, HostProvider> };
-  }>;
-  const providers = entries.find((entry) => entry.id === "llm-pi-ai")?.config?.providers;
-  if (!providers || Object.keys(providers).length === 0) {
-    throw new Error(`no llm-pi-ai providers in ${file}`);
-  }
-  return providers;
+export function providerRouteName(name: string, provider: ProviderConfig): string {
+  if (provider.kind === "deepseek-api-key") return DEEPSEEK_OFFICIAL_ROUTE;
+  if (provider.kind === "deepseek-account") return DEEPSEEK_ACCOUNT_ROUTE;
+  return name;
 }
 
-export function loadProviderPlan(
-  config: PlaygroundConfig,
-  hostFile = config.hostPatchFile ??
-    process.env.PLAYGROUND_HOST_PATCH_FILE ??
-    DEFAULT_HOST_PATCH_FILE,
-): ProviderPlan {
-  const hostProviders = readHostProviders(hostFile);
+function modelEfforts(model: ProviderModel): string[] {
+  const declared = Object.keys(model.reasoningEfforts ?? {});
+  return declared.length > 0 ? declared : DEFAULT_EFFORTS;
+}
+
+function modelsFor(provider: ProviderConfig): ProviderModel[] | undefined {
+  if (provider.kind === "pi-ai") return provider.models;
+  if (provider.kind === "deepseek-api-key") return provider.models ?? DEEPSEEK_BUILTIN_MODELS;
+  return undefined;
+}
+
+function apiKeyEnvFor(provider: ProviderConfig): string | undefined {
+  if (provider.kind === "pi-ai") return provider.apiKeyEnv;
+  if (provider.kind === "deepseek-api-key") {
+    return provider.apiKeyEnv ?? DEFAULT_DEEPSEEK_API_KEY_ENV;
+  }
+  return undefined;
+}
+
+export function providerSecrets(config: PlaygroundConfig): string[] {
+  return Object.values(config.providers).flatMap((provider) =>
+    provider.kind === "deepseek-account" ? [] : [provider.apiKey],
+  );
+}
+
+export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
   const routes: AllowedRoute[] = [];
-  const providers: Record<string, HostProvider> = {};
-  for (const [provider, entry] of Object.entries(config.providers)) {
-    const host = hostProviders[provider];
-    if (!host?.apiKeyEnv) throw new Error(`host provider "${provider}" has no apiKeyEnv`);
-    const hostById = new Map((host.models ?? []).map((model) => [model.id, model]));
-    const filteredModels: HostModel[] = [];
-    for (const [model, allowedEfforts] of Object.entries(entry.models)) {
-      const hostModel = hostById.get(model);
-      if (!hostModel) throw new Error(`host does not deploy ${provider}/${model}`);
-      const efforts = allowedEfforts.filter(
-        (effort) => effort in (hostModel.reasoningEfforts ?? {}),
+  const secrets: string[] = [];
+  const modelsByProvider = new Map<string, Map<string, string[]>>();
+
+  for (const [name, provider] of Object.entries(config.providers)) {
+    if (provider.kind === "deepseek-api-key" && name !== DEEPSEEK_OFFICIAL_ROUTE) {
+      throw new Error(
+        `provider ${name} must be named ${DEEPSEEK_OFFICIAL_ROUTE} for the DeepSeek API-key route`,
       );
-      if (efforts.length === 0)
-        throw new Error(`host deploys no allowed effort for ${provider}/${model}`);
-      routes.push({ provider, model, effort: "", efforts, apiKey: entry.apiKey });
-      filteredModels.push({
-        ...hostModel,
-        reasoningEfforts: Object.fromEntries(
-          efforts.map((effort) => [effort, hostModel.reasoningEfforts?.[effort] ?? null]),
-        ),
+    }
+    if (provider.kind === "deepseek-account" && name !== DEEPSEEK_ACCOUNT_ROUTE) {
+      throw new Error(
+        `provider ${name} must be named ${DEEPSEEK_ACCOUNT_ROUTE} for the DeepSeek account route`,
+      );
+    }
+    if (provider.kind !== "deepseek-account") {
+      if (!provider.apiKey) {
+        throw new Error(`provider ${name} has no apiKey; set it from the environment in config.ts`);
+      }
+      secrets.push(provider.apiKey);
+    }
+    const models = modelsFor(provider);
+    if (models === undefined) continue;
+    const byId = new Map<string, string[]>();
+    for (const model of models) {
+      const efforts = modelEfforts(model);
+      byId.set(model.id, efforts);
+      routes.push({
+        provider: providerRouteName(name, provider),
+        model: model.id,
+        effort: "",
+        efforts,
+        apiKey: provider.kind === "deepseek-account" ? "" : provider.apiKey,
       });
     }
-    providers[provider] = { ...host, models: filteredModels };
+    modelsByProvider.set(name, byId);
   }
-  const route = routes.find(
-    (entry) =>
-      entry.provider === config.testModel.provider &&
-      entry.model === config.testModel.model &&
-      entry.efforts.includes(config.testModel.effort),
-  );
-  if (!route) throw new Error("the host cannot serve testModel");
-  const model = providers[route.provider]?.models?.find((entry) => entry.id === route.model);
+
+  const supports = (providerName: string, target: TestTarget): boolean => {
+    const provider = config.providers[providerName];
+    if (provider === undefined) return false;
+    if (provider.kind === "deepseek-account") return DEFAULT_EFFORTS.includes(target.effort);
+    const byId = modelsByProvider.get(providerName);
+    return byId?.get(target.model)?.includes(target.effort) ?? false;
+  };
+
+  if (!supports(config.testModel.provider, config.testModel)) {
+    throw new Error(
+      `testModel ${config.testModel.provider}/${config.testModel.model}[${config.testModel.effort}] is not allowed by config.providers`,
+    );
+  }
+  for (const [role, value] of Object.entries(config.roleModels ?? {})) {
+    for (const route of Array.isArray(value) ? value : [value]) {
+      if (!supports(route.provider, route)) {
+        throw new Error(`roleModels.${role} names an unknown provider, model, or effort`);
+      }
+    }
+  }
+
+  const mainProvider = config.providers[config.testModel.provider]!;
+  const models = modelsFor(mainProvider);
+  const modelName =
+    models?.find((model) => model.id === config.testModel.model)?.name ?? config.testModel.model;
   return {
     routes,
-    providers,
-    apiKeyEnv: hostProviders[route.provider]?.apiKeyEnv as string,
-    apiKey: route.apiKey,
-    main: { ...config.testModel, name: model?.name ?? route.model },
+    providers: config.providers,
+    ...(apiKeyEnvFor(mainProvider) === undefined
+      ? {}
+      : { apiKeyEnv: apiKeyEnvFor(mainProvider) as string }),
+    ...(mainProvider.kind === "deepseek-account" ? {} : { apiKey: mainProvider.apiKey }),
+    secrets,
+    main: {
+      ...config.testModel,
+      provider: providerRouteName(config.testModel.provider, mainProvider),
+      name: modelName,
+    },
   };
 }

@@ -12,7 +12,15 @@ import { dirname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { isTreatment } from "../types.ts";
-import type { BehaviorScenario, RunRecord, SessionFacts, TestTarget, Treatment } from "../types.ts";
+import type {
+  BehaviorScenario,
+  BrowserConfig,
+  PlaygroundConfig,
+  RunRecord,
+  SessionFacts,
+  TestTarget,
+  Treatment,
+} from "../types.ts";
 import { analyzeSession } from "../lib/analysis.ts";
 import {
   captureFullPage,
@@ -35,6 +43,7 @@ import {
   type SessionEvent,
 } from "../lib/evidence.ts";
 import { readHomePlan, readPlaygroundConfig, CONFIG_FILE } from "../lib/home.ts";
+import { providerSecrets } from "../lib/provider.ts";
 import { readWebUrl } from "../lib/web.ts";
 import { EVIDENCE_FILES } from "../lib/evidence-files.ts";
 import { sanitizeRecord } from "../lib/redaction.ts";
@@ -413,6 +422,7 @@ interface AttemptInput {
   expectedTarget: TestTarget;
   screenshotFile: string;
   expectedPreset: string;
+  browser?: BrowserConfig;
 }
 
 function captureScreenshot(session: BrowserSession, path: string): void {
@@ -485,11 +495,12 @@ function attemptScenario(input: AttemptInput): {
   file: string;
   answers: SessionFacts["autoAnswers"];
 } {
-  const { paths, scenario, url, screenshotFile, expectedPreset } = input;
+  const { paths, scenario, url, screenshotFile, expectedPreset, browser } = input;
   const preset = expectedPreset;
   const session = createBrowserSession({
     session: `${paths.environmentId}-w${paths.index}`,
     browserDir: paths.browserDir,
+    ...(browser === undefined ? {} : { browser }),
   });
   const autoAnswers: Array<{ question: string; answer: string }> = [];
   try {
@@ -594,7 +605,7 @@ function blockedRecord(input: {
   scenarioId: string;
   treatment: Treatment;
   paths: WorkerPaths;
-  configFile: string;
+  config: PlaygroundConfig;
   recordFile: string;
   screenshotFile: string;
   sessionFile?: string;
@@ -603,7 +614,7 @@ function blockedRecord(input: {
   /** The attempt start stamp shared with the record and source filenames. */
   capturedAt: string;
 }): RunRecord {
-  const config = readPlaygroundConfig(input.configFile);
+  const config = input.config;
   const matrix = environmentMatrix(input.paths.environmentId);
   const sessionFile = input.sessionFile;
   const session = sessionFile
@@ -685,7 +696,7 @@ async function main(): Promise<void> {
     throw new Error(`scenario ${scenarioId} is not allowed in ${treatment}`);
   }
   const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
-  const config = readPlaygroundConfig(configFile);
+  const config = await readPlaygroundConfig(configFile);
   const expectedTarget = readHomePlan(paths);
   // DSH starts every session on its default Standard preset; the poteto workflow is a
   // session toggle, not a root preset, so both treatments assert the same preset id.
@@ -709,6 +720,7 @@ async function main(): Promise<void> {
       expectedTarget,
       screenshotFile,
       expectedPreset,
+      ...(config.browser === undefined ? {} : { browser: config.browser }),
     });
     const session = sessionFacts(outcome.digest, outcome.file, outcome.answers);
     session.analysis = analyzeSession(session);
@@ -749,7 +761,7 @@ async function main(): Promise<void> {
       scenarioId,
       treatment,
       paths,
-      configFile,
+      config,
       recordFile,
       screenshotFile,
       sessionFile: reason.includes("external stop") ? lastSession?.file : undefined,
@@ -761,10 +773,7 @@ async function main(): Promise<void> {
       record.artifacts.observed.push("scenario execution did not complete");
     }
   }
-  assertSafeRecord(
-    record,
-    Object.values(config.providers).map((provider) => provider.apiKey),
-  );
+  assertSafeRecord(record, providerSecrets(config));
   record.scenarioHash = scenarioContentHash(scenario);
   const sourceFile = recordFile.replace(/\.json$/, EVIDENCE_FILES.sourceSuffix);
   writeFileSync(

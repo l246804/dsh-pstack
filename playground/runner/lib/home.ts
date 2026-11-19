@@ -11,7 +11,13 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
-import type { PlaygroundConfig, TestTarget, Treatment } from "../types.ts";
+import type {
+  PlaygroundConfig,
+  ProviderConfig,
+  ProviderModel,
+  TestTarget,
+  Treatment,
+} from "../types.ts";
 import { readConfig } from "./config.ts";
 import type { ProviderPlan } from "./provider.ts";
 import { profilePatchFile } from "./profile.ts";
@@ -26,18 +32,58 @@ function homePatchFile(paths: WorkerPaths): string {
   return join(paths.home, "cordis.patch.yml");
 }
 
-function anonymousProviders(providers: ProviderPlan["providers"]): ProviderPlan["providers"] {
-  return Object.fromEntries(
-    Object.entries(providers).map(([id, provider]) => [
-      id,
-      {
-        ...provider,
-        ...(provider.models === undefined
-          ? {}
-          : { models: provider.models.map((model) => ({ ...model, name: "匿名模型" })) }),
-      },
-    ]),
+function anonymousModels(models: ProviderModel[]): ProviderModel[] {
+  return models.map((model) => ({ ...model, name: "匿名模型" }));
+}
+
+/** Translate config providers into the DSH patch rows the worker profile needs. */
+function providerRows(providers: Record<string, ProviderConfig>): Array<Record<string, unknown>> {
+  const rows: Array<Record<string, unknown>> = [];
+  const piAi = Object.entries(providers).filter(
+    (entry): entry is [string, Extract<ProviderConfig, { kind: "pi-ai" }>] =>
+      entry[1].kind === "pi-ai",
   );
+  if (piAi.length > 0) {
+    rows.push({
+      id: "llm-pi-ai",
+      name: "@deepseek-ai/dsh-llm-pi-ai",
+      config: {
+        providers: Object.fromEntries(
+          piAi.map(([name, provider]) => [
+            name,
+            {
+              apiKeyEnv: provider.apiKeyEnv,
+              ...(provider.api === undefined ? {} : { api: provider.api }),
+              ...(provider.baseURL === undefined ? {} : { baseURL: provider.baseURL }),
+              ...(provider.reasoning === undefined ? {} : { reasoning: provider.reasoning }),
+              models: anonymousModels(provider.models),
+            },
+          ]),
+        ),
+      },
+    });
+  }
+  for (const [, provider] of Object.entries(providers)) {
+    if (provider.kind === "deepseek-api-key") {
+      rows.push({
+        id: "llm-deepseek",
+        name: "@deepseek-ai/dsh-llm-deepseek-api-key",
+        config: {
+          ...(provider.apiKeyEnv === undefined ? {} : { apiKeyEnv: provider.apiKeyEnv }),
+          ...(provider.models === undefined ? {} : { models: provider.models }),
+        },
+      });
+    }
+    if (provider.kind === "deepseek-account") {
+      rows.push({
+        id: "llm-deepseek-account",
+        name: "@deepseek-ai/dsh-llm-deepseek-account",
+        config:
+          provider.modelOverrides === undefined ? {} : { modelOverrides: provider.modelOverrides },
+      });
+    }
+  }
+  return rows;
 }
 
 interface WorkerInstructionSection {
@@ -157,15 +203,11 @@ export function writeHomePatch(
       },
     },
     {
-      id: "llm-pi-ai",
-      name: "@deepseek-ai/dsh-llm-pi-ai",
-      config: { providers: anonymousProviders(plan.providers) },
-    },
-    {
       id: "approval",
       name: "@deepseek-ai/dsh-user-approval",
       config: { policy: "never" },
     },
+    ...providerRows(plan.providers),
     {
       id: "permission",
       name: "@deepseek-ai/dsh-permission-presets",
@@ -339,6 +381,6 @@ export function readWorkspaceStore(paths: WorkerPaths): {
   };
 }
 
-export function readPlaygroundConfig(file: string): PlaygroundConfig {
+export function readPlaygroundConfig(file: string): Promise<PlaygroundConfig> {
   return readConfig(resolve(file));
 }

@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readdirSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
+import type { BrowserConfig } from "../types.ts";
 import { REPOSITORY_ROOT } from "./run-metadata.ts";
 import { chromeCandidates } from "./platform.ts";
 
@@ -56,6 +57,8 @@ export interface BrowserOptions {
   session?: string;
   /** This worker's browser profile dir; each worker keeps its own HOME so sessions never collide. */
   browserDir: string;
+  /** Host browser mode; omitted means managed headless Chrome. */
+  browser?: BrowserConfig;
 }
 
 export function browserEnv(browserDir: string): NodeJS.ProcessEnv {
@@ -154,17 +157,23 @@ export function createBrowserSession(options: BrowserOptions): BrowserSession {
     throw new Error(`agent-browser binary not found at ${BIN}; run \`vp install\``);
   const env = browserEnv(options.browserDir);
   const session = options.session ?? "w0";
-  const base = [
-    "--session",
-    session,
-    "--executable-path",
-    chromeExecutable(),
-    "--args",
-    // --no-sandbox for the container; --disable-dev-shm-usage because several Chrome
-    // instances share /dev/shm; the crash flags keep Chrome from writing Crashpad
-    // state, which failed intermittently across parallel workers.
-    "--no-sandbox,--disable-dev-shm-usage,--disable-crash-reporter,--disable-breakpad,--no-first-run",
-  ];
+  const browser = options.browser?.mode === "cdp" ? options.browser : undefined;
+  const base = ["--session", session];
+  if (browser !== undefined) {
+    if (!browser.cdpUrl) throw new Error("browser.cdpUrl is required in cdp mode");
+    base.push("--cdp", browser.cdpUrl, "--pin-tab");
+  } else {
+    base.push(
+      "--executable-path",
+      chromeExecutable(),
+      "--args",
+      // --no-sandbox for the container; --disable-dev-shm-usage because several Chrome
+      // instances share /dev/shm; the crash flags keep Chrome from writing Crashpad
+      // state, which failed intermittently across parallel workers.
+      "--no-sandbox,--disable-dev-shm-usage,--disable-crash-reporter,--disable-breakpad,--no-first-run",
+    );
+    if (options.browser?.headed) base.push("--headed");
+  }
 
   const raw = (args: string[]): string => {
     const result = spawnSync(BIN, [...base, ...args], {

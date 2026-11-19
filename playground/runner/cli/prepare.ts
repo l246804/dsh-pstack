@@ -103,7 +103,7 @@ async function main(): Promise<void> {
       ? ["dsh-pstack", ...matrix.enabledPluginPackages]
       : matrix.enabledPluginPackages;
   const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
-  const config = readPlaygroundConfig(configFile);
+  const config = await readPlaygroundConfig(configFile);
   const plan = loadProviderPlan(config);
   const workerFlag = argValue("--workers");
   const requested = workerFlag === undefined ? undefined : Number(workerFlag);
@@ -170,7 +170,7 @@ async function main(): Promise<void> {
       cloneInstalledProfile(installed, worker);
     }
     writeFileSync(worker.treatmentFile, `${treatment}\n`);
-    copyCredentials(worker, config.credentialsFile);
+    if (config.copyCredentials) copyCredentials(worker, config.credentialsFile);
     writeHomePatch(worker, plan, treatment, matrix.teamMode === true);
     writeRoleFile(worker, config);
     writePstackSettings(worker, treatment === "adapted");

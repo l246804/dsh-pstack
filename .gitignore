@@ -9,3 +9,6 @@ dist
 # Restored on demand from native/upstream.lock.json by scripts/fetch-upstream.mjs.
 native/upstream/
 
+
+# Any local override file in the repository.
+*.local

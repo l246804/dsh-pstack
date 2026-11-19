@@ -11,18 +11,50 @@ export interface TestTarget {
   effort: string;
 }
 
-export interface ProviderAllowance {
-  apiKey: string;
-  models: Record<string, string[]>;
+export interface ProviderModel {
+  id: string;
+  name?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  input?: Array<"text" | "image">;
+  reasoningEfforts?: Record<string, string | null>;
+}
+
+export type ProviderConfig =
+  | {
+      kind: "pi-ai";
+      apiKey: string;
+      apiKeyEnv: string;
+      api?: string;
+      baseURL?: string;
+      reasoning?: string;
+      models: ProviderModel[];
+    }
+  | {
+      kind: "deepseek-api-key";
+      apiKey: string;
+      apiKeyEnv?: string;
+      models?: ProviderModel[];
+    }
+  | {
+      kind: "deepseek-account";
+      modelOverrides?: Record<string, unknown>;
+    };
+
+export interface BrowserConfig {
+  mode?: "managed" | "cdp";
+  cdpUrl?: string;
+  headed?: boolean;
 }
 
 export type RoleModels = Record<string, TestTarget | TestTarget[]>;
 
 export interface PlaygroundConfig {
   testModel: TestTarget;
-  providers: Record<string, ProviderAllowance>;
+  providers: Record<string, ProviderConfig>;
   roleModels?: RoleModels;
-  hostPatchFile?: string;
+  browser?: BrowserConfig;
+  copyCredentials?: boolean;
   credentialsFile?: string;
 }
 

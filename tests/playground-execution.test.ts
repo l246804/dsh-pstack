@@ -61,7 +61,14 @@ function record(treatment: "native" | "adapted", environmentId: string): RunReco
   const target = { provider: "provider-a", model: "model-a", effort: "low" };
   const config = {
     testModel: target,
-    providers: { "provider-a": { apiKey: "secret-value", models: { "model-a": ["low"] } } },
+    providers: {
+      "provider-a": {
+        kind: "pi-ai" as const,
+        apiKey: "secret-value",
+        apiKeyEnv: "PROVIDER_A_KEY",
+        models: [{ id: "model-a", reasoningEfforts: { low: "low" } }],
+      },
+    },
   };
   const matrix = {
     id: environmentId,
@@ -495,6 +502,7 @@ const isolationPlan: ProviderPlan = {
   providers: {},
   apiKeyEnv: "TEST_PROVIDER_KEY",
   apiKey: "test-key-value",
+  secrets: ["test-key-value"],
   main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
 };
 

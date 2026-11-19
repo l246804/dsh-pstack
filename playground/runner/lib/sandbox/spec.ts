@@ -75,7 +75,9 @@ export function containerSpec(input: ContainerSpecInput): ContainerSpec {
       TMPDIR: paths.containerTmp,
       GH_CONFIG_DIR: join(paths.containerHome, "gh-config"),
       GIT_TERMINAL_PROMPT: "0",
-      [plan.apiKeyEnv]: plan.apiKey,
+      ...(plan.apiKeyEnv === undefined || plan.apiKey === undefined
+        ? {}
+        : { [plan.apiKeyEnv]: plan.apiKey }),
     },
     hostPort,
     containerPort: CONTAINER_PORT,
