@@ -13,7 +13,7 @@ Review: 2026-11-19
 ## 决策
 
 - 测试按包归属：src/tests 保存产品实现测试，playground/tests 保存验证场测试；根 tests 只保留跨包的仓库级测试，例如发布兼容性。
-- runner 按领域组织：container、browser、config、worker、evidence、scenario、shared；cli 只做入口，同领域的状态和辅助函数放在同一目录。
+- runner 按领域组织：case、container、browser、config、worker、evidence、scenario、shared；cli 只做入口，同领域的状态和辅助函数放在同一目录。
 - 删除旧 host 执行路径和死代码；容器是 playground worker 的唯一执行方式。
 - 新增测试必须放在对应包的 tests 目录；只有跨包测试放根 tests。
 
