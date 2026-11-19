@@ -2,8 +2,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 
-import { expectedGapLock, gapLockProblems, type GapLock, type LockedGap } from "../lib/gap-lock.ts";
-import { REPOSITORY_ROOT } from "../lib/run-metadata.ts";
+import { expectedGapLock, gapLockProblems, type GapLock, type LockedGap } from "./lib/gap-lock.ts";
+import { REPOSITORY_ROOT } from "../runner/lib/run-metadata.ts";
 
 const GAPS_FILE = join(REPOSITORY_ROOT, "native", "gaps.json");
 const LOCK_FILE = join(REPOSITORY_ROOT, "playground", "scenarios", "gap-lock.json");

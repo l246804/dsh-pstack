@@ -3,11 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import {
-  compareOne,
-  compareSnapshot,
-  scenarioContentHash,
-} from "../playground/runner/cli/compare.ts";
+import { compareOne, compareSnapshot, scenarioContentHash } from "../playground/scripts/compare.ts";
 import type {
   BehaviorScenario,
   RunRecord,

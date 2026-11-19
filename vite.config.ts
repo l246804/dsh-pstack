@@ -133,7 +133,7 @@ export default defineConfig({
         cache: false,
       },
       "playground:redact": {
-        command: "vpx playground/runner/cli/redact.ts",
+        command: "vpx playground/scripts/redact.ts",
         cache: false,
       },
       "playground:run": {
@@ -149,19 +149,19 @@ export default defineConfig({
         cache: false,
       },
       "playground:review": {
-        command: "vpx playground/runner/cli/review.ts",
+        command: "vpx playground/scripts/review.ts",
         cache: false,
       },
       "playground:status-table": {
-        command: "vpx playground/runner/cli/status-table.ts",
+        command: "vpx playground/scripts/status-table.ts",
         cache: false,
       },
       "playground:gap-lock": {
-        command: "vpx playground/runner/cli/gap-lock.ts",
+        command: "vpx playground/scripts/gap-lock.ts",
         cache: false,
       },
       "playground:compare": {
-        command: "vpx playground/runner/cli/compare.ts",
+        command: "vpx playground/scripts/compare.ts",
         cache: false,
       },
       "playground:browser": {

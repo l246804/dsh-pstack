@@ -8,13 +8,13 @@ import {
   gapCoverageProblems,
   type CoverageGap,
   type GapCoverageScenario,
-} from "../playground/runner/lib/coverage.ts";
+} from "../playground/scripts/lib/coverage.ts";
 import {
   expectedGapLock,
   gapLockProblems,
   type GapLock,
   type LockedGap,
-} from "../playground/runner/lib/gap-lock.ts";
+} from "../playground/scripts/lib/gap-lock.ts";
 import { environments, scenariosById } from "../playground/runner/scenario/index.ts";
 
 function gaps(): CoverageGap[] {

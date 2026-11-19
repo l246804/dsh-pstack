@@ -3,13 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import { applyReview, checkReview } from "../playground/runner/cli/review.ts";
-import type { ReviewEntry } from "../playground/runner/lib/review.ts";
+import { applyReview, checkReview } from "../playground/scripts/review.ts";
+import type { ReviewEntry } from "../playground/scripts/lib/review.ts";
 import {
   checkStatusTable,
   statusTableContent,
   writeStatusTable,
-} from "../playground/runner/cli/status-table.ts";
+} from "../playground/scripts/status-table.ts";
 import type { RunRecord, Treatment, Verdict } from "../playground/runner/types.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-review-test-"));

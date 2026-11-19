@@ -1,11 +1,11 @@
 import { writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { isTreatment } from "../types.ts";
-import type { Treatment } from "../types.ts";
-import { verdictFor } from "../lib/evidence.ts";
-import { listSnapshotRecords, readReviewEntries, toSemanticReview } from "../lib/review.ts";
-import { environmentMatrix } from "../lib/run-metadata.ts";
+import { isTreatment } from "../runner/types.ts";
+import type { Treatment } from "../runner/types.ts";
+import { verdictFor } from "../runner/lib/evidence.ts";
+import { listSnapshotRecords, readReviewEntries, toSemanticReview } from "./lib/review.ts";
+import { environmentMatrix } from "../runner/lib/run-metadata.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

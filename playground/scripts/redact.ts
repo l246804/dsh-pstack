@@ -2,12 +2,12 @@ import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "no
 import { dirname, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { isTreatment } from "../types.ts";
-import type { Treatment } from "../types.ts";
-import { environmentMatrix } from "../lib/run-metadata.ts";
-import { EVIDENCE_FILES } from "../lib/evidence-files.ts";
-import { residualKinds } from "../lib/redaction.ts";
-import { reviewSnapshotDirectory } from "../lib/review-snapshot.ts";
+import { isTreatment } from "../runner/types.ts";
+import type { Treatment } from "../runner/types.ts";
+import { environmentMatrix } from "../runner/lib/run-metadata.ts";
+import { EVIDENCE_FILES } from "../runner/lib/evidence-files.ts";
+import { residualKinds } from "../runner/lib/redaction.ts";
+import { reviewSnapshotDirectory } from "../runner/lib/review-snapshot.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

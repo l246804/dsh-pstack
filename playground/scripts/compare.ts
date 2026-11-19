@@ -1,11 +1,11 @@
 import { pathToFileURL } from "node:url";
 
-import type { BehaviorScenario, RunRecord } from "../types.ts";
-import { listSnapshotRecords } from "../lib/review.ts";
-import { environmentMatrix } from "../lib/run-metadata.ts";
-import { scenarioContentHash } from "../lib/scenario-hash.ts";
+import type { BehaviorScenario, RunRecord } from "../runner/types.ts";
+import { listSnapshotRecords } from "./lib/review.ts";
+import { environmentMatrix } from "../runner/lib/run-metadata.ts";
+import { scenarioContentHash } from "../runner/lib/scenario-hash.ts";
 
-export { scenarioContentHash } from "../lib/scenario-hash.ts";
+export { scenarioContentHash } from "../runner/lib/scenario-hash.ts";
 
 export interface CompareSnapshotInput {
   environment: string;
@@ -120,7 +120,7 @@ async function main(): Promise<void> {
   if ((scenario !== undefined) === all) {
     throw new Error("usage: compare.ts --environment ID (--scenario ID | --all)");
   }
-  const { loadScenario } = await import("../lib/scenarios.ts");
+  const { loadScenario } = await import("../runner/lib/scenarios.ts");
   const result = compareSnapshot({
     environment,
     loadScenario,

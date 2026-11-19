@@ -8,10 +8,10 @@ import {
   type SemanticReview,
   type SemanticReviewStatus,
   type TestTarget,
-} from "../types.ts";
-import { isRunRecord } from "./evidence.ts";
-import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "./evidence-files.ts";
-import { reviewSnapshotDirectory } from "./review-snapshot.ts";
+} from "../../runner/types.ts";
+import { isRunRecord } from "../../runner/lib/evidence.ts";
+import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "../../runner/lib/evidence-files.ts";
+import { reviewSnapshotDirectory } from "../../runner/lib/review-snapshot.ts";
 
 export type ReviewReviewer = { kind: "human"; name: string } | { kind: "model"; route: TestTarget };
 

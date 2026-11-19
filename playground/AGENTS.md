@@ -9,6 +9,12 @@
 - 真实模型选择由用户确认；RunRecord 记录实际路由、DSH 版本、pstack 版本、上游 revision 和配置 hash。
 - 运行矩阵是 treatment × environment：`native` 观察原生 DSH，`adapted` 验证适配实现；可选插件和 team 模式属于 environment，不属于目录名。
 
+## 目录
+
+- `runner/`：worker 执行器与运行时，负责 prepare、bootstrap、run、collect、stop 和 worker 状态。
+- `scripts/`：结果后处理与报表，负责 compare、status-table、review、redact 和 gap-lock；只消费 runner 产出的记录。
+- `scenarios/`：probe 定义与 `gap-lock.json`。
+
 ## 文档指针
 
 | 文档 | 职责 |
