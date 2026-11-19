@@ -14,14 +14,14 @@ import { join } from "node:path";
 
 import { isTreatment } from "../types.ts";
 import type { Treatment, RunRecord, Verdict } from "../types.ts";
-import { latestRecords } from "../lib/evidence.ts";
-import { computeWorkers } from "../lib/capacity.ts";
+import { latestRecords } from "../evidence/evidence.ts";
+import { computeWorkers } from "../worker/capacity.ts";
 import {
   environmentMatrix,
   REPOSITORY_ROOT,
   upstreamRevision,
   workersDirectory,
-} from "../lib/run-metadata.ts";
+} from "../worker/run-metadata.ts";
 import {
   formatTimestamp,
   progressFilePath,
@@ -29,10 +29,10 @@ import {
   updateProgress,
   writeProgress,
   type ProgressState,
-} from "../lib/progress.ts";
-import { listScenarioIds, loadScenario } from "../lib/scenarios.ts";
-import { writeBatchMetadata } from "../lib/review-snapshot.ts";
-import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../lib/worker.ts";
+} from "../worker/progress.ts";
+import { listScenarioIds, loadScenario } from "../scenario/scenarios.ts";
+import { writeBatchMetadata } from "../evidence/review-snapshot.ts";
+import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../worker/worker.ts";
 
 const VPX = "vpx";
 

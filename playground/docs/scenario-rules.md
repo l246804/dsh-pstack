@@ -36,7 +36,7 @@
 - 每个 gap 场景引用的缺口必须存在且为 `confirmed`；缺口改判为 `refuted` 或 `excluded` 时，删除对应场景，或转成 `regression` 并去掉 `gap`。
 - gap 场景的 `capability` 必须等于 `gap`。
 - 缺口描述变化时，场景必须重读；`gap-lock` 指纹不匹配会失败，确认场景仍成立后运行 `vp run playground:gap-lock -- --write` 重新落锁。
-- 守卫：`gapCoverageProblems` 检查引用完整性，`gapLockProblems` 检查描述指纹；测试在 `tests/playground-contracts.test.ts`。
+- 守卫：`gapCoverageProblems` 检查引用完整性，`gapLockProblems` 检查描述指纹；测试在 `playground/tests/playground-contracts.test.ts`。
 
 ## 完成标准
 

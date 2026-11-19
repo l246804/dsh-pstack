@@ -1,4 +1,4 @@
-import { buildImage } from "../lib/sandbox/image.ts";
+import { buildImage } from "../container/image.ts";
 
 try {
   console.log(`[image] ${buildImage()}`);

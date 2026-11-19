@@ -17,10 +17,10 @@
 
 import { join } from "node:path";
 
-import { createBrowserSession } from "../lib/browser.ts";
-import { readWebUrl } from "../lib/web.ts";
-import { environmentMatrix } from "../lib/run-metadata.ts";
-import { workerPaths } from "../lib/worker.ts";
+import { createBrowserSession } from "../browser/session.ts";
+import { readWebUrl } from "../container/web.ts";
+import { environmentMatrix } from "../worker/run-metadata.ts";
+import { workerPaths } from "../worker/worker.ts";
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
 

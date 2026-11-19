@@ -3,9 +3,9 @@ import { pathToFileURL } from "node:url";
 
 import { isTreatment } from "../runner/types.ts";
 import type { Treatment } from "../runner/types.ts";
-import { verdictFor } from "../runner/lib/evidence.ts";
+import { verdictFor } from "../runner/evidence/evidence.ts";
 import { listSnapshotRecords, readReviewEntries, toSemanticReview } from "./lib/review.ts";
-import { environmentMatrix } from "../runner/lib/run-metadata.ts";
+import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

@@ -53,7 +53,11 @@ export default defineConfig({
     },
   ],
   test: {
-    include: ["tests/**/*.test.{ts,tsx,mjs}"],
+    include: [
+      "tests/**/*.test.{ts,tsx,mjs}",
+      "src/tests/**/*.test.{ts,tsx,mjs}",
+      "playground/tests/**/*.test.{ts,tsx,mjs}",
+    ],
   },
   run: {
     tasks: {

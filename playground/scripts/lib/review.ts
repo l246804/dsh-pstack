@@ -9,9 +9,9 @@ import {
   type SemanticReviewStatus,
   type TestTarget,
 } from "../../runner/types.ts";
-import { isRunRecord } from "../../runner/lib/evidence.ts";
-import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "../../runner/lib/evidence-files.ts";
-import { reviewSnapshotDirectory } from "../../runner/lib/review-snapshot.ts";
+import { isRunRecord } from "../../runner/evidence/evidence.ts";
+import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "../../runner/evidence/evidence-files.ts";
+import { reviewSnapshotDirectory } from "../../runner/evidence/review-snapshot.ts";
 
 export type ReviewReviewer = { kind: "human"; name: string } | { kind: "model"; route: TestTarget };
 

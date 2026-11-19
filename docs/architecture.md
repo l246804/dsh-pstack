@@ -50,7 +50,7 @@ playground 真实会话验证
 | 移植与生成 | `native/scripts/fetch-upstream.ts`、`native/scripts/generate-pstack.ts`、`native/`（`upstream/`、`upstream.lock.json`、`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`、`gaps.json`）、`src/dsh.md`、`src/dsh.zh.md`、`playground/scenarios/probes/` | fetch 把已发布上游版本钉定到 `native/upstream/`；生成器从上游树加注入行并盖章 `native/dsh.md` 产出唯一生成树 `native/pstack/`；`src/dsh.md` 是随包适配答案，构建时盖章替换 dist 内的基准答案；缺口提取规则见 `native/AGENTS.md`，缺口清单 `native/gaps.json` 与场景规则见 `playground/docs/scenario-rules.md`。 |
 | 发布元数据与发布说明 | `scripts/release-compatibility.ts`、`scripts/release-surface.ts`、`scripts/release.sh`、`bump.config.ts`、`changes/AGENTS.md` | 按 DSH 兼容范围分组同步各本地化 README 的发布版本表，并把对应本地化 README 加入发布提交；分组与保留规则见 `docs/release.md`。发布说明由 agent 会话按 `changes/AGENTS.md` 从版本间提交生成到 `changes/RELEASE.md`；`release.sh` 要求该文件存在且已提交后才 bumpp，打完 tag 后删除它，发布工作流在 tag 上读取它作为 Release 正文；`release-surface.ts` 维护 `src/surface.json`。 |
 | 构建与打包 | `vite.config.ts`、`package.json` | 分别构建 Host 与浏览器 Client；导出 Host 模块，复制生成树和技能资源。 |
-| 自动化验证 | `tests/`、`playground/runner/cli/`（doctor、prepare、bootstrap、run-case、run-batch、collect、status、stop、stop-task、browser）、`playground/scripts/`（compare、status-table、review、redact、gap-lock） | 运行单元和 DOM 交互测试；在 Docker worker 中运行 capability probes，收集 RunRecord、SessionAnalysis 和当前评审快照；报告与后处理脚本从快照生成状态表和对比，并执行语义审核、脱敏与缺口同步校验。 |
+| 自动化验证 | `tests/`、`src/tests/`、`playground/tests/`、`playground/runner/cli/`（doctor、prepare、bootstrap、run-case、run-batch、collect、status、stop、stop-task、browser）、`playground/scripts/`（compare、status-table、review、redact、gap-lock） | 运行单元和 DOM 交互测试；在 Docker worker 中运行 capability probes，收集 RunRecord、SessionAnalysis 和当前评审快照；报告与后处理脚本从快照生成状态表和对比，并执行语义审核、脱敏与缺口同步校验。 |
 
 ## 依赖方向
 
@@ -111,7 +111,7 @@ native/pstack/ + src/dsh.md
 - **Agent preset**：在 `cordis.patch.yml` 组合插件行，由 `src/preset.ts` 注册；展示文案集中在 `src/client/locales/` 或 `src/presets/preset-copy.ts`。
 - **Client 配置能力**：通过 `plugins.detail.actions` 进入现有对话框；Host 数据通过显式 Remote 描述符和页面 API 适配层传递。
 - **上游移植**：先在 playground 审核技能，再调整生成器或手写适配来源，最后重新生成并检查漂移。
-- **验证**：纯逻辑和 DOM 行为放入 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
+- **验证**：纯逻辑和 DOM 行为放入各包的 `tests/`（`src/tests/`、`playground/tests/`）；仓库级发布测试留在 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
 
 ## 验证分层
 

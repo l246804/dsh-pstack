@@ -1,6 +1,6 @@
 import { loadEnv } from "vite-plus";
 
-import { fromHost } from "./runner/lib/config-host.ts";
+import { fromHost } from "./runner/config/config-host.ts";
 import type { PlaygroundConfig } from "./runner/types.ts";
 
 // Vite's env loader: .env, .env.local, .env.playground, .env.playground.local.

@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
-import { environmentMatrix, workersDirectory } from "../lib/run-metadata.ts";
+import { environmentMatrix, workersDirectory } from "../worker/run-metadata.ts";
 import {
   copyCredentials,
   mountNativeTree,
@@ -15,25 +15,25 @@ import {
   writePstackSettings,
   writeWorkerInstructions,
   CONFIG_FILE,
-} from "../lib/home.ts";
-import { loadProviderPlan, type ProviderPlan } from "../lib/provider.ts";
+} from "../worker/home.ts";
+import { loadProviderPlan, type ProviderPlan } from "../config/provider.ts";
 import {
   cloneInstalledProfile,
   ensureWebProfile,
   grantVersionExemptions,
   installPluginPackage,
   packPlugin,
-} from "../lib/profile.ts";
-import { startWeb, stopWeb } from "../lib/web.ts";
-import { listScenarioIds } from "../lib/scenarios.ts";
-import { computeWorkers } from "../lib/capacity.ts";
+} from "../worker/profile.ts";
+import { startWeb, stopWeb } from "../container/web.ts";
+import { listScenarioIds } from "../scenario/scenarios.ts";
+import { computeWorkers } from "../worker/capacity.ts";
 import {
   clearBootstrapReady,
   listWorkers,
   resetTreatment,
   workerPaths,
   type WorkerPaths,
-} from "../lib/worker.ts";
+} from "../worker/worker.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

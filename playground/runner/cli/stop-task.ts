@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
-import { stopRequestFile, workerPaths } from "../lib/worker.ts";
+import { stopRequestFile, workerPaths } from "../worker/worker.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

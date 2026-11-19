@@ -21,14 +21,14 @@ import type {
   TestTarget,
   Treatment,
 } from "../types.ts";
-import { analyzeSession } from "../lib/analysis.ts";
+import { analyzeSession } from "../evidence/analysis.ts";
 import {
   captureFullPage,
   collapseSidebar,
   createBrowserSession,
   type BrowserSession,
-} from "../lib/browser.ts";
-import { isBlankImage } from "../lib/png.ts";
+} from "../browser/session.ts";
+import { isBlankImage } from "../evidence/png.ts";
 import {
   assertSafeRecord,
   digestSession,
@@ -41,12 +41,12 @@ import {
   verdictFor,
   type SessionDigest,
   type SessionEvent,
-} from "../lib/evidence.ts";
-import { readHomePlan, readPlaygroundConfig, CONFIG_FILE } from "../lib/home.ts";
-import { providerSecrets } from "../lib/provider.ts";
-import { readWebUrl } from "../lib/web.ts";
-import { EVIDENCE_FILES } from "../lib/evidence-files.ts";
-import { sanitizeRecord } from "../lib/redaction.ts";
+} from "../evidence/evidence.ts";
+import { readHomePlan, readPlaygroundConfig, CONFIG_FILE } from "../worker/home.ts";
+import { providerSecrets } from "../config/provider.ts";
+import { readWebUrl } from "../container/web.ts";
+import { EVIDENCE_FILES } from "../evidence/evidence-files.ts";
+import { sanitizeRecord } from "../evidence/redaction.ts";
 import {
   DEFAULT_ANSWER_TEXT,
   POLL_INTERVAL_MS,
@@ -55,11 +55,11 @@ import {
   SUBAGENT_TIMEOUT_MS,
   TURN_TIMEOUT_MS,
   UI_LABELS,
-} from "../lib/runtime.ts";
-import { createEnvironment, environmentMatrix } from "../lib/run-metadata.ts";
-import { reviewSnapshotDirectory } from "../lib/review-snapshot.ts";
-import { scenarioContentHash } from "../lib/scenario-hash.ts";
-import { stopRequestFile, workerPaths, type WorkerPaths } from "../lib/worker.ts";
+} from "../worker/runtime.ts";
+import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";
+import { reviewSnapshotDirectory } from "../evidence/review-snapshot.ts";
+import { scenarioContentHash } from "../scenario/scenario-hash.ts";
+import { stopRequestFile, workerPaths, type WorkerPaths } from "../worker/worker.ts";
 
 const {
   composerSelector: COMPOSER_SELECTOR,
@@ -687,7 +687,7 @@ async function main(): Promise<void> {
         if (!found) throw new Error(`scenario ${scenarioId} is missing from the batch bundle`);
         return found;
       })()
-    : (await import("../lib/scenarios.ts")).loadScenario(scenarioId);
+    : (await import("../scenario/scenarios.ts")).loadScenario(scenarioId);
   const environments = scenario.environments ?? ["base"];
   if (!environments.includes(matrix.id)) {
     throw new Error(`scenario ${scenarioId} does not run in environment ${matrix.id}`);

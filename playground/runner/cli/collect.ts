@@ -2,8 +2,8 @@ import { pathToFileURL } from "node:url";
 
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
-import { environmentMatrix } from "../lib/run-metadata.ts";
-import { collectReviewSnapshot, REVIEWS_DIRECTORY } from "../lib/review-snapshot.ts";
+import { environmentMatrix } from "../worker/run-metadata.ts";
+import { collectReviewSnapshot, REVIEWS_DIRECTORY } from "../evidence/review-snapshot.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

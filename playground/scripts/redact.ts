@@ -4,10 +4,10 @@ import { pathToFileURL } from "node:url";
 
 import { isTreatment } from "../runner/types.ts";
 import type { Treatment } from "../runner/types.ts";
-import { environmentMatrix } from "../runner/lib/run-metadata.ts";
-import { EVIDENCE_FILES } from "../runner/lib/evidence-files.ts";
-import { residualKinds } from "../runner/lib/redaction.ts";
-import { reviewSnapshotDirectory } from "../runner/lib/review-snapshot.ts";
+import { environmentMatrix } from "../runner/worker/run-metadata.ts";
+import { EVIDENCE_FILES } from "../runner/evidence/evidence-files.ts";
+import { residualKinds } from "../runner/evidence/redaction.ts";
+import { reviewSnapshotDirectory } from "../runner/evidence/review-snapshot.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

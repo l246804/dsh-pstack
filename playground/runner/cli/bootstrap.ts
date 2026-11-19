@@ -6,22 +6,22 @@
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { collapseSidebar, createBrowserSession } from "../lib/browser.ts";
-import { UI_LABELS } from "../lib/runtime.ts";
+import { collapseSidebar, createBrowserSession } from "../browser/session.ts";
+import { UI_LABELS } from "../worker/runtime.ts";
 import {
   CONFIG_FILE,
   readHomePlan,
   readPlaygroundConfig,
   readWorkspaceStore,
-} from "../lib/home.ts";
-import { readWebUrl } from "../lib/web.ts";
+} from "../worker/home.ts";
+import { readWebUrl } from "../container/web.ts";
 import {
   bootstrapReadyFile,
   hasBootstrapReady,
   listWorkers,
   workerPaths,
   type WorkerPaths,
-} from "../lib/worker.ts";
+} from "../worker/worker.ts";
 import type { BrowserConfig, Treatment } from "../types.ts";
 
 const { continue: CONTINUE_LABEL, previewNotice: PREVIEW_NOTICE } = UI_LABELS;

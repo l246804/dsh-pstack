@@ -1,10 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
-import { agentBrowserBin, chromeExecutable } from "../lib/browser.ts";
-import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE } from "../lib/home.ts";
-import { hostCommand, IS_WINDOWS } from "../lib/platform.ts";
-import { imageProblems } from "../lib/sandbox/image.ts";
+import { agentBrowserBin, chromeExecutable } from "../browser/session.ts";
+import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE } from "../worker/home.ts";
+import { hostCommand, IS_WINDOWS } from "../worker/platform.ts";
+import { imageProblems } from "../container/image.ts";
 
 const failures: string[] = [];
 
