@@ -119,5 +119,5 @@ Use only tools visible in the current session. If a mapped tool or optional capa
 - native 的逐行证据放在 `native/dsh-evidence.md`；每条核心表格行必须有对应证据。
 - 修改任一 `dsh.md` 后同步对应的 `dsh.zh.md`，保持 section 数、行数、Cursor 单元格和代码标识符一致。
 - 生成前对照本文件自检：没有抄运行时 schema 字面量，没有跨块重复，没有未定义的内部简称，`Local replacements` 只含真实替代项。
-- `native/scripts/generate-pstack.mjs` 负责生成树；修改后人工检查结构并运行 `vp run generate:check`。
+- `native/scripts/generate-pstack.ts` 负责生成树；修改后人工检查结构并运行 `vp run generate:check`。
 - 结构只允许模板中的核心块；`port` 只追加 `Plugin tools`、`Agent Teams` 和 `Local replacements`。

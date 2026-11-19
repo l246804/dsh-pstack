@@ -18,5 +18,5 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": ["src", "tests", "vite.config.ts", "bump.config.ts", "scripts"]
+  "include": ["src", "tests", "vite.config.ts", "bump.config.ts", "scripts", "native/scripts"]
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Generate the native pstack tree: native/upstream (the pinned released tree)
 // + native/dsh.md (the DSH standard-mode answers) -> native/pstack.
-// Run scripts/fetch-upstream.mjs first when the pin moves.
+// Run scripts/fetch-upstream.ts first when the pin moves.
 
 import {
   chmodSync,
@@ -15,6 +15,14 @@ import {
 } from "node:fs";
 import { dirname, join, posix, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
+
+const {
+  values: { check: checkMode },
+} = parseArgs({
+  options: { check: { type: "boolean", default: false } },
+  allowPositionals: false,
+});
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const SOURCE = join(ROOT, "native/upstream");
@@ -22,13 +30,24 @@ const ADAPTER_SOURCE = "native/dsh.md";
 const ADAPTER_TREE = "docs/harness/dsh.md";
 const OUT = join(ROOT, "native/pstack");
 const LOCK = join(ROOT, "native/upstream.lock.json");
-const COMMAND = "vpx native/scripts/generate-pstack.mjs";
+const COMMAND = "vpx native/scripts/generate-pstack.ts";
 const INJECTION = `In DeepSeek Harness, read [the DSH adapter](../../${ADAPTER_TREE}) once per session before you follow this skill. It maps the Cursor names in pstack skills to DeepSeek Harness.`;
 const GITHUB = "https://github.com/cursor/plugins";
 const LINK = /\]\(([^)\s]+)\)/g;
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-const TERMS = [
+interface TreeFile {
+  bytes: Buffer;
+  executable: boolean;
+}
+
+interface SkillClass {
+  terms: Set<string>;
+  wrap: boolean;
+  name?: string;
+}
+
+const TERMS: { key: string; re: RegExp }[] = [
   { key: "`Task`", re: /`Task`|\bTask (tool|subagent|call)/ },
   { key: "`AskQuestion`", re: /AskQuestion/ },
   { key: "todolist", re: /\btodo ?list\b/i },
@@ -59,7 +78,7 @@ const TERMS = [
 const ROUTE_KEY = "Run another pstack skill";
 const ACTIVE_TERMS = TERMS;
 
-function walk(dir) {
+function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
     if (name === ".DS_Store" || name === "node_modules") return [];
     const path = join(dir, name);
@@ -67,18 +86,18 @@ function walk(dir) {
   });
 }
 
-function file(path) {
+function file(path: string): TreeFile {
   return { bytes: readFileSync(path), executable: (statSync(path).mode & 0o111) !== 0 };
 }
 
 if (!existsSync(join(SOURCE, "plugin.json"))) {
-  throw new Error(`native/upstream is missing; run scripts/fetch-upstream.mjs first`);
+  throw new Error("native/upstream is missing; run scripts/fetch-upstream.ts first");
 }
 const pinned = JSON.parse(readFileSync(join(SOURCE, "plugin.json"), "utf8")).version;
 const lock = JSON.parse(readFileSync(LOCK, "utf8"));
 if (lock.pstackVersion !== pinned) {
   throw new Error(
-    `native/upstream carries ${pinned} but native/upstream.lock.json pins ${lock.pstackVersion}; rerun scripts/fetch-upstream.mjs`,
+    `native/upstream carries ${pinned} but native/upstream.lock.json pins ${lock.pstackVersion}; rerun scripts/fetch-upstream.ts`,
   );
 }
 
@@ -86,19 +105,19 @@ const skills = readdirSync(join(SOURCE, "skills")).filter((name) =>
   existsSync(join(SOURCE, "skills", name, "SKILL.md")),
 );
 
-function classify(skill) {
+function classify(skill: string): SkillClass {
   const dir = join(SOURCE, "skills", skill);
   const others = skills.filter((name) => name !== skill).join("|");
   const route = new RegExp(
     `the \\*\\*(?<bold>${others})\\*\\* skill|\`/(?<command>${others})\``,
     "g",
   );
-  const linksToSkill = (line, name) => line.includes(`(../${name}/`);
-  const namesBareSkill = (line) =>
+  const linksToSkill = (line: string, name: string) => line.includes(`(../${name}/`);
+  const namesBareSkill = (line: string) =>
     [...line.matchAll(route)].some(
-      ({ groups }) => !linksToSkill(line, groups.bold ?? groups.command),
+      ({ groups }) => !linksToSkill(line, groups?.bold ?? groups?.command ?? ""),
     );
-  const terms = new Set();
+  const terms = new Set<string>();
   for (const path of walk(dir).filter((path) => path.endsWith(".md"))) {
     const text = readFileSync(path, "utf8");
     for (const term of ACTIVE_TERMS) if (term.re.test(text)) terms.add(term.key);
@@ -108,13 +127,13 @@ function classify(skill) {
   const frontmatter = text.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? "";
   const name = frontmatter
     .match(/^name:(.*)$/m)?.[1]
-    .trim()
+    ?.trim()
     .replace(/^(["'])(.*)\1$/, "$2");
   return { terms, wrap: terms.size > 0 && /^# /m.test(text), name };
 }
 
 const classes = new Map(skills.map((skill) => [skill, classify(skill)]));
-const problems = [];
+const problems: string[] = [];
 for (const [skill, { terms, wrap, name }] of classes) {
   if (terms.size > 0 && !wrap)
     problems.push(`skills/${skill}/SKILL.md uses Cursor names but has no H1`);
@@ -129,18 +148,18 @@ const adapterText = readFileSync(join(ROOT, ADAPTER_SOURCE), "utf8");
 for (const problem of problems) console.log(`FAIL ${problem}`);
 if (problems.length > 0) process.exit(1);
 
-function targetPath(from, href) {
+function targetPath(from: string, href: string): string | undefined {
   const target = href.replace(/[#?].*/, "");
   if (!target || /^[a-z][a-z0-9+.-]*:/i.test(target)) return undefined;
   const path = posix.join(posix.dirname(from), target).replace(/\/$/, "");
   return existsSync(join(SOURCE, path)) ? path : undefined;
 }
 
-function has(files, path) {
+function has(files: Map<string, TreeFile>, path: string): boolean {
   return files.has(path) || [...files.keys()].some((key) => key.startsWith(`${path}/`));
 }
 
-function render() {
+function render(): Map<string, TreeFile> {
   const copies = [
     ...walk(join(SOURCE, "skills")).map((path) => relative(SOURCE, path)),
     ...walk(join(SOURCE, "agents")).map((path) => relative(SOURCE, path)),
@@ -153,13 +172,15 @@ function render() {
   const line = INJECTION;
   for (const [skill, { wrap }] of classes) {
     const path = `skills/${skill}/SKILL.md`;
-    const text = files.get(path).bytes.toString("utf8");
-    if (wrap) files.get(path).bytes = Buffer.from(text.replace(/^(# .*)\n+/m, `$1\n\n${line}\n\n`));
+    const text = files.get(path)?.bytes.toString("utf8");
+    if (wrap && text) {
+      files.get(path)!.bytes = Buffer.from(text.replace(/^(# .*)\n+/m, `$1\n\n${line}\n\n`));
+    }
   }
   files.set("LICENSE", file(join(SOURCE, "LICENSE")));
   for (const [path, entry] of files) {
     if (!path.endsWith(".md")) continue;
-    const text = entry.bytes.toString("utf8").replace(LINK, (link, href) => {
+    const text = entry.bytes.toString("utf8").replace(LINK, (link, href: string) => {
       const target = targetPath(path, href);
       if (!target || target.split("/")[0] === ".." || has(files, target)) return link;
       const kind = statSync(join(SOURCE, target)).isDirectory() ? "tree" : "blob";
@@ -171,7 +192,7 @@ function render() {
 }
 
 const rendered = render();
-const dangling = [];
+const dangling: string[] = [];
 for (const [path, entry] of rendered) {
   if (!path.endsWith(".md")) continue;
   for (const [, href] of entry.bytes.toString("utf8").matchAll(LINK)) {
@@ -183,7 +204,7 @@ for (const [path, entry] of rendered) {
 for (const link of dangling) console.log(`FAIL ${link}`);
 if (dangling.length > 0) process.exit(1);
 
-if (process.argv.includes("--check")) {
+if (checkMode) {
   const onDisk = new Map(
     existsSync(OUT) ? walk(OUT).map((path) => [relative(OUT, path), file(path)]) : [],
   );

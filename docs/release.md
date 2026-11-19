@@ -4,7 +4,7 @@
 
 ## 版本事实
 
-- pstack 版本钉定在 `native/upstream.lock.json`（`pstackVersion` 与上游 commit），由 `native/scripts/fetch-upstream.mjs` 维护；它不是 playground 的测试基线。
+- pstack 版本钉定在 `native/upstream.lock.json`（`pstackVersion` 与上游 commit），由 `native/scripts/fetch-upstream.ts` 维护；它不是 playground 的测试基线。
 - DSH 兼容范围以 `package.json` 的 `engines.dsh` 为准，不维护手写兼容键。
 - 公开工具清单在 `src/surface.json`，由 `scripts/release-surface.ts` 从工具工厂导出。
 

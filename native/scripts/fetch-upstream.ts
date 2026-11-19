@@ -8,10 +8,10 @@
 // pins that bump commit: version-first, never a moving branch.
 //
 // Usage:
-//   vpx native/scripts/fetch-upstream.mjs                 # restore from the lock; bootstrap with
-//                                                         # main's current version when no lock exists
-//   vpx native/scripts/fetch-upstream.mjs --latest        # force an upgrade check against main
-//   vpx native/scripts/fetch-upstream.mjs --version 0.15.43   # pin an exact released version
+//   vpx native/scripts/fetch-upstream.ts             # restore from the lock; bootstrap with
+//                                                    # main's current version when no lock exists
+//   vpx native/scripts/fetch-upstream.ts --latest    # force an upgrade check against main
+//   vpx native/scripts/fetch-upstream.ts --version 0.15.43   # pin an exact released version
 //        [--source <git url or local path>] [--path pstack] [--commit <sha>]
 //
 // Rules:
@@ -35,6 +35,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseArgs } from "node:util";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const NATIVE = join(ROOT, "native");
@@ -43,20 +44,30 @@ const NATIVE = join(ROOT, "native");
 const SCRATCH = join(ROOT, ".tmp", "fetch-upstream");
 const DEFAULT_SOURCE = "https://github.com/cursor/plugins.git";
 
-function arg(name, fallback) {
-  const index = process.argv.indexOf(`--${name}`);
-  if (index < 0) return fallback;
-  const value = process.argv[index + 1];
-  if (value === undefined || value.startsWith("--")) {
-    throw new Error(`--${name} needs a value`);
-  }
-  return value;
+interface LockOnDisk {
+  pstackVersion?: string;
+  commit?: string;
+  path?: string;
+  source?: string;
 }
 
-let latest = process.argv.includes("--latest");
-let restoreFromLock = !process.argv.includes("--version") && !latest;
+const { values: args } = parseArgs({
+  options: {
+    version: { type: "string" },
+    latest: { type: "boolean", default: false },
+    source: { type: "string" },
+    path: { type: "string" },
+    commit: { type: "string" },
+  },
+  allowPositionals: false,
+});
+
+let latest = args.latest;
+let restoreFromLock = args.version === undefined && !latest;
 const LOCK_FILE = join(NATIVE, "upstream.lock.json");
-const lockOnDisk = existsSync(LOCK_FILE) ? JSON.parse(readFileSync(LOCK_FILE, "utf8")) : undefined;
+const lockOnDisk: LockOnDisk | undefined = existsSync(LOCK_FILE)
+  ? JSON.parse(readFileSync(LOCK_FILE, "utf8"))
+  : undefined;
 if (restoreFromLock && !lockOnDisk?.pstackVersion) {
   // No pin on disk yet: bootstrap with main's current version instead of failing.
   console.log("no native/upstream.lock.json; bootstrapping with --latest.");
@@ -64,10 +75,21 @@ if (restoreFromLock && !lockOnDisk?.pstackVersion) {
   latest = true;
 }
 // For --latest the version is resolved from origin/main after the work tree exists.
-let version = restoreFromLock ? lockOnDisk.pstackVersion : latest ? null : arg("version");
-const path = restoreFromLock ? (lockOnDisk.path ?? "pstack") : arg("path", "pstack");
-const source = arg("source", lockOnDisk?.source ?? DEFAULT_SOURCE);
-const commitOverride = restoreFromLock ? lockOnDisk.commit : arg("commit");
+let version = restoreFromLock ? lockOnDisk?.pstackVersion : args.version;
+if (version === undefined && !latest) {
+  throw new Error("--version needs a value");
+}
+const path = restoreFromLock ? (lockOnDisk?.path ?? "pstack") : (args.path ?? "pstack");
+const source = args.source ?? lockOnDisk?.source ?? DEFAULT_SOURCE;
+const commitOverride = restoreFromLock ? lockOnDisk?.commit : args.commit;
+
+function git(gitArgs: string[], cwd: string): string {
+  const result = spawnSync("git", gitArgs, { cwd, encoding: "utf8" });
+  if (result.status !== 0) {
+    throw new Error(`git ${gitArgs.join(" ")} failed in ${cwd}: ${result.stderr}`);
+  }
+  return result.stdout;
+}
 
 // Restore fast path: the tree already carries the pinned version. No git, no network.
 const pinnedTreeManifest = join(NATIVE, "upstream", "plugin.json");
@@ -79,48 +101,40 @@ if (restoreFromLock && commitOverride && existsSync(pinnedTreeManifest)) {
   }
 }
 
-function git(args, cwd, options = {}) {
-  const result = spawnSync("git", args, { cwd, encoding: "utf8", ...options });
-  if (result.status !== 0) {
-    throw new Error(`git ${args.join(" ")} failed in ${cwd}: ${result.stderr}`);
-  }
-  return result.stdout;
-}
-
 // Resolve the work tree: a local git checkout is used as-is; a URL is cloned
 // blobless (GitHub does not allow fetching an arbitrary pinned SHA, so even a
 // restore resolves through a blobless clone of the commit history).
 let work = source;
-let cloned;
+let cloned: string | undefined;
 if (!existsSync(source) || !statSync(source).isDirectory()) {
   mkdirSync(SCRATCH, { recursive: true });
   cloned = join(SCRATCH, `clone-${Date.now()}`);
-  git(["clone", "--filter=blob:none", "--no-checkout", source, cloned]);
+  git(["clone", "--filter=blob:none", "--no-checkout", source, cloned], ROOT);
   work = cloned;
 }
 
 const manifest = `${path}/plugin.json`;
-function versionAt(work, sha) {
-  const text = git(["show", `${sha}:${manifest}`], work);
+function versionAt(atWork: string, sha: string): string {
+  const text = git(["show", `${sha}:${manifest}`], atWork);
   return JSON.parse(text).version;
 }
 
 if (latest) {
   version = versionAt(work, "origin/main");
-  if (!version) {
+  if (version === undefined) {
     throw new Error(`origin/main carries no version in ${manifest}`);
   }
   console.log(`origin/main carries ${path}@${version}; resolving its bump commit.`);
 }
 
 /** Expand to a full sha without a redundant spawn when the input is already full. */
-function fullSha(sha, work) {
-  return /^[0-9a-f]{40}$/.test(sha) ? sha : git(["rev-parse", sha], work).trim();
+function fullSha(sha: string, atWork: string): string {
+  return /^[0-9a-f]{40}$/.test(sha) ? sha : git(["rev-parse", sha], atWork).trim();
 }
 
 /** The canonical origin URL, read from the checkout's config without a spawn. */
-function remoteUrl(work, fallback) {
-  const config = join(work, ".git", "config");
+function remoteUrl(atWork: string, fallback: string): string {
+  const config = join(atWork, ".git", "config");
   if (existsSync(config)) {
     const match = readFileSync(config, "utf8").match(/\[remote "origin"\][^[]*?url = (\S+)/);
     if (match) return match[1];
@@ -128,8 +142,8 @@ function remoteUrl(work, fallback) {
   return fallback;
 }
 
-let bump;
-let followUps = [];
+let bump: string | undefined;
+let followUps: string[] = [];
 if (commitOverride) {
   // The extracted manifest is verified against the version below, so a pinned
   // commit needs no separate pre-check here.
@@ -142,7 +156,7 @@ if (commitOverride) {
   if (history.length === 0) {
     throw new Error(`no commits touch ${manifest} in ${source}`);
   }
-  const parentOf = (sha) => {
+  const parentOf = (sha: string): string | undefined => {
     const parent = git(["rev-parse", "--short=40", `${sha}^`], work).trim();
     return parent === sha ? undefined : parent;
   };
@@ -188,7 +202,7 @@ const lock = {
   // The canonical remote, not the ephemeral local path that may have served the fetch.
   source: remoteUrl(work, source),
 };
-writeFileSync(join(NATIVE, "upstream.lock.json"), `${JSON.stringify(lock, null, 2)}\n`);
+writeFileSync(LOCK_FILE, `${JSON.stringify(lock, null, 2)}\n`);
 
 console.log(`pinned ${path}@${version} at ${lock.commit.slice(0, 10)} -> native/upstream/`);
 if (followUps.length > 0) {

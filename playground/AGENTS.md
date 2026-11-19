@@ -37,4 +37,4 @@
 - 阶段隔离按 [docs/evidence-analysis.md](./docs/evidence-analysis.md) 执行；场景与缺口规则按 [docs/scenario-rules.md](./docs/scenario-rules.md)。
 - `prepare → bootstrap → run-batch → collect` 必须在同一个长期存活的 background job 中串行执行，shell 保持到 collect 结束。
 - dsh.md 的分离、修改和描述边界见 [docs/workflow.md](./docs/workflow.md#dshmd)。
-- `native/scripts/generate-pstack.mjs` 是唯一生成器；native 目录职责与缺口提取规则见 [../native/AGENTS.md](../native/AGENTS.md)。
+- `native/scripts/generate-pstack.ts` 是唯一生成器；native 目录职责与缺口提取规则见 [../native/AGENTS.md](../native/AGENTS.md)。
