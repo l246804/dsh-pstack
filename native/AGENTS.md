@@ -45,6 +45,6 @@
 2. 逐文件判定：行为是否为上游工作流所必需；必需时标准模式是否保证它。`dsh.md` 与 `dsh-evidence.md` 是已确认答案，覆盖到的直接沿用；未覆盖的对运行时求证，未提及不等于保证。最终仲裁是 `native` 的实际运行结果。
 3. 落盘：必需且未保证写成 `gaps[]` 条目；其余文件在 `files[]` 登记空数组。
 4. schema：`gaps[]` 条目为 `{ "id", "description", "sources", "evidence", "status", "reason"? }`；`files[]` 条目为 `{ "path", "gaps" }`；`sources` 只能引用 `files[]` 已登记的路径，或 `dsh.md`、`dsh-evidence.md`。
-5. `status`：新条目为 `proposed`，由用户逐条确认为 `confirmed`，或改判 `refuted`、`excluded`，改判必须写 `reason`；只有 `confirmed` 驱动后续场景。
+5. `status`：新条目为 `proposed`，由用户逐条确认为 `confirmed`，或改判 `refuted`、`excluded`，改判必须写 `reason`；只有 `confirmed` 驱动后续场景。改判与清理一律在清单内留档，历史条目不直接删除，整轮重扫同样适用。
 
 完成标准：守卫测试绿——`files` 集合与生成树相等、`files[].gaps` 与 `gaps[].id` 双向存在；每条 `status` 已由用户处理。
