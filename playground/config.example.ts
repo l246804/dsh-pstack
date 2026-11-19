@@ -15,7 +15,10 @@ export default {
   // DeepSeek account: fromHost({ "deepseek-account": {} }) with copyCredentials: true.
   providers: fromHost(
     {
-      "your-provider": { models: ["your-model"], efforts: ["low", "high"] },
+      "your-provider": {
+        models: [{ id: "your-model", efforts: ["low", "high"] }],
+        reasoning: "low",
+      },
     },
     { env },
   ),

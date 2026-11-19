@@ -6,12 +6,18 @@ import { load as yamlLoad } from "js-yaml";
 import type { ProviderConfig, ProviderModel } from "../types.ts";
 import { DEEPSEEK_BUILTIN_MODELS } from "./provider.ts";
 
+export interface HostModelSelection {
+  id: string;
+  /** Effort tiers for this model; omitted uses the provider-level default. */
+  efforts?: string[];
+}
+
 export interface HostProviderSelection {
-  /** Model ids to keep; omitted keeps every model the host lists. */
-  models?: string[];
+  /** Models to keep; omitted keeps every model the host lists. */
+  models?: Array<string | HostModelSelection>;
   /** Provider-level reasoning default; low unless explicitly raised. */
   reasoning?: string;
-  /** Effort tiers to keep; default is the cost-first low/high pair. */
+  /** Effort tiers for models that do not set their own; default low/high. */
   efforts?: string[];
 }
 
@@ -29,8 +35,7 @@ function rows(file: string): HostPatchRow[] {
   return (yamlLoad(readFileSync(file, "utf8")) as HostPatchRow[]) ?? [];
 }
 
-function selectModel(model: ProviderModel, selection: HostProviderSelection): ProviderModel | null {
-  const efforts = selection.efforts ?? ["low", "high"];
+function selectModel(model: ProviderModel, efforts: string[]): ProviderModel | null {
   const available = Object.keys(model.reasoningEfforts ?? {});
   const kept = efforts.filter((effort) => available.includes(effort));
   if (kept.length === 0) return null;
@@ -48,16 +53,21 @@ function selectedModels(
   label: string,
 ): ProviderModel[] {
   const wanted = selection.models;
+  const perModel = new Map<string, string[] | undefined>();
   if (wanted !== undefined) {
-    for (const id of wanted) {
+    for (const entry of wanted) {
+      const id = typeof entry === "string" ? entry : entry.id;
       if (!models.some((model) => model.id === id)) {
         throw new Error(`${label} does not list model ${id}`);
       }
+      perModel.set(id, typeof entry === "string" ? undefined : entry.efforts);
     }
   }
   const picked = models
-    .filter((model) => wanted === undefined || wanted.includes(model.id))
-    .map((model) => selectModel(model, selection))
+    .filter((model) => wanted === undefined || perModel.has(model.id))
+    .map((model) =>
+      selectModel(model, perModel.get(model.id) ?? selection.efforts ?? ["low", "high"]),
+    )
     .filter((model): model is ProviderModel => model !== null);
   if (picked.length === 0) throw new Error(`${label} has no model with the selected efforts`);
   return picked;
