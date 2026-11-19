@@ -15,6 +15,8 @@ export function currentImage(): string {
   return imageTag(dshVersion());
 }
 
+let verifiedImage: string | null = null;
+
 function docker(
   args: string[],
   cwd = REPOSITORY_ROOT,
@@ -63,13 +65,17 @@ export function imageProblems(): string[] {
 
 /** Fail fast in prepare; the caller reports the actionable command. */
 export function requireImage(): string {
+  const tag = currentImage();
+  if (verifiedImage === tag) return tag;
   const problems = imageProblems();
   if (problems.length > 0) throw new Error(problems.join("; "));
-  return currentImage();
+  verifiedImage = tag;
+  return tag;
 }
 
 export function buildImage(): string {
   const version = dshVersion();
+  verifiedImage = null;
   mkdirSync(DOCKERFILE_DIR, { recursive: true });
   const result = spawnSync(
     "docker",

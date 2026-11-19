@@ -71,7 +71,10 @@ export class DockerSandbox {
     if (run.status !== 0) {
       throw new Error(`docker run failed for ${spec.name}: ${run.err || run.out}`);
     }
-    return this.waitForUrl(paths, spec.name);
+    return this.waitForUrl(paths, spec.name).catch((error: unknown) => {
+      docker(["rm", "-f", spec.name]);
+      throw error;
+    });
   }
 
   private async waitForUrl(paths: WorkerPaths, name: string): Promise<StartedWeb> {
