@@ -1,38 +1,10 @@
 # 场景与缺口规则
 
-本文件定义 playground 的生成顺序：先产出 native 缺口清单，再从缺口清单生成场景。场景只描述 treatment 中立的用户可观察结果；native 与 adapted 的判定规则分开，不写进场景。缺口提取的输入边界与全量枚举硬规则见 [../../native/AGENTS.md](../../native/AGENTS.md)，本文件不重复。
+本文件定义 playground 的生成顺序：先产出 native 缺口清单，再从缺口清单生成场景。场景只描述 treatment 中立的用户可观察结果；native 与 adapted 的判定规则分开，不写进场景。
 
 ## 1. 第一阶段：native 缺口清单
 
-产物是 `native/gaps.json`：
-
-```json
-{
-  "gaps": [
-    {
-      "id": "<stable id>",
-      "description": "<上游 pstack 需要、DSH 标准模式不能保证的行为>",
-      "sources": ["<包内相对路径：pstack/… 或 dsh.md / dsh-evidence.md>"],
-      "evidence": "<native 观察或文档依据>",
-      "status": "proposed | confirmed | refuted | excluded"
-    }
-  ],
-  "files": [{ "path": "pstack/…", "gaps": ["<gap-id>"] }]
-}
-```
-
-`files` 全量枚举生成树内 `skills/**`、`agents/**`、`docs/guide/**` 的全部 Markdown，每项标注支撑的缺口 id（无缺口为空数组）；文件集合与树内实际集合的相等关系由 `tests/playground-contracts.test.ts` 守卫。
-
-一个行为进入清单，当且仅当：
-
-- 它是上游 pstack 工作流完成所必需的，且
-- DSH 标准模式（`native`，不加载被测插件）不能保证它。
-
-判定基于当前上游与当前运行时；`native` 的运行结果是最终仲裁。能通过 `native` 的行为不是缺口。
-
-不要写进清单：插件自身提供的工具、preset、角色文件或命令，它们是实现而不是能力；DSH 标准模式已经提供的能力；可选插件或团队模式的内部契约，除非上游 pstack 工作流明确依赖且 DSH 标准模式缺失。
-
-`status` 由用户在 gap 生成会话中确认；只有 `confirmed` 的缺口进入第二阶段。
+产物是 `native/gaps.json`，提取规则、输入边界、清单判据和 schema 全部见 [../../native/AGENTS.md](../../native/AGENTS.md) 的「如何提取缺口」，本文件不重复。`status` 由用户在 gap 生成会话中确认；只有 `confirmed` 的缺口进入第二阶段。
 
 ## 2. 第二阶段：从缺口生成场景
 
@@ -60,7 +32,7 @@
 
 ## 5. 缺口清单与场景
 
-- `native/gaps.json` 是唯一人工维护的清单：`gaps` 条目为 `{ "id", "description", "sources", "evidence", "status", "reason"? }`，`status` 取 `proposed` | `confirmed` | `refuted` | `excluded`；`files` 见第 1 节。`refuted` 和 `excluded` 必须写 `reason` 并由用户确认。
+- `native/gaps.json` 的条目结构与字段约束见 [../../native/AGENTS.md](../../native/AGENTS.md) 的「如何提取缺口」。
 - 已生成的场景就是场景集合本身：每个 `playground/scenarios/probes/*.ts` 文件声明自己的 `capability`、`kind`、`gap`、`treatments`、`environments`，不再维护单独的 inventory 或 exclusions 文件。
 - 覆盖率由缺口清单和场景文件计算（见 `gapCoverageProblems`），不靠第三份清单同步。
 - 不写自动解析上游文档的脚本；缺口与场景由 agent 从当前来源判断。
