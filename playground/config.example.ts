@@ -29,30 +29,7 @@ export default {
     effort: "low",
   },
 
-  roleModels: {
-    // All entries use the provider/model declared above; effort is per role.
-    "feature, refactoring": { provider: "your-provider", model: "your-model", effort: "low" },
-    "bug-fix": { provider: "your-provider", model: "your-model", effort: "low" },
-    "perf-issue": { provider: "your-provider", model: "your-model", effort: "low" },
-    hillclimb: { provider: "your-provider", model: "your-model", effort: "high" },
-    "judgment and prose": { provider: "your-provider", model: "your-model", effort: "high" },
-    "arena runners": [
-      { provider: "your-provider", model: "your-model", effort: "low" },
-      { provider: "your-provider", model: "your-model", effort: "high" },
-    ],
-    "arena cross-judge pool": [
-      { provider: "your-provider", model: "your-model", effort: "high" },
-      { provider: "your-provider", model: "your-model", effort: "low" },
-    ],
-    "swarm workers": [
-      { provider: "your-provider", model: "your-model", effort: "low" },
-      { provider: "your-provider", model: "your-model", effort: "high" },
-    ],
-    "interrogate reviewers": [
-      { provider: "your-provider", model: "your-model", effort: "high" },
-      { provider: "your-provider", model: "your-model", effort: "low" },
-    ],
-  },
+  roleModels: {},
 
   browser: {
     mode: "managed",
