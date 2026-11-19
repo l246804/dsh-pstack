@@ -8,15 +8,16 @@ export interface CoverageGap {
 export interface GapCoverageScenario {
   id: string;
   kind?: string;
+  capability?: string;
   gap?: string;
   treatments?: readonly string[];
 }
 
 /**
  * Cross-check gap scenarios against the native gap list. A confirmed gap needs at least one
- * gap scenario, every gap scenario must reference an existing gap, a gap scenario must run in
- * both treatments, and a regression scenario must not claim a gap. Empty inputs are allowed
- * until the gap list and scenarios are generated.
+ * gap scenario; every gap scenario must reference an existing confirmed gap, carry the same
+ * capability id as its gap, and run in both treatments; a regression scenario must not claim
+ * a gap. Empty inputs are allowed until the gap list and scenarios are generated.
  */
 export function gapCoverageProblems(
   scenarios: readonly GapCoverageScenario[],
@@ -24,16 +25,25 @@ export function gapCoverageProblems(
 ): string[] {
   if (scenarios.length === 0 && gaps.length === 0) return [];
   const problems: string[] = [];
-  const gapIds = new Set(gaps.map((gap) => gap.id));
+  const statusById = new Map(gaps.map((gap) => [gap.id, gap.status]));
   const scenariosByGap = new Map<string, number>();
   for (const scenario of scenarios) {
     if (scenario.kind === "gap") {
       if (scenario.gap === undefined) {
         problems.push(`gap scenario ${scenario.id} has no gap id`);
-      } else if (!gapIds.has(scenario.gap)) {
+      } else if (!statusById.has(scenario.gap)) {
         problems.push(`gap scenario ${scenario.id} references unknown gap ${scenario.gap}`);
+      } else if (statusById.get(scenario.gap) !== "confirmed") {
+        problems.push(
+          `gap scenario ${scenario.id} references gap ${scenario.gap} with status ${statusById.get(scenario.gap)}; delete the scenario or restore the gap to confirmed`,
+        );
       } else {
         scenariosByGap.set(scenario.gap, (scenariosByGap.get(scenario.gap) ?? 0) + 1);
+      }
+      if (scenario.capability !== undefined && scenario.capability !== scenario.gap) {
+        problems.push(
+          `gap scenario ${scenario.id} must use its gap id as capability (${scenario.gap}), not ${scenario.capability}`,
+        );
       }
       if (
         scenario.treatments !== undefined &&
@@ -51,7 +61,9 @@ export function gapCoverageProblems(
   }
   for (const gap of gaps) {
     if (gap.status === "confirmed" && !scenariosByGap.has(gap.id)) {
-      problems.push(`confirmed gap ${gap.id} has no gap scenario`);
+      problems.push(
+        `confirmed gap ${gap.id} has no gap scenario; add one under playground/scenarios/probes or revert the status`,
+      );
     }
   }
   return problems;

@@ -20,6 +20,8 @@ import { parseArgs } from "node:util";
 const {
   values: { check: checkMode },
 } = parseArgs({
+  // `vp run native:generate:check -- --check` forwards a bare `--`; drop it first.
+  args: process.argv.slice(2).filter((arg) => arg !== "--"),
   options: { check: { type: "boolean", default: false } },
   allowPositionals: false,
 });

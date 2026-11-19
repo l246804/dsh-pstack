@@ -156,6 +156,10 @@ export default defineConfig({
         command: "vpx playground/runner/cli/status-table.ts",
         cache: false,
       },
+      "playground:gap-lock": {
+        command: "vpx playground/runner/cli/gap-lock.ts",
+        cache: false,
+      },
       "playground:compare": {
         command: "vpx playground/runner/cli/compare.ts",
         cache: false,

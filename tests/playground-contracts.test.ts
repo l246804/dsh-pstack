@@ -9,6 +9,12 @@ import {
   type CoverageGap,
   type GapCoverageScenario,
 } from "../playground/runner/lib/coverage.ts";
+import {
+  expectedGapLock,
+  gapLockProblems,
+  type GapLock,
+  type LockedGap,
+} from "../playground/runner/lib/gap-lock.ts";
 import { environments, scenariosById } from "../playground/runner/scenario/index.ts";
 
 function gaps(): CoverageGap[] {
@@ -17,10 +23,19 @@ function gaps(): CoverageGap[] {
 }
 
 type GapFile = { path: string; gaps: string[] };
+type GapEntry = CoverageGap & { description?: string };
 
-function gapDocument(): { gaps: CoverageGap[]; files: GapFile[] } {
+function gapDocument(): { gaps: GapEntry[]; files: GapFile[] } {
   const text = readFileSync(new URL("../native/gaps.json", import.meta.url), "utf8");
-  return JSON.parse(text) as { gaps: CoverageGap[]; files: GapFile[] };
+  return JSON.parse(text) as { gaps: GapEntry[]; files: GapFile[] };
+}
+
+function gapLock(): GapLock {
+  const text = readFileSync(
+    new URL("../playground/scenarios/gap-lock.json", import.meta.url),
+    "utf8",
+  );
+  return JSON.parse(text) as GapLock;
 }
 
 function walkMarkdown(root: string): string[] {
@@ -84,6 +99,7 @@ function scenarios(): GapCoverageScenario[] {
   return [...scenariosById.values()].map((scenario) => ({
     id: scenario.id,
     kind: scenario.kind,
+    capability: scenario.capability,
     gap: scenario.gap,
     treatments: scenario.treatments,
   }));
@@ -155,7 +171,8 @@ describe("gapCoverageProblems", () => {
     kind?: string,
     gap?: string,
     treatments?: readonly string[],
-  ): GapCoverageScenario => ({ id, kind, gap, treatments });
+    capability?: string,
+  ): GapCoverageScenario => ({ id, kind, gap, treatments, capability });
 
   it("allows an empty gap list and empty scenarios", () => {
     expect(gapCoverageProblems([], [])).toEqual([]);
@@ -167,8 +184,28 @@ describe("gapCoverageProblems", () => {
 
   it("requires every confirmed gap to have a gap scenario", () => {
     expect(gapCoverageProblems([], [{ id: "gap-a", status: "confirmed" }])).toEqual([
-      "confirmed gap gap-a has no gap scenario",
+      "confirmed gap gap-a has no gap scenario; add one under playground/scenarios/probes or revert the status",
     ]);
+  });
+
+  it("rejects scenarios that point at a gap which is not confirmed", () => {
+    expect(
+      gapCoverageProblems(
+        [scenario("probe-a", "gap", "gap-a", ["native", "adapted"], "gap-a")],
+        [{ id: "gap-a", status: "proposed" }],
+      ),
+    ).toContain(
+      "gap scenario probe-a references gap gap-a with status proposed; delete the scenario or restore the gap to confirmed",
+    );
+  });
+
+  it("requires a gap scenario capability to be its gap id", () => {
+    expect(
+      gapCoverageProblems(
+        [scenario("probe-a", "gap", "gap-a", ["native", "adapted"], "capability-a")],
+        [{ id: "gap-a", status: "confirmed" }],
+      ),
+    ).toContain("gap scenario probe-a must use its gap id as capability (gap-a), not capability-a");
   });
 
   it("reports gap scenarios without a gap or with an unknown gap", () => {
@@ -183,7 +220,7 @@ describe("gapCoverageProblems", () => {
     ).toEqual(
       expect.arrayContaining([
         "gap scenario probe-a references unknown gap gap-x",
-        "confirmed gap gap-a has no gap scenario",
+        "confirmed gap gap-a has no gap scenario; add one under playground/scenarios/probes or revert the status",
       ]),
     );
   });
@@ -207,5 +244,40 @@ describe("gapCoverageProblems", () => {
     expect(gapCoverageProblems([scenario("probe-a")], [])).toContain(
       "scenario probe-a has no kind",
     );
+  });
+});
+
+describe("gap lock", () => {
+  const gap = (id: string, status = "confirmed", description = "a behavior"): LockedGap => ({
+    id,
+    status,
+    description,
+  });
+
+  it("matches the committed lock to the current confirmed gaps", () => {
+    expect(gapLockProblems(gapDocument().gaps, gapLock())).toEqual([]);
+  });
+
+  it("reports a confirmed gap without a lock entry", () => {
+    expect(gapLockProblems([gap("gap-a")], { gaps: {} })).toEqual([
+      "confirmed gap gap-a has no gap-lock entry; review or add its scenario, then run vp run playground:gap-lock -- --write",
+    ]);
+  });
+
+  it("reports a changed description", () => {
+    const lock = expectedGapLock([gap("gap-a", "confirmed", "old text")]);
+    expect(gapLockProblems([gap("gap-a", "confirmed", "new text")], lock)).toEqual([
+      "gap gap-a changed; review its scenarios against the new description, then run vp run playground:gap-lock -- --write",
+    ]);
+  });
+
+  it("reports orphaned and non-confirmed lock entries", () => {
+    const lock = expectedGapLock([gap("gap-a")]);
+    expect(gapLockProblems([], { gaps: { "gap-x": "digest" } })).toEqual([
+      "gap-lock has an entry for unknown gap gap-x; remove it",
+    ]);
+    expect(gapLockProblems([gap("gap-a", "refuted")], lock)).toEqual([
+      "gap-lock has an entry for non-confirmed gap gap-a (status refuted); remove its scenarios and rerun --write",
+    ]);
   });
 });

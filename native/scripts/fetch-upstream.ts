@@ -52,6 +52,8 @@ interface LockOnDisk {
 }
 
 const { values: args } = parseArgs({
+  // `vp run native:fetch -- --version X` forwards a bare `--`; drop it first.
+  args: process.argv.slice(2).filter((arg) => arg !== "--"),
   options: {
     version: { type: "string" },
     latest: { type: "boolean", default: false },
