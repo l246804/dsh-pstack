@@ -1,6 +1,6 @@
 # native 目录说明
 
-本子包保存 DSH 标准模式的基准：钉定的上游 pstack、适配答案和缺口清单。本文件只描述子包内的事，即如何更新上游、如何维护 dsh.md、如何提取缺口。
+本子包保存 DSH 标准模式的基准：钉定的上游 pstack、适配答案 dsh.md、缺口清单 gaps.json。本文件覆盖三件事：如何更新上游、如何维护 dsh.md、如何提取缺口。
 
 ## 文件职责
 
@@ -10,37 +10,41 @@
 | `dsh.zh.md` | `dsh.md` 的本地化审阅译文，不参与生成 |
 | `dsh-evidence.md` | `dsh.md` 每个替换项的事实证据 |
 | `gaps.json` | 人工维护的缺口清单，含技能文件全量枚举 |
-| `upstream/` | 钉定的上游 pstack 树，不入库，可由 lock 重建，不手改 |
-| `upstream.lock.json` | 钉定事实：`pstackVersion`、`commit`、`path`、`source` |
-| `pstack/` | 生成树：`upstream/` 加注入行加 `dsh.md`，不手改 |
+| `upstream/` | 钉定的上游 pstack 树，不入库，由 lock 重建，脚本维护 |
+| `upstream.lock.json` | 钉定事实：版本、commit、来源路径 |
+| `pstack/` | 生成树：`upstream/` 加注入行加 `dsh.md`，脚本维护 |
 | `scripts/fetch-upstream.ts` | 维护 `upstream/` 与 lock |
 | `scripts/generate-pstack.ts` | 生成 `pstack/` |
 
 ## 如何更新上游
 
-钉定点是目标版本的 bump commit，即把 `upstream/plugin.json` 的版本改成目标值的那个提交。
+钉定点是目标版本的 bump commit：把 `upstream/plugin.json` 的版本改成目标值的那个提交。
 
 1. `vp run native:fetch` 按现有 lock 恢复 `upstream/`；没有 lock 时按 main 当前版本钉定。
-2. `vp run native:fetch:latest` 把钉定移到 main 当前版本。
-3. `vp run native:fetch -- --version <x.y.z>` 钉定指定版本；再加 `--commit <sha>` 钉定指定提交。
-4. fetch 后运行 `vp run native:generate` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
-5. 提交时 `upstream.lock.json` 与 `pstack/` 同波；`upstream/` 不入库。
+2. `vp run native:fetch:latest` 把钉定移到 main 当前版本；`vp run native:fetch -- --version <x.y.z>` 钉定指定版本，加 `--commit <sha>` 钉定指定提交。
+3. `vp run native:generate` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
+4. `upstream.lock.json` 与 `pstack/` 同波提交；`upstream/` 不入库。
+
+完成标准：`vp run native:generate:check` 绿，提交只含本节的产物。
 
 ## 如何维护 dsh.md
 
-- 模板、分块和写作约束见 [../docs/dsh-adapter.md](../docs/dsh-adapter.md)，本文件不重复。
+- 模板、分块和写作约束见 [../docs/dsh-adapter.md](../docs/dsh-adapter.md)。
 - 每个替换项的事实证据对应写进 `dsh-evidence.md`。
-- 修改 `dsh.md` 后同步 `dsh.zh.md`，运行 `vp run native:generate` 更新 `pstack/`，一起提交。
+- 修改 `dsh.md` 后同步 `dsh.zh.md`，再 `vp run native:generate`。
+
+完成标准：`vp run native:generate:check` 绿，`dsh.zh.md` 与 `dsh.md` 分节同构。
 
 ## 如何提取缺口
 
-产物是 `gaps.json`。依据是封闭集合：只允许本包的 `pstack/` 生成树、`dsh.md`、`dsh-evidence.md`，以及当前安装 DSH 的公开文档、类型与可复查的实际行为；仓库内其余一切内容都不是依据，也不能由插件提供的功能反推缺口。
+缺口是行为：上游工作流必需、DSH 标准模式不能保证的用户可观察结果。量尺只有标准模式；满足某个行为的工具、配置或文件是实现，实现不进清单。缺口只能从上游要求推导，不能从任何现成实现反推。
 
-1. 枚举：遍历 `pstack/` 内 `skills/**`、`agents/**`、`docs/guide/**` 的全部 Markdown，建立完整文件清单；不得只读与当前主题相关的文件。
-2. 判定：逐文件判断其中的行为是否为上游工作流完成所必需；已确认必需的行为，再判断 DSH 标准模式是否已经保证它。`dsh.md` 与 `dsh-evidence.md` 是已确认的既有答案，覆盖到的问题直接沿用；它们未覆盖的要求必须对当前安装的 DSH 运行时求证（公开文档、类型或可复查行为），不得因未提及而判为无缺口。最终仲裁是 `native` 的实际运行结果，能通过 `native` 的行为不是缺口。
-3. 落盘：只把"上游必需且标准模式不能保证"的行为写成 `gaps[]` 条目；其余文件在 `files[]` 中登记为空数组。
-4. 不进清单：插件自身提供的工具、preset、角色文件或命令是实现而非能力；标准模式已提供的能力；可选插件或团队模式的内部契约，除非上游工作流明确依赖且标准模式缺失。
-5. schema：`gaps[]` 条目为 `{ "id", "description", "sources", "evidence", "status", "reason"? }`；`files[]` 条目为 `{ "path", "gaps" }`，`path` 是相对本包的路径，`gaps` 列出该文件支撑的缺口 id。
-6. `sources` 只能引用 `files[]` 已登记的路径，或 `dsh.md`、`dsh-evidence.md`。
-7. `status` 生命周期：新条目为 `proposed`；由用户逐条确认为 `confirmed`，或改判 `refuted`、`excluded`，改判必须写 `reason`。只有 `confirmed` 的缺口驱动后续场景。
-8. 守卫：`files` 集合与生成树实际集合相等、`files[].gaps` 与 `gaps[].id` 双向存在，由测试强制，违反即红。
+依据是封闭集合：`pstack/` 生成树、`dsh.md`、`dsh-evidence.md`、当前安装 DSH 的公开文档、类型与可复查行为。集合之外的一切都不是依据。
+
+1. 枚举 `pstack/` 内 `skills/**`、`agents/**`、`docs/guide/**` 的全部 Markdown；不得只读与当前主题相关的文件。
+2. 逐文件判定：行为是否为上游工作流所必需；必需时标准模式是否保证它。`dsh.md` 与 `dsh-evidence.md` 是已确认答案，覆盖到的直接沿用；未覆盖的对运行时求证，未提及不等于保证。最终仲裁是 `native` 的实际运行结果。
+3. 落盘：必需且未保证写成 `gaps[]` 条目；其余文件在 `files[]` 登记空数组。
+4. schema：`gaps[]` 条目为 `{ "id", "description", "sources", "evidence", "status", "reason"? }`；`files[]` 条目为 `{ "path", "gaps" }`；`sources` 只能引用 `files[]` 已登记的路径，或 `dsh.md`、`dsh-evidence.md`。
+5. `status`：新条目为 `proposed`，由用户逐条确认为 `confirmed`，或改判 `refuted`、`excluded`，改判必须写 `reason`；只有 `confirmed` 驱动后续场景。
+
+完成标准：守卫测试绿——`files` 集合与生成树相等、`files[].gaps` 与 `gaps[].id` 双向存在；每条 `status` 已由用户处理。
