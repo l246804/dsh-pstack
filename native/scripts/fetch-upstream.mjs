@@ -8,15 +8,17 @@
 // pins that bump commit: version-first, never a moving branch.
 //
 // Usage:
-//   vpx native/scripts/fetch-upstream.mjs                 # restore from the lock, no version needed
-//   vpx native/scripts/fetch-upstream.mjs --latest        # pin what pstack's plugin.json says on main
+//   vpx native/scripts/fetch-upstream.mjs                 # restore from the lock; bootstrap with
+//                                                         # main's current version when no lock exists
+//   vpx native/scripts/fetch-upstream.mjs --latest        # force an upgrade check against main
 //   vpx native/scripts/fetch-upstream.mjs --version 0.15.43   # pin an exact released version
 //        [--source <git url or local path>] [--path pstack] [--commit <sha>]
 //
 // Rules:
 // - Without --version or --latest the script reads native/upstream.lock.json and
 //   restores native/upstream/ at the pinned commit; when the tree is already at
-//   the pinned version it does nothing and touches no network.
+//   the pinned version it does nothing and touches no network. With no lock on
+//   disk it bootstraps exactly like --latest.
 // - --latest resolves the version from <path>/plugin.json on the remote main
 //   branch and pins that version's bump commit. Main may carry a version the
 //   marketplace has not published yet; use --version when the pin must match a
@@ -51,14 +53,15 @@ function arg(name, fallback) {
   return value;
 }
 
-const latest = process.argv.includes("--latest");
-const restoreFromLock = !process.argv.includes("--version") && !latest;
+let latest = process.argv.includes("--latest");
+let restoreFromLock = !process.argv.includes("--version") && !latest;
 const LOCK_FILE = join(NATIVE, "upstream.lock.json");
 const lockOnDisk = existsSync(LOCK_FILE) ? JSON.parse(readFileSync(LOCK_FILE, "utf8")) : undefined;
 if (restoreFromLock && !lockOnDisk?.pstackVersion) {
-  throw new Error(
-    "no usable native/upstream.lock.json; pass --latest or --version <x.y.z> to pin first",
-  );
+  // No pin on disk yet: bootstrap with main's current version instead of failing.
+  console.log("no native/upstream.lock.json; bootstrapping with --latest.");
+  restoreFromLock = false;
+  latest = true;
 }
 // For --latest the version is resolved from origin/main after the work tree exists.
 let version = restoreFromLock ? lockOnDisk.pstackVersion : latest ? null : arg("version");
@@ -160,6 +163,7 @@ if (commitOverride) {
 }
 
 // Extract the subtree at the pin. native/upstream/ holds the tree root itself.
+mkdirSync(SCRATCH, { recursive: true });
 const target = join(NATIVE, "upstream");
 const archive = join(SCRATCH, `archive-${Date.now()}.tar`);
 git(["archive", "--format=tar", "--output", archive, bump, path], work);

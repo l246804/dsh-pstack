@@ -21,7 +21,7 @@
 ## 上游钉定
 
 - 上游 monorepo 无 tag，Cursor marketplace 也不公开版本对应的 commit；仓库内唯一可重建的版本边界是把 `plugin.json` 改到目标版本的 bump commit。
-- 升级一键执行 `vpx native/scripts/fetch-upstream.mjs --latest`：脚本读 main 上 `plugin.json` 的当前版本号，钉该版本的 bump commit。main 的版本可能领先 marketplace 的实际发布；需要严格对齐某个已发布版本时，人工从 marketplace 页面确认版本号后改用 `--version <x.y.z>`。bump 之后存在同版本改动时脚本列出并警告，核实后用 `--commit` 显式前移，绝不自动取 main 头部。
+- 日常只用无参运行 `vpx native/scripts/fetch-upstream.mjs`：有 lock 时按 lock 恢复（树在位即零网络跳过），没有 lock 时自动按 `--latest` 引导。显式 `--latest` 强制对 main 做一次升级检查：读 main 上 `plugin.json` 的当前版本号，钉该版本的 bump commit。main 的版本可能领先 marketplace 的实际发布；需要严格对齐某个已发布版本时，人工从 marketplace 页面确认版本号后改用 `--version <x.y.z>`。bump 之后存在同版本改动时脚本列出并警告，核实后用 `--commit` 显式前移，绝不自动取 main 头部。
 - `upstream/` 不入库（gitignore），由 `upstream.lock.json` 的 commit 确定性重建。无参运行 fetch 即按 lock 恢复：树已在钉定版本时不联网直接跳过，缺失时克隆上游 monorepo（blobless）后按 commit 提取；`vp run generate` 与 `generate:check` 会先自动恢复。
 - fetch 之后必须 `vp run generate` 重建生成树，再按场景规则重扫缺口。
 
