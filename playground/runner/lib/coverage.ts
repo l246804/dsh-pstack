@@ -1,6 +1,8 @@
 export interface CoverageGap {
   id: string;
   status: string;
+  /** Package-relative citations backing the gap: tree files or the answer documents. */
+  sources?: string[];
 }
 
 export interface GapCoverageScenario {

@@ -4,12 +4,12 @@
       "id": "cross-route-delegation",
       "description": "把同一份任务委派给与父级当前模型不同的路由（其他厂商或同厂商其他模型）运行：跨厂商第二意见、多模型评审面板、模型竞速，以及事先枚举可委派的可用路由。",
       "sources": [
-        "upstream/cursor-plugins/pstack/skills/poteto-mode/SKILL.md#subagents",
-        "upstream/cursor-plugins/pstack/skills/arena/SKILL.md#phase-a-phase-c",
-        "upstream/cursor-plugins/pstack/skills/swarm/SKILL.md#phase-a",
-        "upstream/cursor-plugins/pstack/skills/setup-pstack/SKILL.md#steps",
-        "playground/native/dsh.md#models",
-        "playground/native/dsh-evidence.md#models"
+        "pstack/skills/poteto-mode/SKILL.md#subagents",
+        "pstack/skills/arena/SKILL.md#phase-a-phase-c",
+        "pstack/skills/swarm/SKILL.md#phase-a",
+        "pstack/skills/setup-pstack/SKILL.md#steps",
+        "dsh.md#models",
+        "dsh-evidence.md#models"
       ],
       "evidence": "上游把跨厂商委派定为工作流硬条件：arena 的 judge never from the parent's vendor，评审面板一个 runner 一个厂商，第二意见是 same prompt on another vendor's model，swarm 模型竞速要求 name each arm's model up front，setup-pstack 要求先枚举可传入的模型路由。DSH 运行时证据（已安装 0.2.2-rc.2 公开文档与配置）：dsh-web-app/presets/cordis.patch.yml 的 tool-subagent 启用 modelSelection+modelDiscovery，但 @deepseek-ai/dsh-tool-subagent README 写明 Without a recorded Session policy, discovery and explicit selection permit only the parent Agent's current effective provider/model and its supported efforts；dsh-base 两个开关均默认关闭。即标准模式不保证父级路由之外的委派可选，AGENTS.md 链只能传文字，改不了路由授权层。",
       "status": "proposed"
@@ -18,11 +18,11 @@
       "id": "readonly-child-delegation",
       "description": "在会话本身可写的情况下，委派一个文件写入被强制只读的子代理（评审、只读调研），只靠提示词约束不算保证。",
       "sources": [
-        "upstream/cursor-plugins/pstack/skills/how/SKILL.md",
-        "upstream/cursor-plugins/pstack/skills/arena/SKILL.md#phase-c",
-        "upstream/cursor-plugins/pstack/skills/poteto-mode/SKILL.md#subagents",
-        "playground/native/dsh.md#subagent-fields",
-        "playground/native/dsh-evidence.md#subagent-字段"
+        "pstack/skills/how/SKILL.md",
+        "pstack/skills/arena/SKILL.md#phase-c",
+        "pstack/skills/poteto-mode/SKILL.md#subagents",
+        "dsh.md#subagent-fields",
+        "dsh-evidence.md#subagent-字段"
       ],
       "evidence": "上游直接要求只读子代理：how 规定 Spawn one Task subagent with readonly: true，arena 的 judge 是 readonly judge，poteto-mode 的委派默认含 readonly 选项。DSH 运行时证据：@deepseek-ai/dsh-tool-subagent 的参数与配置（provider/toolName/modelSelection/modelDiscovery/agentOptions/allowedAgentPresets）没有 sandbox 或 readonly 字段，dsh-web-app/presets/cordis.patch.yml 的 tool-subagent 也未配置；写入限制只存在于会话级 sandbox-policy/permission-presets，子代理继承会话权限模式，无法单独收紧为只读。playground/native/dsh.md 的 native 答案也只给出提示词约束加事后 git status 检查，不构成保证。",
       "status": "proposed"
@@ -31,11 +31,553 @@
       "id": "companion-skill-gates",
       "description": "commit 前的 /deslop 文风清理关卡，以及交付 UI/IDE/CLI 时的 control-ui/control-cli 验证技能：上游工作流把这些技能当作不可跳过的关卡，标准模式不提供等价技能。",
       "sources": [
-        "upstream/cursor-plugins/pstack/skills/poteto-mode/SKILL.md#non-negotiables",
-        "playground/native/dsh.md#cursor-only-features"
+        "pstack/skills/poteto-mode/SKILL.md#non-negotiables",
+        "dsh.md#cursor-only-features"
       ],
       "evidence": "上游 poteto-mode 的 Non-negotiables 写明 Before commit → /deslop from the cursor-team-kit plugin 与 Shipping UI / IDE / CLI → control-ui or control-cli from cursor-team-kit；这不是可选步骤而是关卡。DSH 运行时证据（已安装 0.2.2-rc.2）：标准 Web 组合的内建技能目录只有 dsh-doc（dsh-agent-preset/skills/），不含 deslop、control-ui、control-cli 等价物；规则允许收录可选插件依赖的内部契约，当上游工作流明确依赖且标准模式缺失时。该条目是否由当前 treatment 负责闭合需用户确认。",
       "status": "proposed"
+    }
+  ],
+  "files": [
+    {
+      "path": "pstack/agents/comment-sicko.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/agents/poteto-agent.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/01-setup.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/02-poteto-mode.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/03-understand.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/04-design.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/05-build-and-clean.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/06-verify-and-ship.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/07-overnight.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/08-principles.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/09-make-it-yours.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/10-recipes-and-pitfalls.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/docs/guide/README.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/architect/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/arena/SKILL.md",
+      "gaps": ["cross-route-delegation", "readonly-child-delegation"]
+    },
+    {
+      "path": "pstack/skills/automate-me/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/benchmark-checklist/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/blast-radius/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/bro/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/correct/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/create-formal-verification-skill/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/references/feature-map-example/README.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/references/feature-map-example/create-note.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/create-verification-skill/references/feature-map-example/search.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/figure-it-out/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/how/SKILL.md",
+      "gaps": ["readonly-child-delegation"]
+    },
+    {
+      "path": "pstack/skills/in-your-own-words/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/interrogate/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/ketchup-video/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/ketchup/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/maintain-formal-verification-skill/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/maintain-verification-skill/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/make-bot-ui/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/no-comments/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-help/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-help/references/prompting.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-help/references/recipes.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/SKILL.md",
+      "gaps": ["cross-route-delegation", "readonly-child-delegation", "companion-skill-gates"]
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/authoring-a-skill.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/autonomous-run.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/autopilot-full.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/babysit.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/bug-fix.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/eval.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/feature.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/hillclimb.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/investigation.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/multi-phase-plan.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/opening-a-pr.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/pause-safely.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/perf-issue.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/prototype.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/refactoring.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/runtime-forensics.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/session-pickup.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/shipping.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/trace-forensics.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/visual-parity.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/playbooks/worktree-cleanup.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/references/bugbot-triage.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/poteto-mode/worker.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-attack-the-premise/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-boundary-discipline/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-build-the-lever/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-exhaust-the-design-space/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-experience-first/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-explain-the-number/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-fix-root-causes/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-foundational-thinking/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-guard-the-context-window/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-laziness-protocol/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-make-operations-idempotent/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-minimize-reader-load/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-model-the-domain/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-never-block-on-the-human/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-outcome-oriented-execution/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-prove-it-works/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-redesign-from-first-principles/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-sequence-verifiable-units/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-subtract-before-you-add/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-test-behavior-not-implementation/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/principle-type-system-discipline/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/recall/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/reflect/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/setup-pstack/SKILL.md",
+      "gaps": ["cross-route-delegation"]
+    },
+    {
+      "path": "pstack/skills/sharpen/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/show-me-your-work/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/references/render.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/Counter/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterAction/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterDeadlock/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterFan/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterGuard/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterInitPast/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterInitPastHolds/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterInstance/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterJump/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterLoop/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterOrder/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterRules/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterStart/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterStop/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterTie/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterTieInGraph/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/CounterView/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/DieHard/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/FirstRule/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/HiddenClock/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/Login/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/LoginGuarded/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/LoginParallel/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/MediaPlayer/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/MediaPlayerFixed/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/MediaPlayerProps/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/PickWorker/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/Shadow/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/SpacedNames/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/TwoPhase/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/TwoPhaseFixed/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/TypeGuard/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/statechart/scripts/test/corpus/UserNoDeadlock/report.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/swarm/SKILL.md",
+      "gaps": ["cross-route-delegation"]
+    },
+    {
+      "path": "pstack/skills/tdd/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/teach/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/technical-writing/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/typescript-best-practices/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/typescript-best-practices/references/patterns.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/unslop/SKILL.md",
+      "gaps": []
+    },
+    {
+      "path": "pstack/skills/why/SKILL.md",
+      "gaps": []
     }
   ]
 }
