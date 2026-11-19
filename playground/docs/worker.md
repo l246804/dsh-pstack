@@ -4,21 +4,20 @@
 
 ## 隔离运行环境
 
-一个 worker 有一套独立运行环境：
+一个 worker 是一个 Docker 容器，容器只挂载三类路径：
 
-- repo 内状态：`playground/.workers/<treatment>/<environmentId>/w<k>`
-  - home
-  - browser profile
-  - evidence
-  - pid 和日志
-- repo 外隔离工作区：`<isolatedRoot>/<treatment>/<environmentId>/w<k>`
-  - 被测会话工作区
-  - native 资源挂载
+- `isolatedRoot`：携带 workspace、xdg-runtime 和 tmp。
+- `home`：`$DSH_HOME`，含 stock `web` profile、AGENTS.md、角色文件和凭据。
+- `nativeMount`：native treatment 的只读资源挂载。
 
-`isolatedRoot` 默认使用系统临时目录，可用 `PLAYGROUND_WORKSPACE_ROOT` 覆盖。沙箱只限制写，不限制读，因此工作区和挂载路径都不能暴露仓库根。
+仓库根、`/home` 和宿主机其他路径都不挂载；容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid 运行并启用 `cap-drop ALL` 与 `no-new-privileges`。这是文件系统级读隔离，不再依赖提示词。
 
-- prepare 为每个 worker 写结构化 `$DSH_HOME/AGENTS.md` 读取边界。
-- prepare 为每个 worker 写入 `$DSH_HOME/pstack-models.json`，内容从 `playground/config.json` 的 `roleModels` 提取。该角色文件是唯一允许读取的 worker home 运行时输入。
+repo 内状态仍保存在 `playground/.workers/<treatment>/<environmentId>/w<k>`：home、browser profile、evidence 和容器日志。隔离工作区在 `<isolatedRoot>/<treatment>/<environmentId>/w<k>`，默认使用系统临时目录，可用 `PLAYGROUND_WORKSPACE_ROOT` 覆盖。
+
+镜像 `dsh-playground:<dsh version>` 必须与宿主 `dsh --version` 一致；`vp run playground:doctor` 硬检 Docker daemon、镜像存在和版本一致，`vp run playground:image` 重建镜像。
+
+- prepare 为每个 worker 初始化 stock `web` profile，并在 home 写 `AGENTS.md` 读边界、`pstack-models.json` 角色文件和 `cordis.patch.yml`。
+- adapted 的插件以 `pnpm pack` 产物安装进 profile，不挂载仓库。
 - scenario workspace 初始化本地 `git init`，不设置 origin。
 - worker 不携带 Git/GitHub 凭证。
 

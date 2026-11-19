@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 
 import { agentBrowserBin, chromeExecutable } from "../lib/browser.ts";
 import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE } from "../lib/env.ts";
+import { imageProblems } from "../lib/sandbox/image.ts";
 
 const failures: string[] = [];
 
@@ -40,6 +41,14 @@ check("vp", vp !== null, vp ?? "not found on PATH");
 
 const dsh = versionOf(process.env.DSH_BIN ?? "dsh");
 check("dsh", dsh !== null, dsh ?? "not found on PATH");
+
+const sandboxProblems =
+  dsh === null ? ["dsh is missing; install it before checking the image"] : imageProblems();
+check(
+  "sandbox",
+  sandboxProblems.length === 0,
+  sandboxProblems.length === 0 ? "docker image ready" : sandboxProblems.join("; "),
+);
 
 const browser = agentBrowserBin();
 check("agent-browser", existsSync(browser), browser);

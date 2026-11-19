@@ -43,11 +43,14 @@ vp run playground:collect -- --treatment native --environment base
 ### adapted/base
 
 ```sh
+vp run build
 vp run playground:prepare -- --treatment adapted --environment base --reset
 vp run playground:bootstrap -- --treatment adapted --environment base --all
 vp run playground:run-batch -- --treatment adapted --environment base --full
 vp run playground:collect -- --treatment adapted --environment base
 ```
+
+adapted 的插件以 `pnpm pack` 产物安装，prepare 前必须有最新 `dist`；`vp run build` 同时刷新生成树和插件构建。
 
 ### 可选环境对照
 

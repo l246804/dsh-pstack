@@ -18,7 +18,7 @@
 import { join } from "node:path";
 
 import { createBrowserSession } from "../lib/browser.ts";
-import { readWebUrl } from "../lib/env.ts";
+import { readWebUrl } from "../lib/web.ts";
 import { environmentMatrix } from "../lib/run-metadata.ts";
 import { workerPaths } from "../lib/worker.ts";
 import { isTreatment } from "../types.ts";

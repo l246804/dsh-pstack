@@ -1,12 +1,8 @@
-import { spawn, spawnSync } from "node:child_process";
 import {
-  chmodSync,
-  closeSync,
   copyFileSync,
   cpSync,
   existsSync,
   mkdirSync,
-  openSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -17,32 +13,14 @@ import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
 import type { AllowedRoute, PlaygroundConfig, TestTarget, Treatment } from "../types.ts";
 import { readConfig } from "./config.ts";
-import { NATIVE_ROOT, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
+import { profilePatchFile } from "./profile.ts";
+import { NATIVE_ROOT } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
 
-export const PROFILE_NAME = "playground";
-export const PROFILE_TEMPLATE_DIR = join(REPOSITORY_ROOT, "playground/profile");
 export const DEFAULT_HOST_PATCH_FILE = join(homedir(), ".dsh/profiles/web/cordis.patch.yml");
 export const DEFAULT_CREDENTIALS_FILE = join(homedir(), ".dsh/.credentials.yaml");
-export const HOST = "127.0.0.1";
-const DSH_BIN = process.env.DSH_BIN ?? "dsh";
 
 export { DEFAULT_CONFIG_FILE as CONFIG_FILE, NATIVE_ROOT, NATIVE_SKILLS } from "./run-metadata.ts";
-
-function runtimeEnv(paths: WorkerPaths): Record<string, string> {
-  // Every tool child of the worker inherits these, so they must not point into the
-  // repository tree or the tested session could derive the repo root from its own env.
-  const runtime = join(paths.isolatedRoot, "xdg-runtime");
-  const tmp = join(paths.isolatedRoot, "tmp");
-  mkdirSync(runtime, { recursive: true });
-  mkdirSync(tmp, { recursive: true });
-  try {
-    chmodSync(runtime, 0o700);
-  } catch {
-    // Filesystems without POSIX modes can still use the isolated runtime.
-  }
-  return { XDG_RUNTIME_DIR: runtime, TMPDIR: tmp };
-}
 
 interface HostModel {
   id: string;
@@ -132,10 +110,6 @@ export function loadProviderPlan(
 
 function homePatchFile(paths: WorkerPaths): string {
   return join(paths.home, "cordis.patch.yml");
-}
-
-function profileDirectory(paths: WorkerPaths): string {
-  return join(paths.home, "profiles", PROFILE_NAME);
 }
 
 function anonymousProviders(providers: ProviderPlan["providers"]): ProviderPlan["providers"] {
@@ -249,10 +223,16 @@ export function writePstackSettings(paths: WorkerPaths, potetoDefault: boolean):
 export function writeHomePatch(
   paths: WorkerPaths,
   plan: ProviderPlan,
-  _treatment: Treatment,
+  treatment: Treatment,
+  teamMode = false,
 ): void {
   mkdirSync(paths.home, { recursive: true });
-  const patch = [
+  const patch: Array<Record<string, unknown>> = [
+    // Test stability: the worker serves a built artifact, so live reload must stay off.
+    { id: "hmr", disabled: true },
+    { id: "client-hmr", disabled: true },
+    // Deterministic UI language for probes that read visible labels.
+    { id: "locale", config: { preference: "zh" } },
     {
       id: "agent-default-model",
       name: "@deepseek-ai/dsh-agent-default-model",
@@ -283,11 +263,28 @@ export function writeHomePatch(
       },
     },
   ];
+  if (treatment === "native") {
+    patch.push({
+      insert: [
+        {
+          id: "pstack-native-skills",
+          name: "@deepseek-ai/dsh-skill-filesystem",
+          config: {
+            providerName: "pstack-native",
+            includeDefaultRoots: false,
+            watch: false,
+            bundledSkillDir: join(paths.nativeMount, "pstack", "skills"),
+          },
+        },
+      ],
+    });
+  }
+  if (teamMode) patch.push({ id: "agent-team", config: { defaultEnabled: true } });
   writeFileSync(homePatchFile(paths), yamlDump(patch, { lineWidth: 120 }));
 
   // The Settings page reads the profile patch, while the worker also loads the home patch.
   // Mirror the provider rows into the profile patch so its model catalog matches the session.
-  const profilePatchPath = join(profileDirectory(paths), "cordis.patch.yml");
+  const profilePatchPath = profilePatchFile(paths);
   if (existsSync(profilePatchPath)) {
     const existing = (yamlLoad(readFileSync(profilePatchPath, "utf8")) as unknown[]) ?? [];
     const overrides = new Map(patch.map((entry) => [entry.id, entry]));
@@ -303,7 +300,8 @@ export function writeHomePatch(
         )
         .filter((id): id is string => typeof id === "string"),
     );
-    for (const entry of patch) if (!present.has(entry.id)) merged.push(entry);
+    for (const entry of patch)
+      if (typeof entry.id === "string" && !present.has(entry.id)) merged.push(entry);
     writeFileSync(profilePatchPath, yamlDump(merged, { lineWidth: 120 }));
   }
   writeWorkerInstructions(paths);
@@ -355,162 +353,6 @@ export function mountNativeTree(paths: WorkerPaths, source: string = NATIVE_ROOT
   mkdirSync(paths.isolatedRoot, { recursive: true });
   cpSync(source, paths.nativeMount, { recursive: true });
   return paths.nativeMount;
-}
-
-export function profileManifest(
-  treatment: Treatment,
-  enabledPluginPackages: string[],
-  runtimeVersion: string,
-): Record<string, unknown> {
-  if (treatment === "native" && enabledPluginPackages.includes("dsh-pstack")) {
-    throw new Error("native profile must not install dsh-pstack");
-  }
-  const dependencies = Object.fromEntries(
-    enabledPluginPackages.map((name) => [
-      name,
-      name === "dsh-pstack"
-        ? `link:${REPOSITORY_ROOT}`
-        : // Experimental DSH packages share the dsh version. A bare "*" resolves the older
-          // `latest` tag, which no longer matches the dsh runtime API.
-          name.startsWith("@deepseek-ai/")
-          ? runtimeVersion
-          : "*",
-    ]),
-  );
-  const bundles = ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", ...enabledPluginPackages];
-  return {
-    name: `dsh-playground-${treatment}`,
-    private: true,
-    dependencies,
-    dsh: { profile: { bundles } },
-  };
-}
-
-export function nativeProfileEntries(template: unknown[], mount: string): unknown[] {
-  const skills = join(mount, "pstack/skills");
-  if (!existsSync(skills))
-    throw new Error(
-      "native mount is missing; run playground:prepare for the native treatment first",
-    );
-  return [
-    ...template,
-    {
-      insert: [
-        {
-          id: "pstack-native-skills",
-          name: "@deepseek-ai/dsh-skill-filesystem",
-          config: {
-            providerName: "pstack-native",
-            includeDefaultRoots: false,
-            watch: false,
-            bundledSkillDir: skills,
-          },
-        },
-      ],
-    },
-  ];
-}
-
-export function buildProfile(
-  paths: WorkerPaths,
-  treatment: Treatment,
-  enabledPluginPackages: string[] = treatment === "adapted" ? ["dsh-pstack"] : [],
-  teamMode = false,
-): void {
-  const directory = profileDirectory(paths);
-  rmSync(directory, { recursive: true, force: true });
-  mkdirSync(directory, { recursive: true });
-  copyFileSync(
-    join(PROFILE_TEMPLATE_DIR, "pnpm-workspace.yaml"),
-    join(directory, "pnpm-workspace.yaml"),
-  );
-  const entries =
-    (yamlLoad(readFileSync(join(PROFILE_TEMPLATE_DIR, "cordis.patch.yml"), "utf8")) as unknown[]) ??
-    [];
-  const patch = treatment === "native" ? nativeProfileEntries(entries, paths.nativeMount) : entries;
-  if (teamMode) {
-    (patch as unknown[]).push({ id: "agent-team", config: { defaultEnabled: true } });
-  }
-  writeFileSync(join(directory, "cordis.patch.yml"), yamlDump(patch, { lineWidth: 120 }));
-  const manifest = profileManifest(treatment, enabledPluginPackages, dshVersion());
-  if (treatment === "adapted" && !enabledPluginPackages.includes("dsh-pstack")) {
-    throw new Error("adapted profile must explicitly include dsh-pstack");
-  }
-  writeFileSync(join(directory, "package.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-}
-
-export function profileDirFor(paths: WorkerPaths): string {
-  return profileDirectory(paths);
-}
-
-export function installPlugins(
-  paths: WorkerPaths,
-  versionExemptions: readonly string[] = [],
-): void {
-  const result = spawnSync(DSH_BIN, ["plugin", "--profile", PROFILE_NAME, "install"], {
-    cwd: REPOSITORY_ROOT,
-    env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
-    stdio: "inherit",
-  });
-  if (result.error) throw new Error(`failed to run dsh plugin install: ${result.error.message}`);
-  if (result.status !== 0) throw new Error(`dsh plugin install exited ${result.status}`);
-  if (versionExemptions.length > 0) grantVersionExemptions(paths, versionExemptions);
-}
-
-/** The cached version of a package the profile installed under its own node_modules. */
-function installedPackageVersion(paths: WorkerPaths, name: string): string {
-  const file = join(paths.home, "profiles", PROFILE_NAME, "node_modules", name, "package.json");
-  if (!existsSync(file)) {
-    throw new Error(
-      `cannot exempt ${name}: it is not installed in the profile (run install first)`,
-    );
-  }
-  const version = (JSON.parse(readFileSync(file, "utf8")) as { version?: string }).version;
-  if (!version) throw new Error(`cannot exempt ${name}: its package.json has no version`);
-  return version;
-}
-
-/**
- * Grant exact-version exemptions so the loader keeps plugin rows whose peer range omits the
- * running dsh. `dsh plugin allow-version` wants an exact `name@version` and the exact runtime
- * version, so both are read from disk and the running CLI rather than hard-coded. Returns the
- * granted `name@version` list for the caller to record.
- */
-export function grantVersionExemptions(
-  paths: WorkerPaths,
-  packageNames: readonly string[],
-  runtimeVersion = dshVersion(),
-): string[] {
-  const granted: string[] = [];
-  for (const name of packageNames) {
-    const packageVersion = `${name}@${installedPackageVersion(paths, name)}`;
-    const result = spawnSync(
-      DSH_BIN,
-      [
-        "plugin",
-        "--profile",
-        PROFILE_NAME,
-        "allow-version",
-        packageVersion,
-        "--dsh-version",
-        runtimeVersion,
-        "--accept-risk",
-      ],
-      {
-        cwd: REPOSITORY_ROOT,
-        env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
-        stdio: "inherit",
-      },
-    );
-    if (result.error)
-      throw new Error(
-        `failed to grant version exemption ${packageVersion}: ${result.error.message}`,
-      );
-    if (result.status !== 0)
-      throw new Error(`dsh plugin allow-version ${packageVersion} exited ${result.status}`);
-    granted.push(packageVersion);
-  }
-  return granted;
 }
 
 export interface WorkspaceRegistration {
@@ -576,148 +418,6 @@ export function readWorkspaceStore(paths: WorkerPaths): {
   };
 }
 
-export interface StartedWeb {
-  url: string;
-  port: number;
-}
-
-export async function startWeb(
-  paths: WorkerPaths,
-  plan: ProviderPlan,
-  port = 0,
-): Promise<StartedWeb> {
-  if (process.platform !== "linux") {
-    throw new Error(
-      "the managed web lifecycle currently supports Linux only; run scenarios in a managed DSH process",
-    );
-  }
-  mkdirSync(paths.home, { recursive: true });
-  mkdirSync(paths.isolatedRoot, { recursive: true });
-  const logFd = openSync(paths.logFile, "w");
-  const spawnEnvironment = {
-    ...process.env,
-    ...runtimeEnv(paths),
-    DSH_HOME: paths.home,
-    GH_CONFIG_DIR: join(paths.home, "gh-config"),
-    GIT_TERMINAL_PROMPT: "0",
-    [plan.apiKeyEnv]: plan.apiKey,
-  };
-  for (const key of [
-    "PWD",
-    "OLDPWD",
-    "GH_TOKEN",
-    "GITHUB_TOKEN",
-    "GITHUB_ENTERPRISE_TOKEN",
-    "GH_HOST",
-    "GITHUB_HOST",
-    "GIT_ASKPASS",
-  ]) {
-    delete spawnEnvironment[key];
-  }
-  mkdirSync(join(paths.home, "gh-config"), { recursive: true });
-  const child = spawn(
-    DSH_BIN,
-    ["--profile", PROFILE_NAME, "--port", String(port), "--host", HOST, "--no-open"],
-    {
-      cwd: paths.isolatedRoot,
-      env: spawnEnvironment,
-      detached: true,
-      stdio: ["ignore", logFd, logFd],
-    },
-  );
-  closeSync(logFd);
-  writeFileSync(paths.pidFile, `${child.pid ?? ""}\n`);
-  child.unref();
-  let exited: number | null = null;
-  child.once("exit", (code) => {
-    exited = code ?? -1;
-  });
-  const deadline = Date.now() + 120_000;
-  while (Date.now() < deadline) {
-    const found = readWebUrlFromLog(paths.logFile);
-    if (found) {
-      const port = Number(new URL(found).port);
-      writeFileSync(paths.urlFile, `${found}\n`);
-      return { url: found, port };
-    }
-    if (exited !== null) throw new Error(`web exited ${String(exited)}: ${logTail(paths.logFile)}`);
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
-  }
-  throw new Error(`web did not print a URL within 120s: ${logTail(paths.logFile)}`);
-}
-
-function readWebUrlFromLog(file: string): string | null {
-  if (!existsSync(file)) return null;
-  return readFileSync(file, "utf8").match(/^dsh web:\s*(http:\/\/\S+)$/m)?.[1] ?? null;
-}
-
-function logTail(file: string): string {
-  return existsSync(file)
-    ? readFileSync(file, "utf8").trim().split("\n").slice(-20).join("\n")
-    : "(no log)";
-}
-
-export function readWebUrl(paths: WorkerPaths): string {
-  return readFileSync(paths.urlFile, "utf8").trim();
-}
-
-function readWebPid(paths: WorkerPaths): number | null {
-  if (!existsSync(paths.pidFile)) return null;
-  const pid = Number(readFileSync(paths.pidFile, "utf8").trim());
-  return Number.isInteger(pid) && pid > 0 ? pid : null;
-}
-
-function isAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function isDshWeb(pid: number): boolean {
-  if (!isAlive(pid)) return false;
-  try {
-    const command = readFileSync(`/proc/${pid}/cmdline`, "utf8");
-    return command.includes("dsh") && command.includes(PROFILE_NAME);
-  } catch {
-    return false;
-  }
-}
-
-export function stopWeb(paths: WorkerPaths): { stopped: boolean; pid: number | null } {
-  const pid = readWebPid(paths);
-  const owned = pid !== null && isDshWeb(pid);
-  if (pid !== null && owned) {
-    signalGroup(pid, "SIGTERM");
-    const deadline = Date.now() + 10_000;
-    while (Date.now() < deadline && isAlive(pid)) {
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 200);
-    }
-    if (isAlive(pid)) signalGroup(pid, "SIGKILL");
-  }
-  rmSync(paths.pidFile, { force: true });
-  rmSync(paths.urlFile, { force: true });
-  return { stopped: owned, pid };
-}
-
-function signalGroup(pid: number, signal: NodeJS.Signals): void {
-  try {
-    process.kill(-pid, signal);
-  } catch {
-    try {
-      process.kill(pid, signal);
-    } catch {
-      // The process exited between the liveness check and the signal.
-    }
-  }
-}
-
 export function readPlaygroundConfig(file: string): PlaygroundConfig {
   return readConfig(resolve(file));
-}
-
-export function cloneInstalledProfile(source: WorkerPaths, destination: WorkerPaths): void {
-  cpSync(profileDirFor(source), profileDirFor(destination), { recursive: true, force: true });
 }

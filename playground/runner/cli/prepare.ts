@@ -1,20 +1,16 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
 import { environmentMatrix, workersDirectory } from "../lib/run-metadata.ts";
 import {
-  buildProfile,
-  cloneInstalledProfile,
   copyCredentials,
-  installPlugins,
   loadProviderPlan,
   mountNativeTree,
   readPlaygroundConfig,
   registerWorkspaces,
   resetHome,
-  startWeb,
-  stopWeb,
   writeHomePatch,
   writeRoleFile,
   writePstackSettings,
@@ -22,6 +18,14 @@ import {
   CONFIG_FILE,
   type ProviderPlan,
 } from "../lib/env.ts";
+import {
+  cloneInstalledProfile,
+  ensureWebProfile,
+  grantVersionExemptions,
+  installPluginPackage,
+  packPlugin,
+} from "../lib/profile.ts";
+import { startWeb, stopWeb } from "../lib/web.ts";
 import { listScenarioIds } from "../lib/scenarios.ts";
 import { computeWorkers } from "../lib/capacity.ts";
 import {
@@ -145,26 +149,33 @@ async function main(): Promise<void> {
     }
   }
   mkdirSync(workersDirectory(), { recursive: true });
+  const pluginTarball =
+    treatment === "adapted"
+      ? packPlugin(join(workersDirectory(), treatment, matrix.id, "package"))
+      : null;
   let installed: WorkerPaths | null = null;
   for (const worker of workers) {
     if (reset) resetHome(worker);
     else mkdirSync(worker.home, { recursive: true });
     if (treatment === "native") mountNativeTree(worker);
-    buildProfile(worker, treatment, enabledPackages, matrix.teamMode === true);
+    if (installed === null) {
+      ensureWebProfile(worker);
+      if (pluginTarball !== null) installPluginPackage(worker, pluginTarball);
+      for (const name of enabledPackages.filter((name) => name !== "dsh-pstack")) {
+        installPluginPackage(worker, name);
+      }
+      const exemptions = matrix.versionExemptions ?? [];
+      if (exemptions.length > 0) grantVersionExemptions(worker, exemptions);
+      installed = worker;
+    } else {
+      cloneInstalledProfile(installed, worker);
+    }
     writeFileSync(worker.treatmentFile, `${treatment}\n`);
     copyCredentials(worker, config.credentialsFile);
-    writeHomePatch(worker, plan, treatment);
+    writeHomePatch(worker, plan, treatment, matrix.teamMode === true);
     writeRoleFile(worker, config);
     writePstackSettings(worker, treatment === "adapted");
     registerWorkspaces(worker, listScenarioIds());
-    if (enabledPackages.length > 0) {
-      if (installed === null) {
-        installPlugins(worker, matrix.versionExemptions ?? []);
-        installed = worker;
-      } else {
-        cloneInstalledProfile(installed, worker);
-      }
-    }
   }
   await startWorkers(workers, plan, port);
   console.log(

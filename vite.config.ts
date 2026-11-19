@@ -97,6 +97,10 @@ export default defineConfig({
         command: "vpx playground/runner/cli/doctor.ts",
         cache: false,
       },
+      "playground:image": {
+        command: "vpx playground/runner/cli/build-image.ts",
+        cache: false,
+      },
       "playground:prepare": {
         command: "vpx playground/runner/cli/prepare.ts",
         cache: false,
@@ -115,6 +119,7 @@ export default defineConfig({
         command:
           "vpx playground/runner/cli/prepare.ts --treatment adapted --environment preview --workers 1 --reset",
         cache: false,
+        dependsOn: ["build"],
       },
       "playground:bootstrap": {
         command: "vpx playground/runner/cli/bootstrap.ts",

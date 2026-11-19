@@ -11,8 +11,6 @@ import type {
 } from "../playground/runner/types.ts";
 import {
   mountNativeTree,
-  profileManifest,
-  nativeProfileEntries,
   registerWorkspaces,
   resetHome,
   writeHomePatch,
@@ -106,37 +104,6 @@ function record(treatment: "native" | "adapted", environmentId: string): RunReco
 }
 
 describe("execution contracts", () => {
-  it("keeps native free of every plugin package and makes adapted additions explicit", () => {
-    const native = profileManifest("native", [], "0.2.2-rc.2");
-    expect(native.dependencies).toEqual({});
-    expect(native.dsh).toEqual({
-      profile: { bundles: ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app"] },
-    });
-    expect(JSON.stringify(native)).not.toContain("dsh-pstack");
-    expect(() => profileManifest("native", ["dsh-pstack"], "0.2.2-rc.2")).toThrow(
-      /must not install/,
-    );
-    const adapted = profileManifest(
-      "adapted",
-      ["dsh-pstack", "@deepseek-ai/official-plugin"],
-      "0.2.2-rc.2",
-    );
-    expect(adapted.dsh).toEqual({
-      profile: {
-        bundles: [
-          "@deepseek-ai/dsh-base",
-          "@deepseek-ai/dsh-web-app",
-          "dsh-pstack",
-          "@deepseek-ai/official-plugin",
-        ],
-      },
-    });
-    expect(adapted.dependencies).toEqual({
-      "dsh-pstack": `link:${REPOSITORY_ROOT}`,
-      "@deepseek-ai/official-plugin": "0.2.2-rc.2",
-    });
-  });
-
   it("keys latest evidence by scenario, treatment, and environment", () => {
     const native = record("native", "base");
     const adapted = record("adapted", "base");
@@ -512,9 +479,9 @@ function tempWorkerPaths(index: number): WorkerPaths {
     nativeMount: join(isolatedRoot, "native"),
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
-    pidFile: join(root, "web.pid"),
     logFile: join(root, "web.log"),
     treatmentFile: join(root, "treatment.txt"),
+    containerName: `dsh-playground-adapted-base-w0`,
   };
 }
 
@@ -578,17 +545,10 @@ describe("read isolation from the repository tree", () => {
       /native tree is missing/,
     );
 
-    const entries = nativeProfileEntries([], paths.nativeMount);
-    expect(JSON.stringify(entries)).toContain(join(paths.nativeMount, "pstack/skills"));
-    expect(JSON.stringify(entries)).not.toContain(REPOSITORY_ROOT);
-    expect(() => nativeProfileEntries([], join(temporary, "absent"))).toThrow(
-      /native mount is missing/,
-    );
-
     writeHomePatch(paths, isolationPlan, "native");
     const patch = readFileSync(join(paths.home, "cordis.patch.yml"), "utf8");
     expect(patch).not.toContain("system-prompt");
-    expect(patch).not.toContain(join(paths.nativeMount, "pstack/skills/poteto-mode/SKILL.md"));
+    expect(patch).toContain(join(paths.nativeMount, "pstack/skills"));
     expect(patch).not.toContain(join(paths.nativeMount, "dsh.md"));
     expect(patch).not.toContain(REPOSITORY_ROOT);
   });

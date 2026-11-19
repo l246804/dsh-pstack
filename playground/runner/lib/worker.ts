@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, rmSync, statSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import type { Treatment } from "../types.ts";
@@ -6,12 +6,28 @@ import { isolatedRootDirectory, workersDirectory } from "./run-metadata.ts";
 
 const TREATMENTS: readonly Treatment[] = ["native", "adapted"];
 
+/** The runtime directory pair every worker child inherits. */
+export function runtimeEnv(paths: WorkerPaths): Record<string, string> {
+  // Every tool child of the worker inherits these, so they must not point into the
+  // repository tree or the tested session could derive the repo root from its own env.
+  const runtime = join(paths.isolatedRoot, "xdg-runtime");
+  const tmp = join(paths.isolatedRoot, "tmp");
+  mkdirSync(runtime, { recursive: true });
+  mkdirSync(tmp, { recursive: true });
+  try {
+    chmodSync(runtime, 0o700);
+  } catch {
+    // Filesystems without POSIX modes can still use the isolated runtime.
+  }
+  return { XDG_RUNTIME_DIR: runtime, TMPDIR: tmp };
+}
+
 export interface WorkerPaths {
   index: number;
   environmentId: string;
   /** The evidence treatment this worker belongs to: native and adapted never share a directory. */
   treatment: Treatment;
-  /** Audited worker state inside the repository: home, browser, evidence, pid, log. */
+  /** Audited worker state inside the repository: home, browser, evidence, log. */
   root: string;
   /** Per-worker root outside the repository tree for everything the tested session can reach. */
   isolatedRoot: string;
@@ -21,9 +37,10 @@ export interface WorkerPaths {
   nativeMount: string;
   evidenceDir: string;
   urlFile: string;
-  pidFile: string;
   logFile: string;
   treatmentFile: string;
+  /** Deterministic container name; the executor owns the container lifecycle. */
+  containerName: string;
 }
 
 export function workerPaths(
@@ -47,9 +64,9 @@ export function workerPaths(
     nativeMount: join(isolatedRoot, "native"),
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
-    pidFile: join(root, "web.pid"),
     logFile: join(root, "web.log"),
     treatmentFile: join(root, "treatment.txt"),
+    containerName: `dsh-playground-${treatment}-${environmentId}-w${index}`,
   };
 }
 
@@ -112,7 +129,7 @@ export function listWorkers(filter: WorkerFilter = {}): WorkerPaths[] {
       for (const name of readdirSync(directory)) {
         if (!/^w\d+$/.test(name) || !statSync(join(directory, name)).isDirectory()) continue;
         const paths = workerPaths(Number(name.slice(1)), environmentId, treatment);
-        if (existsSync(paths.pidFile) || existsSync(paths.urlFile)) workers.push(paths);
+        if (existsSync(paths.urlFile) || existsSync(paths.logFile)) workers.push(paths);
       }
     }
   }

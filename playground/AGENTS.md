@@ -4,8 +4,8 @@
 
 ## 环境
 
-- 使用真实 DSH Web 会话，Linux 是 playground worker 运行时唯一支持的平台；其他平台先运行 `playground:doctor`。
-- 每个 worker 使用独立 home、浏览器 profile、证据目录和隔离工作区；worker 不携带 Git/GitHub 凭证。
+- 使用真实 DSH Web 会话，Linux 是 playground worker 运行时唯一支持的平台；worker 以 Docker 容器运行，先运行 `vp run playground:doctor` 确认 daemon、镜像和版本，首次或升级后用 `vp run playground:image` 重建镜像。
+- 每个 worker 使用独立 home、浏览器 profile、证据目录和隔离工作区；容器只挂载这些路径，仓库根不可见；worker 不携带 Git/GitHub 凭证。
 - 真实模型选择由用户确认；RunRecord 记录实际路由、DSH 版本、pstack 版本、上游 revision 和配置 hash。
 - 运行矩阵是 treatment × environment：`native` 观察原生 DSH，`adapted` 验证适配实现；可选插件和 team 模式属于 environment，不属于目录名。
 
