@@ -88,6 +88,10 @@ export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
         throw new Error(`provider ${name} has no apiKey; set it from the environment in config.ts`);
       }
       secrets.push(provider.apiKey);
+    } else if (!config.copyCredentials) {
+      throw new Error(
+        `provider ${name} uses the DeepSeek account route but copyCredentials is false; enable it or use deepseek-api-key`,
+      );
     }
     const models = modelsFor(provider);
     if (models === undefined) continue;

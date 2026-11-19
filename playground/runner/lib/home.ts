@@ -287,8 +287,11 @@ export function readHomePlan(paths: WorkerPaths): HomePlan {
 }
 
 export function copyCredentials(paths: WorkerPaths, file = DEFAULT_CREDENTIALS_FILE): void {
+  if (!existsSync(file)) {
+    throw new Error(`copyCredentials is enabled but the credential file does not exist: ${file}`);
+  }
   mkdirSync(paths.home, { recursive: true });
-  if (existsSync(file)) copyFileSync(file, join(paths.home, ".credentials.yaml"));
+  copyFileSync(file, join(paths.home, ".credentials.yaml"));
 }
 
 export function resetHome(paths: WorkerPaths): void {
