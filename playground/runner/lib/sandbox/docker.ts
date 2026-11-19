@@ -1,8 +1,8 @@
-import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 import type { ProviderPlan } from "../provider.ts";
 import type { WorkerPaths } from "../worker.ts";
+import { docker } from "./docker-command.ts";
 import { requireImage } from "./image.ts";
 import { CONTAINER_PORT, containerSpec, dockerRunArgs } from "./spec.ts";
 
@@ -18,21 +18,6 @@ export interface SandboxStatus {
 
 const START_TIMEOUT_MS = 120_000;
 const POLL_INTERVAL_MS = 500;
-
-interface DockerResult {
-  status: number;
-  out: string;
-  err: string;
-}
-
-function docker(args: string[], timeout = 30_000): DockerResult {
-  const result = spawnSync("docker", args, { encoding: "utf8", timeout });
-  return {
-    status: result.status ?? 1,
-    out: result.stdout ?? "",
-    err: result.stderr ?? result.error?.message ?? "",
-  };
-}
 
 function publishedPort(name: string): number {
   const result = docker(["port", name, `${CONTAINER_PORT}/tcp`]);

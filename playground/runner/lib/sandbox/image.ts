@@ -1,7 +1,7 @@
-import { spawnSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
+import { docker, dockerStream } from "./docker-command.ts";
 import { REPOSITORY_ROOT, dshVersion } from "../run-metadata.ts";
 
 export const IMAGE_REPOSITORY = "dsh-playground";
@@ -16,18 +16,6 @@ export function currentImage(): string {
 }
 
 let verifiedImage: string | null = null;
-
-function docker(
-  args: string[],
-  cwd = REPOSITORY_ROOT,
-): { status: number; out: string; err: string } {
-  const result = spawnSync("docker", args, { cwd, encoding: "utf8" });
-  return {
-    status: result.status ?? 1,
-    out: result.stdout ?? "",
-    err: result.stderr ?? result.error?.message ?? "",
-  };
-}
 
 export function imageExists(tag: string): boolean {
   return docker(["image", "inspect", tag]).status === 0;
@@ -77,13 +65,16 @@ export function buildImage(): string {
   const version = dshVersion();
   verifiedImage = null;
   mkdirSync(DOCKERFILE_DIR, { recursive: true });
-  const result = spawnSync(
-    "docker",
-    ["build", "--build-arg", `DSH_VERSION=${version}`, "-t", imageTag(version), DOCKERFILE_DIR],
-    { cwd: REPOSITORY_ROOT, stdio: "inherit" },
-  );
-  if (result.status !== 0) {
-    throw new Error(`docker build failed with status ${String(result.status)}`);
+  const status = dockerStream([
+    "build",
+    "--build-arg",
+    `DSH_VERSION=${version}`,
+    "-t",
+    imageTag(version),
+    DOCKERFILE_DIR,
+  ]);
+  if (status !== 0) {
+    throw new Error(`docker build failed with status ${String(status)}`);
   }
   return imageTag(version);
 }
