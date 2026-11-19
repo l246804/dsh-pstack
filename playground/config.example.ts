@@ -24,7 +24,7 @@ export default {
         {
           id: "your-model",
           name: "Your Model",
-          contextWindow: 128000,
+          contextWindow: 1_000_000,
           maxTokens: 8192,
           input: ["text"],
           reasoningEfforts: { low: "low", high: "high" },
