@@ -76,7 +76,7 @@ flowchart TD
 ### native
 
 ```sh
-vp run generate
+vp run native:generate
 vp run playground:prepare -- --treatment native --environment base --reset
 vp run playground:bootstrap -- --treatment native --environment base --all
 vp run playground:run-batch -- --treatment native --environment base --full

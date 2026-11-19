@@ -57,28 +57,41 @@ export default defineConfig({
   },
   run: {
     tasks: {
+      // Repository level: build, static checks, release consistency.
       build: {
         command: "vp pack && cp src/dsh.md dist/pstack/docs/harness/dsh.md",
-        dependsOn: ["generate"],
+        dependsOn: ["native:generate"],
       },
       typecheck: {
         command: "tsc --noEmit -p tsconfig.json",
       },
-      "playground:typecheck": {
-        command: "tsc --noEmit -p playground/tsconfig.json",
+      "compatibility:check": {
+        command: "vpx scripts/release-compatibility.ts --check",
+        cache: false,
       },
-      generate: {
+
+      // native: pinned upstream and the generated baseline tree.
+      "native:fetch": {
+        command: "vpx native/scripts/fetch-upstream.ts",
+        cache: false,
+      },
+      "native:fetch:latest": {
+        command: "vpx native/scripts/fetch-upstream.ts --latest",
+        cache: false,
+      },
+      "native:generate": {
         command: "vpx native/scripts/fetch-upstream.ts && vpx native/scripts/generate-pstack.ts",
         cache: false,
       },
-      "generate:check": {
+      "native:generate:check": {
         command:
           "vpx native/scripts/fetch-upstream.ts && vpx native/scripts/generate-pstack.ts --check",
         cache: false,
       },
-      "compatibility:check": {
-        command: "vpx scripts/release-compatibility.ts --check",
-        cache: false,
+
+      // playground: real-session validation harness.
+      "playground:typecheck": {
+        command: "tsc --noEmit -p playground/tsconfig.json",
       },
       "playground:doctor": {
         command: "vpx playground/runner/cli/doctor.ts",
@@ -160,10 +173,10 @@ export default defineConfig({
       typeAware: true,
       typeCheck: true,
     },
-    ignorePatterns: ["upstream", "**/*.md", "pstack"],
+    ignorePatterns: ["native/upstream", "native/pstack", "**/*.md"],
   },
   fmt: {
-    ignorePatterns: ["upstream", "**/*.md", "pstack"],
+    ignorePatterns: ["native/upstream", "native/pstack", "**/*.md"],
   },
   staged: {
     "*": "vp check --fix",

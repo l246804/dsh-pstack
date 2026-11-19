@@ -12,7 +12,7 @@
 | `gaps.json` | 唯一人工维护的缺口清单，含技能文件全量枚举；提取规则见下文「如何提取缺口」 |
 | `upstream/` | 已发布上游 pstack 树，由 fetch 脚本钉定；不入库，按 lock 重建；不手改 |
 | `upstream.lock.json` | 版本钉定事实：`pstackVersion`、`commit`、`path`、`source` |
-| `pstack/` | 生成树：`upstream/` 加注入行加 `dsh.md` 盖章；不手改，`vp run generate:check` 守卫 |
+| `pstack/` | 生成树：`upstream/` 加注入行加 `dsh.md` 盖章；不手改，`vp run native:generate:check` 守卫 |
 | `scripts/fetch-upstream.ts` | 按已发布版本钉定或按 lock 恢复 `upstream/` 并更新 lock |
 | `scripts/generate-pstack.ts` | 唯一生成器，产出 `pstack/` |
 
@@ -20,14 +20,14 @@
 
 - 上游 monorepo 无 tag，marketplace 也不公开版本对应的 commit；仓库内唯一可重建的版本边界是把 `plugin.json` 改到目标版本的 bump commit。
 - 日常只用无参运行 `vpx native/scripts/fetch-upstream.ts`：有 lock 时按 lock 恢复（树在位即零网络跳过），没有 lock 时自动按 `--latest` 引导。显式 `--latest` 强制对 main 做一次升级检查：读 main 上 `plugin.json` 的当前版本号，钉该版本的 bump commit。main 的版本可能领先 marketplace 的实际发布；需要严格对齐某个已发布版本时，人工从 marketplace 页面确认版本号后改用 `--version <x.y.z>`。bump 之后存在同版本改动时脚本列出并警告，核实后用 `--commit` 显式前移，绝不自动取 main 头部。
-- `upstream/` 不入库（gitignore），由 lock 的 commit 确定性重建；缺失时克隆上游 monorepo（blobless）后按 commit 提取。`vp run generate` 与 `generate:check` 会先自动恢复。
-- fetch 之后必须 `vp run generate` 重建生成树；`upstream.lock.json` 与 `pstack/` 同波提交。
+- `upstream/` 不入库（gitignore），由 lock 的 commit 确定性重建；缺失时克隆上游 monorepo（blobless）后按 commit 提取。`vp run native:generate` 与 `native:generate:check` 会先自动恢复。
+- fetch 之后必须 `vp run native:generate` 重建生成树；`upstream.lock.json` 与 `pstack/` 同波提交。
 
 ## 如何维护 dsh.md
 
 - 模板、分块、逐行同构和写作约束只看 [../docs/dsh-adapter.md](../docs/dsh-adapter.md)，本文件不重复。
 - 每个替换项的依据落 `dsh-evidence.md`，证据不当作能力来源。
-- 修改 `dsh.md` 后同步 `dsh.zh.md`，再 `vp run generate` 更新生成树并提交。
+- 修改 `dsh.md` 后同步 `dsh.zh.md`，再 `vp run native:generate` 更新生成树并提交。
 
 ## 如何提取缺口
 

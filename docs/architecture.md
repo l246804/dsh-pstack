@@ -115,4 +115,4 @@ native/pstack/ + src/dsh.md
 
 ## 验证分层
 
-`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run generate:check` 检查生成树漂移。移植审核另有 native 适配覆盖率与场景覆盖守卫。真实运行验证统一使用 `playground/`，其模型选择规则见该目录文档。
+`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。移植审核另有 native 适配覆盖率与场景覆盖守卫。真实运行验证统一使用 `playground/`，其模型选择规则见该目录文档。
