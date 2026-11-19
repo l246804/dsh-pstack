@@ -46,7 +46,6 @@ release. Add a tool name to select part of the graph. For example, run
 | --- | --- |
 | `native/` | [native/AGENTS.md](./native/AGENTS.md) |
 | `playground/` | [playground/AGENTS.md](./playground/AGENTS.md) |
-| `port/` | [port/AGENTS.md](./port/AGENTS.md) |
 | `src/` | [src/AGENTS.md](./src/AGENTS.md) |
 | `skills/` | [skills/AGENTS.md](./skills/AGENTS.md) |
 

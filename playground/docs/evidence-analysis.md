@@ -6,24 +6,24 @@
 
 - `evidence/runs/<treatment>-<environment>/manifest.json`：本轮覆盖的场景、最后批次，以及 `treatment`、`environment`、`dshVersion`、`pstackVersion`、`scenarioIds`。
 - `evidence/runs/<treatment>-<environment>/scenarios/**`：每个场景的 `record.json`、`screenshot.png`；`session.jsonl.zstd` 只保留本地，不提交。
-- `playground/scenarios/native-gaps.json`：native 缺口清单；native 分析据此确认或推翻缺口，adapted 分析据此判断缺口是否闭合。
+- `native/gaps.json`：native 缺口清单；native 分析据此确认或推翻缺口，adapted 分析据此判断缺口是否闭合。
 - `playground/scenarios/probes/*.ts`：场景定义，包含 prompt、assertions、rubric、uiObservations；只作为判据，不把 rubric 当答案抄进结论。
-- `playground/native/dsh.md`：只在 native 分析时逐条对照。
-- `port/dsh.md`：只在 adapted 分析时逐条对照。
-- 必要时读 `playground/native/dsh-evidence.md` 和上游技能原文。
-- `playground/scenarios/native-gaps.json`：按 [scenario-rules.md](./scenario-rules.md) 维护的 native 缺口清单。
+- `native/dsh.md`：只在 native 分析时逐条对照。
+- `src/dsh.md`：只在 adapted 分析时逐条对照。
+- 必要时读 `native/dsh-evidence.md` 和上游技能原文。
+- `native/gaps.json`：按 [scenario-rules.md](./scenario-rules.md) 维护的 native 缺口清单。
 
 ## 阶段隔离
 
-- native 分析只能读 `evidence/runs/native-*/`、`playground/native/dsh.md`、`playground/native/dsh-evidence.md`、场景文件和相关原始 session。
-- native 分析不得读取 `port/dsh.md`、当前适配实现、当前插件树或 adapted 证据，也不得引用这些内容作为 native 结论。
-- adapted 分析只读 adapted 快照、`port/dsh.md` 和当前适配实现；不得用 native 的缺失直接替代 adapted 的验证。
+- native 分析只能读 `evidence/runs/native-*/`、`native/dsh.md`、`native/dsh-evidence.md`、场景文件和相关原始 session。
+- native 分析不得读取 `src/dsh.md`、当前适配实现、当前插件树或 adapted 证据，也不得引用这些内容作为 native 结论。
+- adapted 分析只读 adapted 快照、`src/dsh.md` 和当前适配实现；不得用 native 的缺失直接替代 adapted 的验证。
 - 违反阶段隔离得出的结论视为无效，必须丢弃并重新分析。
 
 ## native 与 adapted 的判定分工
 
 - 同一个场景定义在 native 和 adapted 都运行，场景里没有 treatment 专属期望。
-- native 分析只判断该场景是否确实暴露 DSH 标准模式的缺口，据此确认或推翻 `native-gaps.json` 的条目。
+- native 分析只判断该场景是否确实暴露 DSH 标准模式的缺口，据此确认或推翻 `gaps.json` 的条目。
 - adapted 分析只判断同一场景在插件环境下是否达成同一用户可观察结果，即缺口是否闭合。
 - 插件实现变化不修改场景或缺口清单；adapted 分析可以按当前实现读取工具调用、截图和产物作为证据。
 
@@ -64,7 +64,7 @@
   - session 只在本地 worker，按 `record.session.sessionId` 读取，不在快照中链接
 - 现象：
 - 根因：
-- 与当前 treatment dsh.md 的关系：native 写 `playground/native/dsh.md`，adapted 写 `port/dsh.md`
+- 与当前 treatment dsh.md 的关系：native 写 `native/dsh.md`，adapted 写 `src/dsh.md`
 - 建议动作：
 - 你的决定：
 ```
@@ -73,7 +73,7 @@
 
 ## dsh.md 审查格式
 
-native 分析只审查 `playground/native/dsh.md`，adapted 分析只审查 `port/dsh.md`。不要把两个 treatment 合成一张表。
+native 分析只审查 `native/dsh.md`，adapted 分析只审查 `src/dsh.md`。不要把两个 treatment 合成一张表。
 
 ```markdown
 | 章节/行 | 当前说明 | 相关证据 | 结论 | 建议 |
@@ -87,8 +87,8 @@ native 分析只审查 `playground/native/dsh.md`，adapted 分析只审查 `por
 1. 先判问题是否真实：看 `record.json` 的 assistant 文本、工具调用、完整页面截图；需要完整事件时再按 sessionId 读取本地 worker session。
 2. 再判问题性质：先区分能力缺失和模型未完成；模型能力、复杂度、质量或输出不稳定属于 `inconclusive` 或 `待你判断`，只有能力、工具或环境确实不存在才是 `gap` 或 `ignore-environment`。
 3. 再判根因：场景 prompt、技能或依赖、环境前提、适配说明、上游文档是否覆盖。
-4. native 分析只判断 `playground/native/dsh.md` 是否缺失或误导；adapted 分析只判断 `port/dsh.md` 是否缺失或误导。
-5. 当前 treatment 的 `dsh-md` 结论只改当前 treatment 对应的 dsh.md；native 分析不改 `port/dsh.md`。
+4. native 分析只判断 `native/dsh.md` 是否缺失或误导；adapted 分析只判断 `src/dsh.md` 是否缺失或误导。
+5. 当前 treatment 的 `dsh-md` 结论只改当前 treatment 对应的 dsh.md；native 分析不改 `src/dsh.md`。
 6. 当前 treatment 的 `plugin` 结论才进入插件、工具或预设开发。
 7. 上游自身问题进入 `upstream`，不在本仓修。
 8. 环境权限、凭据、网络或无头限制进入 `ignore-environment`。

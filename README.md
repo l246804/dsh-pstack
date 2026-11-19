@@ -43,7 +43,7 @@
 
 `dsh-pstack` ports [pstack](https://github.com/cursor/plugins/tree/main/pstack) to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It ships the upstream skills, playbooks, and references, then adds the DSH adapter for skill names, a model route for each role, subagents that accept an explicit route, and tools to list the available models and roles and interrupt a subagent.
 
-The [runtime mapping](./port/dsh.md) maps each Cursor feature to DeepSeek Harness. Real DSH Web sessions test the port, and [Port verification](#-port-verification) explains how.
+The [runtime mapping](./src/dsh.md) maps each Cursor feature to DeepSeek Harness. Real DSH Web sessions test the port, and [Port verification](#-port-verification) explains how.
 
 > [!IMPORTANT]
 > Requires DSH `>=0.2.2-rc.2` and Node.js `>=24.21.1`. See each script's help for the runtime it needs.
@@ -185,16 +185,16 @@ Install dsh-pstack without these plugins, then enable only the capabilities you 
 
 Enable packages through **Plugins → Add plugin**, then restart the profile when required. All listed packages ship with DSH as optional bundles. `@deepseek-ai/dsh-cua-bundle` runs on macOS only.
 
-Steps that depend on a disabled plugin report skipped or blocked, never passed. See the [DSH adaptation guide](./port/dsh.md) for setup and fallbacks.
+Steps that depend on a disabled plugin report skipped or blocked, never passed. See the [DSH adaptation guide](./src/dsh.md) for setup and fallbacks.
 
 ## 🧪 Port verification
 
 Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/workflow.md](./playground/docs/workflow.md) documents the full procedure.
 
 - **Native baseline.** The generator copies upstream pstack into `playground/fixtures/native/pstack` and installs nothing else. `playground/fixtures/native/dsh.md` states each upstream capability as one of three cases: native in DSH, provided only by an official optional plugin, or absent. The generator copies that document and rewrites link references only, so the upstream wording stays intact.
-- **Capability-driven runs.** Coverage comes from `playground/scenarios/native-gaps.json` and the scenario files under `playground/scenarios/probes/`; the gap list records what the DSH standard runtime lacks, and the scenarios verify those gaps.
+- **Capability-driven runs.** Coverage comes from `native/gaps.json` and the scenario files under `playground/scenarios/probes/`; the gap list records what the DSH standard runtime lacks, and the scenarios verify those gaps.
 - **Semantic review.** A skill that loads only proves it was reachable. Each scenario records a separate verdict (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason. The adapted run records `verified`, `not-verified`, or `inconclusive`.
-- **Adapted re-check.** Review findings drive [port/dsh.md](./port/dsh.md). Rebuild the adapted package with `vp run build`, then rerun the same scenarios to confirm the mapped behavior.
+- **Adapted re-check.** Review findings drive [src/dsh.md](./src/dsh.md). Rebuild the adapted package with `vp run build`, then rerun the same scenarios to confirm the mapped behavior.
 - **Environment matrix.** Capability probes run in `base` by default. `render` is the rendering comparison environment. `agent-team` is the Team-on environment that verifies pstack delegation with Agent Teams enabled.
 
 ## ⚠️ Remaining gaps
@@ -250,7 +250,7 @@ Choose a release by its declared DSH range. Each range has its own table of rele
 |---|---|
 | `0.2.2` | `0.15.36` |
 
-See [Porting](./port/AGENTS.md#生成与发布) for how the compatibility table is maintained. Older DSH baselines move to [compatibility history](./docs/compatibility-history.md).
+See [the release boundary](./docs/release.md) for how the compatibility table is maintained. Older DSH baselines move to [compatibility history](./docs/compatibility-history.md).
 
 ## 🔗 Friendly links
 

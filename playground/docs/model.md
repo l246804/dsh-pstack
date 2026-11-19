@@ -14,7 +14,7 @@ isolation is enforced by authorship, not by directories.
   environment definition, never to a directory name.
 - Run record carries `treatment`, `environment.matrix.id`, `environment.dshVersion`,
   and `environment.pstackVersion`.
-- `pstackVersion`: the released pstack version pinned in `port/baseline.json`, recorded
+- `pstackVersion`: the released pstack version pinned in `native/upstream.lock.json`, recorded
   per run. `upstreamRevision` is kept only for reproducibility, never as an identity key.
 
 ## 2. Scenario definition
@@ -33,7 +33,7 @@ isolation is enforced by authorship, not by directories.
 ## 4. Generated vs hand-written
 
 - Generated (must support `--check` so they cannot drift): the per-cell status table, the cross-cell pivot, and the comparison report.
-- Hand-written: the native gap list (`playground/scenarios/native-gaps.json`); probe definitions; `playground/evidence/findings/<treatment>.md` root-cause Q&A tagged by capability; `dsh.md` / `port/dsh.md` review.
+- Hand-written: the native gap list (`native/gaps.json`); probe definitions; `playground/evidence/findings/<treatment>.md` root-cause Q&A tagged by capability; `dsh.md` / `src/dsh.md` review.
 
 ## 5. Commands
 

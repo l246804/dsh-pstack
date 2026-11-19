@@ -77,7 +77,7 @@ vp run playground:stop-task -- --treatment native --environment base --worker <N
 RunRecord 的身份是 `scenarioId + treatment + environmentId`。记录包含：
 
 - 实际 DSH 版本
-- pstack 版本（`port/baseline.json` 固定值）
+- pstack 版本（`native/upstream.lock.json` 固定值）
 - 安装版本
 - 实际模型路由
 - 上游 revision

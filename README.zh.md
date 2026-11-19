@@ -43,7 +43,7 @@
 
 `dsh-pstack` 将 [pstack](https://github.com/cursor/plugins/tree/main/pstack) 移植到 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）。它随包提供上游的技能、playbook 与参考文档。在此基础上，它提供技能名的 DSH 适配、为每个角色指定模型路由、可显式指定路由的子代理，以及列出可用模型与角色并中断子代理的工具。
 
-[运行时映射](./port/dsh.zh.md)给出每项 Cursor 能力到 DeepSeek Harness 的对应关系。移植由真实 DSH Web 会话验证，不靠比对文本，具体做法见[移植如何验证](#-移植如何验证)。
+[运行时映射](./src/dsh.zh.md)给出每项 Cursor 能力到 DeepSeek Harness 的对应关系。移植由真实 DSH Web 会话验证，不靠比对文本，具体做法见[移植如何验证](#-移植如何验证)。
 
 > [!IMPORTANT]
 > 要求 DSH `>=0.2.2-rc.2`、Node.js `>=24.21.1`。部分脚本需要额外运行时，见对应脚本自身的帮助信息。
@@ -185,16 +185,16 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 通过 **插件 → 添加插件** 启用对应包，必要时重启 profile。以上插件均随 DSH 作为可选插件提供，`@deepseek-ai/dsh-cua-bundle` 仅在 macOS 上运行。
 
-依赖未启用插件的步骤会标记为已跳过或已阻止，不会标记为通过。安装与回退说明见 [DSH 适配文档](./port/dsh.zh.md)。
+依赖未启用插件的步骤会标记为已跳过或已阻止，不会标记为通过。安装与回退说明见 [DSH 适配文档](./src/dsh.zh.md)。
 
 ## 🧪 移植如何验证
 
 移植由真实 DeepSeek Harness Web 会话验证，不靠与上游比对文本。完整流程见 [playground/docs/workflow.md](./playground/docs/workflow.md)。
 
 - **native 基准。** 生成器把上游 pstack 复制到 `playground/fixtures/native/pstack`，不装其他插件。`playground/fixtures/native/dsh.md` 把每项上游能力写成三种情况之一：DSH 原生、仅官方可选插件提供、没有此能力。生成器只复制该文档并替换引用链接，上游文案保持原样。
-- **场景驱动。** 覆盖来自 `playground/scenarios/native-gaps.json` 与 `playground/scenarios/probes/` 下的场景文件；缺口清单记录 DSH 标准运行时缺少的能力，场景负责验证这些缺口。
+- **场景驱动。** 覆盖来自 `native/gaps.json` 与 `playground/scenarios/probes/` 下的场景文件；缺口清单记录 DSH 标准运行时缺少的能力，场景负责验证这些缺口。
 - **语义审核。** 技能能加载，只证明它可被触达。每个场景单独记录 `supported`、`gap` 或 `inconclusive` 结论，并附审核者与理由。adapted 运行记录 `verified`、`not-verified` 或 `inconclusive`。
-- **adapted 复验。** 审核结论驱动 [port/dsh.zh.md](./port/dsh.zh.md)。用 `vp run build` 重建适配包，再重跑同一批场景，确认映射后的行为。
+- **adapted 复验。** 审核结论驱动 [src/dsh.zh.md](./src/dsh.zh.md)。用 `vp run build` 重建适配包，再重跑同一批场景，确认映射后的行为。
 - **环境矩阵。** 能力探针默认在 `base` 运行。`render` 是渲染对照环境。`agent-team` 是开启团队协作的环境，用于验证开启智能体团队协作后的 pstack 委派。
 
 ## ⚠️ 仍存在的缺口
@@ -250,7 +250,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 |---|---|
 | `0.2.2` | `0.15.36` |
 
-表格维护规则见[移植与维护](./port/AGENTS.md#生成与发布)。更早的 DSH 基线移到[兼容历史](./docs/compatibility-history.zh.md)。
+表格维护规则见[发布边界](./docs/release.md)。更早的 DSH 基线移到[兼容历史](./docs/compatibility-history.zh.md)。
 
 ## 🔗 友情链接
 

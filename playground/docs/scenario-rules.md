@@ -1,10 +1,10 @@
 # 场景与缺口规则
 
-本文件定义 playground 的生成顺序：先产出 native 缺口清单，再从缺口清单生成场景。场景只描述 treatment 中立的用户可观察结果；native 与 adapted 的判定规则分开，不写进场景。
+本文件定义 playground 的生成顺序：先产出 native 缺口清单，再从缺口清单生成场景。场景只描述 treatment 中立的用户可观察结果；native 与 adapted 的判定规则分开，不写进场景。缺口提取的输入边界与全量枚举硬规则见 [../../native/AGENTS.md](../../native/AGENTS.md)，本文件不重复。
 
 ## 1. 第一阶段：native 缺口清单
 
-产物是 `playground/scenarios/native-gaps.json`：
+产物是 `native/gaps.json`：
 
 ```json
 {
@@ -12,13 +12,16 @@
     {
       "id": "<stable id>",
       "description": "<上游 pstack 需要、DSH 标准模式不能保证的行为>",
-      "sources": ["<上游文件或运行时证据>"],
+      "sources": ["<包内相对路径：pstack/… 或 dsh.md / dsh-evidence.md>"],
       "evidence": "<native 观察或文档依据>",
       "status": "proposed | confirmed | refuted | excluded"
     }
-  ]
+  ],
+  "files": [{ "path": "pstack/…", "gaps": ["<gap-id>"] }]
 }
 ```
+
+`files` 全量枚举生成树内 `skills/**`、`agents/**`、`docs/guide/**` 的全部 Markdown，每项标注支撑的缺口 id（无缺口为空数组）；文件集合与树内实际集合的相等关系由 `tests/playground-contracts.test.ts` 守卫。
 
 一个行为进入清单，当且仅当：
 
@@ -29,20 +32,12 @@
 
 不要写进清单：插件自身提供的工具、preset、角色文件或命令，它们是实现而不是能力；DSH 标准模式已经提供的能力；可选插件或团队模式的内部契约，除非上游 pstack 工作流明确依赖且 DSH 标准模式缺失。
 
-缺口提取的输入边界：只读当前上游 pstack 和 DSH 标准运行时资料（`playground/native/dsh.md`、`dsh-evidence.md`、当前安装的 DSH 公开文档与类型）。不得用 `src/`、`port/`、根 `cordis.patch.yml`、插件 manifest、插件源码、历史决策记录或会话记录作为缺口依据。仓库级 AGENTS 要求先读决策记录时，只读字段头、不读正文，不据此推断缺口；需要确认输出格式时可以读 playground 的规则与校验代码，但不得读插件实现。缺口必须由 native 观察或 DSH 运行时证据支撑，不能由插件功能反推。
-
-缺口提取流程：
-
-1. 先枚举当前上游 pstack 的全部 skill、playbook、命令和 agent 文件，建立完整清单；不得只读与当前主题相关的几个文件。
-2. 逐项判断工作流是否实际依赖该行为，并检查 `native` 是否已经提供它。
-3. 只把“上游必需且 native 不能保证”的行为写入清单；其余写入排除理由或直接不列。
-
 `status` 由用户在 gap 生成会话中确认；只有 `confirmed` 的缺口进入第二阶段。
 
 ## 2. 第二阶段：从缺口生成场景
 
 - 一个缺口至少一个 `kind: "gap"` 的场景，可以有多个分支或环境；场景与缺口不是一一对应。
-- gap 场景必须声明 `gap: "<gap-id>"`，指向 `native-gaps.json` 中的条目。
+- gap 场景必须声明 `gap: "<gap-id>"`，指向 `gaps.json` 中的条目。
 - `kind: "regression"` 的场景不属于任何缺口，用于验证已经交付、可能回归的契约；回归场景是后续批次，不进入缺口清单。不要把插件工具用例伪装成 gap 场景。
 
 ## 3. 场景写法：treatment 中立
@@ -65,15 +60,15 @@
 
 ## 5. 缺口清单与场景
 
-- `playground/scenarios/native-gaps.json` 是唯一人工维护的清单：`{ "gaps": [{ "id", "description", "sources", "evidence", "status", "reason"? }] }`，`status` 取 `proposed` | `confirmed` | `refuted` | `excluded`。`refuted` 和 `excluded` 必须写 `reason` 并由用户确认。
+- `native/gaps.json` 是唯一人工维护的清单：`gaps` 条目为 `{ "id", "description", "sources", "evidence", "status", "reason"? }`，`status` 取 `proposed` | `confirmed` | `refuted` | `excluded`；`files` 见第 1 节。`refuted` 和 `excluded` 必须写 `reason` 并由用户确认。
 - 已生成的场景就是场景集合本身：每个 `playground/scenarios/probes/*.ts` 文件声明自己的 `capability`、`kind`、`gap`、`treatments`、`environments`，不再维护单独的 inventory 或 exclusions 文件。
 - 覆盖率由缺口清单和场景文件计算（见 `gapCoverageProblems`），不靠第三份清单同步。
 - 不写自动解析上游文档的脚本；缺口与场景由 agent 从当前来源判断。
 
 ## 6. 完成标准
 
-- `native-gaps.json` 中每个 `confirmed` 缺口至少有一个 `kind: "gap"` 且 `gap` 指向它的场景。
-- 每个 gap 场景的 `gap` 都存在于 `native-gaps.json`，且同时运行在 native 与 adapted。
+- `gaps.json` 中每个 `confirmed` 缺口至少有一个 `kind: "gap"` 且 `gap` 指向它的场景。
+- 每个 gap 场景的 `gap` 都存在于 `gaps.json`，且同时运行在 native 与 adapted。
 - 每个 regression 场景不声明 `gap`。
 - 每个场景都有 `kind` 和非空的 `capability`。
 - 每个场景的机械断言能在行为缺失时失败。
@@ -81,6 +76,6 @@
 
 ## 7. 上游或 DSH 变化时
 
-- 重跑 `native` 基线，更新 `native-gaps.json`：新增、关闭或改判缺口。
+- 重跑 `native` 基线，更新 `gaps.json`：新增、关闭或改判缺口。
 - 缺口变化驱动场景增删；回归场景单独维护，不随缺口清单变化。
 - 重建后重跑第 6 节的完成标准。
