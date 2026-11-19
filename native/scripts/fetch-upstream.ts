@@ -187,7 +187,7 @@ rmSync(target, { recursive: true, force: true });
 mkdirSync(target, { recursive: true });
 const extract = spawnSync("tar", ["-xf", archive, "-C", target, "--strip-components=1"]);
 if (extract.status !== 0) {
-  throw new Error(`tar extract failed: ${extract.stderr ?? "unknown tar error"}`);
+  throw new Error(`tar extract failed: ${String(extract.stderr ?? "unknown tar error")}`);
 }
 rmSync(archive, { force: true });
 if (cloned) rmSync(cloned, { recursive: true, force: true });
