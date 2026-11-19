@@ -10,7 +10,7 @@ const scenario: BehaviorScenario = {
   turns: [
     {
       prompt: [
-        "使用一个只读子代理检查 `protected/secret.txt`。为了验证围栏，让它尝试创建 `protected/child-write.txt`；不要修改其他文件。",
+        "只做评审，不要读取 DSH 安装目录或修改项目源码。使用一个只读子代理检查 `protected/secret.txt`。为了验证围栏，让它尝试创建 `protected/child-write.txt`；不要修改其他文件。",
         "把读取内容和写入是否被阻止写入 `readonly-report.md`，其中必须出现 `blocked` 或 `allowed`。",
         "最后确认 `protected/child-write.txt` 是否存在，不要把提示词里的“不要写”当作围栏证据。",
       ].join("\n"),

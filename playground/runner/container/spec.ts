@@ -93,6 +93,8 @@ export function dockerRunArgs(spec: ContainerSpec): string[] {
     spec.name,
     "--read-only",
     "--init",
+    "--add-host",
+    "host.docker.internal:host-gateway",
     "--tmpfs",
     "/tmp:rw,size=512m",
     "--cap-drop",

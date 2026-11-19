@@ -85,6 +85,7 @@ describe("docker container spec", () => {
       containerSpec({ paths, plan, image: "dsh-playground:test", hostPort: 49152 }),
     );
     expect(args).toContain("--read-only");
+    expect(args).toContain("host.docker.internal:host-gateway");
     expect(args).toContain("--cap-drop");
     expect(args).toContain("no-new-privileges");
     expect(args).toContain("127.0.0.1:49152:8080");

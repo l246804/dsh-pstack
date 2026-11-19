@@ -36,6 +36,15 @@ function anonymousModels(models: ProviderModel[]): ProviderModel[] {
   return models.map((model) => ({ ...model, name: "匿名模型" }));
 }
 
+/** Re-point a host-loopback gateway at the Docker host gateway. */
+function workerBaseURL(value: string): string {
+  const url = new URL(value);
+  if (url.hostname === "127.0.0.1" || url.hostname === "localhost") {
+    url.hostname = "host.docker.internal";
+  }
+  return url.toString();
+}
+
 /** Translate config providers into the DSH patch rows the worker profile needs. */
 function providerRows(providers: Record<string, ProviderConfig>): Array<Record<string, unknown>> {
   const rows: Array<Record<string, unknown>> = [];
@@ -54,7 +63,9 @@ function providerRows(providers: Record<string, ProviderConfig>): Array<Record<s
             {
               apiKeyEnv: provider.apiKeyEnv,
               ...(provider.api === undefined ? {} : { api: provider.api }),
-              ...(provider.baseURL === undefined ? {} : { baseURL: provider.baseURL }),
+              ...(provider.baseURL === undefined
+                ? {}
+                : { baseURL: workerBaseURL(provider.baseURL) }),
               reasoning: provider.reasoning,
               models: anonymousModels(provider.models),
             },

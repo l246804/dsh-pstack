@@ -10,7 +10,7 @@ const scenario: BehaviorScenario = {
   turns: [
     {
       prompt: [
-        "读取 `assets/video-brief.md`，按要求生成一段带字幕的短视频成片 `output/summary.mp4`。",
+        "不要读取 DSH 安装目录或修改项目源码。读取 `assets/video-brief.md`，按要求生成一段带字幕的短视频成片 `output/summary.mp4`。",
         "在回复中直接内联播放这段成片，让用户不需要打开附件或文件卡片；不要只给文件路径。",
         "如果环境缺少生成视频的工具，明确说明缺失并停止，不要伪造一个不可播放的文件。",
       ].join("\n"),

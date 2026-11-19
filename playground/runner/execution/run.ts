@@ -49,6 +49,8 @@ const {
 
 export class InfraError extends Error {}
 
+const CASE_TIMEOUT_MS = 600_000;
+
 function sleep(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -477,6 +479,7 @@ export function attemptScenario(input: AttemptInput): {
     ...(browser === undefined ? {} : { browser }),
   });
   const autoAnswers: Array<{ question: string; answer: string }> = [];
+  const caseDeadline = Date.now() + CASE_TIMEOUT_MS;
   try {
     try {
       session.raw(["close", "--all"]);
@@ -523,6 +526,9 @@ export function attemptScenario(input: AttemptInput): {
         session.wait(2500);
       }
       for (;;) {
+        if (Date.now() > caseDeadline) {
+          throw new InfraError("scenario exceeded 10 minutes without completing");
+        }
         try {
           throwIfStopped(paths, session, screenshotFile);
           answerPendingQuestions(session, scenario, autoAnswers);

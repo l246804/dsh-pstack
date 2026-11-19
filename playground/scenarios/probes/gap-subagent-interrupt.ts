@@ -10,7 +10,7 @@ const scenario: BehaviorScenario = {
   turns: [
     {
       prompt: [
-        "启动一个名为 `slow-checker` 的子代理。它必须读取 `tasks/slow-check.md`，等待约 30 秒，然后创建 `slow-result.txt` 作为完成标记。",
+        "只做任务编排，不要读取 DSH 安装目录或修改项目源码。启动一个名为 `slow-checker` 的子代理。它必须读取 `tasks/slow-check.md`，等待约 30 秒，然后创建 `slow-result.txt` 作为完成标记。",
         "在它完成前使用可用的中断能力停止它，不要等它自然结束。",
         "把停止结果写入 `interrupt-report.md`，明确写出子代理名称和 interrupted=true/false，并确认 slow-result.txt 没有被创建。",
       ].join("\n"),

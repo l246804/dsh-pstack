@@ -119,14 +119,26 @@ function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
   return new Promise((resolvePromise) => {
     const child = spawn(VPX, args, { cwd: REPOSITORY_ROOT, env });
     let output = "";
+    let settled = false;
+    const finish = (code: number | null): void => {
+      if (settled) return;
+      settled = true;
+      resolvePromise({ code, output });
+    };
     child.stdout.on("data", (chunk: Buffer) => {
       output += chunk.toString();
     });
     child.stderr.on("data", (chunk: Buffer) => {
       output += chunk.toString();
     });
-    child.on("error", (error) => resolvePromise({ code: -1, output: error.message }));
-    child.on("close", (code) => resolvePromise({ code, output }));
+    child.on("error", (error) => {
+      output += error.message;
+      finish(-1);
+    });
+    // agent-browser may leave its detached daemon holding inherited pipes; `exit`
+    // is the child contract, while `close` can wait forever on those pipes.
+    child.on("exit", (code) => finish(code));
+    child.on("close", (code) => finish(code));
   });
 }
 
