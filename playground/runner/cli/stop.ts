@@ -1,5 +1,5 @@
 import { createBrowserSession } from "../browser/session.ts";
-import { stopWeb } from "../container/web.ts";
+import { stopWeb } from "../container/index.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { clearBootstrapReady, listWorkers } from "../worker/worker.ts";
 import { isTreatment } from "../types.ts";

@@ -16,7 +16,7 @@ import {
 import { readHomePlan, readPlaygroundConfig, CONFIG_FILE } from "../worker/home.ts";
 import { reviewSnapshotDirectory } from "../evidence/review-snapshot.ts";
 import { providerSecrets } from "../config/provider.ts";
-import { readWebUrl } from "../container/web.ts";
+import { readWebUrl } from "../container/index.ts";
 import { EVIDENCE_FILES } from "../evidence/evidence-files.ts";
 import { sanitizeRecord } from "../evidence/redaction.ts";
 import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";

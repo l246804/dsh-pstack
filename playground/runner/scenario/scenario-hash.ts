@@ -11,6 +11,8 @@ import { stableStringify } from "../shared/stable-json.ts";
 export function scenarioContentHash(scenario: BehaviorScenario): string {
   const payload = {
     capability: scenario.capability,
+    kind: scenario.kind,
+    gap: scenario.gap,
     treatments: scenario.treatments ?? ["native", "adapted"],
     environments: scenario.environments ?? ["base"],
     turns: scenario.turns,

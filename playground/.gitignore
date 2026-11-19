@@ -11,11 +11,12 @@ node_modules
 .DS_Store
 
 
-# Review snapshots under evidence/runs/ are committed source; only in-flight staging is transient.
-evidence/runs/.staging/
 
 # Session logs contain host paths and may contain credentials; keep local only.
 evidence/runs/**/session.jsonl.zstd
+
+# Local artifact locator; never committed.
+evidence/runs/**/record.source.json
 
 # Agent redaction candidate; only validated record.json is committed.
 evidence/runs/**/record.safe.json

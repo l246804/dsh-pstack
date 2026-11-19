@@ -1,4 +1,3 @@
-import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 
 import { docker, dockerStream } from "./docker-command.ts";
@@ -83,7 +82,6 @@ export function requireImage(): string {
 export function buildImage(): string {
   const version = dshVersion();
   verifiedImage = null;
-  mkdirSync(DOCKERFILE_DIR, { recursive: true });
   const status = dockerStream([
     "build",
     "--build-arg",

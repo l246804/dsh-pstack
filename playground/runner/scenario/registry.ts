@@ -4,10 +4,9 @@ const DEFAULT_TREATMENTS: readonly Treatment[] = ["native", "adapted"];
 const DEFAULT_ENVIRONMENTS: readonly string[] = ["base"];
 
 /**
- * Every scenario file lives flat in this directory. The glob lists the files that are not
- * scenarios (the registry, the barrel and the environment matrix) as explicit negatives, so
- * there is no per-directory environment inference; each probe declares its own treatments
- * and environments.
+ * Probes live flat under playground/scenarios/probes. Each file default-exports a
+ * BehaviorScenario; the registry supplies shared defaults for treatments and
+ * environments so individual probes only declare deliberate deviations.
  */
 const modules = import.meta.glob<{ default: BehaviorScenario }>("../../scenarios/probes/*.ts", {
   eager: true,

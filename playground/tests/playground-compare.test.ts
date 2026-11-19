@@ -12,6 +12,7 @@ afterAll(() => rmSync(temporary, { recursive: true, force: true }));
 const scenario: BehaviorScenario = {
   id: "cap-1",
   capability: "x",
+  kind: "regression",
   turns: [{ prompt: "do the thing" }],
   workspace: { files: {} },
   assertions: [],
@@ -87,6 +88,7 @@ describe("scenarioContentHash", () => {
       workspace: { files: {} },
       turns: [{ prompt: "do the thing" }],
       capability: "x",
+      kind: "regression",
       id: "cap-1",
     };
     expect(scenarioContentHash(scenario)).toBe(scenarioContentHash(reordered));

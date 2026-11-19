@@ -14,7 +14,7 @@ import {
   readPlaygroundConfig,
   readWorkspaceStore,
 } from "../worker/home.ts";
-import { readWebUrl } from "../container/web.ts";
+import { readWebUrl } from "../container/index.ts";
 import {
   bootstrapReadyFile,
   hasBootstrapReady,
@@ -166,7 +166,8 @@ async function main(): Promise<void> {
     console.log(`[bootstrap] environment ${environment}/${treatment} already ready`);
     return;
   }
-  const config = await readPlaygroundConfig(CONFIG_FILE);
+  const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
+  const config = await readPlaygroundConfig(configFile);
   let failed = 0;
   for (const paths of workers) {
     const failures = validateWorker(paths, config.browser);

@@ -18,13 +18,14 @@
 import { join } from "node:path";
 
 import { createBrowserSession } from "../browser/session.ts";
-import { readWebUrl } from "../container/web.ts";
+import { readWebUrl } from "../container/index.ts";
+import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { workerPaths } from "../worker/worker.ts";
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
 
-function main(): void {
+async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   let workerIndex = 0;
   const environmentPos = argv.indexOf("--environment");
@@ -52,9 +53,11 @@ function main(): void {
   let url: string | undefined;
   if (argv.length > 0 && !argv[0].startsWith("--")) url = argv.shift();
   const target = url ?? readWebUrl(paths);
+  const config = await readPlaygroundConfig(process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE);
   const session = createBrowserSession({
     session: `w${workerIndex}`,
     browserDir: paths.browserDir,
+    ...(config.browser === undefined ? {} : { browser: config.browser }),
   });
   let keepOpen = false;
 
@@ -106,4 +109,7 @@ function main(): void {
   }
 }
 
-main();
+main().catch((error: unknown) => {
+  console.error(`[browser] ERROR: ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+});

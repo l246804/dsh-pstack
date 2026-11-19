@@ -3,6 +3,8 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 import { expectedGapLock, gapLockProblems, type GapLock, type LockedGap } from "./lib/gap-lock.ts";
+import { gapCoverageProblems } from "./lib/coverage.ts";
+import { listScenarioIds, loadScenario } from "../runner/scenario/scenarios.ts";
 import { REPOSITORY_ROOT } from "../runner/worker/run-metadata.ts";
 
 const GAPS_FILE = join(REPOSITORY_ROOT, "native", "gaps.json");
@@ -25,6 +27,12 @@ if (write === check) {
 }
 
 const gaps = (JSON.parse(readFileSync(GAPS_FILE, "utf8")) as { gaps: LockedGap[] }).gaps;
+const scenarios = listScenarioIds().map((id) => loadScenario(id));
+const coverageProblems = gapCoverageProblems(scenarios, gaps);
+if (coverageProblems.length > 0) {
+  for (const problem of coverageProblems) console.log(`FAIL ${problem}`);
+  process.exit(1);
+}
 
 if (write) {
   const lock = expectedGapLock(gaps);

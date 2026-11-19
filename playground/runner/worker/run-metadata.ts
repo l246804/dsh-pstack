@@ -12,6 +12,8 @@ import { stableStringify } from "../shared/stable-json.ts";
 export const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 export const PLAYGROUND_DIRECTORY = join(REPOSITORY_ROOT, "playground");
 export const DEFAULT_CONFIG_FILE = join(PLAYGROUND_DIRECTORY, "config.ts");
+/** Stock DSH profile name used by every worker image. */
+export const PROFILE_NAME = "web";
 export const UPSTREAM_LOCK_FILE = join(REPOSITORY_ROOT, "native", "upstream.lock.json");
 export const NATIVE_ROOT = join(REPOSITORY_ROOT, "native");
 export const NATIVE_TREE = join(NATIVE_ROOT, "pstack");
@@ -102,7 +104,7 @@ export function dshVersion(): string {
 export function adaptedVersion(paths: { home: string }, treatment: Treatment): string | null {
   if (treatment === "native") return null;
   return versionFromPackage(
-    join(paths.home, "profiles/playground/node_modules/dsh-pstack/package.json"),
+    join(paths.home, `profiles/${PROFILE_NAME}/node_modules/dsh-pstack/package.json`),
   );
 }
 

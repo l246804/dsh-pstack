@@ -11,11 +11,8 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
+import { PROFILE_NAME, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
 import { runtimeEnv, type WorkerPaths } from "./worker.ts";
-
-/** The stock DSH web profile; each container gets its own copy under its home. */
-export const PROFILE_NAME = "web";
 
 const DSH_BIN = process.env.DSH_BIN ?? hostCommand("dsh");
 

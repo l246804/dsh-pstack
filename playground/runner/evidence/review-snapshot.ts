@@ -17,7 +17,6 @@ import { PLAYGROUND_DIRECTORY, workersDirectory } from "../worker/run-metadata.t
 import { workerPaths } from "../worker/worker.ts";
 
 export const REVIEWS_DIRECTORY = join(PLAYGROUND_DIRECTORY, "evidence", "runs");
-export const STAGING_DIRECTORY = join(REVIEWS_DIRECTORY, ".staging");
 
 export interface BatchMetadata {
   batchId: string;

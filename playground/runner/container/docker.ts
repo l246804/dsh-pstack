@@ -39,8 +39,8 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * One Docker container per worker. The host path layout is mounted unchanged so every
- * absolute path recorded in a session or a RunRecord stays valid.
+ * One Docker container per worker. Only the fixed /dsh paths are mounted, so every
+ * absolute path recorded in a session or a RunRecord is container-local.
  */
 export class DockerSandbox {
   start(paths: WorkerPaths, plan: ProviderPlan, hostPort?: number): Promise<StartedWeb> {

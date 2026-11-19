@@ -26,6 +26,7 @@ import {
   verdictFor,
 } from "../runner/evidence/evidence.ts";
 import {
+  adaptedVersion,
   ISOLATED_ROOT,
   isolatedRootDirectory,
   publicConfigHash,
@@ -44,6 +45,7 @@ afterAll(() => rmSync(temporary, { recursive: true, force: true }));
 const testScenario: BehaviorScenario = {
   id: "capability-test",
   capability: "capability-test",
+  kind: "regression",
   turns: [{ prompt: "/poteto-help 检查当前工作区。" }],
   workspace: { files: {} },
   assertions: [{ kind: "turn-completed" }, { kind: "skill-loaded", skill: "poteto-help" }],
@@ -598,6 +600,17 @@ describe("treatment isolation of worker evidence", () => {
     expect(adapted.root.endsWith(join("adapted", "base", "w0"))).toBe(true);
     expect(native.treatment).toBe("native");
     expect(adapted.treatment).toBe("adapted");
+  });
+
+  it("reads adapted version from the stock web profile, not a legacy profile name", () => {
+    const home = join(temporary, "profile-home");
+    mkdirSync(join(home, "profiles/web/node_modules/dsh-pstack"), { recursive: true });
+    writeFileSync(
+      join(home, "profiles/web/node_modules/dsh-pstack/package.json"),
+      '{"version":"1.2.3"}',
+    );
+    expect(adaptedVersion({ home }, "adapted")).toBe("1.2.3");
+    expect(adaptedVersion({ home }, "native")).toBeNull();
   });
 
   it("resets only one treatment and leaves the other treatment's evidence on disk", () => {

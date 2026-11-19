@@ -1,35 +1,40 @@
-# Playground 运行矩阵模型
+# Playground 运行矩阵
 
-一个能力一份 probe 定义。treatment 和 environment 是运行维度，DSH 与 pstack 版本是运行身份和失效轴。所有状态与分析视图都从记录生成。阶段隔离由作者身份保证，不靠目录。
+本文件定义 playground 的 run identity、证据布局和不变量。场景写法见 [scenario-rules.md](./scenario-rules.md)，执行流程见 [workflow.md](./workflow.md)。
 
-## 1. 身份
+## 运行维度
 
-- `treatment`：`native` | `adapted`。
-  - `native`：不加载被测插件，只运行 DSH 标准运行时。它是实现中立的基线：从不加载被测插件，因此在 DSH 升级后重跑能发现 DSH 已经原生提供的能力，也不会与当前实现耦合。
-  - `adapted`：加载被测插件及其适配配置，验证适配是否成立。
-- `environment`：id 来自 `environments.ts`；可选插件和 team 模式属于 environment 定义，不属于目录名。
-  - `base` 不加载额外插件，是默认对照。
-  - 可选环境按需启用，仅用于对照；同一 probe 必须保留 base 结果，才能区分环境效应与适配效应。
-- RunRecord 携带 `treatment`、`environment.matrix.id`、`environment.dshVersion` 和 `environment.pstackVersion`。
-- `pstackVersion`：`native/upstream.lock.json` 钉定的已发布 pstack 版本，按运行记录。`upstreamRevision` 只用于复现，永不作为身份键。
+- `treatment`：`native` 只运行 DSH 标准运行时，不加载被测插件；`adapted` 加载当前插件及适配配置。两者跑同一份场景定义，场景里不写 treatment 专属期望。
+- `environment`：由 `runner/scenario/environments.ts` 定义。`base` 是默认对照；`render`、`agent-team` 等能力环境按需启用，必须在同一 probe 上保留 base 结果才能区分环境效应与适配效应。
+- `dshVersion`、`pstackVersion`、`environmentId`、`scenarioHash`、`configHash` 共同构成一次 run 的身份轴。`upstreamRevision` 只用于复现，不参与 identity 比较。
+- `pstackVersion` 取自 `native/upstream.lock.json` 的固定发布版本；`adaptedVersion` 是 adapted worker 实际安装的插件版本。
 
-## 2. 证据布局
+## 场景与缺口
 
-- `playground/evidence/runs/<treatment>-<environment>/scenarios/<scenarioId>/<treatment>-<environment>/record.json` 与 `screenshot.png`。
-- `playground/evidence/runs/<treatment>-<environment>/manifest.json` 记录 treatment、environment、`dshVersion`、`pstackVersion`、`scenarioIds`。
+- 场景分两类：`kind: "gap"` 绑定 `native/gaps.json` 的 confirmed 缺口；`kind: "regression"` 独立记录回归行为，不声明 `gap`，也不进入 gap-lock。
+- 一个能力可以有多个场景，覆盖不同分支或环境；一个场景只覆盖一个行为分支。回归场景可以随时补充，不需要先有缺口。
+- 同一场景在 native 与 adapted 都运行，除非 `treatments` 显式收窄；`environments` 默认 `["base"]`。
 
-## 3. 生成与手写
+## 证据布局
 
-- 生成物（必须支持 `--check`，防止漂移）：按单元的状态表、跨单元透视、对比报告和 gap lock。
-- 手写物：probe 定义、按能力打标签的 `playground/evidence/findings/<treatment>.md` 根因问答、适配答案审阅。
+- `playground/evidence/runs/<treatment>-<environment>/scenarios/<scenarioId>/<treatment>-<environment>/record.json` 和 `screenshot.png`。
+- `playground/evidence/runs/<treatment>-<environment>/manifest.json` 记录 treatment、environment、`dshVersion`、`pstackVersion`、`scenarioIds` 和批次信息。
+- `session.jsonl.zstd`、`record.source.json` 和 `record.safe.json` 只保留本地，不提交；提交门见 [evidence-redaction.md](./evidence-redaction.md)。
 
-## 4. 命令
+## 生成物与手写物
 
-运行命令、批次与参数见 [workflow.md](./workflow.md)，本文件不重复。
+- 生成物必须支持 `--check`：状态表、跨单元透视、对比报告和 `gap-lock.json`。
+- 手写物：`playground/scenarios/probes/` 的 probe、`playground/evidence/findings/<treatment>.md` 的根因问答和适配答案审查。
 
-## 5. 不变量
+## 不变量
 
-- 阶段隔离：native 分析只读 native 单元，adapted 分析只读 adapted 单元；生成视图中的合并是只读的。每个单元携带其产出 treatment 作为来源。
-- 可比性：相同的 `dshVersion`、相同场景内容 hash、相同 environment、相同模型路由。`pstackVersion` 是 adapted 的来源信息，不是 native 行为的硬性相等条件。
-- 场景 treatment 中立：同一场景定义在 native 与 adapted 都运行；treatment 专属判定属于分析规则，不进入场景。
-- 生成物都带 `--check` 守卫。
+- 阶段隔离：native 分析只读 native 单元，adapted 分析只读 adapted 单元；合并视图只读，不把一侧结论写进另一侧。
+- 可比性：相同 `dshVersion`、相同 scenario hash、相同 environment、相同模型路由才比较；`pstackVersion` 是 adapted 来源信息，不是 native 行为的硬性相等条件。
+- 场景 treatment 中立；treatment 专属判断属于分析规则，不进入场景。
+- 所有生成物带 `--check` 守卫；任何快照变更都必须能从记录重建。
+
+## 完成标准
+
+- `manifest.json` 的 `scenarioIds` 与实际快照目录一致。
+- 同一 `scenarioId` 的 native/adapted 记录使用同一 `scenarioHash`，且 environment 相同。
+- 生成视图的 `--check` 通过，历史快照未被重写。

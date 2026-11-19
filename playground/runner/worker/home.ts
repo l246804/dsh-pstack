@@ -55,7 +55,7 @@ function providerRows(providers: Record<string, ProviderConfig>): Array<Record<s
               apiKeyEnv: provider.apiKeyEnv,
               ...(provider.api === undefined ? {} : { api: provider.api }),
               ...(provider.baseURL === undefined ? {} : { baseURL: provider.baseURL }),
-              ...(provider.reasoning === undefined ? {} : { reasoning: provider.reasoning }),
+              reasoning: provider.reasoning,
               models: anonymousModels(provider.models),
             },
           ]),
@@ -70,7 +70,7 @@ function providerRows(providers: Record<string, ProviderConfig>): Array<Record<s
         name: "@deepseek-ai/dsh-llm-deepseek-api-key",
         config: {
           ...(provider.apiKeyEnv === undefined ? {} : { apiKeyEnv: provider.apiKeyEnv }),
-          ...(provider.models === undefined ? {} : { models: provider.models }),
+          models: provider.models,
         },
       });
     }

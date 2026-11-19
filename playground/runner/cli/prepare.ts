@@ -24,7 +24,7 @@ import {
   installPluginPackage,
   packPlugin,
 } from "../worker/profile.ts";
-import { startWeb, stopWeb } from "../container/web.ts";
+import { startWeb, stopWeb } from "../container/index.ts";
 import { listScenarioIds } from "../scenario/scenarios.ts";
 import { computeWorkers } from "../worker/capacity.ts";
 import {
@@ -128,6 +128,7 @@ async function main(): Promise<void> {
     // cleared temp root does not restart native workers with missing skills.
     for (const worker of workers) {
       if (readTreatment(worker) === "native") mountNativeTree(worker);
+      writeHomePatch(worker, plan, treatment, matrix.teamMode === true);
       writeWorkerInstructions(worker);
       writeRoleFile(worker, config);
       writePstackSettings(worker, treatment === "adapted");
