@@ -34,7 +34,7 @@ import {
   type SessionDigest,
   type SessionEvent,
 } from "../lib/evidence.ts";
-import { readHomePlan, readPlaygroundConfig, CONFIG_FILE } from "../lib/env.ts";
+import { readHomePlan, readPlaygroundConfig, CONFIG_FILE } from "../lib/home.ts";
 import { readWebUrl } from "../lib/web.ts";
 import { EVIDENCE_FILES } from "../lib/evidence-files.ts";
 import { sanitizeRecord } from "../lib/redaction.ts";

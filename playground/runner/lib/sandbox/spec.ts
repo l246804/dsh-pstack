@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
-import type { ProviderPlan } from "../env.ts";
+import type { ProviderPlan } from "../provider.ts";
 import type { WorkerPaths } from "../worker.ts";
 import { runtimeEnv } from "../worker.ts";
 

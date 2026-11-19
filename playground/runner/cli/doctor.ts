@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 import { agentBrowserBin, chromeExecutable } from "../lib/browser.ts";
-import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE } from "../lib/env.ts";
+import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE } from "../lib/home.ts";
 import { imageProblems } from "../lib/sandbox/image.ts";
 
 const failures: string[] = [];

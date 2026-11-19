@@ -14,8 +14,8 @@ import {
   registerWorkspaces,
   resetHome,
   writeHomePatch,
-  type ProviderPlan,
-} from "../playground/runner/lib/env.ts";
+} from "../playground/runner/lib/home.ts";
+import type { ProviderPlan } from "../playground/runner/lib/provider.ts";
 import {
   assertSafeRecord,
   digestEvents,

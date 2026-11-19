@@ -8,7 +8,7 @@ import { join } from "node:path";
 
 import { collapseSidebar, createBrowserSession } from "../lib/browser.ts";
 import { UI_LABELS } from "../lib/runtime.ts";
-import { readHomePlan, readWorkspaceStore } from "../lib/env.ts";
+import { readHomePlan, readWorkspaceStore } from "../lib/home.ts";
 import { readWebUrl } from "../lib/web.ts";
 import {
   bootstrapReadyFile,

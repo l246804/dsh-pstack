@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
-import type { ProviderPlan } from "../playground/runner/lib/env.ts";
+import type { ProviderPlan } from "../playground/runner/lib/provider.ts";
 import { imageTag } from "../playground/runner/lib/sandbox/image.ts";
 import { containerSpec, dockerRunArgs } from "../playground/runner/lib/sandbox/spec.ts";
 import type { WorkerPaths } from "../playground/runner/lib/worker.ts";

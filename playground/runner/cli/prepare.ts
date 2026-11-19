@@ -6,7 +6,6 @@ import type { Treatment } from "../types.ts";
 import { environmentMatrix, workersDirectory } from "../lib/run-metadata.ts";
 import {
   copyCredentials,
-  loadProviderPlan,
   mountNativeTree,
   readPlaygroundConfig,
   registerWorkspaces,
@@ -16,8 +15,8 @@ import {
   writePstackSettings,
   writeWorkerInstructions,
   CONFIG_FILE,
-  type ProviderPlan,
-} from "../lib/env.ts";
+} from "../lib/home.ts";
+import { loadProviderPlan, type ProviderPlan } from "../lib/provider.ts";
 import {
   cloneInstalledProfile,
   ensureWebProfile,

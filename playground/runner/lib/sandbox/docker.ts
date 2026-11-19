@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
-import type { ProviderPlan } from "../env.ts";
+import type { ProviderPlan } from "../provider.ts";
 import type { WorkerPaths } from "../worker.ts";
 import { requireImage } from "./image.ts";
 import { CONTAINER_PORT, containerSpec, dockerRunArgs } from "./spec.ts";

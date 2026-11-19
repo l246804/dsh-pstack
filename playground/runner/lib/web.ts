@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 
-import type { ProviderPlan } from "./env.ts";
+import type { ProviderPlan } from "./provider.ts";
 import type { WorkerPaths } from "./worker.ts";
 import { DockerSandbox, type StartedWeb } from "./sandbox/docker.ts";
 
