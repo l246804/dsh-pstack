@@ -482,6 +482,11 @@ function tempWorkerPaths(index: number): WorkerPaths {
     logFile: join(root, "web.log"),
     treatmentFile: join(root, "treatment.txt"),
     containerName: `dsh-playground-adapted-base-w0`,
+    containerHome: "/dsh/home",
+    containerWorkspace: "/dsh/workspace",
+    containerNative: "/dsh/native",
+    containerTmp: "/dsh/tmp",
+    containerRuntime: "/dsh/runtime",
   };
 }
 
@@ -548,7 +553,7 @@ describe("read isolation from the repository tree", () => {
     writeHomePatch(paths, isolationPlan, "native");
     const patch = readFileSync(join(paths.home, "cordis.patch.yml"), "utf8");
     expect(patch).not.toContain("system-prompt");
-    expect(patch).toContain(join(paths.nativeMount, "pstack/skills"));
+    expect(patch).toContain(join(paths.containerNative, "pstack/skills"));
     expect(patch).not.toContain(join(paths.nativeMount, "dsh.md"));
     expect(patch).not.toContain(REPOSITORY_ROOT);
   });
@@ -562,7 +567,7 @@ describe("read isolation from the repository tree", () => {
       expect(dir.startsWith(`${paths.workspaceRoot}/`)).toBe(true);
     }
     const store = readFileSync(join(paths.home, "storages/workspace.json"), "utf8");
-    expect(store).toContain(paths.workspaceRoot);
+    expect(store).toContain(paths.containerWorkspace);
     expect(store).not.toContain(REPOSITORY_ROOT);
   });
 

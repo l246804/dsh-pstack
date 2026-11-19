@@ -12,9 +12,15 @@
 
 仓库根、`/home` 和宿主机其他路径都不挂载；容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid 运行并启用 `cap-drop ALL` 与 `no-new-privileges`。这是文件系统级读隔离，不再依赖提示词。
 
-repo 内状态仍保存在 `playground/.workers/<treatment>/<environmentId>/w<k>`：home、browser profile、evidence 和容器日志。隔离工作区在 `<isolatedRoot>/<treatment>/<environmentId>/w<k>`，默认使用系统临时目录，可用 `PLAYGROUND_WORKSPACE_ROOT` 覆盖。
+repo 内状态仍保存在 `playground/.workers/<treatment>/<environmentId>/w<k>`：home、browser profile、evidence 和容器日志。隔离工作区在 `<isolatedRoot>/<treatment>/<environmentId>/w<k>`，默认是 `$HOME/.dsh-playground/isolated`（在 Docker 共享范围内且位于仓库外），可用 `PLAYGROUND_WORKSPACE_ROOT` 覆盖。
 
-镜像 `dsh-playground:<dsh version>` 必须与宿主 `dsh --version` 一致；`vp run playground:doctor` 硬检 Docker daemon、镜像存在和版本一致，`vp run playground:image` 重建镜像。
+镜像 `dsh-playground:<dsh version>-<arch>` 必须与宿主 `dsh --version` 和宿主架构一致；`vp run playground:doctor` 硬检 Docker daemon、镜像存在、镜像架构和版本，`vp run playground:image` 在本机按宿主架构重建镜像。
+
+宿主平台：
+
+- Linux：Docker Engine 原生运行。
+- macOS：Docker Desktop、Colima 或 OrbStack 提供 Docker-compatible CLI；`playground:image` 在 Apple Silicon 构建 arm64，在 Intel 构建 amd64。
+- Windows：在 WSL2 内运行；仓库放在 WSL 文件系统，不要放在 `/mnt/c`。原生 Windows 进程不作为 worker host。
 
 - prepare 为每个 worker 初始化 stock `web` profile，并在 home 写 `AGENTS.md` 读边界、`pstack-models.json` 角色文件和 `cordis.patch.yml`。
 - adapted 的插件以 `pnpm pack` 产物安装进 profile，不挂载仓库。

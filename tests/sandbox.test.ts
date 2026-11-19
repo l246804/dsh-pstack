@@ -30,6 +30,11 @@ function workerPaths(): WorkerPaths {
     logFile: join(root, "web.log"),
     treatmentFile: join(root, "treatment.txt"),
     containerName: "dsh-playground-adapted-base-w0",
+    containerHome: "/dsh/home",
+    containerWorkspace: "/dsh/workspace",
+    containerNative: "/dsh/native",
+    containerTmp: "/dsh/tmp",
+    containerRuntime: "/dsh/runtime",
   };
 }
 
@@ -48,9 +53,15 @@ describe("docker container spec", () => {
     mkdirSync(paths.nativeMount, { recursive: true });
     const spec = containerSpec({ paths, plan, image: "dsh-playground:test" });
     expect(spec.mounts).toEqual([
-      { source: paths.isolatedRoot, target: paths.isolatedRoot, readonly: false },
-      { source: paths.home, target: paths.home, readonly: false },
-      { source: paths.nativeMount, target: paths.nativeMount, readonly: true },
+      { source: paths.workspaceRoot, target: paths.containerWorkspace, readonly: false },
+      { source: paths.home, target: paths.containerHome, readonly: false },
+      { source: join(paths.isolatedRoot, "tmp"), target: paths.containerTmp, readonly: false },
+      {
+        source: join(paths.isolatedRoot, "xdg-runtime"),
+        target: paths.containerRuntime,
+        readonly: false,
+      },
+      { source: paths.nativeMount, target: paths.containerNative, readonly: true },
     ]);
     expect(JSON.stringify(spec)).not.toContain("dsh-pstack");
   });
@@ -60,8 +71,8 @@ describe("docker container spec", () => {
     mkdirSync(paths.home, { recursive: true });
     const spec = containerSpec({ paths, plan, image: "dsh-playground:test" });
     expect(spec.env.TEST_PROVIDER_KEY).toBe("secret-value");
-    expect(spec.env.DSH_HOME).toBe(paths.home);
-    expect(spec.env.HOME).toBe(paths.home);
+    expect(spec.env.DSH_HOME).toBe(paths.containerHome);
+    expect(spec.env.HOME).toBe(paths.containerHome);
     expect(spec.env).not.toHaveProperty("GITHUB_TOKEN");
     expect(spec.env).not.toHaveProperty("GH_TOKEN");
   });
@@ -79,7 +90,7 @@ describe("docker container spec", () => {
     expect(args.at(-1)).toBe("dsh-playground:test");
   });
 
-  it("uses the dsh version in the image tag", () => {
-    expect(imageTag("0.2.2-rc.4")).toBe("dsh-playground:0.2.2-rc.4");
+  it("uses the dsh version and host architecture in the image tag", () => {
+    expect(imageTag("0.2.2-rc.4", "arm64")).toBe("dsh-playground:0.2.2-rc.4-arm64");
   });
 });

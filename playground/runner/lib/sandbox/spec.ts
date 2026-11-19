@@ -17,7 +17,7 @@ export interface ContainerMount {
 export interface ContainerSpec {
   name: string;
   image: string;
-  user: string;
+  user: string | null;
   workdir: string;
   mounts: ContainerMount[];
   env: Record<string, string>;
@@ -33,32 +33,47 @@ export interface ContainerSpecInput {
 }
 
 /**
- * Everything the agent may reach is an explicit mount: the isolated root (workspace,
- * runtime dirs), the worker home (profile and credentials), and the native tree read-only.
- * Nothing from the repository or the rest of the host is mounted.
+ * Everything the agent may reach is an explicit mount under /dsh: the workspace, the
+ * worker home, the native tree read-only, and the runtime temp dirs. The repository and
+ * the host home are never mounted.
  */
 export function containerSpec(input: ContainerSpecInput): ContainerSpec {
   const { paths, plan, image, hostPort } = input;
-  const runtime = runtimeEnv(paths);
+  // Ensure the host-side runtime directories exist before they become mount sources.
+  runtimeEnv(paths);
   const mounts: ContainerMount[] = [
-    { source: paths.isolatedRoot, target: paths.isolatedRoot, readonly: false },
-    { source: paths.home, target: paths.home, readonly: false },
+    { source: paths.workspaceRoot, target: paths.containerWorkspace, readonly: false },
+    { source: paths.home, target: paths.containerHome, readonly: false },
+    {
+      source: join(paths.isolatedRoot, "tmp"),
+      target: paths.containerTmp,
+      readonly: false,
+    },
+    {
+      source: join(paths.isolatedRoot, "xdg-runtime"),
+      target: paths.containerRuntime,
+      readonly: false,
+    },
   ];
   if (existsSync(paths.nativeMount)) {
-    mounts.push({ source: paths.nativeMount, target: paths.nativeMount, readonly: true });
+    mounts.push({ source: paths.nativeMount, target: paths.containerNative, readonly: true });
   }
   return {
     name: paths.containerName,
     image,
-    user: `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`,
-    workdir: paths.isolatedRoot,
+    // Docker Desktop maps bind-mount ownership itself; asking for a host uid fails there.
+    user:
+      process.platform === "linux"
+        ? `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`
+        : null,
+    workdir: paths.containerWorkspace,
     mounts,
     env: {
-      DSH_HOME: paths.home,
-      HOME: paths.home,
-      XDG_RUNTIME_DIR: runtime.XDG_RUNTIME_DIR,
-      TMPDIR: runtime.TMPDIR,
-      GH_CONFIG_DIR: join(paths.home, "gh-config"),
+      DSH_HOME: paths.containerHome,
+      HOME: paths.containerHome,
+      XDG_RUNTIME_DIR: paths.containerRuntime,
+      TMPDIR: paths.containerTmp,
+      GH_CONFIG_DIR: join(paths.containerHome, "gh-config"),
       GIT_TERMINAL_PROMPT: "0",
       [plan.apiKeyEnv]: plan.apiKey,
     },
@@ -74,8 +89,6 @@ export function dockerRunArgs(spec: ContainerSpec): string[] {
     "--detach",
     "--name",
     spec.name,
-    "--user",
-    spec.user,
     "--read-only",
     "--init",
     "--tmpfs",
@@ -87,6 +100,7 @@ export function dockerRunArgs(spec: ContainerSpec): string[] {
     "--workdir",
     spec.workdir,
   ];
+  if (spec.user !== null) args.push("--user", spec.user);
   for (const mount of spec.mounts) {
     args.push("-v", `${mount.source}:${mount.target}:${mount.readonly ? "ro" : "rw"}`);
   }

@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,7 +17,9 @@ export const NATIVE_ROOT = join(REPOSITORY_ROOT, "native");
 export const NATIVE_TREE = join(NATIVE_ROOT, "pstack");
 export const NATIVE_SKILLS = join(NATIVE_TREE, "skills");
 export const WORKERS_ROOT = join(PLAYGROUND_DIRECTORY, ".workers");
-export const ISOLATED_ROOT = join(tmpdir(), "dsh-pstack-playground");
+// Must stay outside the repository and inside a Docker-shared root: macOS VM-backed
+// runtimes do not share /tmp or /var/folders, but they share the user home.
+export const ISOLATED_ROOT = join(homedir(), ".dsh-playground", "isolated");
 
 export function workersDirectory(): string {
   const override = process.env.PLAYGROUND_WORKERS_DIR;

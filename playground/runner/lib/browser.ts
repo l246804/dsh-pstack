@@ -9,6 +9,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import { REPOSITORY_ROOT } from "./run-metadata.ts";
+import { chromeCandidates } from "./platform.ts";
 
 const BIN = join(REPOSITORY_ROOT, "node_modules", ".bin", "agent-browser");
 
@@ -23,8 +24,7 @@ export function chromeExecutable(): string {
   const candidates: string[] = [];
   if (existsSync(root)) {
     for (const name of readdirSync(root)) {
-      const binary = join(root, name, "chrome");
-      if (existsSync(binary)) candidates.push(binary);
+      candidates.push(...chromeCandidates(root, [name]).filter((path) => existsSync(path)));
     }
   }
   candidates.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));

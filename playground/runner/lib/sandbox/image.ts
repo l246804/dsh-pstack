@@ -7,8 +7,15 @@ import { REPOSITORY_ROOT, dshVersion } from "../run-metadata.ts";
 export const IMAGE_REPOSITORY = "dsh-playground";
 const DOCKERFILE_DIR = join(REPOSITORY_ROOT, "playground", "docker");
 
-export function imageTag(version: string): string {
-  return `${IMAGE_REPOSITORY}:${version}`;
+/** Docker's architecture names, kept aligned with `process.arch` for local builds. */
+export function hostArch(): string {
+  if (process.arch === "x64") return "amd64";
+  if (process.arch === "arm64") return "arm64";
+  throw new Error(`unsupported host architecture: ${process.arch}`);
+}
+
+export function imageTag(version: string, arch = hostArch()): string {
+  return `${IMAGE_REPOSITORY}:${version}-${arch}`;
 }
 
 export function currentImage(): string {
@@ -27,6 +34,12 @@ export function imageVersion(tag: string): string | null {
   return result.status === 0 ? (result.out.trim().split("\n")[0] ?? null) : null;
 }
 
+/** The image architecture, or null when it cannot be inspected. */
+export function imageArchitecture(tag: string): string | null {
+  const result = docker(["image", "inspect", "--format", "{{.Architecture}}", tag]);
+  return result.status === 0 ? result.out.trim() : null;
+}
+
 /** Preflight failures that block every worker start; doctor prints them verbatim. */
 export function imageProblems(): string[] {
   const problems: string[] = [];
@@ -40,6 +53,12 @@ export function imageProblems(): string[] {
   if (!imageExists(tag)) {
     problems.push(`playground image ${tag} is missing; run vp run playground:image`);
     return problems;
+  }
+  const arch = imageArchitecture(tag);
+  if (arch !== hostArch()) {
+    problems.push(
+      `image ${tag} is ${arch ?? "unknown"}, host needs ${hostArch()}; rebuild on this machine with vp run playground:image`,
+    );
   }
   const actual = imageVersion(tag);
   const expected = dshVersion();

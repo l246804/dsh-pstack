@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 
 import { agentBrowserBin, chromeExecutable } from "../lib/browser.ts";
 import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE } from "../lib/home.ts";
+import { hostCommand, IS_WINDOWS } from "../lib/platform.ts";
 import { imageProblems } from "../lib/sandbox/image.ts";
 
 const failures: string[] = [];
@@ -18,10 +19,14 @@ function versionOf(binary: string): string | null {
   return `${result.stdout ?? ""}${result.stderr ?? ""}`.trim().split("\n")[0] ?? null;
 }
 
-if (process.platform !== "linux") {
-  check("platform", false, `${process.platform} is not supported; playground runs on Linux only`);
+if (IS_WINDOWS) {
+  check(
+    "platform",
+    false,
+    `${process.platform}: run playground inside WSL2; native Windows is not a worker host`,
+  );
 } else {
-  check("platform", true, "linux");
+  check("platform", true, process.platform);
 }
 
 const requiredNode = (
@@ -39,7 +44,10 @@ check(
 const vp = versionOf("vp");
 check("vp", vp !== null, vp ?? "not found on PATH");
 
-const dsh = versionOf(process.env.DSH_BIN ?? "dsh");
+const pnpm = versionOf(hostCommand("pnpm"));
+check("pnpm", pnpm !== null, pnpm ?? "not found on PATH");
+
+const dsh = versionOf(process.env.DSH_BIN ?? hostCommand("dsh"));
 check("dsh", dsh !== null, dsh ?? "not found on PATH");
 
 const sandboxProblems =

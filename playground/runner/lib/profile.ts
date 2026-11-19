@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { hostCommand, hostCommandShell } from "./platform.ts";
 import {
   cpSync,
   existsSync,
@@ -16,7 +17,7 @@ import { runtimeEnv, type WorkerPaths } from "./worker.ts";
 /** The stock DSH web profile; each container gets its own copy under its home. */
 export const PROFILE_NAME = "web";
 
-const DSH_BIN = process.env.DSH_BIN ?? "dsh";
+const DSH_BIN = process.env.DSH_BIN ?? hostCommand("dsh");
 
 export function profileDirectory(paths: WorkerPaths): string {
   return join(paths.home, "profiles", PROFILE_NAME);
@@ -32,6 +33,7 @@ export function ensureWebProfile(paths: WorkerPaths): void {
     cwd: paths.home,
     env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
     stdio: "inherit",
+    shell: hostCommandShell(),
   });
   if (result.error)
     throw new Error(`failed to initialize the web profile: ${result.error.message}`);
@@ -46,7 +48,7 @@ export function packPlugin(destination: string): string {
   rmSync(destination, { recursive: true, force: true });
   mkdirSync(destination, { recursive: true });
   const result = spawnSync(
-    "pnpm",
+    hostCommand("pnpm"),
     ["pack", "--ignore-scripts", "--pack-destination", destination],
     {
       cwd: REPOSITORY_ROOT,
@@ -70,6 +72,7 @@ export function installPluginPackage(paths: WorkerPaths, spec: string): void {
     cwd: paths.home,
     env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
     stdio: "inherit",
+    shell: hostCommandShell(),
   });
   if (result.error) throw new Error(`failed to install ${spec}: ${result.error.message}`);
   if (result.status !== 0) throw new Error(`installing ${spec} exited ${result.status}`);
@@ -121,6 +124,7 @@ export function grantVersionExemptions(
         cwd: REPOSITORY_ROOT,
         env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
         stdio: "inherit",
+        shell: hostCommandShell(),
       },
     );
     if (result.error) {

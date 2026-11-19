@@ -15,6 +15,7 @@ const SECRET_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
 const PATH_PATTERNS: ReadonlyArray<readonly [RegExp, string]> = [
   [/\/home\/[^\s"'\\]*/g, "<HOST_PATH>"],
   [/\/tmp\/[^\s"'\\]*/g, "<TEMP_PATH>"],
+  [/\/var\/folders\/[^\s"'\\]*/g, "<TEMP_PATH>"],
   [/\/Users\/[^\s"'\\]*/g, "<HOST_PATH>"],
   [/[A-Za-z]:\\\\[^\s"'\\]+/g, "<HOST_PATH>"],
   // DSH session directory keys encode the workspace path with "/" replaced by "-",

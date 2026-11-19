@@ -187,7 +187,7 @@ export function writeHomePatch(
             providerName: "pstack-native",
             includeDefaultRoots: false,
             watch: false,
-            bundledSkillDir: join(paths.nativeMount, "pstack", "skills"),
+            bundledSkillDir: join(paths.containerNative, "pstack", "skills"),
           },
         },
       ],
@@ -291,10 +291,17 @@ export function registerWorkspaces(
   for (const id of ids) {
     const workspaceId = crypto.randomUUID();
     const path = join(paths.workspaceRoot, id);
+    const containerPath = join(paths.containerWorkspace, id);
     mkdirSync(path, { recursive: true });
     dirs[id] = path;
     workspaceIds.push(workspaceId);
-    tables[workspaceId] = { path, title: id, sessionIds: [], createdAt: now, updatedAt: now };
+    tables[workspaceId] = {
+      path: containerPath,
+      title: id,
+      sessionIds: [],
+      createdAt: now,
+      updatedAt: now,
+    };
   }
   writeFileSync(
     storeFile,

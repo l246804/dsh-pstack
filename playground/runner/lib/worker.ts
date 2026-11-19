@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import type { Treatment } from "../types.ts";
 import { isolatedRootDirectory, workersDirectory } from "./run-metadata.ts";
+import { CONTAINER_LAYOUT } from "./sandbox/layout.ts";
 
 const TREATMENTS: readonly Treatment[] = ["native", "adapted"];
 
@@ -41,6 +42,12 @@ export interface WorkerPaths {
   treatmentFile: string;
   /** Deterministic container name; the executor owns the container lifecycle. */
   containerName: string;
+  /** Fixed container paths; host paths never cross the container boundary. */
+  containerHome: string;
+  containerWorkspace: string;
+  containerNative: string;
+  containerTmp: string;
+  containerRuntime: string;
 }
 
 export function workerPaths(
@@ -67,6 +74,11 @@ export function workerPaths(
     logFile: join(root, "web.log"),
     treatmentFile: join(root, "treatment.txt"),
     containerName: `dsh-playground-${treatment}-${environmentId}-w${index}`,
+    containerHome: CONTAINER_LAYOUT.home,
+    containerWorkspace: CONTAINER_LAYOUT.workspace,
+    containerNative: CONTAINER_LAYOUT.native,
+    containerTmp: CONTAINER_LAYOUT.tmp,
+    containerRuntime: CONTAINER_LAYOUT.runtime,
   };
 }
 
