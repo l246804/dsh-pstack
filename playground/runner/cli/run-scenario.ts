@@ -139,8 +139,8 @@ async function main(): Promise<void> {
       config,
       recordFile,
       screenshotFile,
-      sessionFile: reason.includes("external stop") ? lastSession?.file : undefined,
-      sessionId: reason.includes("external stop") ? lastSession?.id : undefined,
+      sessionFile: lastSession?.file,
+      sessionId: lastSession?.id,
       reason,
       capturedAt,
     });
