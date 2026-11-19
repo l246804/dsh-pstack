@@ -10,18 +10,18 @@ export const DEEPSEEK_OFFICIAL_ROUTE = "deepseek-official";
 export const DEEPSEEK_ACCOUNT_ROUTE = "deepseek-account";
 export const DEFAULT_DEEPSEEK_API_KEY_ENV = "DEEPSEEK_API_KEY";
 
-const DEFAULT_EFFORTS = ["off", "low", "high", "max"];
+const DEFAULT_EFFORTS = ["low", "high"];
 
 const DEEPSEEK_BUILTIN_MODELS: ProviderModel[] = [
   {
     id: "deepseek-flash",
     name: "DeepSeek Flash",
-    reasoningEfforts: { off: null, low: "low", high: "high", max: "max" },
+    reasoningEfforts: { low: "low", high: "high" },
   },
   {
     id: "deepseek-v4-pro",
     name: "DeepSeek V4 Pro",
-    reasoningEfforts: { off: null, low: "low", high: "high", max: "max" },
+    reasoningEfforts: { low: "low", high: "high" },
   },
 ];
 

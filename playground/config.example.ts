@@ -19,7 +19,7 @@ export default {
       apiKeyEnv: "PROVIDER_API_KEY",
       api: "openai-responses",
       baseURL: "https://your-gateway.example/v1",
-      reasoning: "high",
+      reasoning: "low",
       models: [
         {
           id: "your-model",
@@ -27,7 +27,7 @@ export default {
           contextWindow: 128000,
           maxTokens: 8192,
           input: ["text"],
-          reasoningEfforts: { off: null, low: "low", medium: "medium", high: "high" },
+          reasoningEfforts: { low: "low", high: "high" },
         },
       ],
     },
@@ -41,7 +41,7 @@ export default {
     //     {
     //       id: "your-deepseek-model",
     //       name: "Your DeepSeek Model",
-    //       reasoningEfforts: { off: null, low: "low", high: "high", max: "max" },
+    //       reasoningEfforts: { low: "low", high: "high" },
     //     },
     //   ],
     // },
