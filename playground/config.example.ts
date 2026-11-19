@@ -10,7 +10,7 @@ export default {
   testModel: {
     provider: "your-provider",
     model: "your-model",
-    effort: "medium",
+    effort: "low",
   },
   providers: {
     "your-provider": {
