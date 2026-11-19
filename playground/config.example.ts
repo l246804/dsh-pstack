@@ -8,26 +8,26 @@ const env = loadEnv("playground", process.cwd(), "PLAYGROUND_");
 
 export default {
   testModel: {
-    provider: "magpie",
-    model: "workbuddy/deepseek-v4.1-flash",
-    effort: "high",
+    provider: "your-provider",
+    model: "your-model",
+    effort: "medium",
   },
   providers: {
-    magpie: {
+    "your-provider": {
       kind: "pi-ai",
-      apiKey: env.PLAYGROUND_MAGPIE_API_KEY ?? "",
-      apiKeyEnv: "MAGPIE_API_KEY",
+      apiKey: env.PLAYGROUND_PROVIDER_API_KEY ?? "",
+      apiKeyEnv: "PROVIDER_API_KEY",
       api: "openai-responses",
-      baseURL: "http://127.0.0.1:8317/v1",
+      baseURL: "https://your-gateway.example/v1",
       reasoning: "high",
       models: [
         {
-          id: "workbuddy/deepseek-v4.1-flash",
-          name: "DeepSeek-V4.1-Flash",
-          contextWindow: 1_000_000,
-          maxTokens: 128_000,
-          input: ["text", "image"],
-          reasoningEfforts: { off: null, low: "low", high: "high", max: "max" },
+          id: "your-model",
+          name: "Your Model",
+          contextWindow: 128000,
+          maxTokens: 8192,
+          input: ["text"],
+          reasoningEfforts: { off: null, low: "low", medium: "medium", high: "high" },
         },
       ],
     },
@@ -39,8 +39,8 @@ export default {
     //   apiKeyEnv: "DEEPSEEK_API_KEY",
     //   models: [
     //     {
-    //       id: "deepseek-flash",
-    //       name: "DeepSeek Flash",
+    //       id: "your-deepseek-model",
+    //       name: "Your DeepSeek Model",
     //       reasoningEfforts: { off: null, low: "low", high: "high", max: "max" },
     //     },
     //   ],
