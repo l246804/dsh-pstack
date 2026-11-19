@@ -6,4 +6,6 @@ dist
 .DS_Store
 # Scratch space for local verification; never part of the package.
 .tmp
+# Restored on demand from native/upstream.lock.json by scripts/fetch-upstream.mjs.
+native/upstream/
 

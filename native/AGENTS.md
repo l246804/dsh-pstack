@@ -10,10 +10,10 @@
 | `dsh.zh.md` | `dsh.md` 的本地化审阅译文；生成器不读取 |
 | `dsh-evidence.md` | `dsh.md` 每个替换项对应的 DSH 事实证据；只记录证据，不是能力清单 |
 | `gaps.json` | 唯一人工维护的 native 缺口清单，含技能文件全量枚举；格式与场景生成规则见 [../playground/docs/scenario-rules.md](../playground/docs/scenario-rules.md) |
-| `upstream/` | 已发布上游 pstack 树，由 fetch 脚本钉定；不手改 |
+| `upstream/` | 已发布上游 pstack 树，由 fetch 脚本钉定；不入库，按 lock 重建；不手改 |
 | `upstream.lock.json` | 版本钉定事实：`pstackVersion`、`commit`、`path`、`source`；run 记录与发布元数据从这里读版本 |
 | `pstack/` | 生成树：`upstream/` 加注入行加 `dsh.md` 盖章；不手改，`vp run generate:check` 守卫 |
-| `scripts/fetch-upstream.mjs` | 拉取指定已发布版本到 `upstream/` 并更新 lock |
+| `scripts/fetch-upstream.mjs` | 按已发布版本钉定或按 lock 恢复 `upstream/` 并更新 lock |
 | `scripts/generate-pstack.mjs` | 唯一生成器，产出 `pstack/` |
 
 `dsh.md` 与 `dsh.zh.md` 的模板、分块和写作约束以 [../docs/dsh-adapter.md](../docs/dsh-adapter.md) 为准，本文件不重复。
@@ -21,9 +21,9 @@
 ## 上游钉定
 
 - 上游 monorepo 无 tag，Cursor marketplace 也不公开版本对应的 commit；仓库内唯一可重建的版本边界是把 `plugin.json` 改到目标版本的 bump commit。
-- 升级时人工从 marketplace 页面确认已发布版本号，运行 `vpx native/scripts/fetch-upstream.mjs --version <x.y.z>`。脚本默认钉 bump commit；bump 之后存在同版本改动时列出并警告，核实后用 `--commit` 显式前移，绝不自动取 main。
+- 升级时人工从 marketplace 页面确认已发布版本号，运行 `vpx native/scripts/fetch-upstream.mjs --version <x.y.z>`。脚本默认钉 bump commit；bump 之后存在同版本改动时列出并警告，核实后用 `--commit` 显式前移，绝不自动取 main，也不自动解析“最新”。
+- `upstream/` 不入库（gitignore），由 `upstream.lock.json` 的 commit 确定性重建。无参运行 fetch 即按 lock 恢复：树已在钉定版本时不联网直接跳过，缺失时克隆上游 monorepo（blobless）后按 commit 提取；`vp run generate` 与 `generate:check` 会先自动恢复。
 - fetch 之后必须 `vp run generate` 重建生成树，再按场景规则重扫缺口。
-- 本仓不保留上游子模块；`upstream/` 提交进仓，构建与测试离线可用。
 
 ## 缺口提取硬规则
 
@@ -33,4 +33,4 @@
 ## 修改流程
 
 - 修改 `dsh.md` 后同步 `dsh.zh.md`，再 `vp run generate` 更新生成树并提交。
-- 版本升级按「上游钉定」一节执行；`upstream/`、`upstream.lock.json`、`pstack/` 三者同波提交。
+- 版本升级按「上游钉定」一节执行；`upstream.lock.json` 与 `pstack/` 同波提交，`upstream/` 不入库。

@@ -54,4 +54,4 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 ## Upstream pin（上游钉定）
 
-`native/upstream.lock.json` 记录当前钉定的已发布上游 pstack 版本与对应 commit，由 `native/scripts/fetch-upstream.mjs` 维护；`native/upstream/` 是钉定的树。上游 monorepo 没有 tag，发布版本以把 `plugin.json` 改到目标版本的 bump commit 为边界。它不是 playground 的测试基线，也不是 README 兼容表的数据源；DSH 兼容范围以 `package.json` 的 `engines.dsh` 为准，兼容表由 `scripts/release-compatibility.ts` 直接维护。
+`native/upstream.lock.json` 记录当前钉定的已发布上游 pstack 版本与对应 commit，由 `native/scripts/fetch-upstream.mjs` 维护；`native/upstream/` 是钉定的树，不入库，由 `native/scripts/fetch-upstream.mjs` 按 lock 重建。上游 monorepo 没有 tag，发布版本以把 `plugin.json` 改到目标版本的 bump commit 为边界。它不是 playground 的测试基线，也不是 README 兼容表的数据源；DSH 兼容范围以 `package.json` 的 `engines.dsh` 为准，兼容表由 `scripts/release-compatibility.ts` 直接维护。

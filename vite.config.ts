@@ -68,11 +68,12 @@ export default defineConfig({
         command: "tsc --noEmit -p playground/tsconfig.json",
       },
       generate: {
-        command: "vpx native/scripts/generate-pstack.mjs",
+        command: "vpx native/scripts/fetch-upstream.mjs && vpx native/scripts/generate-pstack.mjs",
         cache: false,
       },
       "generate:check": {
-        command: "vpx native/scripts/generate-pstack.mjs --check",
+        command:
+          "vpx native/scripts/fetch-upstream.mjs && vpx native/scripts/generate-pstack.mjs --check",
         cache: false,
       },
       "compatibility:check": {

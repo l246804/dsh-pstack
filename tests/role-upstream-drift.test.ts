@@ -11,7 +11,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { BUDGET_TARGETS, BUDGET_TIERS } from "../src/roles/budget.ts";
 import { ROLE_MANIFEST } from "../src/roles/role-manifest.ts";
 
-const SKILL = new URL("../native/upstream/skills/setup-pstack/SKILL.md", import.meta.url);
+const SKILL = new URL("../native/pstack/skills/setup-pstack/SKILL.md", import.meta.url);
 
 /** The fenced block that follows one heading. */
 function fencedAfter(text: string, heading: string): string {
