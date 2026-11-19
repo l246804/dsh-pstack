@@ -382,7 +382,7 @@ function answerPendingQuestions(
       if (log.some((item) => item.question === entry.question && item.answer === entry.answer))
         continue;
       log.push(entry);
-      console.log(`[run-case] auto-answered "${entry.question}" -> ${entry.answer}`);
+      console.log(`[run-scenario] auto-answered "${entry.question}" -> ${entry.answer}`);
     }
   } catch {
     // The browser returned no complete question card.

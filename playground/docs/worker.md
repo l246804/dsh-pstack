@@ -72,11 +72,11 @@ vp run playground:run -- --worker 0 --environment base --treatment adapted --sce
 vp run playground:stop-task -- --treatment native --environment base --worker <N>
 ```
 
-`run-case` 在下一个轮询点保存当前截图和会话证据，写 `blocked` record，`run-batch` 继续后续任务。不要用 `playground:status` 的摘要替代 session 判断。
+`run-scenario` 在下一个轮询点保存当前截图和会话证据，写 `blocked` record，`run-batch` 继续后续任务。不要用 `playground:status` 的摘要替代 session 判断。
 
 ## 证据
 
-`run-case` 在 worker evidence 目录写机械脱敏后的 `record.json` 和本地 `record.source.json`。`collect` 只从 `record.source.json` 复制截图和记录到 `evidence/runs/<treatment>-<environment>/scenarios/<scenario>/<treatment>-<environment>/`；`session.jsonl.zstd` 只保留本地。`manifest.json` 记录快照范围和批次。`record.source.json`、`record.safe.json`、session 文件都不提交。
+`run-scenario` 在 worker evidence 目录写机械脱敏后的 `record.json` 和本地 `record.source.json`。`collect` 只从 `record.source.json` 复制截图和记录到 `evidence/runs/<treatment>-<environment>/scenarios/<scenario>/<treatment>-<environment>/`；`session.jsonl.zstd` 只保留本地。`manifest.json` 记录快照范围和批次。`record.source.json`、`record.safe.json`、session 文件都不提交。
 
 ## 完成标准
 

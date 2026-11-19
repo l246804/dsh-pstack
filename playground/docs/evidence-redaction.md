@@ -4,7 +4,7 @@
 
 ## 两层流程
 
-1. `run-case` 在 worker 生成 `record.json`，同时把真实 artifact/session 路径写入本地 `record.source.json`；`collect` 只从 `record.source.json` 复制证据。
+1. `run-scenario` 在 worker 生成 `record.json`，同时把真实 artifact/session 路径写入本地 `record.source.json`；`collect` 只从 `record.source.json` 复制证据。
 2. 独立分析会话读取 `record.json`，按本文件产出 `record.safe.json`，再运行：
 
 ```sh

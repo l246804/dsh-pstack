@@ -28,7 +28,7 @@ import {
   InfraError,
   latestSessionFile,
   materializeWorkspace,
-} from "../case/run.ts";
+} from "../execution/run.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   const scenarioId = argValue("--scenario");
   if (!isTreatment(treatment) || !scenarioId) {
     throw new Error(
-      "usage: run-case.ts --worker N --scenario ID --treatment native|adapted --environment ID [--config FILE]",
+      "usage: run-scenario.ts --worker N --scenario ID --treatment native|adapted --environment ID [--config FILE]",
     );
   }
   const worker = Number(argValue("--worker") ?? "0");
@@ -164,9 +164,9 @@ async function main(): Promise<void> {
     )}\n`,
   );
   writeFileSync(recordFile, `${JSON.stringify(sanitizeRecord(record), null, 2)}\n`);
-  console.log(`[run-case] ${scenarioId} ${treatment} ${matrix.id} ${record.verdict.status}`);
-  console.log(`[run-case] evidence=${recordFile}`);
-  console.log(`[run-case] reviews=${reviewSnapshotDirectory(treatment, matrix.id)}`);
+  console.log(`[run-scenario] ${scenarioId} ${treatment} ${matrix.id} ${record.verdict.status}`);
+  console.log(`[run-scenario] evidence=${recordFile}`);
+  console.log(`[run-scenario] reviews=${reviewSnapshotDirectory(treatment, matrix.id)}`);
   process.exitCode =
     record.verdict.status === "verified"
       ? 0
@@ -177,7 +177,9 @@ async function main(): Promise<void> {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((error: unknown) => {
-    console.error(`[run-case] ERROR: ${error instanceof Error ? error.message : String(error)}`);
+    console.error(
+      `[run-scenario] ERROR: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exitCode = 1;
   });
 }

@@ -146,7 +146,7 @@ export default defineConfig({
         cache: false,
       },
       "playground:run": {
-        command: "vpx playground/runner/cli/run-case.ts",
+        command: "vpx playground/runner/cli/run-scenario.ts",
         cache: false,
       },
       "playground:run-batch": {

@@ -12,7 +12,7 @@ Playground 用真实 DSH Web 会话验证原生能力和适配实现。先读本
 
 ## 目录
 
-- `runner/`：执行器。`container` 容器生命周期、`browser` 浏览器、`case` run-case 引擎、`config` 配置、`worker` worker/profile、`evidence` 证据、`scenario` 场景注册。
+- `runner/`：执行器。`container` 容器生命周期、`browser` 浏览器、`execution` run-scenario 引擎、`config` 配置、`worker` worker/profile、`evidence` 证据、`scenario` 场景注册。
 - `scripts/`：记录后处理，compare、status-table、review、redact、gap-lock。
 - `scenarios/`：probe 定义和 `gap-lock.json`。
 - `tests/`：playground 包内测试；根 `tests/` 只留仓库级发布测试。

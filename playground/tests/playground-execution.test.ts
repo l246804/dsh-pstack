@@ -153,7 +153,7 @@ describe("execution contracts", () => {
 
   it("contains no probe timeout or automatic stop in the execution scripts", () => {
     const root = resolve(__dirname, "../runner/cli");
-    for (const file of ["run-case.ts", "run-batch.ts", "prepare.ts", "collect.ts"]) {
+    for (const file of ["run-scenario.ts", "run-batch.ts", "prepare.ts", "collect.ts"]) {
       const source = readFileSync(join(root, file), "utf8");
       expect(source).not.toMatch(
         /probeSeconds|DEFAULT_PROBE_SECONDS|truncated|stopInFlightTurn|--probe|--timeout/,
