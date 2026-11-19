@@ -20,17 +20,17 @@
 
 钉定点是目标版本的 bump commit，即把 `upstream/plugin.json` 的版本改成目标值的那个提交。
 
-1. `vpx native/scripts/fetch-upstream.ts` 按现有 lock 恢复 `upstream/`；没有 lock 时按 main 当前版本钉定。
-2. `vpx native/scripts/fetch-upstream.ts --latest` 把钉定移到 main 当前版本。
-3. `vpx native/scripts/fetch-upstream.ts --version <x.y.z>` 钉定指定版本；加 `--commit <sha>` 钉定指定提交。
-4. fetch 后运行 `vpx native/scripts/generate-pstack.ts` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
+1. `vp run native:fetch` 按现有 lock 恢复 `upstream/`；没有 lock 时按 main 当前版本钉定。
+2. `vp run native:fetch:latest` 把钉定移到 main 当前版本。
+3. `vp run native:fetch -- --version <x.y.z>` 钉定指定版本；再加 `--commit <sha>` 钉定指定提交。
+4. fetch 后运行 `vp run native:generate` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
 5. 提交时 `upstream.lock.json` 与 `pstack/` 同波；`upstream/` 不入库。
 
 ## 如何维护 dsh.md
 
 - 模板、分块和写作约束见 [../docs/dsh-adapter.md](../docs/dsh-adapter.md)，本文件不重复。
 - 每个替换项的事实证据对应写进 `dsh-evidence.md`。
-- 修改 `dsh.md` 后同步 `dsh.zh.md`，运行生成器更新 `pstack/`，一起提交。
+- 修改 `dsh.md` 后同步 `dsh.zh.md`，运行 `vp run native:generate` 更新 `pstack/`，一起提交。
 
 ## 如何提取缺口
 
