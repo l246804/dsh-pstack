@@ -23,7 +23,9 @@ export default defineConfig({
         },
       },
       copy: [
-        "pstack",
+        // The shipped tree is the native baseline tree; the build task then stamps the
+        // plugin-aware adapter over the baseline answer (pack copy targets must not nest).
+        { from: "native/pstack", to: "dist", rename: "pstack" },
         { from: "skills/.agents/skills", to: "dist/skills", rename: "vendored" },
         { from: "skills/authored", to: "dist/skills", rename: "authored" },
       ],
@@ -56,7 +58,7 @@ export default defineConfig({
   run: {
     tasks: {
       build: {
-        command: "vp pack",
+        command: "vp pack && cp port/dsh.md dist/pstack/docs/harness/dsh.md",
         dependsOn: ["generate"],
       },
       typecheck: {
@@ -66,19 +68,15 @@ export default defineConfig({
         command: "tsc --noEmit -p playground/tsconfig.json",
       },
       generate: {
-        command: "vpx scripts/generate-pstack.mjs --target port",
+        command: "vpx native/scripts/generate-pstack.mjs",
         cache: false,
       },
       "generate:check": {
-        command: "vpx scripts/generate-pstack.mjs --target port --check",
+        command: "vpx native/scripts/generate-pstack.mjs --check",
         cache: false,
       },
       "compatibility:check": {
         command: "vpx scripts/release-compatibility.ts --check",
-        cache: false,
-      },
-      "playground:native-generate": {
-        command: "vpx scripts/generate-pstack.mjs --target native",
         cache: false,
       },
       "playground:doctor": {

@@ -1,0 +1,6 @@
+{
+  "name": "@internal/native",
+  "private": true,
+  "description": "Native baseline package for dsh-pstack: the pinned released upstream pstack tree, the DSH standard-mode adapter answers, and the native gap list.",
+  "type": "module"
+}

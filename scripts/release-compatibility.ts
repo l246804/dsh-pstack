@@ -95,7 +95,7 @@ function readJson(path: string, root = ROOT): unknown {
 
 export function releaseMetadata(read = readJson): ReleaseMetadata {
   const manifest = read("package.json") as Manifest;
-  const baseline = read("port/baseline.json") as Baseline;
+  const baseline = read("native/upstream.lock.json") as Baseline;
   const version = manifest.version;
   const dshRange = manifest.engines?.dsh;
   const pstackVersion = baseline.pstackVersion;
@@ -106,7 +106,7 @@ export function releaseMetadata(read = readJson): ReleaseMetadata {
     throw new Error("package.json must declare engines.dsh");
   }
   if (typeof pstackVersion !== "string" || !VERSION.test(pstackVersion)) {
-    throw new Error(`port/baseline.json has an invalid pstackVersion: ${pstackVersion}`);
+    throw new Error(`native/upstream.lock.json has an invalid pstackVersion: ${pstackVersion}`);
   }
   return { version, dshRange, pstackVersion };
 }

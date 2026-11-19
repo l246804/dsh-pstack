@@ -44,6 +44,7 @@ release. Add a tool name to select part of the graph. For example, run
 
 | 目录 | 入口文档 |
 | --- | --- |
+| `native/` | [native/AGENTS.md](./native/AGENTS.md) |
 | `playground/` | [playground/AGENTS.md](./playground/AGENTS.md) |
 | `port/` | [port/AGENTS.md](./port/AGENTS.md) |
 | `src/` | [src/AGENTS.md](./src/AGENTS.md) |
@@ -51,7 +52,6 @@ release. Add a tool name to select part of the graph. For example, run
 
 - 目录文档只写本目录规则，其他目录只放指针，不重复内容。
 - 目录职责变化时同步更新对应目录的 `AGENTS.md` 和根指针。
-- `pstack/` 是生成树，不手工编辑。
 
 ## Commits
 

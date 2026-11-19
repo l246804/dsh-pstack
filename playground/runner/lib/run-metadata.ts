@@ -12,8 +12,8 @@ import { stableStringify } from "./stable-json.ts";
 export const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 export const PLAYGROUND_DIRECTORY = join(REPOSITORY_ROOT, "playground");
 export const DEFAULT_CONFIG_FILE = join(PLAYGROUND_DIRECTORY, "config.json");
-export const PORT_BASELINE_FILE = join(REPOSITORY_ROOT, "port", "baseline.json");
-export const NATIVE_ROOT = join(PLAYGROUND_DIRECTORY, "native");
+export const UPSTREAM_LOCK_FILE = join(REPOSITORY_ROOT, "native", "upstream.lock.json");
+export const NATIVE_ROOT = join(REPOSITORY_ROOT, "native");
 export const NATIVE_TREE = join(NATIVE_ROOT, "pstack");
 export const NATIVE_SKILLS = join(NATIVE_TREE, "skills");
 export const WORKERS_ROOT = join(PLAYGROUND_DIRECTORY, ".workers");
@@ -90,30 +90,28 @@ export function adaptedVersion(paths: { home: string }, treatment: Treatment): s
 }
 
 /**
- * The released pstack version pinned in port/baseline.json. It is run identity and an
+ * The released pstack version pinned in native/upstream.lock.json. It is run identity and an
  * invalidation axis, recorded on every RunEnvironment at capture time.
  */
 export function pstackVersion(): string {
-  if (!existsSync(PORT_BASELINE_FILE)) {
-    throw new Error(`cannot read the pstack baseline: ${PORT_BASELINE_FILE}`);
+  if (!existsSync(UPSTREAM_LOCK_FILE)) {
+    throw new Error(`cannot read the upstream pin: ${UPSTREAM_LOCK_FILE}`);
   }
   const version = (
-    JSON.parse(readFileSync(PORT_BASELINE_FILE, "utf8")) as { pstackVersion?: string }
+    JSON.parse(readFileSync(UPSTREAM_LOCK_FILE, "utf8")) as { pstackVersion?: string }
   ).pstackVersion;
-  if (!version) throw new Error(`pstack baseline has no pstackVersion: ${PORT_BASELINE_FILE}`);
+  if (!version) throw new Error(`upstream pin has no pstackVersion: ${UPSTREAM_LOCK_FILE}`);
   return version;
 }
 
 export function upstreamRevision(): string {
-  const result = spawnSync(
-    "git",
-    ["-C", join(REPOSITORY_ROOT, "upstream/cursor-plugins"), "rev-parse", "HEAD"],
-    {
-      encoding: "utf8",
-    },
-  );
-  if (result.status !== 0) throw new Error("cannot read the actual upstream revision");
-  return result.stdout.trim();
+  if (!existsSync(UPSTREAM_LOCK_FILE)) {
+    throw new Error(`cannot read the upstream pin: ${UPSTREAM_LOCK_FILE}`);
+  }
+  const commit = (JSON.parse(readFileSync(UPSTREAM_LOCK_FILE, "utf8")) as { commit?: string })
+    .commit;
+  if (!commit) throw new Error(`upstream pin has no commit: ${UPSTREAM_LOCK_FILE}`);
+  return commit;
 }
 
 export function createEnvironment(input: {

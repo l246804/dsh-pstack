@@ -10,10 +10,7 @@ import {
 import { environments, scenariosById } from "../playground/runner/scenario/index.ts";
 
 function gaps(): CoverageGap[] {
-  const text = readFileSync(
-    new URL("../playground/scenarios/native-gaps.json", import.meta.url),
-    "utf8",
-  );
+  const text = readFileSync(new URL("../native/gaps.json", import.meta.url), "utf8");
   return (JSON.parse(text) as { gaps: CoverageGap[] }).gaps;
 }
 

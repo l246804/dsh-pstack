@@ -89,7 +89,7 @@ export interface EnvironmentMatrix {
 export interface RunEnvironment {
   worker: number;
   dshVersion: string;
-  /** The released pstack version pinned in port/baseline.json at capture time. */
+  /** The released pstack version pinned in native/upstream.lock.json at capture time. */
   pstackVersion: string;
   adaptedVersion: string | null;
   matrix: EnvironmentMatrix;

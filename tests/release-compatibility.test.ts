@@ -62,10 +62,10 @@ function writeJson(path: string, value: unknown): void {
 }
 
 function prepare(): void {
-  mkdirSync(join(ROOT, "port"), { recursive: true });
+  mkdirSync(join(ROOT, "native"), { recursive: true });
   mkdirSync(join(ROOT, "docs"), { recursive: true });
   writeJson("package.json", { version: "0.4.0", engines: { dsh: ">=0.2.2-rc.1" } });
-  writeJson("port/baseline.json", { pstackVersion: "0.15.36" });
+  writeJson("native/upstream.lock.json", { pstackVersion: "0.15.36" });
   writeFileSync(join(ROOT, "README.md"), enReadme());
   writeFileSync(join(ROOT, "README.zh.md"), zhReadme());
   writeFileSync(
