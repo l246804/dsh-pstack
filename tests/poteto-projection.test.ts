@@ -1,24 +1,37 @@
 import { describe, expect, it } from "vite-plus/test";
-
-import type { SessionEvent } from "@deepseek-ai/dsh-session";
+import {
+  SESSION_FORMAT_VERSION,
+  SessionId,
+  SessionLogOffset,
+  SessionSeq,
+} from "@deepseek-ai/dsh-session";
+import type { SessionEvent, SessionHeader } from "@deepseek-ai/dsh-session";
 
 import {
-  potetoProjectionDefinition,
+  createPotetoProjectionDefinition,
   type PotetoProjectionState,
 } from "../src/poteto/projection.ts";
 
-/** One recorded poteto selection event; `apply` reads only `type` and `data`. */
-function modeEvent(enabled: boolean): SessionEvent {
-  return { type: "poteto/mode", data: { enabled } } as SessionEvent;
+const header: SessionHeader = {
+  version: SESSION_FORMAT_VERSION,
+  id: SessionId("session-1"),
+  createdAt: 1_700_000_000_000,
+  isSeeded: false,
+};
+const inheritedEventCount = SessionLogOffset(0);
+
+function definitionFor(enabled: boolean | undefined) {
+  return createPotetoProjectionDefinition(() => enabled);
 }
 
-describe("poteto projection client view", () => {
-  it("declares a wire view so the browser reads the switch state synchronously", () => {
-    expect(potetoProjectionDefinition.wire).toBeDefined();
+describe("poteto projection snapshot", () => {
+  it("uses the storage sidecar value on first paint", () => {
+    expect(definitionFor(true).init(header, inheritedEventCount)).toEqual({ enabled: true });
+    expect(definitionFor(false).init(header, inheritedEventCount)).toEqual({ enabled: false });
   });
 
   it("maps the saved selection to the wire enabled flag", () => {
-    const wire = potetoProjectionDefinition.wire;
+    const wire = definitionFor(true).wire;
     if (wire === undefined) throw new Error("poteto projection has no wire view");
     const view = (state: PotetoProjectionState): unknown => wire.view(state);
 
@@ -28,20 +41,23 @@ describe("poteto projection client view", () => {
   });
 
   it("reuses the wire value while the selection does not change", () => {
-    const wire = potetoProjectionDefinition.wire;
+    const wire = definitionFor(true).wire;
     if (wire === undefined) throw new Error("poteto projection has no wire view");
 
     expect(wire.view({ enabled: true })).toBe(wire.view({ enabled: true }));
     expect(wire.view({ enabled: false })).toBe(wire.view({ enabled: false }));
   });
 
-  it("folds an on then off selection into the wire value", () => {
-    const wire = potetoProjectionDefinition.wire;
-    if (wire === undefined) throw new Error("poteto projection has no wire view");
+  it("returns the same state for every committed event", () => {
+    const definition = definitionFor(true);
+    const state = definition.init(header, inheritedEventCount);
+    const event: SessionEvent = {
+      type: "session/end-seed",
+      seq: SessionSeq(0),
+      time: 0,
+      data: {},
+    };
 
-    const on = potetoProjectionDefinition.apply({}, modeEvent(true));
-    expect(wire.view(on)).toEqual({ enabled: true });
-    const off = potetoProjectionDefinition.apply(on, modeEvent(false));
-    expect(wire.view(off)).toEqual({ enabled: false });
+    expect(definition.apply(state, event)).toBe(state);
   });
 });

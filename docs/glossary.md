@@ -30,6 +30,10 @@ Role 的路由基数由 `shape` 描述：
 
 DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会话能力。DSH 的根 preset 面向用户会话；本插件只随包提供子代理 preset（`poteto-agent`、`comment-sicko`、`readonly`），用户会话的 Poteto 工作流改由会话级开关启用。`pstack_subagent` 的 `agent_preset` 选择 preset 类别；模型路由由调用方读取角色文件后通过 `provider`/`model`/`reasoning_effort` 传入，两者是正交配置。
 
+## Session sidecar（会话 sidecar）
+
+插件拥有的按 Session 维度持久化、但不进入 Session 事件日志的 Host 状态。本插件的 Poteto 开关用 `ctx.storageDomain` 的 `pstack` domain 保存；它不参与模型历史重放，也不改变 Session 日志的读取契约。
+
 ## Generated tree（生成树）
 
 由 `scripts/generate-pstack.mjs --target port` 从固定上游和 `port/dsh.md` 整体生成的根 `pstack/` 目录，构建时复制到 `dist/pstack/`。

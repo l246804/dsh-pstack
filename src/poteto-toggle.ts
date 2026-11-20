@@ -9,8 +9,8 @@ import type { ConfigEditor } from "@deepseek-ai/dsh-config-editor";
 import type { SessionId } from "@deepseek-ai/dsh-session";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import type {} from "@deepseek-ai/dsh-agent-instructions";
-import type { ProjectionHandle } from "@deepseek-ai/dsh-session-projection";
 import { renderSkillContent } from "@deepseek-ai/dsh-skill";
+import type { Domain } from "@deepseek-ai/dsh-storage-domain";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import type {} from "@deepseek-ai/dsh-tools";
 import type {} from "@deepseek-ai/dsh-system-prompt";
@@ -21,7 +21,13 @@ import {
   resolvePotetoEnabled,
   shouldSeedPotetoDefault,
 } from "./poteto/preset-gate.ts";
-import { potetoProjectionDefinition, type PotetoProjectionState } from "./poteto/projection.ts";
+import { createPotetoProjectionDefinition } from "./poteto/projection.ts";
+import {
+  potetoDomainSpec,
+  readPotetoMode,
+  writePotetoMode,
+  type PotetoModeTable,
+} from "./poteto/storage.ts";
 import { POTETO_SERVICE } from "./poteto/remote.ts";
 import { readSettings, writeSettings } from "./poteto/settings.ts";
 
@@ -41,7 +47,15 @@ function writeDefaultEnabled(enabled: boolean): void {
 
 /** Toggle poteto workflow for one Session. */
 export class PotetoModeService extends TypertRemoteService {
-  static inject = ["agents", "skills", "sessions", "sessionProjections", "systemPrompt", "typert"];
+  static inject = [
+    "agents",
+    "skills",
+    "sessions",
+    "sessionProjections",
+    "storageDomain",
+    "systemPrompt",
+    "typert",
+  ];
 
   private readonly lastUserMessage = new WeakMap<Agent, string>();
   private readonly lifts = new WeakMap<Agent, Array<() => void>>();
@@ -50,7 +64,8 @@ export class PotetoModeService extends TypertRemoteService {
   private readonly seededDefaults = new WeakSet<Agent>();
   private defaultEnabled = false;
   private sectionText = "";
-  private projection!: ProjectionHandle<PotetoProjectionState>;
+  private domain!: Domain<typeof potetoDomainSpec>;
+  private modeTable!: PotetoModeTable;
 
   constructor(ctx: Context) {
     super(ctx, POTETO_SERVICE);
@@ -59,7 +74,12 @@ export class PotetoModeService extends TypertRemoteService {
   protected async [Service.init](): Promise<void> {
     const settings = readSettings();
     this.defaultEnabled = settings.potetoDefault;
-    this.projection = await this.ctx.sessionProjections.register(potetoProjectionDefinition);
+    this.domain = await this.ctx.storageDomain.open(potetoDomainSpec);
+    this.modeTable = this.domain.table("poteto_modes");
+    this.ctx.effect(() => () => this.domain.close(), "pstack.poteto-toggle.domain");
+    await this.ctx.sessionProjections.register(
+      createPotetoProjectionDefinition((sessionId) => readPotetoMode(this.modeTable, sessionId)),
+    );
     const skill = await this.ctx.skills.get("poteto-mode", {});
     if (skill === undefined) throw new Error("poteto-mode skill is not available");
     this.sectionText = [
@@ -132,7 +152,7 @@ export class PotetoModeService extends TypertRemoteService {
   isEnabledFor(agent: Agent): boolean {
     return resolvePotetoEnabled({
       agentPreset: this.presetOf(agent),
-      selected: this.projection.stateOf(agent.session).enabled,
+      selected: readPotetoMode(this.modeTable, agent.session.id),
       byDefault: this.defaultEnabled,
     });
   }
@@ -146,7 +166,10 @@ export class PotetoModeService extends TypertRemoteService {
   /** Read the saved switch for one Session id. */
   status(sessionId: string): { enabled: boolean } {
     const agent = this.ctx.agents.get(sessionId as SessionId);
-    return { enabled: agent === undefined ? this.defaultEnabled : this.isEnabledFor(agent) };
+    const selected = readPotetoMode(this.modeTable, sessionId);
+    return {
+      enabled: agent === undefined ? (selected ?? this.defaultEnabled) : this.isEnabledFor(agent),
+    };
   }
 
   /** Read the global default used by new sessions. */
@@ -211,10 +234,7 @@ export class PotetoModeService extends TypertRemoteService {
       throw new Error(`the poteto workflow is not available for the "${preset}" agent preset`);
     }
     if (this.isEnabledFor(agent) !== enabled) {
-      agent.session.append("poteto/mode", { enabled });
-      if (!(await this.ctx.sessions.flush(agent.session))) {
-        throw new Error(`poteto mode for session ${sessionId} was not persisted`);
-      }
+      await writePotetoMode(this.modeTable, sessionId, enabled);
     }
     if (enabled) this.ensureNativeToolsRestricted(agent);
     else this.clearNativeToolsRestriction(agent);
@@ -223,12 +243,12 @@ export class PotetoModeService extends TypertRemoteService {
 
   /**
    * Record an explicit on selection for a Session that would run the workflow
-   * from the global default. Mirrors Agent Teams, whose Team projection carries
-   * the default as a real `team/mode` event so the client reads it synchronously.
+   * from the global default. The sidecar keeps the client snapshot and the
+   * running Session on the same saved value after the default is applied.
    */
   private async seedDefaultMode(agent: Agent): Promise<void> {
     if (this.seededDefaults.has(agent)) return;
-    const selected = this.projection.stateOf(agent.session).enabled;
+    const selected = readPotetoMode(this.modeTable, agent.session.id);
     const seed = shouldSeedPotetoDefault({
       agentPreset: this.presetOf(agent),
       selected,
@@ -236,10 +256,11 @@ export class PotetoModeService extends TypertRemoteService {
     });
     if (!seed) return;
     this.seededDefaults.add(agent);
-    agent.session.append("poteto/mode", { enabled: true });
-    if (!(await this.ctx.sessions.flush(agent.session))) {
+    try {
+      await writePotetoMode(this.modeTable, agent.session.id, true);
+    } catch (error) {
       this.seededDefaults.delete(agent);
-      throw new Error(`poteto default for session ${agent.session.id} was not persisted`);
+      throw error;
     }
   }
 

@@ -85,6 +85,7 @@
     "@deepseek-ai/dsh-session-projection": "catalog:types",
     "@deepseek-ai/dsh-settings": "catalog:types",
     "@deepseek-ai/dsh-skill": "catalog:types",
+    "@deepseek-ai/dsh-storage-domain": "catalog:types",
     "@deepseek-ai/dsh-subagent": "catalog:types",
     "@deepseek-ai/dsh-system-prompt": "catalog:types",
     "@deepseek-ai/dsh-tools": "catalog:types",
