@@ -3,6 +3,9 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
 import { stopRequestFile, workerPaths } from "../worker/worker.ts";
+import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
+
+await readPlaygroundConfig(CONFIG_FILE);
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

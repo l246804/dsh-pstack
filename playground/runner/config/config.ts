@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { load as yamlLoad } from "js-yaml";
 
+import { setRuntimeSettings } from "./runtime.ts";
 import type {
   BrowserConfig,
   PlaygroundConfig,
@@ -186,6 +187,19 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
   return {
     ...(timeout === undefined ? {} : { caseTimeoutMs: timeout }),
     ...(networkMode === undefined ? {} : { networkMode }),
+    ...(parsed.workspaceRoot === undefined
+      ? {}
+      : { workspaceRoot: string(parsed.workspaceRoot, "runtime.workspaceRoot") }),
+    ...(parsed.workersDir === undefined
+      ? {}
+      : { workersDir: string(parsed.workersDir, "runtime.workersDir") }),
+    ...(parsed.dockerBin === undefined
+      ? {}
+      : { dockerBin: string(parsed.dockerBin, "runtime.dockerBin") }),
+    ...(parsed.dshBin === undefined ? {} : { dshBin: string(parsed.dshBin, "runtime.dshBin") }),
+    ...(parsed.chromePath === undefined
+      ? {}
+      : { chromePath: string(parsed.chromePath, "runtime.chromePath") }),
   };
 }
 
@@ -233,14 +247,20 @@ export function parseConfig(
   };
 }
 
+function loaded(value: unknown): PlaygroundConfig {
+  const config = parseConfig(value);
+  setRuntimeSettings(config.runtime);
+  return config;
+}
+
 /** Load a TS or JSON config. TS is imported through the same runtime as every other script. */
 export async function readConfig(file: string): Promise<PlaygroundConfig> {
   if (file.endsWith(".json")) {
-    return parseConfig(JSON.parse(readFileSync(file, "utf8")));
+    return loaded(JSON.parse(readFileSync(file, "utf8")));
   }
   const module = (await import(pathToFileURL(file).href)) as {
     default?: unknown;
     config?: unknown;
   };
-  return parseConfig(module.default ?? module.config);
+  return loaded(module.default ?? module.config);
 }

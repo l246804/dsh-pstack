@@ -27,11 +27,12 @@ import {
 } from "../runner/evidence/evidence.ts";
 import {
   adaptedVersion,
-  ISOLATED_ROOT,
+  WORKERS_ROOT,
   isolatedRootDirectory,
   publicConfigHash,
   REPOSITORY_ROOT,
 } from "../runner/worker/run-metadata.ts";
+import { setRuntimeSettings } from "../runner/config/runtime.ts";
 import {
   workerPaths,
   treatmentWorkersDirectory,
@@ -522,36 +523,42 @@ function writeFakeNativeTree(root: string): void {
   );
 }
 
-describe("read isolation from the repository tree", () => {
-  it("keeps the session workspace and native mount outside the repository", () => {
+describe("workspace isolation", () => {
+  it("keeps worker state under ignored paths and exposes only /dsh paths to the session", () => {
     const paths = workerPaths(1, "base", "adapted");
-    expect(paths.workspaceRoot.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
-    expect(paths.nativeMount.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
-    expect(paths.workspaceRoot).toBe(join(ISOLATED_ROOT, "adapted", "base", "w1", "workspace"));
-    expect(paths.nativeMount).toBe(join(ISOLATED_ROOT, "adapted", "base", "w1", "native"));
-    // Audited state stays inside the repository.
-    for (const dir of [paths.home, paths.browserDir, paths.evidenceDir]) {
+    expect(paths.workspaceRoot).toBe(
+      join(WORKERS_ROOT, "isolated", "adapted", "base", "w1", "workspace"),
+    );
+    expect(paths.nativeMount).toBe(
+      join(WORKERS_ROOT, "isolated", "adapted", "base", "w1", "native"),
+    );
+    expect(paths.containerWorkspace).toBe("/dsh/workspace");
+    expect(paths.containerNative).toBe("/dsh/native");
+    // Audited state and the isolated workspace stay under the ignored .workers tree.
+    for (const dir of [paths.home, paths.browserDir, paths.evidenceDir, paths.workspaceRoot]) {
       expect(dir.startsWith(`${REPOSITORY_ROOT}/playground/.workers/`)).toBe(true);
     }
-    // The isolated root layers per treatment, per environment, and per worker.
     expect(workerPaths(1, "other", "adapted").workspaceRoot).not.toBe(paths.workspaceRoot);
     expect(workerPaths(1, "base", "native").workspaceRoot).not.toBe(paths.workspaceRoot);
     expect(workerPaths(2, "base", "adapted").isolatedRoot).not.toBe(paths.isolatedRoot);
   });
 
-  it("honors the PLAYGROUND_WORKSPACE_ROOT override", () => {
+  it("reads workspace and workers roots from runtime settings", () => {
     const override = join(temporary, "workspace-override");
-    process.env.PLAYGROUND_WORKSPACE_ROOT = override;
+    const workersRoot = join(temporary, "workers-override");
+    setRuntimeSettings({ workspaceRoot: override, workersDir: workersRoot });
     try {
       expect(isolatedRootDirectory()).toBe(resolve(override));
       expect(workerPaths(0, "base", "adapted").workspaceRoot).toBe(
         join(resolve(override), "adapted", "base", "w0", "workspace"),
       );
+      expect(workerPaths(0, "base", "adapted").home).toBe(
+        join(resolve(workersRoot), "adapted", "base", "w0", "home"),
+      );
     } finally {
-      delete process.env.PLAYGROUND_WORKSPACE_ROOT;
+      setRuntimeSettings(undefined);
     }
-    expect(isolatedRootDirectory()).toBe(ISOLATED_ROOT);
-    expect(ISOLATED_ROOT.startsWith(`${REPOSITORY_ROOT}/`)).toBe(false);
+    expect(isolatedRootDirectory()).toBe(join(WORKERS_ROOT, "isolated"));
   });
 
   it("mounts a native copy so no worker profile path exposes the repository root", () => {
@@ -625,8 +632,7 @@ describe("treatment isolation of worker evidence", () => {
   it("resets only one treatment and leaves the other treatment's evidence on disk", () => {
     const workersRoot = join(temporary, "treatment-workers");
     const isolatedRoot = join(temporary, "treatment-isolated");
-    process.env.PLAYGROUND_WORKERS_DIR = workersRoot;
-    process.env.PLAYGROUND_WORKSPACE_ROOT = isolatedRoot;
+    setRuntimeSettings({ workersDir: workersRoot, workspaceRoot: isolatedRoot });
     try {
       const native = workerPaths(0, "base", "native");
       const adapted = workerPaths(0, "base", "adapted");
@@ -642,8 +648,7 @@ describe("treatment isolation of worker evidence", () => {
       expect(existsSync(adapted.evidenceDir)).toBe(false);
       expect(existsSync(treatmentWorkersDirectory("base", "native"))).toBe(true);
     } finally {
-      delete process.env.PLAYGROUND_WORKERS_DIR;
-      delete process.env.PLAYGROUND_WORKSPACE_ROOT;
+      setRuntimeSettings(undefined);
     }
   });
 });

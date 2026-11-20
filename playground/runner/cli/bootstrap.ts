@@ -158,6 +158,7 @@ function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
 }
 
 async function main(): Promise<void> {
+  const config = await readPlaygroundConfig(CONFIG_FILE);
   const workers = selectWorkers();
   const environment = argValue("--environment");
   if (environment === undefined) throw new Error("--environment is required");
@@ -166,7 +167,6 @@ async function main(): Promise<void> {
     console.log(`[bootstrap] environment ${environment}/${treatment} already ready`);
     return;
   }
-  const config = await readPlaygroundConfig(CONFIG_FILE);
 
   let failed = 0;
   for (const paths of workers) {

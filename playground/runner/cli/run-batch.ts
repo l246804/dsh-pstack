@@ -30,6 +30,7 @@ import {
 } from "../worker/progress.ts";
 import { listScenarioIds, loadScenario } from "../scenario/scenarios.ts";
 import { writeBatchMetadata } from "../evidence/review-snapshot.ts";
+import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../worker/worker.ts";
 
 const VPX = "vpx";
@@ -158,6 +159,7 @@ function statusFor(record: RunRecord | undefined, treatment: Treatment): Verdict
 }
 
 async function main(): Promise<void> {
+  await readPlaygroundConfig(CONFIG_FILE);
   if (listScenarioIds().length === 0) {
     throw new Error("no scenarios are registered; generate probes first");
   }

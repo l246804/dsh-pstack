@@ -14,7 +14,7 @@
 | `/dsh/runtime` | `<isolatedRoot>/xdg-runtime` | XDG runtime |
 | `/dsh/native` | `<isolatedRoot>/native` | native 生成树，只读；仅 native treatment |
 
-`isolatedRoot` 默认是 `$HOME/.dsh-playground/isolated`，在仓库外，可用 `PLAYGROUND_WORKSPACE_ROOT` 覆盖。仓库根、宿主 `/home`、场景定义、rubric、证据目录和 Docker socket 都不挂载。容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid，启用 `cap-drop ALL` 和 `no-new-privileges`。
+`isolatedRoot` 默认是 `playground/.workers/isolated`，整个 `.workers` 目录被忽略；只有 workspace、home 等子目录挂载，仓库根、场景定义、rubric、证据目录和 Docker socket 都不挂载。容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid，启用 `cap-drop ALL` 和 `no-new-privileges`。
 
 宿主状态保存在 `playground/.workers/<treatment>/<environmentId>/w<k>`：home、browser profile、evidence 和日志；隔离 workspace 在 `isolatedRoot`。
 

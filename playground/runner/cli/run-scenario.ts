@@ -48,6 +48,7 @@ async function main(): Promise<void> {
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
+  const config = await readPlaygroundConfig(CONFIG_FILE);
   const paths = workerPaths(worker, matrix.id, treatment);
   const preparedTreatment = existsSync(paths.treatmentFile)
     ? readFileSync(paths.treatmentFile, "utf8").trim()
@@ -62,7 +63,6 @@ async function main(): Promise<void> {
   if (scenario.treatments !== undefined && !scenario.treatments.includes(treatment)) {
     throw new Error(`scenario ${scenarioId} is not allowed in ${treatment}`);
   }
-  const config = await readPlaygroundConfig(CONFIG_FILE);
   const taskFile = currentTaskFile(paths);
   const batchId = (() => {
     if (!existsSync(taskFile)) return undefined;

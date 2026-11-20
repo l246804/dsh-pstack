@@ -9,6 +9,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
 import type { BrowserConfig } from "../types.ts";
+import { runtimeSettings } from "../config/runtime.ts";
 import { REPOSITORY_ROOT } from "../worker/run-metadata.ts";
 import { chromeCandidates } from "../worker/platform.ts";
 
@@ -20,7 +21,8 @@ export function agentBrowserBin(): string {
 
 /** Highest-versioned Chrome the agent-browser installer dropped under ~/.agent-browser/browsers. */
 export function chromeExecutable(): string {
-  if (process.env.AGENT_BROWSER_CHROME_PATH) return process.env.AGENT_BROWSER_CHROME_PATH;
+  const configured = runtimeSettings().chromePath;
+  if (configured) return configured;
   const root = join(homedir(), ".agent-browser", "browsers");
   const candidates: string[] = [];
   if (existsSync(root)) {

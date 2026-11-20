@@ -48,12 +48,12 @@ async function main(): Promise<void> {
     workerIndex = parsed;
     argv.splice(workerPos, 2);
   }
+  const config = await readPlaygroundConfig(CONFIG_FILE);
   const paths = workerPaths(workerIndex, environmentId, treatment);
 
   let url: string | undefined;
   if (argv.length > 0 && !argv[0].startsWith("--")) url = argv.shift();
   const target = url ?? readWebUrl(paths);
-  const config = await readPlaygroundConfig(CONFIG_FILE);
   const session = createBrowserSession({
     session: `w${workerIndex}`,
     browserDir: paths.browserDir,

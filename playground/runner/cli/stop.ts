@@ -4,6 +4,9 @@ import { environmentMatrix } from "../worker/run-metadata.ts";
 import { clearBootstrapReady, listWorkers } from "../worker/worker.ts";
 import { isTreatment } from "../types.ts";
 import type { Treatment } from "../types.ts";
+import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
+
+await readPlaygroundConfig(CONFIG_FILE);
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

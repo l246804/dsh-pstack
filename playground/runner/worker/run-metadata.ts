@@ -1,11 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { PlaygroundConfig, RunEnvironment, Treatment } from "../types.ts";
+import { runtimeSettings } from "../config/runtime.ts";
 import { environments } from "../scenario/environments.ts";
 import { stableStringify } from "../shared/stable-json.ts";
 
@@ -19,24 +19,20 @@ export const NATIVE_ROOT = join(REPOSITORY_ROOT, "native");
 export const NATIVE_TREE = join(NATIVE_ROOT, "pstack");
 export const NATIVE_SKILLS = join(NATIVE_TREE, "skills");
 export const WORKERS_ROOT = join(PLAYGROUND_DIRECTORY, ".workers");
-// Must stay outside the repository and inside a Docker-shared root: macOS VM-backed
-// runtimes do not share /tmp or /var/folders, but they share the user home.
-export const ISOLATED_ROOT = join(homedir(), ".dsh-playground", "isolated");
 
 export function workersDirectory(): string {
-  const override = process.env.PLAYGROUND_WORKERS_DIR;
-  return override ? resolve(PLAYGROUND_DIRECTORY, override) : WORKERS_ROOT;
+  const configured = runtimeSettings().workersDir;
+  return configured ? resolve(PLAYGROUND_DIRECTORY, configured) : WORKERS_ROOT;
 }
 
 /**
  * Root of the per-worker directories the tested session can reach: its workspace and the
- * native skill mount. The sandbox limits writes but not reads, so this root must stay outside
- * the repository tree; a workspace inside the repo lets the session read scenario rubrics
- * and assertions and answer to them.
+ * native skill mount. Defaults under the ignored .workers tree; only the workspace and home
+ * subdirectories are mounted into the container, never the repository root.
  */
 export function isolatedRootDirectory(): string {
-  const override = process.env.PLAYGROUND_WORKSPACE_ROOT;
-  return override ? resolve(override) : ISOLATED_ROOT;
+  const configured = runtimeSettings().workspaceRoot;
+  return configured ? resolve(PLAYGROUND_DIRECTORY, configured) : join(WORKERS_ROOT, "isolated");
 }
 
 export function environmentMatrix(id: string): RunEnvironment["matrix"] {

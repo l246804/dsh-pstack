@@ -5,6 +5,9 @@ import type { Treatment } from "../types.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { progressFilePath, readProgress } from "../worker/progress.ts";
 import { currentTaskFile, workerPaths } from "../worker/worker.ts";
+import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
+
+await readPlaygroundConfig(CONFIG_FILE);
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);

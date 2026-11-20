@@ -12,9 +12,12 @@ import {
 import { join } from "node:path";
 
 import { PROFILE_NAME, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
+import { runtimeSettings } from "../config/runtime.ts";
 import { runtimeEnv, type WorkerPaths } from "./worker.ts";
 
-const DSH_BIN = process.env.DSH_BIN ?? hostCommand("dsh");
+function dshBin(): string {
+  return runtimeSettings().dshBin ?? hostCommand("dsh");
+}
 
 export function profileDirectory(paths: WorkerPaths): string {
   return join(paths.home, "profiles", PROFILE_NAME);
@@ -26,7 +29,7 @@ export function profilePatchFile(paths: WorkerPaths): string {
 
 /** Initialize the shipped web profile in this worker home. */
 export function ensureWebProfile(paths: WorkerPaths): void {
-  const result = spawnSync(DSH_BIN, ["plugin", "--profile", PROFILE_NAME, "install"], {
+  const result = spawnSync(dshBin(), ["plugin", "--profile", PROFILE_NAME, "install"], {
     cwd: paths.home,
     env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
     stdio: "inherit",
@@ -65,7 +68,7 @@ export function packPlugin(destination: string): string {
 
 /** Install one package spec into the worker's web profile. */
 export function installPluginPackage(paths: WorkerPaths, spec: string): void {
-  const result = spawnSync(DSH_BIN, ["plugin", "--profile", PROFILE_NAME, "add", spec], {
+  const result = spawnSync(dshBin(), ["plugin", "--profile", PROFILE_NAME, "add", spec], {
     cwd: paths.home,
     env: { ...process.env, ...runtimeEnv(paths), DSH_HOME: paths.home },
     stdio: "inherit",
@@ -106,7 +109,7 @@ export function grantVersionExemptions(
   for (const name of packageNames) {
     const packageVersion = `${name}@${installedPackageVersion(paths, name)}`;
     const result = spawnSync(
-      DSH_BIN,
+      dshBin(),
       [
         "plugin",
         "--profile",

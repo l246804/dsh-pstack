@@ -54,6 +54,16 @@ export interface RuntimeConfig {
   caseTimeoutMs?: number;
   /** Network namespace strategy for worker containers. */
   networkMode?: "host" | "bridge";
+  /** Root outside the repository where each worker keeps its workspace. */
+  workspaceRoot?: string;
+  /** Root for worker home, browser, evidence, and logs. */
+  workersDir?: string;
+  /** Docker-compatible CLI binary. */
+  dockerBin?: string;
+  /** DSH CLI binary. */
+  dshBin?: string;
+  /** Host Chrome binary for agent-browser. */
+  chromePath?: string;
 }
 
 export interface PlaygroundConfig {

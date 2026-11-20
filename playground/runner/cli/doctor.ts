@@ -2,10 +2,12 @@ import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 import { agentBrowserBin, chromeExecutable } from "../browser/session.ts";
-import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE } from "../worker/home.ts";
+import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE, readPlaygroundConfig } from "../worker/home.ts";
+import { runtimeSettings } from "../config/runtime.ts";
 import { hostCommand, IS_WINDOWS } from "../worker/platform.ts";
 import { imageProblems } from "../container/image.ts";
 
+await readPlaygroundConfig(CONFIG_FILE);
 const failures: string[] = [];
 
 function check(name: string, ok: boolean, detail: string): void {
@@ -47,7 +49,7 @@ check("vp", vp !== null, vp ?? "not found on PATH");
 const pnpm = versionOf(hostCommand("pnpm"));
 check("pnpm", pnpm !== null, pnpm ?? "not found on PATH");
 
-const dsh = versionOf(process.env.DSH_BIN ?? hostCommand("dsh"));
+const dsh = versionOf(runtimeSettings().dshBin ?? hostCommand("dsh"));
 check("dsh", dsh !== null, dsh ?? "not found on PATH");
 
 const sandboxProblems =
@@ -68,8 +70,7 @@ try {
   check("chrome", false, error instanceof Error ? error.message : String(error));
 }
 
-const configFile = CONFIG_FILE;
-check("config", existsSync(configFile), configFile);
+check("config", true, CONFIG_FILE);
 check(
   "credentials",
   true,

@@ -58,7 +58,7 @@ export default {
 - 也可以用 `apiKeyEnv` 从环境或 `.credentials.yaml` 解析，避免把密钥写进文件。
 - Linux 默认 `runtime.networkMode: "host"`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
 - macOS/Windows 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `runtime.networkMode: "host"` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
-- 运行目录默认 `$HOME/.dsh-playground/isolated` 和 `playground/.workers`；`PLAYGROUND_WORKSPACE_ROOT` / `PLAYGROUND_WORKERS_DIR` 只用于测试隔离，不作为日常配置。
+- 运行目录默认 `playground/.workers`；workspace 默认在其下的 `isolated/`，整个 `.workers` 目录被忽略。`runtime.workspaceRoot` / `runtime.workersDir` 可覆盖，测试隔离也通过这两个字段设置。
 
 ## 凭证
 
@@ -74,11 +74,21 @@ export default {
 - `browser.headed` 只对 managed 模式生效。
 - 不使用 `--state`。需要复现登录态时再单独评审，不把 auth 文件作为默认路径。
 
-## 单个场景超时
+## 运行配置
 
-- `runtime.caseTimeoutMs` 控制一个 `run-scenario` 的最长执行时间，默认 `600000`（10 分钟），必须为正整数毫秒。
-- 超时后 native 写 `blocked`、adapted 写 `inconclusive` record，批次继续执行后续场景。
-- 需要跑耗时长的 probe 时显式设置，例如 `runtime.caseTimeoutMs: 1200000`；不要把默认值改成无限。
+`config.runtime` 是唯一的运行时配置来源：
+
+| 字段 | 默认 | 用途 |
+| --- | --- | --- |
+| `caseTimeoutMs` | `600000` | 单个场景最长执行时间 |
+| `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
+| `workspaceRoot` | `playground/.workers/isolated` | workspace 根目录 |
+| `workersDir` | `playground/.workers` | home、browser、evidence 根目录 |
+| `dockerBin` | `docker` | Docker-compatible CLI |
+| `dshBin` | `dsh` | 宿主 DSH CLI |
+| `chromePath` | 自动发现 | 宿主 Chrome 可执行文件 |
+
+需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。
 
 ## 完成标准
 

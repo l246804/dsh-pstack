@@ -35,6 +35,11 @@ export default {
   runtime: {
     // caseTimeoutMs: 600000,
     // networkMode: "host", // Linux default; macOS/Windows default is bridge
+    // workspaceRoot: "playground/.workers/isolated",
+    // workersDir: "playground/.workers",
+    // dockerBin: "docker",
+    // dshBin: "dsh",
+    // chromePath: "/path/to/chrome",
   },
 
   browser: {
