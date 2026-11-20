@@ -1,0 +1,14 @@
+{
+  "inline-video-playback": {
+    "status": "supported",
+    "reason": "截图显示回复内嵌了真实视频播放器，加载了 sample.mp4 并出现播放控件与首帧画面，满足 rubric。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/deepseek-v4.1-flash",
+        "effort": "low"
+      }
+    }
+  }
+}

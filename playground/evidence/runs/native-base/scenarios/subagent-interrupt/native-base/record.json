@@ -1,0 +1,162 @@
+{
+  "scenarioId": "subagent-interrupt",
+  "variant": "native",
+  "environment": {
+    "worker": 0,
+    "dshVersion": "0.2.2-rc.4",
+    "pstackVersion": "0.15.43",
+    "adaptedVersion": null,
+    "matrix": {
+      "id": "base",
+      "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
+      "kind": "base",
+      "enabledPluginPackages": []
+    },
+    "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
+    "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+  },
+  "target": {
+    "provider": "magpie",
+    "model": "workbuddy/minimax-m3.1-flash",
+    "effort": "low"
+  },
+  "session": {
+    "sessionId": "session-f7671e70-5bec-4fca-b9f8-06568d8bb622",
+    "sessionFile": "session.jsonl.zstd",
+    "workspacePath": "<WORKSPACE>",
+    "agentPreset": "standard",
+    "skillLoads": [],
+    "toolCalls": [
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=ls -la; cat slow_task.mjs 2>/dev/null"
+      },
+      {
+        "name": "subagent",
+        "status": "ok",
+        "argsSummary": "subagent name=runner"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=sleep 3; ls -la"
+      },
+      {
+        "name": "job_kill",
+        "status": "error",
+        "argsSummary": "job_kill",
+        "errorText": "Error: unknown job runner"
+      },
+      {
+        "name": "list_agents",
+        "status": "ok",
+        "argsSummary": "list_agents"
+      },
+      {
+        "name": "send_message",
+        "status": "ok",
+        "argsSummary": "send_message"
+      },
+      {
+        "name": "wait_agent",
+        "status": "ok",
+        "argsSummary": "wait_agent"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=ls -la; pgrep -fa slow_task.mjs || echo \"no slow_task process\""
+      }
+    ],
+    "turnEndReason": "completed",
+    "assistantText": "完成，取消成功。\n\n- 子代理 `runner` 已启动并运行 `slow_task.mjs`，`started.txt` 已生成。\n- `job_kill` 对该子代理无效（\"unknown job runner\"——它不是后台 job，而是子代理树节点），改用 `send_message` 让它自行 kill 掉进程。\n- 子代理确认：`kill 673` 成功，`pkill -f slow_task.mjs` 无残留进程。\n- 校验：目录中只有 `started.txt`，`done.txt` **未出现**，任务确实没跑完。",
+    "userText": "起一个后台子代理运行工作区里的 `slow_task.mjs`。这个脚本会先写 `started.txt`，等待 90 秒后再创建 `done.txt`。启动后马上取消它，别让它跑完；取消后确认 done.txt 没有出现。直接启动子代理并尝试取消，失败就告诉我结果。",
+    "userTexts": [
+      "起一个后台子代理运行工作区里的 `slow_task.mjs`。这个脚本会先写 `started.txt`，等待 90 秒后再创建 `done.txt`。启动后马上取消它，别让它跑完；取消后确认 done.txt 没有出现。直接启动子代理并尝试取消，失败就告诉我结果。"
+    ],
+    "autoAnswers": [],
+    "analysis": {
+      "tools": [
+        {
+          "name": "bash",
+          "attempts": 3,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "job_kill",
+          "attempts": 1,
+          "failures": 1,
+          "firstAttemptStatus": "error",
+          "finalStatus": "error",
+          "recovered": false
+        },
+        {
+          "name": "list_agents",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "send_message",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "subagent",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "wait_agent",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        }
+      ],
+      "artifacts": [],
+      "warnings": []
+    }
+  },
+  "artifacts": {
+    "recordFile": "record.json",
+    "screenshotFile": "screenshot.png",
+    "observed": ["skillLoads=none", "toolCalls=8", "warnings=0"]
+  },
+  "semanticReview": {
+    "status": "gap",
+    "reason": "started.txt 存在且 done.txt 不存在，但停止来自 send_message 让子代理自行 job_kill，属自愿停手；模型没有系统级中断工具。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/deepseek-v4.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "mechanicalFailures": [],
+  "verdict": {
+    "variant": "native",
+    "status": "gap",
+    "gaps": [
+      "started.txt 存在且 done.txt 不存在，但停止来自 send_message 让子代理自行 job_kill，属自愿停手；模型没有系统级中断工具。"
+    ]
+  },
+  "batchId": "native-base-20261120192122",
+  "capturedAt": "2026-11-20T11:21:23.134Z",
+  "scenarioHash": "e9ad13199a77b485e687eb03245ef4ea4c0272bf4aee955253b066bd59cd4a86"
+}

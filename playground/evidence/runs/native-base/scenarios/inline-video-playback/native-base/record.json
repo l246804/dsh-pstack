@@ -1,0 +1,390 @@
+{
+  "scenarioId": "inline-video-playback",
+  "variant": "native",
+  "environment": {
+    "worker": 0,
+    "dshVersion": "0.2.2-rc.4",
+    "pstackVersion": "0.15.43",
+    "adaptedVersion": null,
+    "matrix": {
+      "id": "base",
+      "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
+      "kind": "base",
+      "enabledPluginPackages": []
+    },
+    "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
+    "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+  },
+  "target": {
+    "provider": "magpie",
+    "model": "workbuddy/minimax-m3.1-flash",
+    "effort": "low"
+  },
+  "session": {
+    "sessionId": "session-c6176b9a-9e6c-4511-99d0-a074d8af174a",
+    "sessionFile": "session.jsonl.zstd",
+    "workspacePath": "<WORKSPACE>",
+    "agentPreset": "standard",
+    "skillLoads": [],
+    "toolCalls": [
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=ls -la assets/ 2>&1; file assets/sample.mp4 2>&1; du -h assets/sample.mp4 2>&1"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=curl -s -o /dev/null -w \"%{http_code} %{content_type}⧵n\" http://127.0.0.1:8180/assets/sample.mp4; curl -s -o /dev/null -w \"%{http_code}⧵n\" http://127.0.0.1:8180/"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /dsh/workspace/inline-video-playback && node -e \"fetch('http://127.0.0.1:8180/assets/sample.mp4').then(r=>console.log(r.status,r.headers.get('content-type'),r.headers.get('content-leng"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=ls /usr/local/lib/node_modules/@deepseek-ai/dsh/; ls /usr/local/lib/node_modules/@deepseek-ai/dsh/apps 2>/dev/null"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh && ls src lib && cat package.json | head -60"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules && ls -d dsh-web* dsh-client* 2>/dev/null; ls | head -80"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && ls"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -ril \"video/\" --include=*.ts --include=*.js --include=*.vue dsh-client-ui-renderer dsh-client-ui-attachme"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && ls dsh-api-workspace-files/src dsh-deliverable-file-references/src 2>/dev/null"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rn \"video\" dsh-client-ui-renderer/src dsh-client-ui-attachment/src dsh-client-ui-chat/src dsh-client-ui-"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rn \"image/\" dsh-client-ui-renderer/src 2>/dev/null | head -40"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && ls dsh-client-ui-renderer; ls dsh-client-ui-renderer/lib | head"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-renderer && ls src && grep -rn \"video⧵|mp4\" src lib/client.js | head -30"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rln \"video\" --include=*.js --include=*.ts dsh-client-ui-*/src dsh-client-ui-*/lib 2>/dev/null | head -20"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -n \"video\" dsh-client-ui-conversation/lib/client.js | head -20; echo ---; grep -rn \"video\" dsh-client-ui-"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rn \"video\" dsh-client-ui-sidebar-documentpreview/src/client/document/unviewable.ts; grep -rn \"api/file\" "
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && ls dsh-client-ui-conversation/src/client 2>/dev/null; grep -rln \"dangerouslySetInnerHTML⧵|allowedTags⧵|rehype\""
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && wc -l dsh-client-ui-renderer/src/client/index.ts && grep -n \"video⧵|img⧵|image⧵|sanitiz⧵|allowedAttributes⧵|ur"
+      },
+      {
+        "name": "read",
+        "status": "ok",
+        "argsSummary": "read file_path=/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-renderer/src/client/index.ts"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rln \"marked⧵|markdown-it⧵|remark⧵|micromark\" dsh-client-ui-*/src dsh-client-ui-*/lib 2>/dev/null | head "
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rln \"marked⧵|markdown-it\" dsh-client-ui-*/src | head; echo ---; ls dsh-client-ui-conversation/src/client"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /dsh/workspace/inline-video-playback && node -e \" const u='http://127.0.0.1:8180/api/file?path='+encodeURIComponent('/dsh/workspace/inline-video-playback/assets/sample.mp4'); fetch(u)."
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && ls dsh-client-ui-primitives/src/client 2>/dev/null | head -40; grep -rln \"react-markdown⧵|Markdown\" dsh-client"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rl \"lexical⧵|html\" dsh-client-ui-*/src --include=*.tsx | xargs grep -ln \"markdown⧵|Markdown\" 2>/dev/null"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rl \"markdown\" --include=package.json . | head -20"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && ls dsh-client-ui-primitives 2>/dev/null || ls | grep primitives; ls dsh-client-ui-chat/src/client 2>/dev/null"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-chat/src/client && ls conversation-nodes; grep -rn \"img⧵|image\" conversation-nodes/*.ts* 2>/dev/nul"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-chat/src/client && grep -rn \"html⧵|htmlToJsx⧵|parseHtml\" conversation-nodes/message.ts | head -20; "
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rln \"dangerouslySetInnerHTML\" --include=*.js --include=*.ts . | grep -v node_modules | head -20"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-renderer && grep -o \"video[^⧵\"']⧵{0,80⧵}\" lib/client.js | head -30; echo ===; grep -o \"allowedTags⧵"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rn \"mdast⧵|fromMarkdown⧵|toHtml⧵|renderMarkdown\" --include=*.ts --include=*.tsx . 2>/dev/null | grep -v "
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && ls dsh-web-frontend; ls dsh-web-frontend/dist | head"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend && ls -R src | head -50; ls dist/assets | head"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules && ls | grep -i \"markdown⧵|remark⧵|mdast⧵|micromark⧵|marked\""
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && grep -o \"video\" index-Ciz7DZxv.js | wc -l; grep -o \"marked⧵|markdown⧵|remark\" ind"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && grep -o \".⧵{120⧵}video.⧵{120⧵}\" index-Ciz7DZxv.js | head -20"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && grep -o \"markdown[A-Za-z]⧵{0,20⧵}\" index-Ciz7DZxv.js | sort | uniq -c | sort -rn "
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && grep -o \".⧵{80⧵}markdown.⧵{80⧵}\" index-Ciz7DZxv.js | head -20"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && grep -o \"function Bp(.⧵{0,2000⧵}\" index-Ciz7DZxv.js | head -1"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && grep -o \"Bp=[^,;]⧵{0,300⧵}\" index-Ciz7DZxv.js | head; echo ===; grep -o \"pathImag"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && python3 - <<'EOF' s=open('index-Ciz7DZxv.js').read() i=s.find('Bp=x.memo(function"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && node -e \" const s=require('fs').readFileSync('index-Ciz7DZxv.js','utf8'); const i"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && node -e \" const s=require('fs').readFileSync('index-Ciz7DZxv.js','utf8'); for (co"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && node -e \" const s=require('fs').readFileSync('index-Ciz7DZxv.js','utf8'); const i"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && node -e \" const s=require('fs').readFileSync('dsh-client-ui-attachment/lib/client.js','utf8'); let i=-1; while"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && node -e \" const s=require('fs').readFileSync('dsh-client-ui-attachment/lib/client.js','utf8'); const i=s.index"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && node -e \" const s=require('fs').readFileSync('index-Ciz7DZxv.js','utf8'); let j=-"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && node -e \" const s=require('fs').readFileSync('index-Ciz7DZxv.js','utf8'); for (co"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-attachment && ls -R src | head -40; grep -rn \"image/⧵|audio/⧵|video/⧵|mediaType\" src | head -30"
+      },
+      {
+        "name": "read",
+        "status": "ok",
+        "argsSummary": "read file_path=/usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-attachment/src/MessageImage.tsx"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && cat dsh-client-ui-sidebar-documentpreview/src/client/document/unviewable.ts; ls dsh-client-ui-deliverables/src"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rl '\"video\"' --include=*.js --include=*.ts dsh-client-ui-*/lib dsh-client-ui-*/src dsh-web-frontend/dist"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-sidebar-documentpreview && ls src/client src/client/document 2>/dev/null; grep -rn \"video⧵|register"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=which ffmpeg ffprobe 2>&1; ls /usr/bin | grep -i ff | head"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-host-frontend-static && ls src; grep -rn \"static⧵|root⧵|dist\" src/*.ts | head -40"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rn \"slots.register⧵|slots.inject\" dsh-client-ui-*/src --include=*.ts --include=*.tsx | grep -o \"'[a-zA-Z"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rn \"class=⧵\"video⧵|video\" dsh-web-frontend/dist/assets/index-Ciz7DZxv.js | grep -i \"jsx⧵|createElement\" "
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-web-frontend/dist/assets && node -e \" const s=require('fs').readFileSync('index-Ciz7DZxv.js','utf8'); for (co"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai/dsh-client-ui-deliverables/src/client && grep -n \"image⧵|video⧵|preview⧵|img\" PresentedFileCard.tsx PresentRow.ts"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /usr/local/lib/node_modules/@deepseek-ai/dsh/node_modules/@deepseek-ai && grep -rn \"image/⧵|video/⧵|mediaType⧵|accept\" dsh-attachment/src dsh-attachment-local/src 2>/dev/null | head -3"
+      }
+    ],
+    "turnEndReason": "completed",
+    "assistantText": "我实际查了一遍这条链路（只做这一次尝试，不做改造），结论是：**做不到内嵌视频播放**。\n\n## 我验证到的事实\n\n1. **回复正文只有 Markdown 渲染器**，没有视频通道。前端 bundle（`dsh-web-frontend/dist/assets/index-Ciz7DZxv.js`）里的节点分发函数 `Zp(...)` 只有这些 case：`text / paragraph / heading / blockquote / hr / break / strong / em / del / inlineCode / html / code / math / list / listItem / table / link / image / imageReference / footnoteReference`。\n   - `case\"html\"` 只 `return e.value`（当作**文本子节点**返回），React 会把 `<video ...>` 转义成纯文本显示，**不会**变成 DOM 元素；\n   - `case\"image\"` 固定渲染 `<img src=…>`，mp4 走 `<img>` 必然不播。\n\n2. **整个前端产物里没有 `<video>` 元素**。全量 grep `jsx(\"video\"` / `createElement(\"video\"` / `<video`，命中的只有 React DOM 内部的事件插件、axe/lighthouse 规则文案，和一个 mp4 的**文件类型图标映射**（`mp4:\"video\"` → 图标）——没有任何播放器组件。\n\n3. **附件通道只收图片**。`dsh-attachment/src/types.ts` 里 `ImageMediaType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'`，`dsh-attachment-local` 还会校验声明类型与字节一致；mp4 连上传都过不了。\n\n4. **文件预览也把 mp4 列为不可查看**。`dsh-client-ui-sidebar-documentpreview/src/client/document/unviewable.ts:11` 的 `UNVIEWABLE_BINARY_EXTENSIONS` 第一组就是 `mp4, mov, avi, mkv, webm, flv, wmv, m4v`。\n\n5. **工作区文件接口也拿不到裸流**：`/api/file?path=…` 对该 mp4 返回 401（需要会话授权，且非静态资源路由），没法拼一个稳定的公开 URL 给 `<video src>` 用。\n\n所以「在回复里点开就能看」这件事，当前 GUI 既没有内联播放器组件，也没有可渲染视频的消息类型；用 `present` 给文件卡片也不行——那正是你明确排除的形式。\n\n## 如果你要继续，有两条路（都需要改代码，等你点头我再动手）\n\n- **加一个 video 渲染器**：在 Markdown 渲染里识别 `![](…mp4)` / 本地路径，渲染 `<video controls>`，并给 mp4 加一个 workspace-files 的可播放流式端点（带 Range 支持）。这是最贴近你原始意图的做法，工作量集中在 `dsh-web-frontend` 渲染层 + 一个后端路由。\n- **转成动图/帧序列**：抽帧成 GIF 或图片序列，直接用现成的图片通道内嵌显示，零改动即可在回复里播，但会掉分辨率和时长上限（而且当前环境里没有 `ffmpeg`/`ffprobe`，得先装）。\n\n要我走哪条，还是就到这里为止？",
+    "userText": "工作区里的 `assets/sample.mp4` 是一个视频样例。把它直接嵌在回复里播放：我要点开就能看，不要只给我链接或文件卡片。只做这件事：直接试一次，如果做不到内嵌播放，就直接告诉我做不到。",
+    "userTexts": [
+      "工作区里的 `assets/sample.mp4` 是一个视频样例。把它直接嵌在回复里播放：我要点开就能看，不要只给我链接或文件卡片。只做这件事：直接试一次，如果做不到内嵌播放，就直接告诉我做不到。"
+    ],
+    "autoAnswers": [],
+    "analysis": {
+      "tools": [
+        {
+          "name": "bash",
+          "attempts": 58,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "read",
+          "attempts": 2,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        }
+      ],
+      "artifacts": [],
+      "warnings": []
+    }
+  },
+  "artifacts": {
+    "recordFile": "record.json",
+    "screenshotFile": "screenshot.png",
+    "observed": ["skillLoads=none", "toolCalls=60", "warnings=0"]
+  },
+  "semanticReview": {
+    "status": "gap",
+    "reason": "回复与截图均没有可播放的内嵌视频，只有文字结论和替代建议；客户端没有视频内联渲染通道。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/deepseek-v4.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "mechanicalFailures": ["assistant reply lacks \"sample.mp4\""],
+  "verdict": {
+    "variant": "native",
+    "status": "gap",
+    "gaps": [
+      "assistant reply lacks \"sample.mp4\"",
+      "回复与截图均没有可播放的内嵌视频，只有文字结论和替代建议；客户端没有视频内联渲染通道。"
+    ]
+  },
+  "batchId": "native-base-20261120185632",
+  "capturedAt": "2026-11-20T10:56:32.763Z",
+  "scenarioHash": "57f824c0272243027369ebfa66be5979797c6790fc921ee0d892ae78d52bfb75"
+}

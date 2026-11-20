@@ -1,0 +1,50 @@
+{
+  "inline-video-playback": {
+    "status": "gap",
+    "reason": "回复与截图均没有可播放的内嵌视频，只有文字结论和替代建议；客户端没有视频内联渲染通道。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/deepseek-v4.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "subagent-interrupt": {
+    "status": "gap",
+    "reason": "started.txt 存在且 done.txt 不存在，但停止来自 send_message 让子代理自行 job_kill，属自愿停手；模型没有系统级中断工具。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/deepseek-v4.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "subagent-model-routing": {
+    "status": "supported",
+    "reason": "subagent 工具的显式换路由被拒绝，但 workflow 工具的逐子代理 provider/model 覆盖成功把子代理路由到 magpie/workbuddy/deepseek-v4.1-flash，并产出了 urgent.md、later.md、done.txt。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/deepseek-v4.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "subagent-readonly-sandbox": {
+    "status": "gap",
+    "reason": "只读子代理成功创建 readonly-probe.txt，review.md 记录写入被允许；沙箱没有强制只读。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/deepseek-v4.1-flash",
+        "effort": "low"
+      }
+    }
+  }
+}
