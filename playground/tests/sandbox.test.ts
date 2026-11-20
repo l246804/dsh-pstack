@@ -82,7 +82,13 @@ describe("docker container spec", () => {
     const paths = workerPaths();
     mkdirSync(paths.home, { recursive: true });
     const args = dockerRunArgs(
-      containerSpec({ paths, plan, image: "dsh-playground:test", hostPort: 49152 }),
+      containerSpec({
+        paths,
+        plan,
+        image: "dsh-playground:test",
+        networkMode: "bridge",
+        hostPort: 49152,
+      }),
     );
     expect(args).toContain("--read-only");
     expect(args).toContain("host.docker.internal:host-gateway");
@@ -90,6 +96,18 @@ describe("docker container spec", () => {
     expect(args).toContain("no-new-privileges");
     expect(args).toContain("127.0.0.1:49152:8080");
     expect(args.at(-1)).toBe("dsh-playground:test");
+    const hostArgs = dockerRunArgs(
+      containerSpec({
+        paths,
+        plan,
+        image: "dsh-playground:test",
+        networkMode: "host",
+        hostPort: 49152,
+      }),
+    );
+    expect(hostArgs).toContain("--network");
+    expect(hostArgs).toContain("host");
+    expect(hostArgs).not.toContain("--publish");
   });
 
   it("uses the dsh version and host architecture in the image tag", () => {

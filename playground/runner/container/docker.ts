@@ -4,7 +4,7 @@ import type { ProviderPlan } from "../config/provider.ts";
 import type { WorkerPaths } from "../worker/worker.ts";
 import { docker } from "./docker-command.ts";
 import { requireImage } from "./image.ts";
-import { CONTAINER_PORT, containerSpec, dockerRunArgs } from "./spec.ts";
+import { CONTAINER_PORT, containerSpec, dockerRunArgs, type ContainerSpec } from "./spec.ts";
 
 export interface StartedWeb {
   url: string;
@@ -22,6 +22,10 @@ function publishedPort(name: string): number {
     throw new Error(`cannot read the published port for ${name}: ${result.err || result.out}`);
   }
   return port;
+}
+
+function portOf(spec: ContainerSpec): number {
+  return spec.networkMode === "host" ? spec.containerPort : publishedPort(spec.name);
 }
 
 function containerRunning(name: string): boolean {
@@ -51,18 +55,18 @@ export class DockerSandbox {
     if (run.status !== 0) {
       throw new Error(`docker run failed for ${spec.name}: ${run.err || run.out}`);
     }
-    return this.waitForUrl(paths, spec.name).catch((error: unknown) => {
+    return this.waitForUrl(paths, spec).catch((error: unknown) => {
       docker(["rm", "-f", spec.name]);
       throw error;
     });
   }
 
-  private async waitForUrl(paths: WorkerPaths, name: string): Promise<StartedWeb> {
-    const port = publishedPort(name);
+  private async waitForUrl(paths: WorkerPaths, spec: ContainerSpec): Promise<StartedWeb> {
+    const port = portOf(spec);
     const deadline = Date.now() + START_TIMEOUT_MS;
     let tail = "";
     while (Date.now() < deadline) {
-      tail = logs(name);
+      tail = logs(spec.name);
       const found = tail.match(/dsh web:\s*(http:\/\/\S+)/)?.[1];
       if (found) {
         const url = new URL(found);
@@ -73,14 +77,14 @@ export class DockerSandbox {
         writeFileSync(paths.urlFile, `${url.toString()}\n`);
         return { url: url.toString(), port };
       }
-      if (!containerRunning(name)) {
+      if (!containerRunning(spec.name)) {
         writeFileSync(paths.logFile, `${tail}\n`);
-        throw new Error(`container ${name} exited before reporting a URL: ${tail}`);
+        throw new Error(`container ${spec.name} exited before reporting a URL: ${tail}`);
       }
       await sleep(POLL_INTERVAL_MS);
     }
     writeFileSync(paths.logFile, `${tail}\n`);
-    throw new Error(`container ${name} did not report a URL within 120s: ${tail}`);
+    throw new Error(`container ${spec.name} did not report a URL within 120s: ${tail}`);
   }
 
   stop(paths: WorkerPaths): { stopped: boolean; id: string | null } {

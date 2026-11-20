@@ -20,6 +20,7 @@ import type {
 } from "../types.ts";
 import { readConfig } from "../config/config.ts";
 import type { ProviderPlan } from "../config/provider.ts";
+import { defaultNetworkMode } from "../container/spec.ts";
 import { profilePatchFile } from "./profile.ts";
 import { NATIVE_ROOT } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
@@ -36,8 +37,9 @@ function anonymousModels(models: ProviderModel[]): ProviderModel[] {
   return models.map((model) => ({ ...model, name: "匿名模型" }));
 }
 
-/** Re-point a host-loopback gateway at the Docker host gateway. */
+/** Host network keeps loopback; bridge needs the Docker host gateway. */
 function workerBaseURL(value: string): string {
+  if (defaultNetworkMode() === "host") return value;
   const url = new URL(value);
   if (url.hostname === "127.0.0.1" || url.hostname === "localhost") {
     url.hostname = "host.docker.internal";

@@ -49,7 +49,17 @@ const {
 
 export class InfraError extends Error {}
 
-const CASE_TIMEOUT_MS = 600_000;
+const DEFAULT_CASE_TIMEOUT_MS = 600_000;
+
+function caseTimeoutMs(): number {
+  const raw = process.env.PLAYGROUND_CASE_TIMEOUT_MS;
+  if (raw === undefined || raw === "") return DEFAULT_CASE_TIMEOUT_MS;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error("PLAYGROUND_CASE_TIMEOUT_MS must be a positive integer number of milliseconds");
+  }
+  return value;
+}
 
 function sleep(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -479,7 +489,8 @@ export function attemptScenario(input: AttemptInput): {
     ...(browser === undefined ? {} : { browser }),
   });
   const autoAnswers: Array<{ question: string; answer: string }> = [];
-  const caseDeadline = Date.now() + CASE_TIMEOUT_MS;
+  const caseTimeout = caseTimeoutMs();
+  const caseDeadline = Date.now() + caseTimeout;
   try {
     try {
       session.raw(["close", "--all"]);
@@ -527,7 +538,7 @@ export function attemptScenario(input: AttemptInput): {
       }
       for (;;) {
         if (Date.now() > caseDeadline) {
-          throw new InfraError("scenario exceeded 10 minutes without completing");
+          throw new InfraError(`scenario exceeded ${caseTimeout} ms without completing`);
         }
         try {
           throwIfStopped(paths, session, screenshotFile);

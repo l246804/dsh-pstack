@@ -5,8 +5,24 @@ import type { ProviderPlan } from "../config/provider.ts";
 import type { WorkerPaths } from "../worker/worker.ts";
 import { runtimeEnv } from "../worker/worker.ts";
 
-/** The port DSH binds inside the container; the host port is published by Docker. */
+/** The port DSH binds inside the container; bridge mode publishes it on the host. */
 export const CONTAINER_PORT = 8080;
+export type NetworkMode = "bridge" | "host";
+
+/**
+ * Linux uses host networking so the container sees the host loopback and routes.
+ * Docker Desktop on macOS/Windows defaults to bridge plus host.docker.internal.
+ */
+export function defaultNetworkMode(): NetworkMode {
+  const override = process.env.PLAYGROUND_NETWORK_MODE;
+  if (override !== undefined && override !== "") {
+    if (override !== "host" && override !== "bridge") {
+      throw new Error("PLAYGROUND_NETWORK_MODE must be host or bridge");
+    }
+    return override;
+  }
+  return process.platform === "linux" ? "host" : "bridge";
+}
 
 export interface ContainerMount {
   source: string;
@@ -21,6 +37,7 @@ export interface ContainerSpec {
   workdir: string;
   mounts: ContainerMount[];
   env: Record<string, string>;
+  networkMode: NetworkMode;
   hostPort?: number;
   containerPort: number;
 }
@@ -29,6 +46,7 @@ export interface ContainerSpecInput {
   paths: WorkerPaths;
   plan: ProviderPlan;
   image: string;
+  networkMode?: NetworkMode;
   hostPort?: number;
 }
 
@@ -39,6 +57,11 @@ export interface ContainerSpecInput {
  */
 export function containerSpec(input: ContainerSpecInput): ContainerSpec {
   const { paths, plan, image, hostPort } = input;
+  const networkMode = input.networkMode ?? defaultNetworkMode();
+  const resolvedHostPort =
+    hostPort ?? (networkMode === "host" ? CONTAINER_PORT + paths.index : undefined);
+  const containerPort =
+    networkMode === "host" ? (resolvedHostPort ?? CONTAINER_PORT) : CONTAINER_PORT;
   // Ensure the host-side runtime directories exist before they become mount sources.
   runtimeEnv(paths);
   const mounts: ContainerMount[] = [
@@ -75,12 +98,15 @@ export function containerSpec(input: ContainerSpecInput): ContainerSpec {
       TMPDIR: paths.containerTmp,
       GH_CONFIG_DIR: join(paths.containerHome, "gh-config"),
       GIT_TERMINAL_PROMPT: "0",
+      DSH_PORT: String(containerPort),
+      ...(networkMode === "host" ? { DSH_HOST: "127.0.0.1" } : {}),
       ...(plan.apiKeyEnv === undefined || plan.apiKey === undefined
         ? {}
         : { [plan.apiKeyEnv]: plan.apiKey }),
     },
-    hostPort,
-    containerPort: CONTAINER_PORT,
+    networkMode,
+    hostPort: resolvedHostPort,
+    containerPort,
   };
 }
 
@@ -93,8 +119,6 @@ export function dockerRunArgs(spec: ContainerSpec): string[] {
     spec.name,
     "--read-only",
     "--init",
-    "--add-host",
-    "host.docker.internal:host-gateway",
     "--tmpfs",
     "/tmp:rw,size=512m",
     "--cap-drop",
@@ -104,14 +128,18 @@ export function dockerRunArgs(spec: ContainerSpec): string[] {
     "--workdir",
     spec.workdir,
   ];
+  if (spec.networkMode === "host") args.push("--network", "host");
+  else args.push("--add-host", "host.docker.internal:host-gateway");
   if (spec.user !== null) args.push("--user", spec.user);
   for (const mount of spec.mounts) {
     args.push("-v", `${mount.source}:${mount.target}:${mount.readonly ? "ro" : "rw"}`);
   }
-  args.push(
-    "--publish",
-    `127.0.0.1:${spec.hostPort === undefined ? "" : String(spec.hostPort)}:${spec.containerPort}`,
-  );
+  if (spec.networkMode === "bridge") {
+    args.push(
+      "--publish",
+      `127.0.0.1:${spec.hostPort === undefined ? "" : String(spec.hostPort)}:${spec.containerPort}`,
+    );
+  }
   for (const [key, value] of Object.entries(spec.env)) {
     args.push("--env", `${key}=${value}`);
   }

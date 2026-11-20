@@ -55,7 +55,8 @@ export default {
 - 模型未写 `efforts` 时默认 `["low", "high"]`。
 - 宿主 patch 默认是 `~/.dsh/profiles/web/cordis.patch.yml`，可用 `PLAYGROUND_HOST_PATCH_FILE` 指定。
 - `apiKey` 先按 `apiKeyEnv` 从 `env` 取值，取不到时保留 `${ENV}` 占位符，由配置读取器从环境或 `.credentials.yaml` 解析。
-- 宿主的 `127.0.0.1` / `localhost` baseURL 在写 worker patch 时会重写为 `host.docker.internal`；Docker 以 host-gateway 暴露宿主回环。
+- Linux 默认 `PLAYGROUND_NETWORK_MODE=host`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
+- macOS/Windows 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `PLAYGROUND_NETWORK_MODE=host` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
 
 ## 凭证
 
@@ -70,6 +71,12 @@ export default {
 - `browser.mode: "cdp"`：连接宿主 Chrome，必须提供 `browser.cdpUrl`，并使用专用 `--user-data-dir`；`agent-browser` 会加 `--pin-tab`。
 - `browser.headed` 只对 managed 模式生效。
 - 不使用 `--state`。需要复现登录态时再单独评审，不把 auth 文件作为默认路径。
+
+## 单个场景超时
+
+- `PLAYGROUND_CASE_TIMEOUT_MS` 控制一个 `run-scenario` 的最长执行时间，默认 `600000`（10 分钟），必须为正整数毫秒。
+- 超时后 native 写 `blocked`、adapted 写 `inconclusive` record，批次继续执行后续场景。
+- 需要跑耗时长的 probe 时显式设置，例如 `PLAYGROUND_CASE_TIMEOUT_MS=1200000`；不要把默认值改成无限。
 
 ## 完成标准
 
