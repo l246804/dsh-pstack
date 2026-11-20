@@ -61,7 +61,6 @@ const defaultRuntimeSettings = {
   dshBin: "dsh",
   vpxBin: "vpx",
   pnpmBin: "pnpm",
-  gitBin: "git",
 };
 setRuntimeSettings(defaultRuntimeSettings);
 
@@ -98,7 +97,6 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
       dshBin: "dsh",
       vpxBin: "vpx",
       pnpmBin: "pnpm",
-      gitBin: "git",
     },
     providers: {
       "provider-a": {

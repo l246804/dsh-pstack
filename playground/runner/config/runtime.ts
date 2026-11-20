@@ -15,7 +15,6 @@ export type RuntimeSettings = Pick<
   | "dshBin"
   | "vpxBin"
   | "pnpmBin"
-  | "gitBin"
   | "chromePath"
 >;
 

@@ -92,7 +92,6 @@ export default {
 | `dshBin` | `dsh` | 宿主 DSH CLI |
 | `vpxBin` | `vpx` | Vite+ CLI |
 | `pnpmBin` | `pnpm` | pnpm CLI |
-| `gitBin` | `git` | git CLI |
 | `chromePath` | 自动发现 | 宿主 Chrome 可执行文件 |
 
 需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。`runtime` 及除 `chromePath` 外的字段都是必填；缺失时配置加载直接报错。

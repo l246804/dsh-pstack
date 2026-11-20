@@ -78,8 +78,6 @@ export interface RuntimeConfig {
   vpxBin: string;
   /** pnpm binary. */
   pnpmBin: string;
-  /** git binary. */
-  gitBin: string;
   /** Host Chrome binary; omitted means discover the installed browser. */
   chromePath?: string;
 }

@@ -230,7 +230,6 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
     dshBin: string(parsed.dshBin, "runtime.dshBin"),
     vpxBin: string(parsed.vpxBin, "runtime.vpxBin"),
     pnpmBin: string(parsed.pnpmBin, "runtime.pnpmBin"),
-    gitBin: string(parsed.gitBin, "runtime.gitBin"),
     ...(parsed.chromePath === undefined
       ? {}
       : { chromePath: string(parsed.chromePath, "runtime.chromePath") }),

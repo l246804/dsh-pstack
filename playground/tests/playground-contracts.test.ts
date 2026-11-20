@@ -123,7 +123,6 @@ function config(provider = "provider-a", model = "model-a", effort = "low") {
       dshBin: "dsh",
       vpxBin: "vpx",
       pnpmBin: "pnpm",
-      gitBin: "git",
     },
     providers: {
       "provider-a": {

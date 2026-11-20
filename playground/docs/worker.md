@@ -36,7 +36,7 @@ worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`；容�
 - 写 `pstack-models.json`、`pstack-settings.json` 和 `cordis.patch.yml`。
 - 用当前 `config.ts` 重建 `agent-default-model` 和 provider 行；`--reuse` 也会刷新这些行，避免使用旧配置。
 - 可选复制宿主凭证；默认不复制。
-- 注册场景 workspace，初始化本地 `git init`，不设置 origin。
+- 注册场景 workspace，不初始化 git、不设置 origin；容器镜像不安装 git。
 
 `prepare --reset` 清空该 variant/environment 的 worker；`--reuse` 复用已有 home/profile 但刷新配置并重启 Web。
 
