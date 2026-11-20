@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { load as yamlLoad } from "js-yaml";
 
 import { setRuntimeSettings } from "./runtime.ts";
+import { loadProviderPlan } from "./provider.ts";
 import type {
   BrowserConfig,
   PlaygroundConfig,
@@ -246,6 +247,7 @@ export function parseConfig(
 
 function loaded(value: unknown): PlaygroundConfig {
   const config = parseConfig(value);
+  loadProviderPlan(config);
   setRuntimeSettings(config.runtime);
   return config;
 }
