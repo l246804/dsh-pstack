@@ -92,11 +92,6 @@ async function main(): Promise<void> {
       "usage: prepare.ts --variant native|adapted --environment ID [--port N] [--reset|--reuse]",
     );
   }
-  if (process.argv.includes("--workers")) {
-    throw new Error(
-      "--workers is no longer supported; workers are derived from task count and machine capacity",
-    );
-  }
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);

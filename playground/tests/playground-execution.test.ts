@@ -49,7 +49,6 @@ const defaultRuntimeSettings = {
   networkMode: "host" as const,
   workerPortBase: 8080,
   workerCapacity: {
-    maxWorkers: 12,
     coreHeadroom: 2,
     memoryFraction: 0.7,
     memoryPerWorkerGB: 1,
@@ -82,7 +81,6 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
       networkMode: "host" as const,
       workerPortBase: 8080,
       workerCapacity: {
-        maxWorkers: 12,
         coreHeadroom: 2,
         memoryFraction: 0.7,
         memoryPerWorkerGB: 1,

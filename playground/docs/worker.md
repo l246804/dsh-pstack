@@ -28,7 +28,7 @@
 
 ## prepare
 
-worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`，不再接受 `--workers`；容量策略见 [config.md](./config.md) 的 `runtime.workerCapacity`。
+worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`，`--workers` 无效果；容量策略见 [config.md](./config.md) 的 `runtime.workerCapacity`。
 
 `prepare` 为每个 worker：
 

@@ -185,16 +185,12 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
     throw new Error("runtime.workerPortBase must be a valid port number");
   }
   const capacity = object(parsed.workerCapacity, "runtime.workerCapacity");
-  const maxWorkers = number(capacity.maxWorkers, "runtime.workerCapacity.maxWorkers");
   const coreHeadroom = number(capacity.coreHeadroom, "runtime.workerCapacity.coreHeadroom");
   const memoryFraction = number(capacity.memoryFraction, "runtime.workerCapacity.memoryFraction");
   const memoryPerWorkerGB = number(
     capacity.memoryPerWorkerGB,
     "runtime.workerCapacity.memoryPerWorkerGB",
   );
-  if (maxWorkers === undefined || !Number.isSafeInteger(maxWorkers) || maxWorkers < 1) {
-    throw new Error("runtime.workerCapacity.maxWorkers must be a positive integer");
-  }
   if (coreHeadroom === undefined || !Number.isSafeInteger(coreHeadroom) || coreHeadroom < 0) {
     throw new Error("runtime.workerCapacity.coreHeadroom must be a non-negative integer");
   }
@@ -208,7 +204,7 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
     scenarioTimeoutMs: timeout,
     networkMode,
     workerPortBase,
-    workerCapacity: { maxWorkers, coreHeadroom, memoryFraction, memoryPerWorkerGB },
+    workerCapacity: { coreHeadroom, memoryFraction, memoryPerWorkerGB },
     workspaceRoot: string(parsed.workspaceRoot, "runtime.workspaceRoot"),
     workersDir: string(parsed.workersDir, "runtime.workersDir"),
     dockerBin: string(parsed.dockerBin, "runtime.dockerBin"),

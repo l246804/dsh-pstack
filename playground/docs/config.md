@@ -83,7 +83,7 @@ export default {
 | `scenarioTimeoutMs` | `600000` | 单个场景最长执行时间 |
 | `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
 | `workerPortBase` | `8080` | host 模式下第一个 worker 的端口 |
-| `workerCapacity` | `{ maxWorkers: 12, coreHeadroom: 2, memoryFraction: 0.7, memoryPerWorkerGB: 1 }` | 机器容量策略 |
+| `workerCapacity` | `{ coreHeadroom: 2, memoryFraction: 0.7, memoryPerWorkerGB: 1 }` | 机器容量策略，无硬上限 |
 | `workspaceRoot` | `playground/.workspace` | workspace 根目录 |
 | `workersDir` | `playground/.workers` | home、browser、evidence 根目录 |
 | `dockerBin` | `docker` | Docker-compatible CLI |
@@ -92,7 +92,7 @@ export default {
 
 需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。`runtime` 及除 `chromePath` 外的字段都是必填；缺失时配置加载直接报错。
 
-worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`，不再接受 `--workers`。机器容量按 `nproc - coreHeadroom`、`freemem * memoryFraction / memoryPerWorkerGB` 和 `maxWorkers` 三者取最小。
+worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`，`--workers` 无效果。机器容量按 `nproc - coreHeadroom` 和 `freemem * memoryFraction / memoryPerWorkerGB` 两者取最小，不设硬上限。
 
 ## 完成标准
 

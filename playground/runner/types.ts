@@ -58,7 +58,6 @@ export interface RuntimeConfig {
   workerPortBase: number;
   /** Machine-capacity policy for parallel workers. */
   workerCapacity: {
-    maxWorkers: number;
     coreHeadroom: number;
     memoryFraction: number;
     memoryPerWorkerGB: number;

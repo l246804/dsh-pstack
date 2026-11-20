@@ -4,7 +4,6 @@ export interface RuntimeSettings {
   networkMode: "host" | "bridge";
   workerPortBase: number;
   workerCapacity: {
-    maxWorkers: number;
     coreHeadroom: number;
     memoryFraction: number;
     memoryPerWorkerGB: number;

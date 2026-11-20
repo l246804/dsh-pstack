@@ -111,7 +111,6 @@ function config(provider = "provider-a", model = "model-a", effort = "low") {
       networkMode: "host",
       workerPortBase: 8080,
       workerCapacity: {
-        maxWorkers: 12,
         coreHeadroom: 2,
         memoryFraction: 0.7,
         memoryPerWorkerGB: 1,

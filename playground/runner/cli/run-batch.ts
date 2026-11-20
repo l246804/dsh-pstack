@@ -167,11 +167,6 @@ async function main(): Promise<void> {
       "usage: run-batch.ts --variant native|adapted --environment ID [--full|--scenarios a,b|--only-failed] [--round N]",
     );
   }
-  if (process.argv.includes("--workers")) {
-    throw new Error(
-      "--workers is no longer supported; workers are derived from task count and machine capacity",
-    );
-  }
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
