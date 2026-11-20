@@ -279,7 +279,16 @@ async function main(): Promise<void> {
             entry.variant === variant &&
             entry.batchId === batchId,
         );
-        const status = statusFor(record, variant);
+        const status =
+          result.code === 0
+            ? statusFor(record, variant)
+            : variant === "native"
+              ? "blocked"
+              : "inconclusive";
+        const failureReason =
+          result.code === 0
+            ? (record?.verdict.status ?? "no record for this batch")
+            : `run-scenario exited ${String(result.code)}`;
         updateProgress(file, (current) => {
           current.running = current.running.filter(
             (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
@@ -292,7 +301,7 @@ async function main(): Promise<void> {
             current.failures.push({
               scenarioId,
               worker,
-              reason: record?.verdict.status ?? "no record for this batch",
+              reason: failureReason,
             });
           }
         });
