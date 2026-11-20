@@ -1,8 +1,0 @@
-{
-  "gaps": {
-    "inline-video-playback": "0910d71e00144fddea9cded24b7cc79a8a08ae1d7a0f8690df6e951a18f93d7d",
-    "subagent-interrupt": "53be7e6a9c125e1a6405586c021558b02e7b332e1efe7654ac909a3beb0d0057",
-    "subagent-model-routing": "1bf3734c0a17161d1f4b3b00df69f6733e6aa85831fe61f68c6bb08a51acc3c8",
-    "subagent-readonly-sandbox": "628576b0dadb9e8d740357c882f1d867b412dc3adacd71806c4e6e163cc9f9a6"
-  }
-}
