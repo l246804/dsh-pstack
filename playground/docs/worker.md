@@ -20,7 +20,7 @@
 
 ## 生命周期
 
-- `prepare`：按场景数量、机器容量和 variant/environment 自动计算 worker 数量；写入 profile、模型和 runtime 配置。adapted 使用 `pnpm pack` 产物安装插件；默认不复制凭证。
+- `prepare`：按场景数量、机器容量和 variant/environment 自动计算 worker 数量；写入 worker profile、模型和运行设置。adapted 使用 `pnpm pack` 产物安装插件；默认不复制凭证。
 - `bootstrap`：打开每个 worker 页面，检查默认 workspace、模型、reasoning effort、登录/401 状态，并生成 readiness 证据。
 - `open` / `close` / `reset`：分别用于预览、停止预览和重建 preview worker。
 - `stop`：停止所有匹配的 worker；`stop-task` 只写入当前场景的停止请求，由 `run-scenario` 在轮询点处理。
