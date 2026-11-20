@@ -20,7 +20,7 @@ export const environments: readonly EnvironmentMatrix[] = [
     description:
       "用于验证 mermaid、图表、图片、视频和 UI 渲染能力；显式作为 native/adapted 的对照环境。",
     kind: "capability",
-    enabledPluginPackages: ["@changfenhuang/dsh-genui"],
+    enabledPluginPackages: ["dsh-genui"],
   },
   {
     id: "agent-team",

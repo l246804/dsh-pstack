@@ -223,7 +223,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 2. **部分渲染需要插件**
 
-   原生 DSH 能内联显示图片和 SVG。Mermaid 图以文本返回，音频或视频只显示文件卡片。这属于预期降级，不是技能失效。需要完整体验时，可以安装增强原生渲染能力的插件，例如 `@changfenhuang/dsh-genui`。
+   原生 DSH 能内联显示图片和 SVG。Mermaid 图以文本返回，音频或视频只显示文件卡片。这属于预期降级，不是技能失效。需要完整体验时，可以安装增强原生渲染能力的插件，例如 `dsh-genui`。
 
 </details>
 
