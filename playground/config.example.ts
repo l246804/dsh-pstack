@@ -6,6 +6,9 @@ import type { PlaygroundConfig } from "./runner/types.ts";
 // Vite's env loader: .env, .env.local, .env.playground, .env.playground.local.
 // Copy this file to config.ts and fill real values. config.ts is gitignored.
 const env = loadEnv("playground", process.cwd(), "PLAYGROUND_");
+const isWsl =
+  process.platform === "linux" &&
+  (process.env.WSL_DISTRO_NAME !== undefined || process.env.WSL_INTEROP !== undefined);
 
 export default {
   copyCredentials: false,
@@ -44,7 +47,7 @@ export default {
     scenarioTimeoutMs: 600_000,
     turnTimeoutMs: 180_000,
     subagentTimeoutMs: 600_000,
-    networkMode: process.platform === "linux" ? "host" : "bridge",
+    networkMode: process.platform === "linux" && !isWsl ? "host" : "bridge",
     workerPortBase: 8080,
     workerCapacity: {
       coreHeadroom: 2,

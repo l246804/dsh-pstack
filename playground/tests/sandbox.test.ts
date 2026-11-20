@@ -43,7 +43,6 @@ const plan: ProviderPlan = {
   providers: {},
   apiKeyEnv: "TEST_PROVIDER_KEY",
   apiKey: "secret-value",
-  secrets: ["secret-value"],
   main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
 };
 

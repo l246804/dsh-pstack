@@ -56,8 +56,8 @@ export default {
 - 宿主 patch 默认是 `~/.dsh/profiles/web/cordis.patch.yml`，可用 `fromHost(..., { file: "..." })` 指定。
 - `config.ts` 可以直接写 `apiKey: "..."`；它已被 gitignore，适合本地密钥。
 - 也可以用 `apiKeyEnv` 从环境或 `.credentials.yaml` 解析，避免把密钥写进文件。
-- Linux 默认 `runtime.networkMode: "host"`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
-- macOS/Windows 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `runtime.networkMode: "host"` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
+- Linux 原生 Docker 默认 `runtime.networkMode: "host"`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
+- macOS/Windows 以及 WSL2 内的 Docker Desktop 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `runtime.networkMode: "host"` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
 - 运行目录默认 `playground/.workers`；workspace 默认在 `playground/.workspace`，`.workspace` 和 `.workers` 目录都被忽略。`runtime.workspaceRoot` / `runtime.workersDir` 可覆盖，测试隔离也通过这两个字段设置。
 
 ## 凭证
@@ -83,7 +83,7 @@ export default {
 | `scenarioTimeoutMs` | `600000` | 单个场景最长执行时间（hard timeout） |
 | `turnTimeoutMs` | `180000` | 主 turn/end 后等待 session 稳定的上限 |
 | `subagentTimeoutMs` | `600000` | 等待子代理结束的上限 |
-| `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
+| `networkMode` | Linux 原生 `host`，macOS/Windows/WSL2 `bridge` | worker 网络模式 |
 | `workerPortBase` | `8080` | host 模式基础端口；prepare 按 variant/environment 分块 |
 | `workerCapacity` | `{ coreHeadroom: 2, memoryFraction: 0.7, memoryPerWorkerGB: 1 }` | 机器容量策略，无硬上限 |
 | `workspaceRoot` | `playground/.workspace` | workspace 根目录 |

@@ -5,6 +5,7 @@ import { isVariant } from "../types.ts";
 import type { Variant } from "../types.ts";
 import { environmentMatrix, workersDirectory } from "../worker/run-metadata.ts";
 import { environmentOffset } from "../scenario/environments.ts";
+import { WORKER_PORT_STRIDE, WORKER_VARIANT_PORT_OFFSET } from "../container/layout.ts";
 import {
   copyCredentials,
   mountNativeTree,
@@ -114,11 +115,10 @@ async function main(): Promise<void> {
   const plan = loadProviderPlan(config);
   const scenarioIds = listScenarioIdsFor(variant, matrix.id);
   const count = computeWorkers(scenarioIds.length).workers;
-  const portStride = 100;
+  const portStride = Math.max(WORKER_PORT_STRIDE, count);
+  const variantPortOffset = variant === "adapted" ? Math.max(WORKER_VARIANT_PORT_OFFSET, count) : 0;
   const effectivePortBase =
-    config.runtime.workerPortBase +
-    (variant === "adapted" ? 1000 : 0) +
-    environmentOffset(matrix.id) * portStride;
+    config.runtime.workerPortBase + variantPortOffset + environmentOffset(matrix.id) * portStride;
   const portFlag = argValue("--port");
   const port = portFlag === undefined ? undefined : Number(portFlag);
   if (port === undefined && effectivePortBase + count - 1 > 65_535) {
@@ -143,6 +143,9 @@ async function main(): Promise<void> {
           `cannot reuse ${variant}/${matrix.id}/w${worker.index}: worker is not prepared for ${variant}`,
         );
       }
+    }
+    for (const worker of listWorkers({ environmentId: matrix.id, variant })) {
+      if (worker.index >= count) stopWeb(worker);
     }
     for (const worker of workers) stopWeb(worker);
     // The reused profile points at the worker's native mount outside the repo; refresh it so a

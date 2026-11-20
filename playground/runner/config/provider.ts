@@ -30,8 +30,6 @@ export interface ProviderPlan {
   /** The main route's credential environment, when the route uses one. */
   apiKeyEnv?: string;
   apiKey?: string;
-  /** Every configured secret, for record redaction checks. */
-  secrets: string[];
   main: TestTarget & { name: string };
 }
 
@@ -68,7 +66,6 @@ export function providerSecrets(config: PlaygroundConfig): string[] {
 
 export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
   const routes: AllowedRoute[] = [];
-  const secrets: string[] = [];
   const modelsByProvider = new Map<string, Map<string, string[]>>();
 
   for (const [name, provider] of Object.entries(config.providers)) {
@@ -86,7 +83,6 @@ export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
       if (!provider.apiKey) {
         throw new Error(`provider ${name} has no apiKey; set it from the environment in config.ts`);
       }
-      secrets.push(provider.apiKey);
     } else if (!config.copyCredentials) {
       throw new Error(
         `provider ${name} uses the DeepSeek account route but copyCredentials is false; enable it or use deepseek-api-key`,
@@ -141,7 +137,6 @@ export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
       ? {}
       : { apiKeyEnv: apiKeyEnvFor(mainProvider) as string }),
     ...(mainProvider.kind === "deepseek-account" ? {} : { apiKey: mainProvider.apiKey }),
-    secrets,
     main: {
       ...config.testModel,
       provider: providerRouteName(config.testModel.provider, mainProvider),

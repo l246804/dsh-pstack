@@ -30,7 +30,7 @@ import {
 } from "../worker/progress.ts";
 import { listScenarioIds, loadScenario } from "../scenario/scenarios.ts";
 import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "../scenario/defaults.ts";
-import { writeBatchMetadata } from "../evidence/review-snapshot.ts";
+import { writeBatchMetadata, REVIEWS_DIRECTORY } from "../evidence/review-snapshot.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../worker/worker.ts";
 import { runtimeSettings } from "../config/runtime.ts";
@@ -71,7 +71,7 @@ function readRecords(directory: string): RunRecord[] {
 }
 
 function allRecords(): RunRecord[] {
-  return readRecords(workersDirectory());
+  return readRecords(REVIEWS_DIRECTORY);
 }
 
 function selectedScenarios(variant: Variant, environmentId: string): string[] {
@@ -114,7 +114,11 @@ interface ChildResult {
 
 function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
   return new Promise((resolvePromise) => {
-    const child = spawn(runtimeSettings().vpxBin, args, { cwd: REPOSITORY_ROOT, env });
+    const child = spawn(runtimeSettings().vpxBin, args, {
+      cwd: REPOSITORY_ROOT,
+      env,
+      detached: true,
+    });
     let output = "";
     let settled = false;
     let timer: NodeJS.Timeout | undefined;
@@ -126,7 +130,13 @@ function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
     };
     timer = setTimeout(() => {
       output += "run-scenario exceeded its wall-clock budget";
-      child.kill("SIGKILL");
+      if (child.pid !== undefined) {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+        } catch {
+          child.kill("SIGKILL");
+        }
+      }
       finish(-1);
     }, runtimeSettings().scenarioTimeoutMs + 60_000);
     child.stdout.on("data", (chunk: Buffer) => {
@@ -280,15 +290,15 @@ async function main(): Promise<void> {
             entry.batchId === batchId,
         );
         const status =
-          result.code === 0
-            ? statusFor(record, variant)
-            : variant === "native"
+          record === undefined
+            ? variant === "native"
               ? "blocked"
-              : "inconclusive";
+              : "inconclusive"
+            : statusFor(record, variant);
         const failureReason =
-          result.code === 0
-            ? (record?.verdict.status ?? "no record for this batch")
-            : `run-scenario exited ${String(result.code)}`;
+          record === undefined
+            ? `run-scenario exited ${String(result.code)} without a record`
+            : record.verdict.status;
         updateProgress(file, (current) => {
           current.running = current.running.filter(
             (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
@@ -310,8 +320,9 @@ async function main(): Promise<void> {
     }),
   );
   console.log(`[run-batch] log=${logFile}`);
-  if (state.failures.length > 0) {
-    console.error(`[run-batch] ${state.failures.length} scenario(s) failed`);
+  const finalState = readProgress(file);
+  if ((finalState?.failures.length ?? 0) > 0) {
+    console.error(`[run-batch] ${finalState?.failures.length ?? 0} scenario(s) failed`);
     process.exitCode = 1;
   }
 }

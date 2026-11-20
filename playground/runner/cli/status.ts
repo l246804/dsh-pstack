@@ -48,6 +48,7 @@ if (!state) {
       const session = latestSessionFile(paths, {
         scenarioId: entry.scenarioId,
         rootOnly: true,
+        ...(value.startedAt === undefined ? {} : { startedAt: value.startedAt }),
       });
       console.log(
         `[status] current w${entry.worker}: ${value.scenarioId ?? entry.scenarioId} age=${elapsed} session=${session?.file ?? "none"}`,

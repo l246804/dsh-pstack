@@ -162,10 +162,14 @@ function listSessionFiles(paths: WorkerPaths): SessionFile[] {
 
 export function latestSessionFile(
   paths: WorkerPaths,
-  options: { scenarioId?: string; rootOnly?: boolean } = {},
+  options: { scenarioId?: string; rootOnly?: boolean; startedAt?: string } = {},
 ): SessionFile | null {
   const files = listSessionFiles(paths).filter((entry) => {
     if (options.scenarioId !== undefined && !entry.file.includes(options.scenarioId)) return false;
+    if (options.startedAt !== undefined) {
+      const started = Date.parse(options.startedAt);
+      if (!Number.isFinite(started) || statSync(entry.file).mtimeMs < started) return false;
+    }
     if (!options.rootOnly) return true;
     const header = readSessionEvents(entry.file).find((event) => event.type === "session");
     return header?.origin !== "subagent" && (header?.delegationDepth ?? 0) === 0;

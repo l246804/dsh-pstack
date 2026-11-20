@@ -550,7 +550,6 @@ const isolationPlan: ProviderPlan = {
   providers: {},
   apiKeyEnv: "TEST_PROVIDER_KEY",
   apiKey: "test-key-value",
-  secrets: ["test-key-value"],
   main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
 };
 
@@ -607,7 +606,7 @@ describe("workspace isolation", () => {
     const source = join(temporary, "native-source");
     writeFakeNativeTree(source);
     expect(mountNativeTree(paths, source)).toBe(paths.nativeMount);
-    expect(existsSync(join(paths.nativeMount, "dsh.md"))).toBe(true);
+    expect(existsSync(join(paths.nativeMount, "dsh.md"))).toBe(false);
     expect(existsSync(join(paths.nativeMount, "pstack/skills/poteto-mode/SKILL.md"))).toBe(true);
     expect(() => mountNativeTree(paths, join(temporary, "absent"))).toThrow(
       /native tree is missing/,

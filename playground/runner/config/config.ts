@@ -11,6 +11,7 @@ import type {
   PlaygroundConfig,
   ProviderConfig,
   ProviderModel,
+  RuntimeConfig,
   TestTarget,
 } from "../types.ts";
 
@@ -86,15 +87,13 @@ function model(value: unknown, label: string): ProviderModel {
   ) {
     throw new Error(`${label}.input must be an array of text/image`);
   }
+  const contextWindow = number(parsed.contextWindow, `${label}.contextWindow`);
+  const maxTokens = number(parsed.maxTokens, `${label}.maxTokens`);
   return {
     id: string(parsed.id, `${label}.id`),
     ...(parsed.name === undefined ? {} : { name: string(parsed.name, `${label}.name`) }),
-    ...(number(parsed.contextWindow, `${label}.contextWindow`) === undefined
-      ? {}
-      : { contextWindow: number(parsed.contextWindow, `${label}.contextWindow`) }),
-    ...(number(parsed.maxTokens, `${label}.maxTokens`) === undefined
-      ? {}
-      : { maxTokens: number(parsed.maxTokens, `${label}.maxTokens`) }),
+    ...(contextWindow === undefined ? {} : { contextWindow }),
+    ...(maxTokens === undefined ? {} : { maxTokens }),
     ...(input === undefined ? {} : { input: [...input] }),
     ...(reasoningEfforts === undefined
       ? {}
@@ -170,7 +169,7 @@ function browser(value: unknown): BrowserConfig {
   };
 }
 
-function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
+function runtime(value: unknown): RuntimeConfig {
   const parsed = object(value, "runtime");
   const timeout = parsed.scenarioTimeoutMs;
   if (typeof timeout !== "number" || !Number.isSafeInteger(timeout) || timeout <= 0) {

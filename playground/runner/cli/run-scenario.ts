@@ -132,7 +132,11 @@ async function main(): Promise<void> {
     };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    const lastSession = latestSessionFile(paths, { scenarioId, rootOnly: true });
+    const lastSession = latestSessionFile(paths, {
+      scenarioId,
+      rootOnly: true,
+      startedAt: capturedAt,
+    });
     record = blockedRecord({
       scenarioId,
       variant,

@@ -263,11 +263,12 @@ export function resetHome(paths: WorkerPaths): void {
  * hand the tested session the repository root, and with it the scenario rubrics.
  */
 export function mountNativeTree(paths: WorkerPaths, source: string = NATIVE_ROOT): string {
-  if (!existsSync(source))
+  const tree = join(source, "pstack");
+  if (!existsSync(tree))
     throw new Error("native tree is missing; run vp run native:generate first");
   rmSync(paths.nativeMount, { recursive: true, force: true });
-  mkdirSync(paths.isolatedRoot, { recursive: true });
-  cpSync(source, paths.nativeMount, { recursive: true });
+  mkdirSync(paths.nativeMount, { recursive: true });
+  cpSync(tree, join(paths.nativeMount, "pstack"), { recursive: true });
   return paths.nativeMount;
 }
 

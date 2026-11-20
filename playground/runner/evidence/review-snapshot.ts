@@ -129,9 +129,6 @@ function copyRunEvidence(record: RunRecord, directory: string): void {
   if (source.screenshotFile && existsSync(source.screenshotFile)) {
     copyFileSync(source.screenshotFile, join(directory, EVIDENCE_FILES.screenshot));
   }
-  if (source.sessionFile && existsSync(source.sessionFile)) {
-    copyFileSync(source.sessionFile, join(directory, EVIDENCE_FILES.session));
-  }
 }
 
 function scenarioDirectory(
@@ -182,10 +179,11 @@ export function writeReviewSnapshot(
       `no records for ${variant}-${environment}; refusing to write an empty snapshot`,
     );
   }
-  const currentIds = new Set(current.map((record) => record.scenarioId));
   const scoped =
     batch === null ? current : current.filter((record) => batch.scope.includes(record.scenarioId));
   const scopedIds = new Set(scoped.map((record) => record.scenarioId));
+  const manifestRecords = batch?.mode === "full" ? scoped : current;
+  const manifestIds = new Set(manifestRecords.map((record) => record.scenarioId));
   const snapshot = reviewSnapshotDirectory(variant, environment, reviewsDirectory);
   const scenarios = join(snapshot, EVIDENCE_DIRECTORIES.scenarios);
 
@@ -208,14 +206,14 @@ export function writeReviewSnapshot(
   const manifest: ReviewSnapshotManifest = {
     variant,
     environment,
-    dshVersion: current[0]?.environment.dshVersion ?? "",
-    pstackVersion: current[0]?.environment.pstackVersion ?? "",
+    dshVersion: manifestRecords[0]?.environment.dshVersion ?? "",
+    pstackVersion: manifestRecords[0]?.environment.pstackVersion ?? "",
     updatedAt: new Date().toISOString(),
     lastBatchId: batch?.batchId ?? null,
     lastMode: batch?.mode ?? null,
     lastScope: batch?.scope ?? [],
-    scenarioIds: [...currentIds].sort(),
-    scenarios: current.map((record) => ({
+    scenarioIds: [...manifestIds].sort(),
+    scenarios: manifestRecords.map((record) => ({
       id: record.scenarioId,
       capturedAt: record.capturedAt,
       batchId: record.batchId ?? null,

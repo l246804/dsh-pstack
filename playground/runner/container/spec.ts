@@ -97,8 +97,6 @@ export function containerSpec(input: ContainerSpecInput): ContainerSpec {
       HOME: paths.containerHome,
       XDG_RUNTIME_DIR: paths.containerRuntime,
       TMPDIR: paths.containerTmp,
-      GH_CONFIG_DIR: join(paths.containerHome, "gh-config"),
-      GIT_TERMINAL_PROMPT: "0",
       DSH_PORT: String(containerPort),
       ...(networkMode === "host" ? { DSH_HOST: "127.0.0.1" } : {}),
       ...providerEnv,
