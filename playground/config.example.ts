@@ -16,6 +16,7 @@ export default {
   providers: fromHost(
     {
       "your-provider": {
+        // apiKey: "your-api-key", // optional; config.ts is gitignored
         models: [{ id: "your-model", efforts: ["low", "high"] }],
         reasoning: "low",
       },
