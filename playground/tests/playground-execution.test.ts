@@ -6,8 +6,10 @@ import { afterAll, describe, expect, it } from "vite-plus/test";
 import type { Assertion, BehaviorScenario, RunRecord, SessionFacts } from "../runner/types.ts";
 import {
   mountNativeTree,
+  readWorkspaceStore,
   registerWorkspaces,
   resetHome,
+  setDefaultWorkspace,
   writeHomePatch,
 } from "../runner/worker/home.ts";
 import type { ProviderPlan } from "../runner/config/provider.ts";
@@ -631,6 +633,13 @@ describe("workspace isolation", () => {
     const store = readFileSync(join(paths.home, "storages/workspace.json"), "utf8");
     expect(store).toContain(paths.containerWorkspace);
     expect(store).not.toContain(REPOSITORY_ROOT);
+  });
+
+  it("selects the current scenario as the default workspace", () => {
+    const paths = tempWorkerPaths(13);
+    registerWorkspaces(paths, ["scenario-b", "scenario-a"]);
+    setDefaultWorkspace(paths, "scenario-b");
+    expect(readWorkspaceStore(paths).defaultTitle).toBe("scenario-b");
   });
 
   it("clears the isolated root when the worker home resets", () => {

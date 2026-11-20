@@ -314,6 +314,22 @@ export function registerWorkspaces(
   return { dirs, defaultId: workspaceIds[0] as string, defaultTitle: ids[0] as string };
 }
 
+export function setDefaultWorkspace(paths: WorkerPaths, scenarioId: string): void {
+  const file = join(paths.home, "storages/workspace.json");
+  const store = JSON.parse(readFileSync(file, "utf8")) as {
+    global: { workspaceIds: string[]; defaultWorkspaceId: string };
+    tables: { workspaces: Record<string, { path: string; title: string }> };
+  };
+  const entry = Object.entries(store.tables.workspaces).find(
+    ([, workspace]) => workspace.title === scenarioId,
+  );
+  if (entry === undefined) {
+    throw new Error(`workspace store has no scenario workspace: ${scenarioId}`);
+  }
+  store.global.defaultWorkspaceId = entry[0];
+  writeFileSync(file, `${JSON.stringify(store, null, 2)}\n`);
+}
+
 export function readWorkspaceStore(paths: WorkerPaths): {
   defaultTitle: string;
   workspaces: Array<{ path: string; title: string }>;

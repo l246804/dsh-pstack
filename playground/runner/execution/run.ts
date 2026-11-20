@@ -204,13 +204,29 @@ function dismissPreview(session: BrowserSession): void {
 }
 
 function startSession(session: BrowserSession, scenarioId: string): void {
+  // A collapsed sidebar unmounts the workspace rows, so expand it before looking for
+  // the scenario workspace. Without this, the new-session fallback runs in whichever
+  // workspace DSH opened by default.
+  if (session.eval<boolean>(`document.querySelector("[data-sidebar-collapsed]") !== null`)) {
+    session.eval<boolean>(
+      `(() => { const button = document.querySelector("[data-sidebar-toggle]"); if (!button) return false; button.click(); return true; })()`,
+    );
+    session.wait(500);
+  }
   const started = session.eval<string>(
     `(() => {
       const title = ${JSON.stringify(scenarioId)};
-      const button = [...document.querySelectorAll("button")].find((element) => {
-        const label = element.getAttribute("aria-label") || "";
-        return label.includes(title);
-      });
+      // Find the workspace row structurally: data-row-key starts with "workspace:".
+      // The row's last action is "new session in this workspace"; the first button is
+      // the workspace actions menu. Matching any aria-label that contains the title
+      // would hit the actions button first and leave the default workspace active.
+      const row = [...document.querySelectorAll('[data-row-key^="workspace:"]')].find(
+        (element) => (element.innerText || "").includes(title),
+      );
+      const button = row
+        ? [...row.querySelectorAll("button")].find((element) => element.hasAttribute("aria-keyshortcuts"))
+          ?? [...row.querySelectorAll("button")].at(-1)
+        : undefined;
       if (button) { button.click(); return "workspace"; }
       const header = [...document.querySelectorAll("button")].find((element) => element.innerText.trim() === ${JSON.stringify(NEW_SESSION_LABEL)});
       if (header) { header.click(); return "header"; }

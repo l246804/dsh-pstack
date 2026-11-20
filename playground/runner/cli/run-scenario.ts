@@ -13,7 +13,12 @@ import {
   sessionFacts,
   verdictFor,
 } from "../evidence/evidence.ts";
-import { readHomePlan, readPlaygroundConfig, CONFIG_FILE } from "../worker/home.ts";
+import {
+  readHomePlan,
+  readPlaygroundConfig,
+  CONFIG_FILE,
+  setDefaultWorkspace,
+} from "../worker/home.ts";
 import { reviewSnapshotDirectory } from "../evidence/review-snapshot.ts";
 import { providerSecrets } from "../config/provider.ts";
 import { readWebUrl } from "../container/index.ts";
@@ -79,6 +84,7 @@ async function main(): Promise<void> {
   // session toggle, not a root preset, so both variants assert the same preset id.
   const expectedPreset = "standard";
   const workspace = materializeWorkspace(paths, scenario);
+  setDefaultWorkspace(paths, scenario.id);
   rmSync(stopRequestFile(paths), { force: true });
   const capturedAt = new Date().toISOString();
   const stamp = capturedAt.replace(/[:.]/g, "-");
