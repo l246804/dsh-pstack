@@ -25,6 +25,10 @@ function definitionFor(enabled: boolean | undefined) {
 }
 
 describe("poteto projection snapshot", () => {
+  it("invalidates the pre-sidecar projection cache", () => {
+    expect(definitionFor(true).stateVersion).toBe(2);
+  });
+
   it("uses the storage sidecar value on first paint", () => {
     expect(definitionFor(true).init(header, inheritedEventCount)).toEqual({ enabled: true });
     expect(definitionFor(false).init(header, inheritedEventCount)).toEqual({ enabled: false });

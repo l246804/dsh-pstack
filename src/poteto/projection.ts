@@ -47,7 +47,7 @@ export function createPotetoProjectionDefinition(
 ): PotetoProjectionDefinition {
   return {
     key: "potetoMode",
-    stateVersion: 3,
+    stateVersion: 2,
     stateSchema,
     init: (header: SessionHeader): PotetoProjectionState => ({
       enabled: readEnabled(header.id),
