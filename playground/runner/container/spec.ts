@@ -14,13 +14,6 @@ export type NetworkMode = "bridge" | "host";
  * Docker Desktop on macOS/Windows defaults to bridge plus host.docker.internal.
  */
 export function defaultNetworkMode(): NetworkMode {
-  const override = process.env.PLAYGROUND_NETWORK_MODE;
-  if (override !== undefined && override !== "") {
-    if (override !== "host" && override !== "bridge") {
-      throw new Error("PLAYGROUND_NETWORK_MODE must be host or bridge");
-    }
-    return override;
-  }
   return process.platform === "linux" ? "host" : "bridge";
 }
 

@@ -53,11 +53,11 @@ export default {
 - `models` 必填，只接受 `{ id, efforts? }` 对象；不再接受字符串简写。
 - `reasoning` 必填；`efforts` 必须写在具体模型上，provider 级不再有 `efforts`。
 - 模型未写 `efforts` 时默认 `["low", "high"]`。
-- 宿主 patch 默认是 `~/.dsh/profiles/web/cordis.patch.yml`，可用 `PLAYGROUND_HOST_PATCH_FILE` 指定。
+- 宿主 patch 默认是 `~/.dsh/profiles/web/cordis.patch.yml`，可用 `fromHost(..., { file: "..." })` 指定。
 - `config.ts` 可以直接写 `apiKey: "..."`；它已被 gitignore，适合本地密钥。
 - 也可以用 `apiKeyEnv` 从环境或 `.credentials.yaml` 解析，避免把密钥写进文件。
-- Linux 默认 `PLAYGROUND_NETWORK_MODE=host`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
-- macOS/Windows 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `PLAYGROUND_NETWORK_MODE=host` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
+- Linux 默认 `runtime.networkMode: "host"`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
+- macOS/Windows 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `runtime.networkMode: "host"` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
 - 运行目录默认 `$HOME/.dsh-playground/isolated` 和 `playground/.workers`；`PLAYGROUND_WORKSPACE_ROOT` / `PLAYGROUND_WORKERS_DIR` 只用于测试隔离，不作为日常配置。
 
 ## 凭证
@@ -76,9 +76,9 @@ export default {
 
 ## 单个场景超时
 
-- `PLAYGROUND_CASE_TIMEOUT_MS` 控制一个 `run-scenario` 的最长执行时间，默认 `600000`（10 分钟），必须为正整数毫秒。
+- `runtime.caseTimeoutMs` 控制一个 `run-scenario` 的最长执行时间，默认 `600000`（10 分钟），必须为正整数毫秒。
 - 超时后 native 写 `blocked`、adapted 写 `inconclusive` record，批次继续执行后续场景。
-- 需要跑耗时长的 probe 时显式设置，例如 `PLAYGROUND_CASE_TIMEOUT_MS=1200000`；不要把默认值改成无限。
+- 需要跑耗时长的 probe 时显式设置，例如 `runtime.caseTimeoutMs: 1200000`；不要把默认值改成无限。
 
 ## 完成标准
 

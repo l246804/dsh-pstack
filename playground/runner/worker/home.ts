@@ -20,7 +20,7 @@ import type {
 } from "../types.ts";
 import { readConfig } from "../config/config.ts";
 import type { ProviderPlan } from "../config/provider.ts";
-import { defaultNetworkMode } from "../container/spec.ts";
+import { defaultNetworkMode, type NetworkMode } from "../container/spec.ts";
 import { profilePatchFile } from "./profile.ts";
 import { NATIVE_ROOT } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
@@ -38,8 +38,8 @@ function anonymousModels(models: ProviderModel[]): ProviderModel[] {
 }
 
 /** Host network keeps loopback; bridge needs the Docker host gateway. */
-function workerBaseURL(value: string): string {
-  if (defaultNetworkMode() === "host") return value;
+function workerBaseURL(value: string, mode = defaultNetworkMode()): string {
+  if (mode === "host") return value;
   const url = new URL(value);
   if (url.hostname === "127.0.0.1" || url.hostname === "localhost") {
     url.hostname = "host.docker.internal";
@@ -48,7 +48,10 @@ function workerBaseURL(value: string): string {
 }
 
 /** Translate config providers into the DSH patch rows the worker profile needs. */
-function providerRows(providers: Record<string, ProviderConfig>): Array<Record<string, unknown>> {
+function providerRows(
+  providers: Record<string, ProviderConfig>,
+  networkMode?: NetworkMode,
+): Array<Record<string, unknown>> {
   const rows: Array<Record<string, unknown>> = [];
   const piAi = Object.entries(providers).filter(
     (entry): entry is [string, Extract<ProviderConfig, { kind: "pi-ai" }>] =>
@@ -67,7 +70,7 @@ function providerRows(providers: Record<string, ProviderConfig>): Array<Record<s
               ...(provider.api === undefined ? {} : { api: provider.api }),
               ...(provider.baseURL === undefined
                 ? {}
-                : { baseURL: workerBaseURL(provider.baseURL) }),
+                : { baseURL: workerBaseURL(provider.baseURL, networkMode) }),
               reasoning: provider.reasoning,
               models: anonymousModels(provider.models),
             },
@@ -198,6 +201,7 @@ export function writeHomePatch(
   plan: ProviderPlan,
   treatment: Treatment,
   teamMode = false,
+  networkMode?: NetworkMode,
 ): void {
   mkdirSync(paths.home, { recursive: true });
   const patch: Array<Record<string, unknown>> = [
@@ -220,7 +224,7 @@ export function writeHomePatch(
       name: "@deepseek-ai/dsh-user-approval",
       config: { policy: "never" },
     },
-    ...providerRows(plan.providers),
+    ...providerRows(plan.providers, networkMode),
     {
       id: "permission",
       name: "@deepseek-ai/dsh-permission-presets",

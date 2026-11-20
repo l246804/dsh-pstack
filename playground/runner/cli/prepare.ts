@@ -61,11 +61,12 @@ async function startWorkers(
   paths: WorkerPaths[],
   plan: ProviderPlan,
   port?: number,
+  networkMode?: Parameters<typeof startWeb>[3],
 ): Promise<void> {
   const started = await Promise.all(
     paths.map(async (worker, index) => ({
       worker,
-      ...(await startWeb(worker, plan, port === undefined ? 0 : port + index)),
+      ...(await startWeb(worker, plan, port === undefined ? 0 : port + index, networkMode)),
     })),
   );
   const ports = started.map((entry) => entry.port);
@@ -128,12 +129,18 @@ async function main(): Promise<void> {
     // cleared temp root does not restart native workers with missing skills.
     for (const worker of workers) {
       if (readTreatment(worker) === "native") mountNativeTree(worker);
-      writeHomePatch(worker, plan, treatment, matrix.teamMode === true);
+      writeHomePatch(
+        worker,
+        plan,
+        treatment,
+        matrix.teamMode === true,
+        config.runtime?.networkMode,
+      );
       writeWorkerInstructions(worker);
       writeRoleFile(worker, config);
       writePstackSettings(worker, treatment === "adapted");
     }
-    await startWorkers(workers, plan, port);
+    await startWorkers(workers, plan, port, config.runtime?.networkMode);
     return;
   }
 
@@ -172,12 +179,12 @@ async function main(): Promise<void> {
     }
     writeFileSync(worker.treatmentFile, `${treatment}\n`);
     if (config.copyCredentials) copyCredentials(worker, config.credentialsFile);
-    writeHomePatch(worker, plan, treatment, matrix.teamMode === true);
+    writeHomePatch(worker, plan, treatment, matrix.teamMode === true, config.runtime?.networkMode);
     writeRoleFile(worker, config);
     writePstackSettings(worker, treatment === "adapted");
     registerWorkspaces(worker, listScenarioIds());
   }
-  await startWorkers(workers, plan, port);
+  await startWorkers(workers, plan, port, config.runtime?.networkMode);
   console.log(
     `[prepare] treatment=${treatment} environment=${matrix.id} workers=${count} model=${plan.main.provider}/${plan.main.model}[${plan.main.effort}]`,
   );

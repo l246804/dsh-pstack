@@ -31,7 +31,7 @@ const DEFAULT_HOST_PATCH = join(homedir(), ".dsh/profiles/web/cordis.patch.yml")
 
 function rows(file: string): HostPatchRow[] {
   if (!existsSync(file)) {
-    throw new Error(`host patch not found at ${file}; set PLAYGROUND_HOST_PATCH_FILE`);
+    throw new Error(`host patch not found at ${file}; pass file to fromHost`);
   }
   return (yamlLoad(readFileSync(file, "utf8")) as HostPatchRow[]) ?? [];
 }
@@ -76,7 +76,7 @@ function hostProvider(patch: HostPatchRow[], id: string): Record<string, unknown
 }
 
 export interface FromHostOptions {
-  /** Host DSH web profile patch; defaults to $PLAYGROUND_HOST_PATCH_FILE or ~/.dsh. */
+  /** Host DSH web profile patch; defaults to ~/.dsh/profiles/web. */
   file?: string;
   /** Values from Vite loadEnv, used to resolve apiKeyEnv without copying secrets. */
   env?: Record<string, string>;
@@ -91,7 +91,7 @@ export function fromHost(
   selections: Record<string, HostProviderSelection>,
   options: FromHostOptions = {},
 ): Record<string, ProviderConfig> {
-  const file = options.file ?? process.env.PLAYGROUND_HOST_PATCH_FILE ?? DEFAULT_HOST_PATCH;
+  const file = options.file ?? DEFAULT_HOST_PATCH;
   const patch = rows(file);
   const env = options.env ?? {};
   const result: Record<string, ProviderConfig> = {};

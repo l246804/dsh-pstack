@@ -4,7 +4,13 @@ import type { ProviderPlan } from "../config/provider.ts";
 import type { WorkerPaths } from "../worker/worker.ts";
 import { docker } from "./docker-command.ts";
 import { requireImage } from "./image.ts";
-import { CONTAINER_PORT, containerSpec, dockerRunArgs, type ContainerSpec } from "./spec.ts";
+import {
+  CONTAINER_PORT,
+  containerSpec,
+  dockerRunArgs,
+  type ContainerSpec,
+  type NetworkMode,
+} from "./spec.ts";
 
 export interface StartedWeb {
   url: string;
@@ -47,9 +53,14 @@ function sleep(ms: number): Promise<void> {
  * absolute path recorded in a session or a RunRecord is container-local.
  */
 export class DockerSandbox {
-  start(paths: WorkerPaths, plan: ProviderPlan, hostPort?: number): Promise<StartedWeb> {
+  start(
+    paths: WorkerPaths,
+    plan: ProviderPlan,
+    hostPort?: number,
+    networkMode?: NetworkMode,
+  ): Promise<StartedWeb> {
     const image = requireImage();
-    const spec = containerSpec({ paths, plan, image, hostPort });
+    const spec = containerSpec({ paths, plan, image, hostPort, networkMode });
     docker(["rm", "-f", spec.name]);
     const run = docker(dockerRunArgs(spec), START_TIMEOUT_MS);
     if (run.status !== 0) {

@@ -170,6 +170,25 @@ function browser(value: unknown): BrowserConfig {
   };
 }
 
+function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
+  const parsed = object(value, "runtime");
+  const timeout = parsed.caseTimeoutMs;
+  if (
+    timeout !== undefined &&
+    (typeof timeout !== "number" || !Number.isSafeInteger(timeout) || timeout <= 0)
+  ) {
+    throw new Error("runtime.caseTimeoutMs must be a positive integer number of milliseconds");
+  }
+  const networkMode = parsed.networkMode;
+  if (networkMode !== undefined && networkMode !== "host" && networkMode !== "bridge") {
+    throw new Error("runtime.networkMode must be host or bridge");
+  }
+  return {
+    ...(timeout === undefined ? {} : { caseTimeoutMs: timeout }),
+    ...(networkMode === undefined ? {} : { networkMode }),
+  };
+}
+
 export function parseConfig(
   value: unknown,
   credentialsFile = join(homedir(), ".dsh/.credentials.yaml"),
@@ -199,6 +218,7 @@ export function parseConfig(
     providers,
     ...(Object.keys(roleModels).length === 0 ? {} : { roleModels }),
     ...(input.browser === undefined ? {} : { browser: browser(input.browser) }),
+    ...(input.runtime === undefined ? {} : { runtime: runtime(input.runtime) }),
     ...(input.copyCredentials === undefined
       ? {}
       : (() => {

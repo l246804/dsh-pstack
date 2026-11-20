@@ -32,6 +32,11 @@ export default {
 
   roleModels: {},
 
+  runtime: {
+    // caseTimeoutMs: 600000,
+    // networkMode: "host", // Linux default; macOS/Windows default is bridge
+  },
+
   browser: {
     mode: "managed",
     headed: false,

@@ -49,11 +49,19 @@ export interface BrowserConfig {
 
 export type RoleModels = Record<string, TestTarget | TestTarget[]>;
 
+export interface RuntimeConfig {
+  /** One scenario's wall-clock budget in milliseconds. */
+  caseTimeoutMs?: number;
+  /** Network namespace strategy for worker containers. */
+  networkMode?: "host" | "bridge";
+}
+
 export interface PlaygroundConfig {
   testModel: TestTarget;
   providers: Record<string, ProviderConfig>;
   roleModels?: RoleModels;
   browser?: BrowserConfig;
+  runtime?: RuntimeConfig;
   copyCredentials?: boolean;
   credentialsFile?: string;
 }

@@ -51,14 +51,14 @@ export class InfraError extends Error {}
 
 const DEFAULT_CASE_TIMEOUT_MS = 600_000;
 
-function caseTimeoutMs(): number {
-  const raw = process.env.PLAYGROUND_CASE_TIMEOUT_MS;
-  if (raw === undefined || raw === "") return DEFAULT_CASE_TIMEOUT_MS;
-  const value = Number(raw);
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new Error("PLAYGROUND_CASE_TIMEOUT_MS must be a positive integer number of milliseconds");
+function caseTimeoutMs(override?: number): number {
+  if (override !== undefined) {
+    if (!Number.isSafeInteger(override) || override <= 0) {
+      throw new Error("runtime.caseTimeoutMs must be a positive integer number of milliseconds");
+    }
+    return override;
   }
-  return value;
+  return DEFAULT_CASE_TIMEOUT_MS;
 }
 
 function sleep(ms: number): void {
@@ -409,6 +409,7 @@ interface AttemptInput {
   screenshotFile: string;
   expectedPreset: string;
   browser?: BrowserConfig;
+  caseTimeoutMs?: number;
 }
 
 function captureScreenshot(session: BrowserSession, path: string): void {
@@ -481,7 +482,15 @@ export function attemptScenario(input: AttemptInput): {
   file: string;
   answers: SessionFacts["autoAnswers"];
 } {
-  const { paths, scenario, url, screenshotFile, expectedPreset, browser } = input;
+  const {
+    paths,
+    scenario,
+    url,
+    screenshotFile,
+    expectedPreset,
+    browser,
+    caseTimeoutMs: timeoutOverride,
+  } = input;
   const preset = expectedPreset;
   const session = createBrowserSession({
     session: `${paths.environmentId}-w${paths.index}`,
@@ -489,7 +498,7 @@ export function attemptScenario(input: AttemptInput): {
     ...(browser === undefined ? {} : { browser }),
   });
   const autoAnswers: Array<{ question: string; answer: string }> = [];
-  const caseTimeout = caseTimeoutMs();
+  const caseTimeout = caseTimeoutMs(timeoutOverride);
   const caseDeadline = Date.now() + caseTimeout;
   try {
     try {
