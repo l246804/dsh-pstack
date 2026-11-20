@@ -118,16 +118,7 @@ function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
         });
       })()`,
     );
-    const modelLabels = [
-      plan.name,
-      plan.model,
-      `${plan.provider}/${plan.model}`,
-      plan.model.split("/").at(-1),
-    ].filter((label): label is string => typeof label === "string" && label.length > 0);
-    const nameShown =
-      modelSelected ||
-      modelLabels.some((label) => body.toLowerCase().includes(label.toLowerCase()));
-    if (!nameShown) failures.push(`page does not show model chip "${plan.name}"`);
+    if (!modelSelected) failures.push(`page does not show model chip "${plan.model}"`);
     const effortLabels: Record<string, string[]> = {
       off: ["off", "关闭"],
       minimal: ["minimal", "最小"],
@@ -153,7 +144,7 @@ function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
       console.error(`\n[bootstrap] worker ${paths.index} body text:\n${body.slice(0, 2000)}`);
     } else {
       console.log(
-        `[bootstrap] worker ${paths.index} ready: workspace="${defaultTitle}" model="${plan.name}" effort="${plan.effort}"`,
+        `[bootstrap] worker ${paths.index} ready: workspace="${defaultTitle}" model="${plan.model}" effort="${plan.effort}"`,
       );
       console.log(
         `[bootstrap] worker ${paths.index} screenshot=${join(paths.browserDir, "ready.png")}`,

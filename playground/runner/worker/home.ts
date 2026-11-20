@@ -11,13 +11,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { dump as yamlDump, load as yamlLoad } from "js-yaml";
 
-import type {
-  PlaygroundConfig,
-  ProviderConfig,
-  ProviderModel,
-  TestTarget,
-  Variant,
-} from "../types.ts";
+import type { PlaygroundConfig, ProviderConfig, TestTarget, Variant } from "../types.ts";
 import { readConfig } from "../config/config.ts";
 import type { ProviderPlan } from "../config/provider.ts";
 import { type NetworkMode } from "../container/spec.ts";
@@ -31,10 +25,6 @@ export { DEFAULT_CONFIG_FILE as CONFIG_FILE, NATIVE_ROOT, NATIVE_SKILLS } from "
 
 function homePatchFile(paths: WorkerPaths): string {
   return join(paths.home, "cordis.patch.yml");
-}
-
-function anonymousModels(models: ProviderModel[]): ProviderModel[] {
-  return models.map((model) => ({ ...model, name: "匿名模型" }));
 }
 
 /** Host network keeps loopback; bridge needs the Docker host gateway. */
@@ -72,7 +62,7 @@ function providerRows(
                 ? {}
                 : { baseURL: workerBaseURL(provider.baseURL, networkMode) }),
               reasoning: provider.reasoning,
-              models: anonymousModels(provider.models),
+              models: provider.models,
             },
           ]),
         ),
@@ -220,9 +210,7 @@ export function writeHomePatch(
   }
 }
 
-export interface HomePlan extends TestTarget {
-  name: string;
-}
+export type HomePlan = TestTarget;
 
 export function readHomePlan(paths: WorkerPaths): HomePlan {
   const entries = yamlLoad(readFileSync(homePatchFile(paths), "utf8")) as Array<{
@@ -239,7 +227,6 @@ export function readHomePlan(paths: WorkerPaths): HomePlan {
     provider: config.provider,
     model: config.model,
     effort: config.reasoningEffort,
-    name: "匿名模型",
   };
 }
 
