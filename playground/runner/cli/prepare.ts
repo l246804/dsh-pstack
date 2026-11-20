@@ -96,6 +96,8 @@ async function main(): Promise<void> {
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
+  // Runtime paths come from config; load it before touching any worker directory.
+  const config = await readPlaygroundConfig(CONFIG_FILE);
   clearBootstrapReady(matrix.id, variant);
   if (
     variant === "native" &&
@@ -110,7 +112,6 @@ async function main(): Promise<void> {
     variant === "adapted"
       ? ["dsh-pstack", ...matrix.enabledPluginPackages]
       : matrix.enabledPluginPackages;
-  const config = await readPlaygroundConfig(CONFIG_FILE);
 
   const plan = loadProviderPlan(config);
   const scenarioIds = listScenarioIdsFor(variant, matrix.id);
