@@ -42,6 +42,7 @@ import {
   resetVariant,
   type WorkerPaths,
 } from "../runner/worker/worker.ts";
+import { activeSubagentCount } from "../runner/execution/run.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -392,6 +393,22 @@ function workspaceWith(entries: Record<string, string>): string {
   return workspace;
 }
 
+describe("artifact-exists assertion", () => {
+  it("passes when the file exists and fails when it is missing", () => {
+    const workspace = workspaceWith({ "done.txt": "urgent.md 和 later.md 已写完" });
+    expect(
+      evaluateAssertions([{ kind: "artifact-exists", path: "done.txt" }], emptySession, workspace),
+    ).toEqual([]);
+    expect(
+      evaluateAssertions(
+        [{ kind: "artifact-exists", path: "missing.txt" }],
+        emptySession,
+        workspace,
+      ),
+    ).toEqual(["missing artifact: missing.txt"]);
+  });
+});
+
 describe("artifact-dir-nonempty assertion", () => {
   it("passes only when the directory exists and holds at least one file", () => {
     expect(evaluateAssertions([dirAssertion], emptySession, workspaceWith({}))).toEqual([
@@ -703,5 +720,31 @@ describe("variant isolation of worker evidence", () => {
     } finally {
       setRuntimeSettings(defaultRuntimeSettings);
     }
+  });
+});
+
+describe("active subagent count", () => {
+  it("counts a workflow child until its run ends", () => {
+    const events: SessionEvent[] = [
+      { type: "subagent/catalog", data: { childId: "child-1", name: "agent-1" } },
+      { type: "tool-workflow/agent-start", data: { runId: "run-1", childId: "child-1" } },
+    ];
+    expect(activeSubagentCount(events)).toBe(1);
+    events.push({
+      type: "tool-workflow/run-end",
+      data: { runId: "run-1", stopReason: "completed" },
+    });
+    expect(activeSubagentCount(events)).toBe(0);
+  });
+
+  it("still recognizes the background subagent completion notice", () => {
+    const events: SessionEvent[] = [
+      { type: "subagent/catalog", data: { childId: "child-1", name: "agent-1" } },
+      {
+        type: "user/message",
+        data: { content: [{ type: "text", text: "Background subagent agent-1 finished" }] },
+      },
+    ];
+    expect(activeSubagentCount(events)).toBe(0);
   });
 });

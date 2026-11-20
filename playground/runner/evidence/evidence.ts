@@ -323,6 +323,15 @@ export function evaluateAssertions(
         }
         break;
       }
+      case "artifact-exists": {
+        const target = resolveInWorkspace(workspace, assertion.path);
+        if (target === null) {
+          failures.push(`artifact escapes workspace: ${assertion.path}`);
+        } else if (!existsSync(target)) {
+          failures.push(`missing artifact: ${assertion.path}`);
+        }
+        break;
+      }
       case "artifact-dir-nonempty": {
         const target = resolveInWorkspace(workspace, assertion.path);
         if (target === null) {

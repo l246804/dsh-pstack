@@ -32,7 +32,7 @@ export default {
     { kind: "turn-completed" },
     { kind: "artifact-contains", path: "urgent.md", text: "合同" },
     { kind: "artifact-contains", path: "later.md", text: "竞品" },
-    { kind: "artifact-contains", path: "done.txt", text: "完成" },
+    { kind: "artifact-exists", path: "done.txt" },
   ],
   rubric: {
     prompt:

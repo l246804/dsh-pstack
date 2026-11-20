@@ -102,6 +102,7 @@ export type Assertion =
   | { kind: "skill-loaded"; skill: string }
   | { kind: "no-tool-error" }
   | { kind: "artifact-contains"; path: string; text: string }
+  | { kind: "artifact-exists"; path: string }
   | { kind: "artifact-dir-nonempty"; path: string }
   | { kind: "artifact-absent"; path: string }
   | { kind: "assistant-contains"; text: string };
