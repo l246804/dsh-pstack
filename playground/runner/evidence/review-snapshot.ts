@@ -9,7 +9,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { RunEnvironment, RunRecord, Treatment } from "../types.ts";
+import type { RunEnvironment, RunRecord, Variant } from "../types.ts";
 import { isRunRecord, latestRecords, recordFileName } from "./evidence.ts";
 import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "./evidence-files.ts";
 import { sanitizeRecord } from "./redaction.ts";
@@ -20,7 +20,7 @@ export const REVIEWS_DIRECTORY = join(PLAYGROUND_DIRECTORY, "evidence", "runs");
 
 export interface BatchMetadata {
   batchId: string;
-  treatment: Treatment;
+  variant: Variant;
   environment: string;
   mode: "full" | "incremental";
   scope: string[];
@@ -29,25 +29,25 @@ export interface BatchMetadata {
 }
 
 export function reviewSnapshotDirectory(
-  treatment: Treatment,
+  variant: Variant,
   environment: string,
   root = REVIEWS_DIRECTORY,
 ): string {
-  return join(root, `${treatment}-${environment}`);
+  return join(root, `${variant}-${environment}`);
 }
 
-export function batchMetadataFile(treatment: Treatment, environment: string): string {
-  return join(workersDirectory(), treatment, environment, "current-batch.json");
+export function batchMetadataFile(variant: Variant, environment: string): string {
+  return join(workersDirectory(), variant, environment, "current-batch.json");
 }
 
-export function readBatchMetadata(treatment: Treatment, environment: string): BatchMetadata | null {
-  const file = batchMetadataFile(treatment, environment);
+export function readBatchMetadata(variant: Variant, environment: string): BatchMetadata | null {
+  const file = batchMetadataFile(variant, environment);
   if (!existsSync(file)) return null;
   try {
     const parsed = JSON.parse(readFileSync(file, "utf8")) as Partial<BatchMetadata>;
     if (
       typeof parsed.batchId !== "string" ||
-      parsed.treatment !== treatment ||
+      parsed.variant !== variant ||
       parsed.environment !== environment ||
       (parsed.mode !== "full" && parsed.mode !== "incremental") ||
       !Array.isArray(parsed.scope)
@@ -56,7 +56,7 @@ export function readBatchMetadata(treatment: Treatment, environment: string): Ba
     }
     return {
       batchId: parsed.batchId,
-      treatment: parsed.treatment,
+      variant: parsed.variant,
       environment: parsed.environment,
       mode: parsed.mode,
       scope: parsed.scope.filter((entry): entry is string => typeof entry === "string"),
@@ -73,7 +73,7 @@ export function readBatchMetadata(treatment: Treatment, environment: string): Ba
 }
 
 export function writeBatchMetadata(metadata: BatchMetadata): void {
-  const file = batchMetadataFile(metadata.treatment, metadata.environment);
+  const file = batchMetadataFile(metadata.variant, metadata.environment);
   mkdirSync(dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(metadata, null, 2)}\n`);
 }
@@ -105,17 +105,15 @@ function sourceFor(record: RunRecord): RecordSource {
   const paths = workerPaths(
     record.environment.worker,
     record.environment.matrix.id,
-    record.treatment,
+    record.variant,
   );
   const stamp = record.capturedAt.replace(/[:.]/g, "-");
   const sourceFile = join(
     paths.evidenceDir,
-    recordFileName(
-      record.scenarioId,
-      record.treatment,
-      record.environment.matrix.id,
-      stamp,
-    ).replace(/\.json$/, EVIDENCE_FILES.sourceSuffix),
+    recordFileName(record.scenarioId, record.variant, record.environment.matrix.id, stamp).replace(
+      /\.json$/,
+      EVIDENCE_FILES.sourceSuffix,
+    ),
   );
   if (!existsSync(sourceFile)) throw new Error(`missing evidence source file: ${sourceFile}`);
   return JSON.parse(readFileSync(sourceFile, "utf8")) as RecordSource;
@@ -137,21 +135,21 @@ function copyRunEvidence(record: RunRecord, directory: string): void {
 }
 
 function scenarioDirectory(
-  treatment: Treatment,
+  variant: Variant,
   environment: string,
   scenarioId: string,
   root = REVIEWS_DIRECTORY,
 ): string {
   return join(
-    reviewSnapshotDirectory(treatment, environment, root),
+    reviewSnapshotDirectory(variant, environment, root),
     "scenarios",
     scenarioId,
-    `${treatment}-${environment}`,
+    `${variant}-${environment}`,
   );
 }
 
 export interface ReviewSnapshotManifest {
-  treatment: Treatment;
+  variant: Variant;
   environment: string;
   dshVersion: string;
   pstackVersion: string;
@@ -169,7 +167,7 @@ export interface ReviewSnapshotManifest {
 }
 
 export function writeReviewSnapshot(
-  treatment: Treatment,
+  variant: Variant,
   environment: string,
   batch: BatchMetadata | null,
   allRecords: RunRecord[],
@@ -177,15 +175,15 @@ export function writeReviewSnapshot(
 ): ReviewSnapshotManifest {
   const latest = latestRecords(allRecords);
   const current = latest.filter(
-    (record) => record.treatment === treatment && record.environment.matrix.id === environment,
+    (record) => record.variant === variant && record.environment.matrix.id === environment,
   );
   if (current.length === 0) {
     throw new Error(
-      `no records for ${treatment}-${environment}; refusing to write an empty snapshot`,
+      `no records for ${variant}-${environment}; refusing to write an empty snapshot`,
     );
   }
   const currentIds = new Set(current.map((record) => record.scenarioId));
-  const snapshot = reviewSnapshotDirectory(treatment, environment, reviewsDirectory);
+  const snapshot = reviewSnapshotDirectory(variant, environment, reviewsDirectory);
   const scenarios = join(snapshot, EVIDENCE_DIRECTORIES.scenarios);
 
   // Only a full batch owns the whole snapshot, so only it may drop scenario dirs that this
@@ -199,18 +197,13 @@ export function writeReviewSnapshot(
   }
 
   for (const record of current) {
-    const directory = scenarioDirectory(
-      treatment,
-      environment,
-      record.scenarioId,
-      reviewsDirectory,
-    );
+    const directory = scenarioDirectory(variant, environment, record.scenarioId, reviewsDirectory);
     rmSync(directory, { recursive: true, force: true });
     copyRunEvidence(record, directory);
   }
 
   const manifest: ReviewSnapshotManifest = {
-    treatment,
+    variant,
     environment,
     dshVersion: current[0]?.environment.dshVersion ?? "",
     pstackVersion: current[0]?.environment.pstackVersion ?? "",
@@ -232,13 +225,13 @@ export function writeReviewSnapshot(
 }
 
 export function collectReviewSnapshot(
-  treatment: Treatment,
+  variant: Variant,
   environment: string,
 ): ReviewSnapshotManifest {
   return writeReviewSnapshot(
-    treatment,
+    variant,
     environment,
-    readBatchMetadata(treatment, environment),
+    readBatchMetadata(variant, environment),
     readRecords(workersDirectory()),
   );
 }

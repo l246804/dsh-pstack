@@ -21,7 +21,7 @@
 | `kind` | 必填：`gap` 或 `regression` |
 | `capability` | 稳定能力 id；gap 场景必须等于 `gap` |
 | `gap` | gap 场景必填；regression 不写 |
-| `treatments` | 默认 `["native", "adapted"]`；gap 场景应覆盖两侧 |
+| `variants` | 默认 `["native", "adapted"]`；gap 场景应覆盖两侧 |
 | `environments` | 默认 `["base"]`；可选 id 见 `runner/scenario/environments.ts` |
 | `turns` | 用户可观察目标，不写工具名、包名或实现路径 |
 | `workspace` | 必要 fixture；不引用宿主路径 |
@@ -32,7 +32,7 @@
 
 `assertions` 可用：`turn-completed`、`skill-loaded`、`no-tool-error`、`artifact-contains`、`artifact-dir-nonempty`、`artifact-absent`、`assistant-contains`。`turn-completed` 只能作为基础项，必须至少有一个能随目标行为缺失而失败的断言。
 
-一个场景只覆盖一个行为分支。场景定义是 treatment 中立的；同一个 probe 不在文件内分支 treatment。
+一个场景只覆盖一个行为分支。场景定义是 variant 中立的；同一个 probe 不在文件内分支 variant。
 
 ## Gap 同步
 
@@ -44,7 +44,7 @@
 
 ## 守卫
 
-`vp run playground:gap-lock -- --check` 同时运行 `gapCoverageProblems`（gap 场景引用、状态、capability 和两侧 treatment）与 `gapLockProblems`（confirmed gap 描述指纹）。测试在 `playground/tests/playground-contracts.test.ts`。
+`vp run playground:gap-lock -- --check` 同时运行 `gapCoverageProblems`（gap 场景引用、状态、capability 和两侧 variant）与 `gapLockProblems`（confirmed gap 描述指纹）。测试在 `playground/tests/playground-contracts.test.ts`。
 
 ## 完成标准
 

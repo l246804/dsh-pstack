@@ -6,8 +6,8 @@
 
 | 输入 | 用途 |
 | --- | --- |
-| `evidence/runs/<treatment>-<environment>/manifest.json` | 当前快照范围、批次和版本 |
-| `evidence/runs/<treatment>-<environment>/scenarios/**` | 每个场景的 `record.json`、`screenshot.png` |
+| `evidence/runs/<variant>-<environment>/manifest.json` | 当前快照范围、批次和版本 |
+| `evidence/runs/<variant>-<environment>/scenarios/**` | 每个场景的 `record.json`、`screenshot.png` |
 | `native/gaps.json` | native 判断确认/推翻缺口；adapted 判断缺口是否闭合 |
 | `playground/scenarios/probes/*.ts` | prompt、assertions、rubric、uiObservations；只作判据 |
 | `native/dsh.md` | 仅 native 分析逐条对照 |
@@ -33,7 +33,7 @@
 
 ## 输出
 
-按 treatment 手写 `playground/evidence/findings/<treatment>.md`，固定包含：
+按 variant 手写 `playground/evidence/findings/<variant>.md`，固定包含：
 
 1. 本轮范围：full/incremental、覆盖场景、沿用快照、`dshVersion` / `pstackVersion`。
 2. 按 probe 汇总：通过、失败/未完成、未观察到、能力缺失。
@@ -56,7 +56,7 @@
   - `evidence/runs/native-base/scenarios/a/native-base/screenshot.png`
 - 现象：
 - 根因：
-- 与当前 treatment dsh.md 的关系：
+- 与当前 variant dsh.md 的关系：
 - 建议动作：
 - 你的决定：
 ```
@@ -79,8 +79,8 @@ native 只审查 `native/dsh.md`，adapted 只审查 `src/dsh.md`。
 写完 findings 和每个场景的 `review.json`（`{ status, reason, reviewer }`）后：
 
 ```sh
-vp run playground:review -- --treatment <treatment> --environment <environment> --apply
-vp run playground:review -- --treatment <treatment> --environment <environment> --check
+vp run playground:review -- --variant <variant> --environment <environment> --apply
+vp run playground:review -- --variant <variant> --environment <environment> --check
 ```
 
 `--apply` 是 pending 变为 verified / not-verified 的唯一路径；`--check` 必须没有 pending。随后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并执行 `playground:redact --apply`。
@@ -89,5 +89,5 @@ vp run playground:review -- --treatment <treatment> --environment <environment> 
 
 - 每个快照场景都有明确结论和 reason。
 - 问题条目按根因去重，且带能力 id、证据和后续动作。
-- `dsh.md` 审查只覆盖当前 treatment 的那一份。
+- `dsh.md` 审查只覆盖当前 variant 的那一份。
 - `review --check` 通过，没有 pending。

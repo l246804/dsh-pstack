@@ -9,7 +9,7 @@ import type {
   RunRecord,
   SessionFacts,
   TestTarget,
-  Treatment,
+  Variant,
 } from "../types.ts";
 import {
   captureFullPage,
@@ -598,7 +598,7 @@ export function attemptScenario(input: AttemptInput): {
 
 export function blockedRecord(input: {
   scenarioId: string;
-  treatment: Treatment;
+  variant: Variant;
   paths: WorkerPaths;
   config: PlaygroundConfig;
   recordFile: string;
@@ -628,12 +628,12 @@ export function blockedRecord(input: {
     : null;
   return {
     scenarioId: input.scenarioId,
-    treatment: input.treatment,
+    variant: input.variant,
     environment: createEnvironment({
       worker: input.paths.index,
       matrix,
       config,
-      treatment: input.treatment,
+      variant: input.variant,
       paths: input.paths,
     }),
     target: null,
@@ -646,7 +646,7 @@ export function blockedRecord(input: {
     semanticReview: pendingSemanticReview(),
     mechanicalFailures: [],
     verdict: verdictFor({
-      treatment: input.treatment,
+      variant: input.variant,
       failures: [],
       semanticReview: pendingSemanticReview(),
       blockedReason: input.reason,

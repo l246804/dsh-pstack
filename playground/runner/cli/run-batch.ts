@@ -10,8 +10,8 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { isTreatment } from "../types.ts";
-import type { Treatment, RunRecord, Verdict } from "../types.ts";
+import { isVariant } from "../types.ts";
+import type { Variant, RunRecord, Verdict } from "../types.ts";
 import { latestRecords } from "../evidence/evidence.ts";
 import { computeWorkers } from "../worker/capacity.ts";
 import {
@@ -59,7 +59,7 @@ function readRecords(directory: string): RunRecord[] {
     if (!entry.name.endsWith(".json")) return [];
     try {
       const record = JSON.parse(readFileSync(file, "utf8")) as RunRecord;
-      return typeof record.scenarioId === "string" && typeof record.treatment === "string"
+      return typeof record.scenarioId === "string" && typeof record.variant === "string"
         ? [record]
         : [];
     } catch (error) {
@@ -74,7 +74,7 @@ function allRecords(): RunRecord[] {
   return readRecords(workersDirectory());
 }
 
-function selectedScenarios(treatment: Treatment, environmentId: string): string[] {
+function selectedScenarios(variant: Variant, environmentId: string): string[] {
   const scenarios = argValue("--scenarios");
   const failed = process.argv.includes("--only-failed");
   const full = process.argv.includes("--full");
@@ -86,21 +86,19 @@ function selectedScenarios(treatment: Treatment, environmentId: string): string[
   if (full) {
     return listScenarioIds().filter((id) => {
       const scenario = loadScenario(id);
-      const treatmentAllowed =
-        scenario.treatments === undefined || scenario.treatments.includes(treatment);
+      const variantAllowed = scenario.variants === undefined || scenario.variants.includes(variant);
       const environments = scenario.environments ?? ["base"];
-      return treatmentAllowed && environments.includes(environmentId);
+      return variantAllowed && environments.includes(environmentId);
     });
   }
   if (scenarios) return parseList(scenarios);
   if (failed) {
     return latestRecords(allRecords())
       .filter(
-        (record) =>
-          record.treatment === treatment && record.environment.matrix.id === environmentId,
+        (record) => record.variant === variant && record.environment.matrix.id === environmentId,
       )
       .filter((record) =>
-        treatment === "native"
+        variant === "native"
           ? record.verdict.status === "gap"
           : record.verdict.status === "not-verified",
       )
@@ -153,9 +151,9 @@ function statuses(): ProgressState["statuses"] {
   };
 }
 
-function statusFor(record: RunRecord | undefined, treatment: Treatment): Verdict["status"] {
+function statusFor(record: RunRecord | undefined, variant: Variant): Verdict["status"] {
   if (record) return record.verdict.status;
-  return treatment === "native" ? "unobserved" : "inconclusive";
+  return variant === "native" ? "unobserved" : "inconclusive";
 }
 
 async function main(): Promise<void> {
@@ -163,26 +161,26 @@ async function main(): Promise<void> {
   if (listScenarioIds().length === 0) {
     throw new Error("no scenarios are registered; generate probes first");
   }
-  const treatment = argValue("--treatment") as Treatment | undefined;
-  if (!isTreatment(treatment)) {
+  const variant = argValue("--variant") as Variant | undefined;
+  if (!isVariant(variant)) {
     throw new Error(
-      "usage: run-batch.ts --treatment native|adapted --environment ID [--full|--scenarios a,b|--only-failed] [--workers N] [--round N]",
+      "usage: run-batch.ts --variant native|adapted --environment ID [--full|--scenarios a,b|--only-failed] [--workers N] [--round N]",
     );
   }
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
-  const ids = selectedScenarios(treatment, matrix.id);
+  const ids = selectedScenarios(variant, matrix.id);
   if (argValue("--scenarios") !== undefined) {
     const offenders = ids.filter((id) => {
       const scenario = loadScenario(id);
-      const treatments = scenario.treatments ?? ["native", "adapted"];
+      const variants = scenario.variants ?? ["native", "adapted"];
       const environments = scenario.environments ?? ["base"];
-      return !treatments.includes(treatment) || !environments.includes(matrix.id);
+      return !variants.includes(variant) || !environments.includes(matrix.id);
     });
     if (offenders.length > 0) {
       throw new Error(
-        `--scenarios ids not allowed in ${treatment}-${matrix.id}: ${offenders.join(", ")}`,
+        `--scenarios ids not allowed in ${variant}-${matrix.id}: ${offenders.join(", ")}`,
       );
     }
   }
@@ -191,16 +189,16 @@ async function main(): Promise<void> {
     return;
   }
   const requested = argValue("--workers") === undefined ? undefined : Number(argValue("--workers"));
-  const prepared = workerCount(matrix.id, treatment);
+  const prepared = workerCount(matrix.id, variant);
   if (prepared === 0) throw new Error("no prepared workers; run playground:prepare first");
   const workers = Math.min(computeWorkers(requested).workers, prepared, ids.length);
   const pending = [...ids];
   const roundFlag = argValue("--round");
-  const file = progressFilePath(matrix.id, treatment);
+  const file = progressFilePath(matrix.id, variant);
   const round = roundFlag ? Number(roundFlag) : (readProgress(file)?.round ?? 0) + 1;
   if (!Number.isInteger(round) || round < 1) throw new Error("--round must be positive");
   const state: ProgressState = {
-    treatment,
+    variant,
     environmentId: matrix.id,
     round,
     total: ids.length,
@@ -217,14 +215,14 @@ async function main(): Promise<void> {
   };
   writeProgress(file, state);
   console.log(`[run-batch] progress=${file}`);
-  mkdirSync(join(workersDirectory(), treatment, matrix.id), { recursive: true });
-  const logFile = join(workersDirectory(), treatment, matrix.id, "batch.log");
-  writeFileSync(logFile, `treatment=${treatment} environment=${matrix.id} round=${round}\n`);
-  const batchId = `${treatment}-${matrix.id}-${formatTimestamp().replace(/[-: ]/g, "")}`;
+  mkdirSync(join(workersDirectory(), variant, matrix.id), { recursive: true });
+  const logFile = join(workersDirectory(), variant, matrix.id, "batch.log");
+  writeFileSync(logFile, `variant=${variant} environment=${matrix.id} round=${round}\n`);
+  const batchId = `${variant}-${matrix.id}-${formatTimestamp().replace(/[-: ]/g, "")}`;
   const mode = process.argv.includes("--full") ? "full" : "incremental";
   writeBatchMetadata({
     batchId,
-    treatment,
+    variant,
     environment: matrix.id,
     mode,
     scope: ids,
@@ -242,7 +240,7 @@ async function main(): Promise<void> {
           const perWorker = current.perWorker[`w${worker}`];
           if (perWorker) perWorker.total += 1;
         });
-        const workerPathsForTask = workerPaths(worker, matrix.id, treatment);
+        const workerPathsForTask = workerPaths(worker, matrix.id, variant);
         const taskFile = currentTaskFile(workerPathsForTask);
         rmSync(stopRequestFile(workerPathsForTask), { force: true });
         writeFileSync(
@@ -255,8 +253,8 @@ async function main(): Promise<void> {
           String(worker),
           "--scenario",
           scenarioId,
-          "--treatment",
-          treatment,
+          "--variant",
+          variant,
           "--environment",
           matrix.id,
         ];
@@ -265,18 +263,18 @@ async function main(): Promise<void> {
         rmSync(stopRequestFile(workerPathsForTask), { force: true });
         appendFileSync(
           logFile,
-          `\n===== ${scenarioId} ${treatment} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
+          `\n===== ${scenarioId} ${variant} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
         );
         const records = readRecords(
-          join(workersDirectory(), treatment, matrix.id, `w${worker}/evidence`),
+          join(workersDirectory(), variant, matrix.id, `w${worker}/evidence`),
         );
         const record = records.find(
           (entry) =>
             entry.scenarioId === scenarioId &&
-            entry.treatment === treatment &&
+            entry.variant === variant &&
             entry.batchId === batchId,
         );
-        const status = statusFor(record, treatment);
+        const status = statusFor(record, variant);
         updateProgress(file, (current) => {
           current.running = current.running.filter(
             (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
@@ -293,7 +291,7 @@ async function main(): Promise<void> {
             });
           }
         });
-        console.log(`[run-batch] ${scenarioId} ${treatment} ${matrix.id} ${status}`);
+        console.log(`[run-batch] ${scenarioId} ${variant} ${matrix.id} ${status}`);
       }
     }),
   );

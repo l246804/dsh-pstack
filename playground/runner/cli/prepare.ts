@@ -1,8 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { isTreatment } from "../types.ts";
-import type { Treatment } from "../types.ts";
+import { isVariant } from "../types.ts";
+import type { Variant } from "../types.ts";
 import { environmentMatrix, workersDirectory } from "../worker/run-metadata.ts";
 import {
   copyCredentials,
@@ -30,7 +30,7 @@ import { computeWorkers } from "../worker/capacity.ts";
 import {
   clearBootstrapReady,
   listWorkers,
-  resetTreatment,
+  resetVariant,
   workerPaths,
   type WorkerPaths,
 } from "../worker/worker.ts";
@@ -40,8 +40,8 @@ function argValue(flag: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-function readTreatment(paths: WorkerPaths): string {
-  return existsSync(paths.treatmentFile) ? readFileSync(paths.treatmentFile, "utf8").trim() : "";
+function readVariant(paths: WorkerPaths): string {
+  return existsSync(paths.variantFile) ? readFileSync(paths.variantFile, "utf8").trim() : "";
 }
 
 async function waitReachable(url: string): Promise<boolean> {
@@ -86,18 +86,18 @@ async function startWorkers(
 }
 
 async function main(): Promise<void> {
-  const treatment = argValue("--treatment") as Treatment | undefined;
-  if (!isTreatment(treatment)) {
+  const variant = argValue("--variant") as Variant | undefined;
+  if (!isVariant(variant)) {
     throw new Error(
-      "usage: prepare.ts --treatment native|adapted --environment ID [--workers N] [--port N] [--reset|--reuse]",
+      "usage: prepare.ts --variant native|adapted --environment ID [--workers N] [--port N] [--reset|--reuse]",
     );
   }
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
-  clearBootstrapReady(matrix.id, treatment);
+  clearBootstrapReady(matrix.id, variant);
   if (
-    treatment === "native" &&
+    variant === "native" &&
     matrix.enabledPluginPackages.length > 0 &&
     matrix.kind !== "capability"
   ) {
@@ -106,7 +106,7 @@ async function main(): Promise<void> {
     );
   }
   const enabledPackages =
-    treatment === "adapted"
+    variant === "adapted"
       ? ["dsh-pstack", ...matrix.enabledPluginPackages]
       : matrix.enabledPluginPackages;
   const config = await readPlaygroundConfig(CONFIG_FILE);
@@ -128,23 +128,17 @@ async function main(): Promise<void> {
   if (reset && reuse) throw new Error("--reset and --reuse are mutually exclusive");
   if (reuse) {
     const workers = Array.from({ length: count }, (_, index) =>
-      workerPaths(index, matrix.id, treatment),
+      workerPaths(index, matrix.id, variant),
     );
     for (const worker of workers) stopWeb(worker);
     // The reused profile points at the worker's native mount outside the repo; refresh it so a
     // cleared temp root does not restart native workers with missing skills.
     for (const worker of workers) {
-      if (readTreatment(worker) === "native") mountNativeTree(worker);
-      writeHomePatch(
-        worker,
-        plan,
-        treatment,
-        matrix.teamMode === true,
-        config.runtime?.networkMode,
-      );
+      if (readVariant(worker) === "native") mountNativeTree(worker);
+      writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime?.networkMode);
       writeWorkerInstructions(worker);
       writeRoleFile(worker, config);
-      writePstackSettings(worker, treatment === "adapted");
+      writePstackSettings(worker, variant === "adapted");
     }
     await startWorkers(
       workers,
@@ -157,26 +151,26 @@ async function main(): Promise<void> {
   }
 
   const workers = Array.from({ length: count }, (_, index) =>
-    workerPaths(index, matrix.id, treatment),
+    workerPaths(index, matrix.id, variant),
   );
   if (reset) {
-    for (const worker of listWorkers({ environmentId: matrix.id, treatment })) stopWeb(worker);
-    resetTreatment(matrix.id, treatment);
+    for (const worker of listWorkers({ environmentId: matrix.id, variant })) stopWeb(worker);
+    resetVariant(matrix.id, variant);
   } else {
-    for (const worker of listWorkers({ environmentId: matrix.id, treatment })) {
+    for (const worker of listWorkers({ environmentId: matrix.id, variant })) {
       if (worker.index >= count) stopWeb(worker);
     }
   }
   mkdirSync(workersDirectory(), { recursive: true });
   const pluginTarball =
-    treatment === "adapted"
-      ? packPlugin(join(workersDirectory(), treatment, matrix.id, "package"))
+    variant === "adapted"
+      ? packPlugin(join(workersDirectory(), variant, matrix.id, "package"))
       : null;
   let installed: WorkerPaths | null = null;
   for (const worker of workers) {
     if (reset) resetHome(worker);
     else mkdirSync(worker.home, { recursive: true });
-    if (treatment === "native") mountNativeTree(worker);
+    if (variant === "native") mountNativeTree(worker);
     if (installed === null) {
       ensureWebProfile(worker);
       if (pluginTarball !== null) installPluginPackage(worker, pluginTarball);
@@ -189,11 +183,11 @@ async function main(): Promise<void> {
     } else {
       cloneInstalledProfile(installed, worker);
     }
-    writeFileSync(worker.treatmentFile, `${treatment}\n`);
+    writeFileSync(worker.variantFile, `${variant}\n`);
     if (config.copyCredentials) copyCredentials(worker, config.credentialsFile);
-    writeHomePatch(worker, plan, treatment, matrix.teamMode === true, config.runtime?.networkMode);
+    writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime?.networkMode);
     writeRoleFile(worker, config);
-    writePstackSettings(worker, treatment === "adapted");
+    writePstackSettings(worker, variant === "adapted");
     registerWorkspaces(worker, listScenarioIds());
   }
   await startWorkers(
@@ -204,7 +198,7 @@ async function main(): Promise<void> {
     config.runtime.workerPortBase,
   );
   console.log(
-    `[prepare] treatment=${treatment} environment=${matrix.id} workers=${count} model=${plan.main.provider}/${plan.main.model}[${plan.main.effort}]`,
+    `[prepare] variant=${variant} environment=${matrix.id} workers=${count} model=${plan.main.provider}/${plan.main.model}[${plan.main.effort}]`,
   );
 }
 

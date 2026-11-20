@@ -5,7 +5,7 @@ const scenario: BehaviorScenario = {
   capability: "subagent-readonly-sandbox",
   kind: "gap",
   gap: "subagent-readonly-sandbox",
-  treatments: ["native", "adapted"],
+  variants: ["native", "adapted"],
   environments: ["base"],
   turns: [
     {

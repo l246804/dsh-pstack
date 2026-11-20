@@ -1,8 +1,8 @@
 import { writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { isTreatment } from "../runner/types.ts";
-import type { Treatment } from "../runner/types.ts";
+import { isVariant } from "../runner/types.ts";
+import type { Variant } from "../runner/types.ts";
 import { verdictFor } from "../runner/evidence/evidence.ts";
 import { listSnapshotRecords, readReviewEntries, toSemanticReview } from "./lib/review.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
@@ -13,7 +13,7 @@ function argValue(flag: string): string | undefined {
 }
 
 export interface ReviewTarget {
-  treatment: Treatment;
+  variant: Variant;
   environment: string;
   root?: string;
 }
@@ -33,8 +33,8 @@ export interface CheckResult {
  * overwrites a startup-conflict block. Every other field on the record is preserved.
  */
 export function applyReview(target: ReviewTarget): ApplyResult {
-  const entries = readReviewEntries(target.treatment, target.environment, target.root);
-  const records = listSnapshotRecords(target.treatment, target.environment, target.root);
+  const entries = readReviewEntries(target.variant, target.environment, target.root);
+  const records = listSnapshotRecords(target.variant, target.environment, target.root);
   const recordIds = new Set(records.map((record) => record.scenarioId));
   const reviewIds = new Set(Object.keys(entries));
   const unknown = [...reviewIds].filter((id) => !recordIds.has(id)).sort();
@@ -53,7 +53,7 @@ export function applyReview(target: ReviewTarget): ApplyResult {
     record.semanticReview = semanticReview;
     if (record.verdict.status !== "blocked") {
       record.verdict = verdictFor({
-        treatment: record.treatment,
+        variant: record.variant,
         failures: record.mechanicalFailures ?? [],
         semanticReview,
       });
@@ -69,11 +69,11 @@ export function checkReview(target: ReviewTarget): CheckResult {
   const problems: string[] = [];
   let entries;
   try {
-    entries = readReviewEntries(target.treatment, target.environment, target.root);
+    entries = readReviewEntries(target.variant, target.environment, target.root);
   } catch (error) {
     return { ok: false, problems: [error instanceof Error ? error.message : String(error)] };
   }
-  const records = listSnapshotRecords(target.treatment, target.environment, target.root);
+  const records = listSnapshotRecords(target.variant, target.environment, target.root);
   const recordIds = new Set(records.map((record) => record.scenarioId));
   const reviewIds = new Set(Object.keys(entries));
   for (const id of [...reviewIds].filter((id) => !recordIds.has(id)).sort())
@@ -88,11 +88,11 @@ export function checkReview(target: ReviewTarget): CheckResult {
 }
 
 function main(): void {
-  const treatment = argValue("--treatment") as Treatment | undefined;
+  const variant = argValue("--variant") as Variant | undefined;
   const environment = argValue("--environment");
-  if (!isTreatment(treatment) || environment === undefined) {
+  if (!isVariant(variant) || environment === undefined) {
     throw new Error(
-      "usage: review.ts --treatment native|adapted --environment ID (--apply | --check)",
+      "usage: review.ts --variant native|adapted --environment ID (--apply | --check)",
     );
   }
   environmentMatrix(environment);
@@ -100,19 +100,19 @@ function main(): void {
   const check = process.argv.includes("--check");
   if (apply === check) throw new Error("pass exactly one of --apply or --check");
   if (apply) {
-    const { updated } = applyReview({ treatment, environment });
+    const { updated } = applyReview({ variant, environment });
     console.log(
-      `[review] applied ${updated.length} review entr${updated.length === 1 ? "y" : "ies"} to ${treatment}-${environment}`,
+      `[review] applied ${updated.length} review entr${updated.length === 1 ? "y" : "ies"} to ${variant}-${environment}`,
     );
     return;
   }
-  const { ok, problems } = checkReview({ treatment, environment });
+  const { ok, problems } = checkReview({ variant, environment });
   if (!ok) {
     for (const problem of problems) console.error(`[review] ${problem}`);
     process.exitCode = 1;
     return;
   }
-  console.log(`[review] ${treatment}-${environment}: every record has a non-pending review`);
+  console.log(`[review] ${variant}-${environment}: every record has a non-pending review`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

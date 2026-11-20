@@ -8,8 +8,8 @@
 2. 独立分析会话读取 `record.json`，按本文件产出 `record.safe.json`，再运行：
 
 ```sh
-vp run playground:redact -- --treatment native --environment base
-vp run playground:redact -- --treatment native --environment base --apply
+vp run playground:redact -- --variant native --environment base
+vp run playground:redact -- --variant native --environment base --apply
 ```
 
 `--apply` 前先检查候选文件；只有校验通过的 `record.safe.json` 才替换 `record.json`。

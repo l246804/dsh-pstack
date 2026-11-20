@@ -18,7 +18,7 @@ function workerPaths(): WorkerPaths {
   return {
     index: 0,
     environmentId: "base",
-    treatment: "adapted",
+    variant: "adapted",
     root,
     isolatedRoot,
     home: join(root, "home"),
@@ -28,7 +28,7 @@ function workerPaths(): WorkerPaths {
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
     logFile: join(root, "web.log"),
-    treatmentFile: join(root, "treatment.txt"),
+    variantFile: join(root, "variant.txt"),
     containerName: "dsh-playground-adapted-base-w0",
     containerHome: "/dsh/home",
     containerWorkspace: "/dsh/workspace",

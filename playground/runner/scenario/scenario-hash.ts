@@ -13,7 +13,7 @@ export function scenarioContentHash(scenario: BehaviorScenario): string {
     capability: scenario.capability,
     kind: scenario.kind,
     gap: scenario.gap,
-    treatments: scenario.treatments ?? ["native", "adapted"],
+    variants: scenario.variants ?? ["native", "adapted"],
     environments: scenario.environments ?? ["base"],
     turns: scenario.turns,
     workspace: scenario.workspace,

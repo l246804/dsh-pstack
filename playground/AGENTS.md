@@ -6,9 +6,9 @@ Playground 用真实 DSH Web 会话验证原生能力和适配实现。先读本
 
 - worker 以 Docker 容器运行：Linux 原生 Docker、macOS Docker Desktop/Colima/OrbStack、Windows 在 WSL2 内。
 - 先运行 `vp run playground:doctor` 检查 daemon、镜像架构和 DSH 版本；缺镜像时运行 `vp run playground:image`。
-- 每个 worker 使用独立 home、浏览器 profile、evidence 和仓库外 workspace；容器只挂载固定 `/dsh` 路径。
+- 每个 worker 使用独立 home、浏览器 profile、evidence 和仓库内被忽略的 `.workspace`；容器只挂载固定 `/dsh` 路径。
 - 真实模型选择由用户确认；RunRecord 记录实际路由、DSH 版本、pstack 版本、上游 revision 和配置 hash。
-- 运行维度是 treatment × environment：`native` 观察 DSH 标准能力，`adapted` 验证插件实现。
+- 运行维度是 variant × environment：`native` 观察 DSH 标准能力，`adapted` 验证插件实现。
 
 ## 目录
 
@@ -22,7 +22,7 @@ Playground 用真实 DSH Web 会话验证原生能力和适配实现。先读本
 | 触发 | 文档 |
 | --- | --- |
 | 改 `config.ts`、provider、凭证或浏览器 | [docs/config.md](./docs/config.md) |
-| 理解 treatment/environment、运行身份或证据布局 | [docs/model.md](./docs/model.md) |
+| 理解 variant/environment、运行身份或证据布局 | [docs/model.md](./docs/model.md) |
 | 新增/修改场景，处理 gap 或 regression | [docs/scenario-rules.md](./docs/scenario-rules.md) |
 | 跑阶段、批次、增量或发版 | [docs/workflow.md](./docs/workflow.md) |
 | 改容器、prepare/bootstrap、预览或 stop | [docs/worker.md](./docs/worker.md) |

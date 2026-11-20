@@ -6,7 +6,7 @@ import { residualKinds, sanitizeRecord } from "../runner/evidence/redaction.ts";
 function record(): RunRecord {
   return {
     scenarioId: "redaction-test",
-    treatment: "native",
+    variant: "native",
     environment: {
       worker: 0,
       dshVersion: "test",
@@ -51,7 +51,7 @@ function record(): RunRecord {
     },
     semanticReview: { status: "pending", reason: "pending" },
     mechanicalFailures: [],
-    verdict: { treatment: "native", status: "unobserved", reason: "test" },
+    verdict: { variant: "native", status: "unobserved", reason: "test" },
     capturedAt: "2026-11-13T00:00:00.000Z",
   };
 }

@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url";
 
-import { isTreatment } from "../types.ts";
-import type { Treatment } from "../types.ts";
+import { isVariant } from "../types.ts";
+import type { Variant } from "../types.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { collectReviewSnapshot, REVIEWS_DIRECTORY } from "../evidence/review-snapshot.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
@@ -13,13 +13,13 @@ function argValue(flag: string): string | undefined {
 
 async function main(): Promise<void> {
   await readPlaygroundConfig(CONFIG_FILE);
-  const treatment = argValue("--treatment") as Treatment | undefined;
-  if (!isTreatment(treatment))
-    throw new Error("collect requires --treatment native|adapted --environment ID");
+  const variant = argValue("--variant") as Variant | undefined;
+  if (!isVariant(variant))
+    throw new Error("collect requires --variant native|adapted --environment ID");
   const environmentId = argValue("--environment");
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
-  collectReviewSnapshot(treatment, matrix.id);
+  collectReviewSnapshot(variant, matrix.id);
   console.log(`[collect] reviews=${REVIEWS_DIRECTORY}`);
 }
 

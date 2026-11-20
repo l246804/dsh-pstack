@@ -1,11 +1,11 @@
 import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-import type { Treatment } from "../types.ts";
+import type { Variant } from "../types.ts";
 import { isolatedRootDirectory, workersDirectory } from "./run-metadata.ts";
 import { CONTAINER_LAYOUT } from "../container/layout.ts";
 
-const TREATMENTS: readonly Treatment[] = ["native", "adapted"];
+const VARIANTS: readonly Variant[] = ["native", "adapted"];
 
 /** The runtime directory pair every worker child inherits. */
 export function runtimeEnv(paths: WorkerPaths): Record<string, string> {
@@ -26,8 +26,8 @@ export function runtimeEnv(paths: WorkerPaths): Record<string, string> {
 export interface WorkerPaths {
   index: number;
   environmentId: string;
-  /** The evidence treatment this worker belongs to: native and adapted never share a directory. */
-  treatment: Treatment;
+  /** The evidence variant this worker belongs to: native and adapted never share a directory. */
+  variant: Variant;
   /** Audited worker state inside the repository: home, browser, evidence, log. */
   root: string;
   /** Per-worker root outside the repository tree for everything the tested session can reach. */
@@ -39,7 +39,7 @@ export interface WorkerPaths {
   evidenceDir: string;
   urlFile: string;
   logFile: string;
-  treatmentFile: string;
+  variantFile: string;
   /** Deterministic container name; the executor owns the container lifecycle. */
   containerName: string;
   /** Fixed container paths; host paths never cross the container boundary. */
@@ -50,19 +50,15 @@ export interface WorkerPaths {
   containerRuntime: string;
 }
 
-export function workerPaths(
-  index: number,
-  environmentId: string,
-  treatment: Treatment,
-): WorkerPaths {
+export function workerPaths(index: number, environmentId: string, variant: Variant): WorkerPaths {
   if (!/^[a-z0-9-]+$/.test(environmentId))
     throw new Error(`invalid environment id: ${environmentId}`);
-  const root = join(workersDirectory(), treatment, environmentId, `w${index}`);
-  const isolatedRoot = join(isolatedRootDirectory(), treatment, environmentId, `w${index}`);
+  const root = join(workersDirectory(), variant, environmentId, `w${index}`);
+  const isolatedRoot = join(isolatedRootDirectory(), variant, environmentId, `w${index}`);
   return {
     index,
     environmentId,
-    treatment,
+    variant,
     root,
     isolatedRoot,
     home: join(root, "home"),
@@ -72,8 +68,8 @@ export function workerPaths(
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
     logFile: join(root, "web.log"),
-    treatmentFile: join(root, "treatment.txt"),
-    containerName: `dsh-playground-${treatment}-${environmentId}-w${index}`,
+    variantFile: join(root, "variant.txt"),
+    containerName: `dsh-playground-${variant}-${environmentId}-w${index}`,
     containerHome: CONTAINER_LAYOUT.home,
     containerWorkspace: CONTAINER_LAYOUT.workspace,
     containerNative: CONTAINER_LAYOUT.native,
@@ -86,61 +82,61 @@ export function stopRequestFile(paths: WorkerPaths): string {
   return join(paths.root, "stop-request");
 }
 
-export function bootstrapReadyFile(environmentId: string, treatment: Treatment): string {
-  return join(treatmentWorkersDirectory(environmentId, treatment), "bootstrap-ready.json");
+export function bootstrapReadyFile(environmentId: string, variant: Variant): string {
+  return join(variantWorkersDirectory(environmentId, variant), "bootstrap-ready.json");
 }
 
-export function hasBootstrapReady(environmentId: string, treatment: Treatment): boolean {
-  return existsSync(bootstrapReadyFile(environmentId, treatment));
+export function hasBootstrapReady(environmentId: string, variant: Variant): boolean {
+  return existsSync(bootstrapReadyFile(environmentId, variant));
 }
 
-export function clearBootstrapReady(environmentId: string, treatment: Treatment): void {
-  rmSync(bootstrapReadyFile(environmentId, treatment), { force: true });
+export function clearBootstrapReady(environmentId: string, variant: Variant): void {
+  rmSync(bootstrapReadyFile(environmentId, variant), { force: true });
 }
 
 export function currentTaskFile(paths: WorkerPaths): string {
   return join(paths.root, "current-task.json");
 }
 
-/** The in-repo directory that holds every worker of one treatment and environment. */
-export function treatmentWorkersDirectory(environmentId: string, treatment: Treatment): string {
-  return join(workersDirectory(), treatment, environmentId);
+/** The in-repo directory that holds every worker of one variant and environment. */
+export function variantWorkersDirectory(environmentId: string, variant: Variant): string {
+  return join(workersDirectory(), variant, environmentId);
 }
 
-/** The isolated (outside-repo) root for one treatment and environment. */
-export function treatmentIsolatedDirectory(environmentId: string, treatment: Treatment): string {
-  return join(isolatedRootDirectory(), treatment, environmentId);
+/** The isolated (outside-repo) root for one variant and environment. */
+export function variantIsolatedDirectory(environmentId: string, variant: Variant): string {
+  return join(isolatedRootDirectory(), variant, environmentId);
 }
 
 /**
- * Remove one treatment's worker state for an environment, and nothing else. Reset must never
- * reach a sibling treatment: native evidence captured before an adapted prepare stays on disk.
+ * Remove one variant's worker state for an environment, and nothing else. Reset must never
+ * reach a sibling variant: native evidence captured before an adapted prepare stays on disk.
  */
-export function resetTreatment(environmentId: string, treatment: Treatment): void {
-  rmSync(treatmentWorkersDirectory(environmentId, treatment), { recursive: true, force: true });
-  rmSync(treatmentIsolatedDirectory(environmentId, treatment), { recursive: true, force: true });
+export function resetVariant(environmentId: string, variant: Variant): void {
+  rmSync(variantWorkersDirectory(environmentId, variant), { recursive: true, force: true });
+  rmSync(variantIsolatedDirectory(environmentId, variant), { recursive: true, force: true });
 }
 
 export interface WorkerFilter {
-  treatment?: Treatment;
+  variant?: Variant;
   environmentId?: string;
 }
 
 export function listWorkers(filter: WorkerFilter = {}): WorkerPaths[] {
   const root = workersDirectory();
   if (!existsSync(root)) return [];
-  const treatments = filter.treatment ? [filter.treatment] : TREATMENTS;
+  const variants = filter.variant ? [filter.variant] : VARIANTS;
   const workers: WorkerPaths[] = [];
-  for (const treatment of treatments) {
-    const treatmentRoot = join(root, treatment);
-    if (!existsSync(treatmentRoot) || !statSync(treatmentRoot).isDirectory()) continue;
-    const environments = filter.environmentId ? [filter.environmentId] : readdirSync(treatmentRoot);
+  for (const variant of variants) {
+    const variantRoot = join(root, variant);
+    if (!existsSync(variantRoot) || !statSync(variantRoot).isDirectory()) continue;
+    const environments = filter.environmentId ? [filter.environmentId] : readdirSync(variantRoot);
     for (const environmentId of environments) {
-      const directory = join(treatmentRoot, environmentId);
+      const directory = join(variantRoot, environmentId);
       if (!existsSync(directory) || !statSync(directory).isDirectory()) continue;
       for (const name of readdirSync(directory)) {
         if (!/^w\d+$/.test(name) || !statSync(join(directory, name)).isDirectory()) continue;
-        const paths = workerPaths(Number(name.slice(1)), environmentId, treatment);
+        const paths = workerPaths(Number(name.slice(1)), environmentId, variant);
         if (existsSync(paths.urlFile) || existsSync(paths.logFile)) workers.push(paths);
       }
     }
@@ -148,8 +144,8 @@ export function listWorkers(filter: WorkerFilter = {}): WorkerPaths[] {
   return workers;
 }
 
-export function workerCount(environmentId: string, treatment: Treatment): number {
-  const root = treatmentWorkersDirectory(environmentId, treatment);
+export function workerCount(environmentId: string, variant: Variant): number {
+  const root = variantWorkersDirectory(environmentId, variant);
   if (!existsSync(root)) return 0;
   return readdirSync(root).filter((name) => /^w\d+$/.test(name)).length;
 }

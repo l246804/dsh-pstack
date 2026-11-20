@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { compareOne, compareSnapshot, scenarioContentHash } from "../scripts/compare.ts";
-import type { BehaviorScenario, RunRecord, SessionFacts, Treatment } from "../runner/types.ts";
+import type { BehaviorScenario, RunRecord, SessionFacts, Variant } from "../runner/types.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-compare-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -36,15 +36,15 @@ function session(userText: string): SessionFacts {
   };
 }
 
-function record(treatment: Treatment, scenarioId = scenario.id): RunRecord {
+function record(variant: Variant, scenarioId = scenario.id): RunRecord {
   return {
     scenarioId,
-    treatment,
+    variant,
     environment: {
       worker: 0,
       dshVersion: "test-dsh",
       pstackVersion: "test-pstack",
-      adaptedVersion: treatment === "native" ? null : "test-adapted",
+      adaptedVersion: variant === "native" ? null : "test-adapted",
       matrix: { id: "base", description: "test", kind: "base", enabledPluginPackages: [] },
       upstreamRevision: "rev-1",
       configHash: "hash-1",
@@ -55,25 +55,20 @@ function record(treatment: Treatment, scenarioId = scenario.id): RunRecord {
     semanticReview: { status: "pending", reason: "pending" },
     mechanicalFailures: [],
     verdict:
-      treatment === "native"
-        ? { treatment: "native", status: "unobserved", reason: "pending" }
-        : { treatment: "adapted", status: "inconclusive", reason: "pending" },
+      variant === "native"
+        ? { variant: "native", status: "unobserved", reason: "pending" }
+        : { variant: "adapted", status: "inconclusive", reason: "pending" },
     capturedAt: "2026-11-11T00:00:00.000Z",
   };
 }
 
-function writeRecord(
-  root: string,
-  treatment: Treatment,
-  environment: string,
-  entry: RunRecord,
-): void {
+function writeRecord(root: string, variant: Variant, environment: string, entry: RunRecord): void {
   const dir = join(
     root,
-    `${treatment}-${environment}`,
+    `${variant}-${environment}`,
     "scenarios",
     entry.scenarioId,
-    `${treatment}-${environment}`,
+    `${variant}-${environment}`,
   );
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "record.json"), `${JSON.stringify(entry, null, 2)}\n`);
@@ -100,7 +95,7 @@ describe("scenarioContentHash", () => {
       scenarioContentHash({ ...scenario, turns: [{ prompt: "do a different thing" }] }),
     );
     expect(scenarioContentHash(scenario)).not.toBe(
-      scenarioContentHash({ ...scenario, treatments: ["native"] }),
+      scenarioContentHash({ ...scenario, variants: ["native"] }),
     );
     expect(scenarioContentHash(scenario)).not.toBe(
       scenarioContentHash({ ...scenario, environments: ["base", "render"] }),

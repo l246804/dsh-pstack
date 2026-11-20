@@ -16,7 +16,7 @@ import type {
   ProviderConfig,
   ProviderModel,
   TestTarget,
-  Treatment,
+  Variant,
 } from "../types.ts";
 import { readConfig } from "../config/config.ts";
 import type { ProviderPlan } from "../config/provider.ts";
@@ -199,7 +199,7 @@ export function writePstackSettings(paths: WorkerPaths, potetoDefault: boolean):
 export function writeHomePatch(
   paths: WorkerPaths,
   plan: ProviderPlan,
-  treatment: Treatment,
+  variant: Variant,
   teamMode: boolean,
   networkMode: NetworkMode,
 ): void {
@@ -236,7 +236,7 @@ export function writeHomePatch(
       },
     },
   ];
-  if (treatment === "native") {
+  if (variant === "native") {
     patch.push({
       insert: [
         {

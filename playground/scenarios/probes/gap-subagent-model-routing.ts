@@ -5,7 +5,7 @@ const scenario: BehaviorScenario = {
   capability: "subagent-model-routing",
   kind: "gap",
   gap: "subagent-model-routing",
-  treatments: ["native", "adapted"],
+  variants: ["native", "adapted"],
   environments: ["base"],
   turns: [
     {

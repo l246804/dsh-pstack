@@ -5,7 +5,7 @@ const scenario: BehaviorScenario = {
   capability: "inline-video-playback",
   kind: "gap",
   gap: "inline-video-playback",
-  treatments: ["native", "adapted"],
+  variants: ["native", "adapted"],
   environments: ["base"],
   turns: [
     {

@@ -42,7 +42,7 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 ## Native 与 Adapted
 
-`native` 是不加载被测插件的 DSH 标准运行时基线，只能观察 DSH 原生能力；`adapted` 加载被测插件并使用当前适配实现和 `src/dsh.md`。两个 treatment 的证据和结论隔离，不能互相替代。
+`native` 是不加载被测插件的 DSH 标准运行时基线，只能观察 DSH 原生能力；`adapted` 加载被测插件并使用当前适配实现和 `src/dsh.md`。两个 variant 的证据和结论隔离，不能互相替代。
 
 ## Capability probe（能力探针）
 

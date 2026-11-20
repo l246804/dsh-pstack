@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import type { Treatment } from "../runner/types.ts";
+import type { Variant } from "../runner/types.ts";
 import { listSnapshotRecords } from "./lib/review.ts";
 import { REVIEWS_DIRECTORY } from "../runner/evidence/review-snapshot.ts";
 
@@ -17,9 +17,9 @@ export interface StatusPivotTarget {
 }
 
 export interface StatusPivotColumn {
-  treatment: Treatment;
+  variant: Variant;
   environment: string;
-  /** Column heading and cell key: `${treatment}/${environment}`. */
+  /** Column heading and cell key: `${variant}/${environment}`. */
   key: string;
 }
 
@@ -37,13 +37,13 @@ export interface StatusPivot {
   rows: StatusPivotRow[];
 }
 
-function cellKey(treatment: Treatment, environment: string): string {
-  return `${treatment}/${environment}`;
+function cellKey(variant: Variant, environment: string): string {
+  return `${variant}/${environment}`;
 }
 
 /**
- * Read every committed `<treatment>-<environment>` snapshot under `root` and pivot the
- * records: one row per scenario, one column per treatment x environment cell. Generated
+ * Read every committed `<variant>-<environment>` snapshot under `root` and pivot the
+ * records: one row per scenario, one column per variant x environment cell. Generated
  * from records only, so `--check` can prove the committed pivot does not drift.
  */
 export function statusPivot(target: StatusPivotTarget = {}): StatusPivot {
@@ -60,11 +60,11 @@ export function statusPivot(target: StatusPivotTarget = {}): StatusPivot {
   for (const name of directories) {
     const match = SNAPSHOT_DIRECTORY.exec(name);
     if (!match) continue;
-    const treatment = match[1] as Treatment;
+    const variant = match[1] as Variant;
     const environment = match[2] as string;
-    const key = cellKey(treatment, environment);
-    columns.set(key, { treatment, environment, key });
-    for (const { scenarioId, record } of listSnapshotRecords(treatment, environment, root)) {
+    const key = cellKey(variant, environment);
+    columns.set(key, { variant, environment, key });
+    for (const { scenarioId, record } of listSnapshotRecords(variant, environment, root)) {
       const row = rowsByScenario.get(scenarioId) ?? {
         capability: target.resolveCapability?.(scenarioId) ?? scenarioId,
         scenario: scenarioId,
@@ -80,7 +80,7 @@ export function statusPivot(target: StatusPivotTarget = {}): StatusPivot {
   const sortedColumns = [...columns.values()].sort(
     (left, right) =>
       left.environment.localeCompare(right.environment) ||
-      (left.treatment === right.treatment ? 0 : left.treatment === "native" ? -1 : 1),
+      (left.variant === right.variant ? 0 : left.variant === "native" ? -1 : 1),
   );
   const rows = [...rowsByScenario.values()].sort(
     (left, right) =>

@@ -22,7 +22,7 @@ import {
   workerPaths,
   type WorkerPaths,
 } from "../worker/worker.ts";
-import type { BrowserConfig, Treatment } from "../types.ts";
+import type { BrowserConfig, Variant } from "../types.ts";
 
 const { continue: CONTINUE_LABEL, previewNotice: PREVIEW_NOTICE } = UI_LABELS;
 
@@ -34,11 +34,11 @@ function argValue(flag: string): string | undefined {
 function selectWorkers(): WorkerPaths[] {
   const environment = argValue("--environment");
   if (environment === undefined) throw new Error("--environment is required");
-  const treatment = argValue("--treatment") as Treatment;
-  if (treatment !== "native" && treatment !== "adapted")
-    throw new Error("--treatment must be native or adapted");
+  const variant = argValue("--variant") as Variant;
+  if (variant !== "native" && variant !== "adapted")
+    throw new Error("--variant must be native or adapted");
   if (process.argv.includes("--all")) {
-    const workers = listWorkers({ environmentId: environment, treatment });
+    const workers = listWorkers({ environmentId: environment, variant });
     if (workers.length === 0)
       throw new Error("no prepared workers found; run playground:prepare first");
     return workers;
@@ -48,12 +48,10 @@ function selectWorkers(): WorkerPaths[] {
     const index = Number(workerFlag);
     if (!Number.isInteger(index) || index < 0)
       throw new Error("--worker must be a non-negative integer");
-    return [workerPaths(index, environment, treatment)];
+    return [workerPaths(index, environment, variant)];
   }
-  const workers = listWorkers({ environmentId: environment, treatment });
-  return workers.length > 0
-    ? [workers[0] as WorkerPaths]
-    : [workerPaths(0, environment, treatment)];
+  const workers = listWorkers({ environmentId: environment, variant });
+  return workers.length > 0 ? [workers[0] as WorkerPaths] : [workerPaths(0, environment, variant)];
 }
 
 function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
@@ -62,7 +60,7 @@ function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
   const { defaultTitle } = readWorkspaceStore(paths);
 
   const session = createBrowserSession({
-    session: `${paths.treatment}-${paths.environmentId}-w${paths.index}`,
+    session: `${paths.variant}-${paths.environmentId}-w${paths.index}`,
     browserDir: paths.browserDir,
     ...(browser === undefined ? {} : { browser }),
   });
@@ -162,9 +160,9 @@ async function main(): Promise<void> {
   const workers = selectWorkers();
   const environment = argValue("--environment");
   if (environment === undefined) throw new Error("--environment is required");
-  const treatment = argValue("--treatment") as Treatment;
-  if (hasBootstrapReady(environment, treatment)) {
-    console.log(`[bootstrap] environment ${environment}/${treatment} already ready`);
+  const variant = argValue("--variant") as Variant;
+  if (hasBootstrapReady(environment, variant)) {
+    console.log(`[bootstrap] environment ${environment}/${variant} already ready`);
     return;
   }
 
@@ -179,7 +177,7 @@ async function main(): Promise<void> {
   }
   if (process.argv.includes("--all")) {
     writeFileSync(
-      bootstrapReadyFile(environment, treatment),
+      bootstrapReadyFile(environment, variant),
       `${JSON.stringify({ checkedAt: new Date().toISOString(), workers: workers.map((worker) => worker.index) }, null, 2)}\n`,
     );
   }

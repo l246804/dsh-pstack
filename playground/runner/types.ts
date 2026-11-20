@@ -1,8 +1,8 @@
-export const TREATMENTS = ["native", "adapted"] as const;
-export type Treatment = (typeof TREATMENTS)[number];
+export const VARIANTS = ["native", "adapted"] as const;
+export type Variant = (typeof VARIANTS)[number];
 
-export function isTreatment(value: unknown): value is Treatment {
-  return typeof value === "string" && TREATMENTS.some((treatment) => treatment === value);
+export function isVariant(value: unknown): value is Variant {
+  return typeof value === "string" && VARIANTS.some((variant) => variant === value);
 }
 
 export interface TestTarget {
@@ -112,8 +112,8 @@ export interface BehaviorScenario {
   assertions: Assertion[];
   rubric: SemanticRubric;
   uiObservations: UiObservation[];
-  /** Treatments this probe is allowed to run in; omitted means both native and adapted. */
-  treatments?: readonly Treatment[];
+  /** Variants this probe is allowed to run in; omitted means both native and adapted. */
+  variants?: readonly Variant[];
   /** Environments this probe runs in; omitted means only the base environment. */
   environments?: readonly string[];
   answers?: Array<{ match: string; selected?: string[]; custom?: string }>;
@@ -225,21 +225,21 @@ export const VERDICT_STATUSES = [
 ] as const;
 
 export type Verdict =
-  | { treatment: "native"; status: "observed"; gaps: string[] }
-  | { treatment: "native"; status: "gap"; gaps: string[] }
-  | { treatment: "native"; status: "blocked"; reason: string }
-  | { treatment: "native"; status: "unobserved"; reason: string }
-  | { treatment: "adapted"; status: "verified" }
-  | { treatment: "adapted"; status: "not-verified"; failures: string[] }
+  | { variant: "native"; status: "observed"; gaps: string[] }
+  | { variant: "native"; status: "gap"; gaps: string[] }
+  | { variant: "native"; status: "blocked"; reason: string }
+  | { variant: "native"; status: "unobserved"; reason: string }
+  | { variant: "adapted"; status: "verified" }
+  | { variant: "adapted"; status: "not-verified"; failures: string[] }
   /** A conflict regression whose expected startup conflict reproduced: blocked by design. */
-  | { treatment: "adapted"; status: "blocked"; reason: string }
-  | { treatment: "adapted"; status: "inconclusive"; reason: string };
+  | { variant: "adapted"; status: "blocked"; reason: string }
+  | { variant: "adapted"; status: "inconclusive"; reason: string };
 
 export interface RunRecord {
   scenarioId: string;
   /** Stable hash of the scenario content captured, a run identity axis for compare. */
   scenarioHash?: string;
-  treatment: Treatment;
+  variant: Variant;
   environment: RunEnvironment;
   target: TestTarget | null;
   session: SessionFacts | null;

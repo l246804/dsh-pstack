@@ -2,8 +2,8 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { isTreatment } from "../types.ts";
-import type { RunRecord, Treatment } from "../types.ts";
+import { isVariant } from "../types.ts";
+import type { RunRecord, Variant } from "../types.ts";
 import { analyzeSession } from "../evidence/analysis.ts";
 import {
   assertSafeRecord,
@@ -36,11 +36,11 @@ function argValue(flag: string): string | undefined {
 }
 
 async function main(): Promise<void> {
-  const treatment = argValue("--treatment") as Treatment | undefined;
+  const variant = argValue("--variant") as Variant | undefined;
   const scenarioId = argValue("--scenario");
-  if (!isTreatment(treatment) || !scenarioId) {
+  if (!isVariant(variant) || !scenarioId) {
     throw new Error(
-      "usage: run-scenario.ts --worker N --scenario ID --treatment native|adapted --environment ID",
+      "usage: run-scenario.ts --worker N --scenario ID --variant native|adapted --environment ID",
     );
   }
   const worker = Number(argValue("--worker") ?? "0");
@@ -49,19 +49,19 @@ async function main(): Promise<void> {
   if (environmentId === undefined) throw new Error("--environment is required");
   const matrix = environmentMatrix(environmentId);
   const config = await readPlaygroundConfig(CONFIG_FILE);
-  const paths = workerPaths(worker, matrix.id, treatment);
-  const preparedTreatment = existsSync(paths.treatmentFile)
-    ? readFileSync(paths.treatmentFile, "utf8").trim()
+  const paths = workerPaths(worker, matrix.id, variant);
+  const preparedVariant = existsSync(paths.variantFile)
+    ? readFileSync(paths.variantFile, "utf8").trim()
     : "";
-  if (preparedTreatment !== treatment)
-    throw new Error(`worker is prepared for ${preparedTreatment || "nothing"}, not ${treatment}`);
+  if (preparedVariant !== variant)
+    throw new Error(`worker is prepared for ${preparedVariant || "nothing"}, not ${variant}`);
   const scenario = (await import("../scenario/scenarios.ts")).loadScenario(scenarioId);
   const environments = scenario.environments ?? ["base"];
   if (!environments.includes(matrix.id)) {
     throw new Error(`scenario ${scenarioId} does not run in environment ${matrix.id}`);
   }
-  if (scenario.treatments !== undefined && !scenario.treatments.includes(treatment)) {
-    throw new Error(`scenario ${scenarioId} is not allowed in ${treatment}`);
+  if (scenario.variants !== undefined && !scenario.variants.includes(variant)) {
+    throw new Error(`scenario ${scenarioId} is not allowed in ${variant}`);
   }
   const taskFile = currentTaskFile(paths);
   const batchId = (() => {
@@ -75,17 +75,14 @@ async function main(): Promise<void> {
   })();
   const expectedTarget = readHomePlan(paths);
   // DSH starts every session on its default Standard preset; the poteto workflow is a
-  // session toggle, not a root preset, so both treatments assert the same preset id.
+  // session toggle, not a root preset, so both variants assert the same preset id.
   const expectedPreset = "standard";
   const workspace = materializeWorkspace(paths, scenario);
   rmSync(stopRequestFile(paths), { force: true });
   const capturedAt = new Date().toISOString();
   const stamp = capturedAt.replace(/[:.]/g, "-");
   mkdirSync(paths.evidenceDir, { recursive: true });
-  const recordFile = join(
-    paths.evidenceDir,
-    recordFileName(scenarioId, treatment, matrix.id, stamp),
-  );
+  const recordFile = join(paths.evidenceDir, recordFileName(scenarioId, variant, matrix.id, stamp));
   const screenshotFile = recordFile.replace(/\.json$/, ".png");
   let record: RunRecord;
   try {
@@ -112,8 +109,8 @@ async function main(): Promise<void> {
     const semanticReview = pendingSemanticReview();
     record = {
       scenarioId,
-      treatment,
-      environment: createEnvironment({ worker, matrix, config, treatment, paths }),
+      variant,
+      environment: createEnvironment({ worker, matrix, config, variant, paths }),
       target: outcome.digest.route,
       session,
       artifacts: {
@@ -127,7 +124,7 @@ async function main(): Promise<void> {
       },
       semanticReview,
       mechanicalFailures: failures,
-      verdict: verdictFor({ treatment, failures, semanticReview }),
+      verdict: verdictFor({ variant, failures, semanticReview }),
       batchId,
       capturedAt,
     };
@@ -136,7 +133,7 @@ async function main(): Promise<void> {
     const lastSession = latestSessionFile(paths);
     record = blockedRecord({
       scenarioId,
-      treatment,
+      variant,
       paths,
       config,
       recordFile,
@@ -167,9 +164,9 @@ async function main(): Promise<void> {
     )}\n`,
   );
   writeFileSync(recordFile, `${JSON.stringify(sanitizeRecord(record), null, 2)}\n`);
-  console.log(`[run-scenario] ${scenarioId} ${treatment} ${matrix.id} ${record.verdict.status}`);
+  console.log(`[run-scenario] ${scenarioId} ${variant} ${matrix.id} ${record.verdict.status}`);
   console.log(`[run-scenario] evidence=${recordFile}`);
-  console.log(`[run-scenario] reviews=${reviewSnapshotDirectory(treatment, matrix.id)}`);
+  console.log(`[run-scenario] reviews=${reviewSnapshotDirectory(variant, matrix.id)}`);
   process.exitCode =
     record.verdict.status === "verified"
       ? 0

@@ -1,11 +1,11 @@
-import type { BehaviorScenario, Treatment } from "../types.ts";
+import type { BehaviorScenario, Variant } from "../types.ts";
 
-const DEFAULT_TREATMENTS: readonly Treatment[] = ["native", "adapted"];
+const DEFAULT_VARIANTS: readonly Variant[] = ["native", "adapted"];
 const DEFAULT_ENVIRONMENTS: readonly string[] = ["base"];
 
 /**
  * Probes live flat under playground/scenarios/probes. Each file default-exports a
- * BehaviorScenario; the registry supplies shared defaults for treatments and
+ * BehaviorScenario; the registry supplies shared defaults for variants and
  * environments so individual probes only declare deliberate deviations.
  */
 const modules = import.meta.glob<{ default: BehaviorScenario }>("../../scenarios/probes/*.ts", {
@@ -20,7 +20,7 @@ const collected = Object.values(modules)
   )
   .map((scenario) => ({
     ...scenario,
-    treatments: scenario.treatments ?? DEFAULT_TREATMENTS,
+    variants: scenario.variants ?? DEFAULT_VARIANTS,
     environments: scenario.environments ?? DEFAULT_ENVIRONMENTS,
   }));
 

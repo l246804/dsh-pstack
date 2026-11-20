@@ -99,7 +99,7 @@ function scenarios(): GapCoverageScenario[] {
     kind: scenario.kind,
     capability: scenario.capability,
     gap: scenario.gap,
-    treatments: scenario.treatments,
+    variants: scenario.variants,
   }));
 }
 
@@ -227,9 +227,9 @@ describe("gapCoverageProblems", () => {
     id: string,
     kind?: string,
     gap?: string,
-    treatments?: readonly string[],
+    variants?: readonly string[],
     capability?: string,
-  ): GapCoverageScenario => ({ id, kind, gap, treatments, capability });
+  ): GapCoverageScenario => ({ id, kind, gap, variants, capability });
 
   it("allows an empty gap list and empty scenarios", () => {
     expect(gapCoverageProblems([], [])).toEqual([]);
@@ -282,7 +282,7 @@ describe("gapCoverageProblems", () => {
     );
   });
 
-  it("requires a gap scenario to run in both treatments and a regression to have no gap", () => {
+  it("requires a gap scenario to run in both variants and a regression to have no gap", () => {
     expect(
       gapCoverageProblems(
         [scenario("probe-a", "gap", "gap-a", ["adapted"])],

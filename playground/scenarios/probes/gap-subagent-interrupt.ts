@@ -5,7 +5,7 @@ const scenario: BehaviorScenario = {
   capability: "subagent-interrupt",
   kind: "gap",
   gap: "subagent-interrupt",
-  treatments: ["native", "adapted"],
+  variants: ["native", "adapted"],
   environments: ["base"],
   turns: [
     {

@@ -18,14 +18,14 @@
 | 3. 适配开发 | native 分析给出当前单元结论 | 更新 `src/dsh.md`、适配代码、生成树和 build | `adapted` 可准备 |
 | 4. adapted 验证 | 新 build 完成 | `evidence/runs/adapted-<environment>/` | 快照完整 |
 | 5. adapted 分析 | adapted 快照完整 | `evidence/findings/adapted.md` 与审查结果 | 通过后 release-ready |
-| 6. 可选环境 | 需要环境对照 | 对应 treatment/environment 快照 | 环境结论 |
+| 6. 可选环境 | 需要环境对照 | 对应 variant/environment 快照 | 环境结论 |
 | 7. README + release-ready | 分析通过 | README/兼容表、`vp run ci` 通过 | 用户执行 release |
 
-每个 treatment 的 collect 后先完成 [evidence-analysis.md](./evidence-analysis.md) 的语义审核，再按 [evidence-redaction.md](./evidence-redaction.md) 脱敏。
+每个 variant 的 collect 后先完成 [evidence-analysis.md](./evidence-analysis.md) 的语义审核，再按 [evidence-redaction.md](./evidence-redaction.md) 脱敏。
 
 ## 批次
 
-- `run-batch --treatment <native|adapted> --environment <ID> --full`：按场景声明的 `treatments` 和 `environments` 选择全部适用场景；成功后整份当前快照更新。
+- `run-batch --variant <native|adapted> --environment <ID> --full`：按场景声明的 `variants` 和 `environments` 选择全部适用场景；成功后整份当前快照更新。
 - `run-batch --scenarios a,b`：增量批次，只替换本次跑到的场景，其他场景沿用当前快照。
 - `run-batch --only-failed`：native 选择 gap，adapted 选择 not-verified。
 - `batchId` 在批次启动时生成，写入 `current-batch.json` 和 `manifest.json`；同一单元只允许一个批次写快照，失败批次丢弃 `.staging`。
@@ -36,10 +36,10 @@
 
 ```sh
 vp run native:generate
-vp run playground:prepare -- --treatment native --environment base --reset
-vp run playground:bootstrap -- --treatment native --environment base --all
-vp run playground:run-batch -- --treatment native --environment base --full
-vp run playground:collect -- --treatment native --environment base
+vp run playground:prepare -- --variant native --environment base --reset
+vp run playground:bootstrap -- --variant native --environment base --all
+vp run playground:run-batch -- --variant native --environment base --full
+vp run playground:collect -- --variant native --environment base
 ```
 
 然后在独立分析会话按 [evidence-analysis.md](./evidence-analysis.md) 写 `playground/evidence/findings/native.md`。
@@ -48,10 +48,10 @@ vp run playground:collect -- --treatment native --environment base
 
 ```sh
 vp run build
-vp run playground:prepare -- --treatment adapted --environment base --reset
-vp run playground:bootstrap -- --treatment adapted --environment base --all
-vp run playground:run-batch -- --treatment adapted --environment base --full
-vp run playground:collect -- --treatment adapted --environment base
+vp run playground:prepare -- --variant adapted --environment base --reset
+vp run playground:bootstrap -- --variant adapted --environment base --all
+vp run playground:run-batch -- --variant adapted --environment base --full
+vp run playground:collect -- --variant adapted --environment base
 ```
 
 adapted 的插件以 `pnpm pack` 产物安装进 worker profile；prepare 前必须有最新 `dist`。
@@ -59,10 +59,10 @@ adapted 的插件以 `pnpm pack` 产物安装进 worker profile；prepare 前必
 ### 可选环境
 
 ```sh
-vp run playground:prepare -- --treatment <native|adapted> --environment <environment> --reset
-vp run playground:bootstrap -- --treatment <native|adapted> --environment <environment> --all
-vp run playground:run-batch -- --treatment <native|adapted> --environment <environment> --full
-vp run playground:collect -- --treatment <native|adapted> --environment <environment>
+vp run playground:prepare -- --variant <native|adapted> --environment <environment> --reset
+vp run playground:bootstrap -- --variant <native|adapted> --environment <environment> --all
+vp run playground:run-batch -- --variant <native|adapted> --environment <environment> --full
+vp run playground:collect -- --variant <native|adapted> --environment <environment>
 ```
 
 同一 probe 的 base 结果要保留，才能区分环境效应与适配效应。
@@ -70,18 +70,18 @@ vp run playground:collect -- --treatment <native|adapted> --environment <environ
 ### 增量与上游更新
 
 ```sh
-vp run playground:run-batch -- --treatment native --environment base --scenarios <ids>
-vp run playground:collect -- --treatment native --environment base
+vp run playground:run-batch -- --variant native --environment base --scenarios <ids>
+vp run playground:collect -- --variant native --environment base
 # 修改适配后
-vp run playground:run-batch -- --treatment adapted --environment base --scenarios <ids>
-vp run playground:collect -- --treatment adapted --environment base
+vp run playground:run-batch -- --variant adapted --environment base --scenarios <ids>
+vp run playground:collect -- --variant adapted --environment base
 ```
 
 ### 审核与生成
 
 ```sh
-vp run playground:review -- --treatment <native|adapted> --environment <ID> --apply
-vp run playground:review -- --treatment <native|adapted> --environment <ID> --check
+vp run playground:review -- --variant <native|adapted> --environment <ID> --apply
+vp run playground:review -- --variant <native|adapted> --environment <ID> --check
 vp run playground:gap-lock -- --check
 vp run playground:status-table -- --write
 vp run playground:status-table -- --check
@@ -94,6 +94,6 @@ vp run playground:compare -- --environment <ID> --all
 
 ## 完成标准
 
-- 当前 treatment/environment 的 `manifest.json`、记录和截图完整。
+- 当前 variant/environment 的 `manifest.json`、记录和截图完整。
 - 分析、review `--check`、redaction `--apply` 都完成。
 - 状态表/对比生成物 `--check` 通过，`vp run ci` 通过。

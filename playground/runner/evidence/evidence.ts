@@ -11,7 +11,7 @@ import type {
   SessionFacts,
   TestTarget,
   ToolCallEvidence,
-  Treatment,
+  Variant,
   Verdict,
 } from "../types.ts";
 
@@ -362,35 +362,35 @@ export function pendingSemanticReview(): SemanticReview {
 }
 
 export function verdictFor(input: {
-  treatment: Treatment;
+  variant: Variant;
   failures: string[];
   semanticReview: SemanticReview;
   blockedReason?: string;
 }): Verdict {
   if (input.blockedReason) {
-    return input.treatment === "native"
-      ? { treatment: "native", status: "blocked", reason: input.blockedReason }
-      : { treatment: "adapted", status: "inconclusive", reason: input.blockedReason };
+    return input.variant === "native"
+      ? { variant: "native", status: "blocked", reason: input.blockedReason }
+      : { variant: "adapted", status: "inconclusive", reason: input.blockedReason };
   }
   if (input.semanticReview.status === "pending" || input.semanticReview.status === "inconclusive") {
     const reason = input.semanticReview.reason;
-    return input.treatment === "native"
-      ? { treatment: "native", status: "unobserved", reason }
-      : { treatment: "adapted", status: "inconclusive", reason };
+    return input.variant === "native"
+      ? { variant: "native", status: "unobserved", reason }
+      : { variant: "adapted", status: "inconclusive", reason };
   }
-  if (input.treatment === "native") {
+  if (input.variant === "native") {
     return input.failures.length > 0 || input.semanticReview.status === "gap"
       ? {
-          treatment: "native",
+          variant: "native",
           status: "gap",
           gaps: [...input.failures, input.semanticReview.reason],
         }
-      : { treatment: "native", status: "observed", gaps: [] };
+      : { variant: "native", status: "observed", gaps: [] };
   }
   return input.failures.length === 0 && input.semanticReview.status === "supported"
-    ? { treatment: "adapted", status: "verified" }
+    ? { variant: "adapted", status: "verified" }
     : {
-        treatment: "adapted",
+        variant: "adapted",
         status: "not-verified",
         failures: [...input.failures, input.semanticReview.reason],
       };
@@ -409,7 +409,7 @@ export function isRunRecord(value: unknown): value is RunRecord {
   const candidate = value as Partial<RunRecord> & { environment?: { matrix?: { id?: unknown } } };
   return (
     typeof candidate.scenarioId === "string" &&
-    (candidate.treatment === "native" || candidate.treatment === "adapted") &&
+    (candidate.variant === "native" || candidate.variant === "adapted") &&
     typeof candidate.environment === "object" &&
     candidate.environment !== null &&
     typeof candidate.environment.matrix?.id === "string" &&
@@ -420,7 +420,7 @@ export function isRunRecord(value: unknown): value is RunRecord {
 export function latestRecords(records: RunRecord[]): RunRecord[] {
   const latest = new Map<string, RunRecord>();
   for (const record of records) {
-    const key = `${record.scenarioId}\0${record.treatment}\0${record.environment.matrix.id}`;
+    const key = `${record.scenarioId}\0${record.variant}\0${record.environment.matrix.id}`;
     const current = latest.get(key);
     if (!current || record.capturedAt > current.capturedAt) latest.set(key, record);
   }
@@ -504,9 +504,9 @@ export function mechanicalFailures(input: {
 
 export function recordFileName(
   scenarioId: string,
-  treatment: Treatment,
+  variant: Variant,
   environmentId: string,
   stamp: string,
 ): string {
-  return `${scenarioId}-${treatment}-${environmentId}-${stamp}.json`;
+  return `${scenarioId}-${variant}-${environmentId}-${stamp}.json`;
 }

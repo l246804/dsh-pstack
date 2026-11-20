@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { PlaygroundConfig, RunEnvironment, Treatment } from "../types.ts";
+import type { PlaygroundConfig, RunEnvironment, Variant } from "../types.ts";
 import { runtimeSettings } from "../config/runtime.ts";
 import { environments } from "../scenario/environments.ts";
 import { stableStringify } from "../shared/stable-json.ts";
@@ -95,8 +95,8 @@ export function dshVersion(): string {
   return result.stdout.trim();
 }
 
-export function adaptedVersion(paths: { home: string }, treatment: Treatment): string | null {
-  if (treatment === "native") return null;
+export function adaptedVersion(paths: { home: string }, variant: Variant): string | null {
+  if (variant === "native") return null;
   return versionFromPackage(
     join(paths.home, `profiles/${PROFILE_NAME}/node_modules/dsh-pstack/package.json`),
   );
@@ -131,14 +131,14 @@ export function createEnvironment(input: {
   worker: number;
   matrix: RunEnvironment["matrix"];
   config: PlaygroundConfig;
-  treatment: Treatment;
+  variant: Variant;
   paths: { home: string };
 }): RunEnvironment {
   return {
     worker: input.worker,
     dshVersion: dshVersion(),
     pstackVersion: pstackVersion(),
-    adaptedVersion: adaptedVersion(input.paths, input.treatment),
+    adaptedVersion: adaptedVersion(input.paths, input.variant),
     matrix: input.matrix,
     upstreamRevision: upstreamRevision(),
     configHash: publicConfigHash(input.config, input.matrix),

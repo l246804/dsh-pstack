@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import { isTreatment } from "../types.ts";
-import type { Treatment } from "../types.ts";
+import { isVariant } from "../types.ts";
+import type { Variant } from "../types.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { progressFilePath, readProgress } from "../worker/progress.ts";
 import { currentTaskFile, workerPaths } from "../worker/worker.ts";
@@ -14,25 +14,25 @@ function argValue(flag: string): string | undefined {
   return index >= 0 ? process.argv[index + 1] : undefined;
 }
 
-const treatment = argValue("--treatment") as Treatment | undefined;
-if (!isTreatment(treatment)) throw new Error("status requires --treatment native|adapted");
+const variant = argValue("--variant") as Variant | undefined;
+if (!isVariant(variant)) throw new Error("status requires --variant native|adapted");
 const environment = argValue("--environment");
 if (environment === undefined) throw new Error("status requires --environment");
 environmentMatrix(environment);
-const file = progressFilePath(environment, treatment);
+const file = progressFilePath(environment, variant);
 const state = readProgress(file);
 if (!state) {
   console.log(`[status] no progress at ${file}`);
 } else {
   console.log(
-    `[status] ${treatment} ${environment} round=${state.round} ${state.done}/${state.total}`,
+    `[status] ${variant} ${environment} round=${state.round} ${state.done}/${state.total}`,
   );
   console.log(JSON.stringify(state.statuses));
   console.log(
     `[status] running=${state.running.map((entry) => `w${entry.worker}:${entry.scenarioId}`).join(",") || "none"}`,
   );
   for (const entry of state.running) {
-    const task = currentTaskFile(workerPaths(entry.worker, environment, treatment));
+    const task = currentTaskFile(workerPaths(entry.worker, environment, variant));
     if (!existsSync(task)) continue;
     try {
       const value = JSON.parse(readFileSync(task, "utf8")) as {

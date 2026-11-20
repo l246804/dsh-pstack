@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import {
   SEMANTIC_REVIEW_STATUSES,
-  type Treatment,
+  type Variant,
   type RunRecord,
   type SemanticReview,
   type SemanticReviewStatus,
@@ -32,8 +32,8 @@ export interface SnapshotRecord {
 
 export const REVIEW_FILE = "review.json";
 
-export function reviewInputPath(treatment: Treatment, environment: string, root?: string): string {
-  return join(reviewSnapshotDirectory(treatment, environment, root), REVIEW_FILE);
+export function reviewInputPath(variant: Variant, environment: string, root?: string): string {
+  return join(reviewSnapshotDirectory(variant, environment, root), REVIEW_FILE);
 }
 
 function routeOf(value: unknown, context: string): TestTarget {
@@ -112,11 +112,11 @@ export function parseReviewEntries(text: string, file = REVIEW_FILE): ReviewEntr
 }
 
 export function readReviewEntries(
-  treatment: Treatment,
+  variant: Variant,
   environment: string,
   root?: string,
 ): ReviewEntries {
-  const file = reviewInputPath(treatment, environment, root);
+  const file = reviewInputPath(variant, environment, root);
   if (!existsSync(file)) throw new Error(`review.json is missing: ${file}`);
   return parseReviewEntries(readFileSync(file, "utf8"), file);
 }
@@ -128,22 +128,22 @@ export function toSemanticReview(entry: ReviewEntry): SemanticReview {
 
 /**
  * Every committed record.json in one review snapshot, ordered by scenario id. A record is
- * a `record.json` under `scenarios/<scenarioId>/<treatment>-<environment>/`.
+ * a `record.json` under `scenarios/<scenarioId>/<variant>-<environment>/`.
  */
 export function listSnapshotRecords(
-  treatment: Treatment,
+  variant: Variant,
   environment: string,
   root?: string,
 ): SnapshotRecord[] {
   const scenarios = join(
-    reviewSnapshotDirectory(treatment, environment, root),
+    reviewSnapshotDirectory(variant, environment, root),
     EVIDENCE_DIRECTORIES.scenarios,
   );
   if (!existsSync(scenarios)) return [];
   const found: SnapshotRecord[] = [];
   for (const entry of readdirSync(scenarios, { withFileTypes: true })) {
     if (!entry.isDirectory()) continue;
-    const file = join(scenarios, entry.name, `${treatment}-${environment}`, EVIDENCE_FILES.record);
+    const file = join(scenarios, entry.name, `${variant}-${environment}`, EVIDENCE_FILES.record);
     if (!existsSync(file)) continue;
     let parsed: unknown;
     try {

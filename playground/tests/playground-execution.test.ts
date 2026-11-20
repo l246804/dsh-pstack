@@ -36,8 +36,8 @@ import {
 import { setRuntimeSettings } from "../runner/config/runtime.ts";
 import {
   workerPaths,
-  treatmentWorkersDirectory,
-  resetTreatment,
+  variantWorkersDirectory,
+  resetVariant,
   type WorkerPaths,
 } from "../runner/worker/worker.ts";
 
@@ -65,7 +65,7 @@ const testScenario: BehaviorScenario = {
   uiObservations: [],
 };
 
-function record(treatment: "native" | "adapted", environmentId: string): RunRecord {
+function record(variant: "native" | "adapted", environmentId: string): RunRecord {
   const scenario = testScenario;
   const target = { provider: "provider-a", model: "model-a", effort: "low" };
   const config = {
@@ -97,12 +97,12 @@ function record(treatment: "native" | "adapted", environmentId: string): RunReco
   };
   return {
     scenarioId: scenario.id,
-    treatment,
+    variant,
     environment: {
       worker: 0,
       dshVersion: "test-dsh",
       pstackVersion: "test-pstack",
-      adaptedVersion: treatment === "native" ? null : "test-adapted",
+      adaptedVersion: variant === "native" ? null : "test-adapted",
       matrix,
       upstreamRevision: "test-upstream",
       configHash: publicConfigHash(config, matrix),
@@ -112,7 +112,7 @@ function record(treatment: "native" | "adapted", environmentId: string): RunReco
       sessionId: "session",
       sessionFile: "session-file",
       workspacePath: null,
-      agentPreset: treatment === "native" ? "standard" : "poteto-mode",
+      agentPreset: variant === "native" ? "standard" : "poteto-mode",
       skillLoads: ["poteto-help"],
       toolCalls: [],
       turnEndReason: "completed",
@@ -124,13 +124,13 @@ function record(treatment: "native" | "adapted", environmentId: string): RunReco
     artifacts: { recordFile: "record.json", observed: [] },
     semanticReview: pendingSemanticReview(),
     mechanicalFailures: [],
-    verdict: verdictFor({ treatment, failures: [], semanticReview: pendingSemanticReview() }),
+    verdict: verdictFor({ variant, failures: [], semanticReview: pendingSemanticReview() }),
     capturedAt: "2026-11-11T00:00:00.000Z",
   };
 }
 
 describe("execution contracts", () => {
-  it("keys latest evidence by scenario, treatment, and environment", () => {
+  it("keys latest evidence by scenario, variant, and environment", () => {
     const native = record("native", "base");
     const adapted = record("adapted", "base");
     const otherEnvironment = record("native", "other");
@@ -141,7 +141,7 @@ describe("execution contracts", () => {
     expect(workerPaths(0, "base", "adapted").browserDir).not.toBe(
       workerPaths(0, "other", "adapted").browserDir,
     );
-    // Treatment isolates the same environment and worker index into its own evidence tree.
+    // Variant isolates the same environment and worker index into its own evidence tree.
     expect(workerPaths(0, "base", "native").home).not.toBe(workerPaths(0, "base", "adapted").home);
   });
 
@@ -157,7 +157,7 @@ describe("execution contracts", () => {
     expect(isRunRecord(profileManifestFile)).toBe(false);
   });
 
-  it("does not pass an unreviewed semantic effect in either treatment", () => {
+  it("does not pass an unreviewed semantic effect in either variant", () => {
     expect(record("native", "base").verdict.status).toBe("unobserved");
     expect(record("adapted", "base").verdict.status).toBe("inconclusive");
   });
@@ -465,7 +465,7 @@ describe("mechanical failures", () => {
     );
     // The pending verdict stays unobserved while the list is already on the record.
     expect(
-      verdictFor({ treatment: "native", failures, semanticReview: pendingSemanticReview() }).status,
+      verdictFor({ variant: "native", failures, semanticReview: pendingSemanticReview() }).status,
     ).toBe("unobserved");
   });
 });
@@ -505,7 +505,7 @@ function tempWorkerPaths(index: number): WorkerPaths {
   return {
     index,
     environmentId: "base",
-    treatment: "adapted",
+    variant: "adapted",
     root,
     isolatedRoot,
     home: join(root, "home"),
@@ -515,7 +515,7 @@ function tempWorkerPaths(index: number): WorkerPaths {
     evidenceDir: join(root, "evidence"),
     urlFile: join(root, "web-url.txt"),
     logFile: join(root, "web.log"),
-    treatmentFile: join(root, "treatment.txt"),
+    variantFile: join(root, "variant.txt"),
     containerName: `dsh-playground-adapted-base-w0`,
     containerHome: "/dsh/home",
     containerWorkspace: "/dsh/workspace",
@@ -626,8 +626,8 @@ describe("workspace isolation", () => {
   });
 });
 
-describe("treatment isolation of worker evidence", () => {
-  it("separates one environment and worker index by treatment", () => {
+describe("variant isolation of worker evidence", () => {
+  it("separates one environment and worker index by variant", () => {
     const native = workerPaths(0, "base", "native");
     const adapted = workerPaths(0, "base", "adapted");
     expect(native.root).not.toBe(adapted.root);
@@ -635,8 +635,8 @@ describe("treatment isolation of worker evidence", () => {
     expect(native.isolatedRoot).not.toBe(adapted.isolatedRoot);
     expect(native.root.endsWith(join("native", "base", "w0"))).toBe(true);
     expect(adapted.root.endsWith(join("adapted", "base", "w0"))).toBe(true);
-    expect(native.treatment).toBe("native");
-    expect(adapted.treatment).toBe("adapted");
+    expect(native.variant).toBe("native");
+    expect(adapted.variant).toBe("adapted");
   });
 
   it("reads adapted version from the stock web profile, not a legacy profile name", () => {
@@ -650,9 +650,9 @@ describe("treatment isolation of worker evidence", () => {
     expect(adaptedVersion({ home }, "native")).toBeNull();
   });
 
-  it("resets only one treatment and leaves the other treatment's evidence on disk", () => {
-    const workersRoot = join(temporary, "treatment-workers");
-    const isolatedRoot = join(temporary, "treatment-isolated");
+  it("resets only one variant and leaves the other variant's evidence on disk", () => {
+    const workersRoot = join(temporary, "variant-workers");
+    const isolatedRoot = join(temporary, "variant-isolated");
     setRuntimeSettings({
       ...defaultRuntimeSettings,
       workersDir: workersRoot,
@@ -667,11 +667,11 @@ describe("treatment isolation of worker evidence", () => {
       mkdirSync(adapted.evidenceDir, { recursive: true });
       writeFileSync(join(adapted.evidenceDir, "adapted-record.json"), "{}");
 
-      resetTreatment("base", "adapted");
+      resetVariant("base", "adapted");
 
       expect(existsSync(nativeRecord)).toBe(true);
       expect(existsSync(adapted.evidenceDir)).toBe(false);
-      expect(existsSync(treatmentWorkersDirectory("base", "native"))).toBe(true);
+      expect(existsSync(variantWorkersDirectory("base", "native"))).toBe(true);
     } finally {
       setRuntimeSettings(defaultRuntimeSettings);
     }
