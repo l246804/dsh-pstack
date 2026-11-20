@@ -1,14 +1,8 @@
-/** Durable poteto-workflow selection projected from Session events. */
+/** Client snapshot of the durable poteto selection kept in the storage sidecar. */
 
 import { z } from "zod";
+import type { SessionHeader } from "@deepseek-ai/dsh-session";
 import type { ProjectionDefinition } from "@deepseek-ai/dsh-session-projection";
-import type { SessionEvent, SessionEventMap } from "@deepseek-ai/dsh-session";
-
-declare module "@deepseek-ai/dsh-session" {
-  interface SessionEventMap {
-    "poteto/mode": { enabled: boolean };
-  }
-}
 
 declare module "@deepseek-ai/dsh-session-projection/types" {
   interface SessionProjectionMap {
@@ -29,25 +23,40 @@ export interface PotetoModeView {
 const stateSchema = z
   .object({ enabled: z.boolean().optional() })
   .strict() as z.ZodType<PotetoProjectionState>;
-const eventSchema = z.object({ enabled: z.boolean() }).strict() as z.ZodType<
-  SessionEventMap["poteto/mode"]
->;
 const viewSchema = z.object({ enabled: z.boolean() }).strict() as z.ZodType<PotetoModeView>;
 
 /** Reuse the wire value so an unchanged selection publishes nothing. */
 const ENABLED_VIEW: PotetoModeView = { enabled: true };
 const DISABLED_VIEW: PotetoModeView = { enabled: false };
 
-/** Persisted selection for one root Session. */
-export const potetoProjectionDefinition = {
-  key: "potetoMode",
-  stateVersion: 1,
-  stateSchema,
-  init: () => ({}),
-  apply: (state: PotetoProjectionState, event: SessionEvent) =>
-    event.type === "poteto/mode" ? { ...state, ...eventSchema.parse(event.data) } : state,
-  wire: {
-    viewSchema,
-    view: (state: PotetoProjectionState) => (state.enabled === true ? ENABLED_VIEW : DISABLED_VIEW),
-  },
-} satisfies ProjectionDefinition<"potetoMode", PotetoProjectionState>;
+/** A wire-bearing projection, as required by the registry's public overload. */
+type PotetoProjectionDefinition = Omit<
+  ProjectionDefinition<"potetoMode", PotetoProjectionState>,
+  "wire"
+> & {
+  wire: NonNullable<ProjectionDefinition<"potetoMode", PotetoProjectionState>["wire"]>;
+};
+
+/**
+ * Build the projection from the storage sidecar. The projection is a
+ * first-paint snapshot; live toggle changes are applied by the client
+ * component from the Remote result, so it does not fold Session events.
+ */
+export function createPotetoProjectionDefinition(
+  readEnabled: (sessionId: string) => boolean | undefined,
+): PotetoProjectionDefinition {
+  return {
+    key: "potetoMode",
+    stateVersion: 2,
+    stateSchema,
+    init: (header: SessionHeader): PotetoProjectionState => ({
+      enabled: readEnabled(header.id),
+    }),
+    apply: (state: PotetoProjectionState): PotetoProjectionState => state,
+    wire: {
+      viewSchema,
+      view: (state: PotetoProjectionState): PotetoModeView =>
+        state.enabled === true ? ENABLED_VIEW : DISABLED_VIEW,
+    },
+  } satisfies ProjectionDefinition<"potetoMode", PotetoProjectionState>;
+}
