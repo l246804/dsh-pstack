@@ -80,7 +80,7 @@ export default {
 
 | 字段 | 默认 | 用途 |
 | --- | --- | --- |
-| `caseTimeoutMs` | `600000` | 单个场景最长执行时间 |
+| `scenarioTimeoutMs` | `600000` | 单个场景最长执行时间 |
 | `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
 | `workerPortBase` | `8080` | host 模式下第一个 worker 的端口 |
 | `workspaceRoot` | `playground/.workspace` | workspace 根目录 |

@@ -49,9 +49,9 @@ const {
 
 export class InfraError extends Error {}
 
-function caseTimeoutMs(value: number): number {
+function scenarioTimeoutMs(value: number): number {
   if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new Error("runtime.caseTimeoutMs must be a positive integer number of milliseconds");
+    throw new Error("runtime.scenarioTimeoutMs must be a positive integer number of milliseconds");
   }
   return value;
 }
@@ -404,7 +404,7 @@ interface AttemptInput {
   screenshotFile: string;
   expectedPreset: string;
   browser?: BrowserConfig;
-  caseTimeoutMs: number;
+  scenarioTimeoutMs: number;
 }
 
 function captureScreenshot(session: BrowserSession, path: string): void {
@@ -484,7 +484,7 @@ export function attemptScenario(input: AttemptInput): {
     screenshotFile,
     expectedPreset,
     browser,
-    caseTimeoutMs: timeoutOverride,
+    scenarioTimeoutMs: timeoutOverride,
   } = input;
   const preset = expectedPreset;
   const session = createBrowserSession({
@@ -493,8 +493,8 @@ export function attemptScenario(input: AttemptInput): {
     ...(browser === undefined ? {} : { browser }),
   });
   const autoAnswers: Array<{ question: string; answer: string }> = [];
-  const caseTimeout = caseTimeoutMs(timeoutOverride);
-  const caseDeadline = Date.now() + caseTimeout;
+  const scenarioTimeout = scenarioTimeoutMs(timeoutOverride);
+  const caseDeadline = Date.now() + scenarioTimeout;
   try {
     try {
       session.raw(["close", "--all"]);
@@ -542,7 +542,7 @@ export function attemptScenario(input: AttemptInput): {
       }
       for (;;) {
         if (Date.now() > caseDeadline) {
-          throw new InfraError(`scenario exceeded ${caseTimeout} ms without completing`);
+          throw new InfraError(`scenario exceeded ${scenarioTimeout} ms without completing`);
         }
         try {
           throwIfStopped(paths, session, screenshotFile);

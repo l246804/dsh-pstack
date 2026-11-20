@@ -41,7 +41,7 @@ export default {
   },
 
   runtime: {
-    caseTimeoutMs: 600_000,
+    scenarioTimeoutMs: 600_000,
     networkMode: process.platform === "linux" ? "host" : "bridge",
     workerPortBase: 8080,
     workspaceRoot: "playground/.workspace",

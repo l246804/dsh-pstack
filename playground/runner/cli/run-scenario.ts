@@ -94,7 +94,7 @@ async function main(): Promise<void> {
       screenshotFile,
       expectedPreset,
       ...(config.browser === undefined ? {} : { browser: config.browser }),
-      caseTimeoutMs: config.runtime.caseTimeoutMs,
+      scenarioTimeoutMs: config.runtime.scenarioTimeoutMs,
     });
     const session = sessionFacts(outcome.digest, outcome.file, outcome.answers);
     session.analysis = analyzeSession(session);

@@ -51,7 +51,7 @@ export type RoleModels = Record<string, TestTarget | TestTarget[]>;
 
 export interface RuntimeConfig {
   /** One scenario's wall-clock budget in milliseconds. */
-  caseTimeoutMs: number;
+  scenarioTimeoutMs: number;
   /** Network namespace strategy for worker containers. */
   networkMode: "host" | "bridge";
   /** Base host port for the first worker in host mode. */

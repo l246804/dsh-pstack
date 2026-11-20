@@ -174,9 +174,9 @@ function browser(value: unknown): BrowserConfig {
 
 function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
   const parsed = object(value, "runtime");
-  const timeout = parsed.caseTimeoutMs;
+  const timeout = parsed.scenarioTimeoutMs;
   if (typeof timeout !== "number" || !Number.isSafeInteger(timeout) || timeout <= 0) {
-    throw new Error("runtime.caseTimeoutMs must be a positive integer number of milliseconds");
+    throw new Error("runtime.scenarioTimeoutMs must be a positive integer number of milliseconds");
   }
   const networkMode = parsed.networkMode;
   if (networkMode !== "host" && networkMode !== "bridge") {
@@ -187,7 +187,7 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
     throw new Error("runtime.workerPortBase is required");
   }
   return {
-    caseTimeoutMs: timeout,
+    scenarioTimeoutMs: timeout,
     networkMode,
     workerPortBase,
     workspaceRoot: string(parsed.workspaceRoot, "runtime.workspaceRoot"),

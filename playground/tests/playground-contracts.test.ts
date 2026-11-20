@@ -107,7 +107,7 @@ function config(provider = "provider-a", model = "model-a", effort = "low") {
   return {
     testModel: { provider, model, effort },
     runtime: {
-      caseTimeoutMs: 600000,
+      scenarioTimeoutMs: 600000,
       networkMode: "host",
       workerPortBase: 8080,
       workspaceRoot: "playground/.workspace",

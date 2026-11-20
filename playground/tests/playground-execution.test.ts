@@ -45,7 +45,7 @@ const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
 
 const defaultRuntimeSettings = {
-  caseTimeoutMs: 600_000,
+  scenarioTimeoutMs: 600_000,
   networkMode: "host" as const,
   workspaceRoot: WORKSPACE_ROOT,
   workersDir: WORKERS_ROOT,
@@ -71,7 +71,7 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
   const config = {
     testModel: target,
     runtime: {
-      caseTimeoutMs: 600000,
+      scenarioTimeoutMs: 600000,
       networkMode: "host" as const,
       workerPortBase: 8080,
       workspaceRoot: "playground/.workspace",

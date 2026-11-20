@@ -1,6 +1,6 @@
 /** Process-wide settings populated from PlaygroundConfig.runtime by readConfig. */
 export interface RuntimeSettings {
-  caseTimeoutMs: number;
+  scenarioTimeoutMs: number;
   networkMode: "host" | "bridge";
   workspaceRoot: string;
   workersDir: string;
