@@ -1,88 +1,49 @@
-# Worker 运行说明
+# Worker
 
-本文件说明 worker 的容器隔离、prepare/bootstrap/run/stop、预览和证据目录。阶段与批次见 [workflow.md](./workflow.md)。
+本文件说明 worker 的容器隔离、准备、启动、停止和证据位置。阶段与批次见 [workflow.md](./workflow.md)，配置字段见 [config.md](./config.md)。
 
 ## 容器
 
-一个 worker 是一个 Docker 容器。容器只看到固定 `/dsh` 路径：
+一个 worker 是一个 Docker 容器。容器只挂载固定的 `/dsh` 路径，挂载定义和启动参数以 `runner/container/spec.ts` 为准。
 
-| 容器路径 | 宿主来源 | 用途 |
-| --- | --- | --- |
-| `/dsh/workspace` | `<workspaceRoot>/workspace` | 场景 workspace，可写 |
-| `/dsh/home` | `playground/.workers/<variant>/<env>/w<k>/home` | DSH home、stock `web` profile、角色文件和可选凭证 |
-| `/dsh/tmp` | `<workspaceRoot>/tmp` | tmp |
-| `/dsh/runtime` | `<workspaceRoot>/xdg-runtime` | XDG runtime |
-| `/dsh/native` | `<workspaceRoot>/native` | native 生成树，只读；仅 native variant |
+| 容器路径 | 用途 |
+| --- | --- |
+| `/dsh/workspace` | 场景 workspace，可写 |
+| `/dsh/home` | DSH home、stock `web` profile、角色文件和可选凭证 |
+| `/dsh/tmp` | 临时目录 |
+| `/dsh/runtime` | XDG runtime |
+| `/dsh/native` | native 技能树，只读；仅 native variant 使用 |
 
-`workspaceRoot` 默认是 `playground/.workspace`，`.workspace` 和 `.workers` 目录都被忽略；只有 workspace、home 等子目录挂载，仓库根、场景定义、rubric、证据目录和 Docker socket 都不挂载。容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid，启用 `cap-drop ALL` 和 `no-new-privileges`。
+宿主的 `playground/.workers/` 保存每个 worker 的 home、browser profile、evidence 和日志；`playground/.workspace/` 保存 workspace 及运行时目录。具体路径由 `runner/worker/worker.ts` 定义。
 
-宿主状态保存在 `playground/.workers/<variant>/<environmentId>/w<k>`：home、browser profile、evidence 和日志；隔离 workspace 在 `workspaceRoot`。
+容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid，启用 `cap-drop ALL` 和 `no-new-privileges`。仓库根、`playground/scenarios`、宿主 home、Docker socket 和宿主 browser profile 都不进入容器。
 
-镜像名是 `dsh-playground:<dsh version>-<arch>`。`playground:doctor` 检查 Docker daemon、镜像存在、架构和版本；`playground:image` 按宿主架构在本机构建。
+## 生命周期
 
-宿主平台：
+- `prepare`：按场景数量、机器容量和 variant/environment 自动计算 worker 数量；写入 profile、模型和 runtime 配置。adapted 使用 `pnpm pack` 产物安装插件；默认不复制凭证。
+- `bootstrap`：打开每个 worker 页面，检查默认 workspace、模型、reasoning effort、登录/401 状态，并生成 readiness 证据。
+- `open` / `close` / `reset`：分别用于预览、停止预览和重建 preview worker。
+- `stop`：停止所有匹配的 worker；`stop-task` 只写入当前场景的停止请求，由 `run-scenario` 在轮询点处理。
+- `run-batch` 退出不会自动停止 worker；需要时运行 `playground:stop`。
 
-- Linux：Docker Engine 原生运行。
-- macOS：Docker Desktop、Colima 或 OrbStack 提供 Docker-compatible CLI；Apple Silicon 构建 arm64，Intel 构建 amd64。
-- Windows：在 WSL2 内运行，仓库放在 WSL 文件系统；原生 Windows 不作为 worker host。
+## 单场景与检查
 
-## prepare
-
-worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`；容量策略见 [config.md](./config.md) 的 `runtime.workerCapacity`。
-
-`prepare` 为每个 worker：
-
-- 初始化 stock `web` profile；adapted 安装 `pnpm pack` 产物，不挂载仓库。
-- 写 `pstack-models.json`、`pstack-settings.json` 和 `cordis.patch.yml`。
-- 用当前 `config.ts` 重建 `agent-default-model` 和 provider 行；`--reuse` 也会刷新这些行，避免使用旧配置。
-- 可选复制宿主凭证；默认不复制。
-- 注册场景 workspace，不初始化 git、不设置 origin；容器镜像不安装 git。
-
-`prepare --reset` 清空该 variant/environment 的 worker；`--reuse` 复用已有 home/profile 但刷新配置并重启 Web。
-
-## bootstrap
-
-`bootstrap` 打开每个 worker 页面，检查 preview notice、默认 workspace、模型/provider、reasoning effort、登录/401 状态，并写 `ready.png`。`--all` 通过后写环境级 `bootstrap-ready.json`；单 worker 检查不写总标记。`prepare --reset`、`prepare --reuse` 或 `stop` 会清除就绪缓存。
-
-## 直接预览
+单场景调试使用 `playground:run`。长批次检查使用：
 
 ```sh
-vp run playground:open
+vp run playground:status -- --variant <variant> --environment <environment>
+vp run playground:session-tail -- --variant <variant> --environment <environment> --worker <N> --scenario <scenarioId> --limit 10
 ```
 
-启动独立的 `adapted/preview` w0 并输出 URL，不打开浏览器、不处理 preview notice、不截图、不写 readiness。关闭和重建：
-
-```sh
-vp run playground:close
-vp run playground:reset
-```
-
-## 单场景调试
-
-```sh
-vp run playground:run -- --worker 0 --environment base --variant native --scenario <probe-id>
-vp run playground:run -- --worker 0 --environment base --variant adapted --scenario <probe-id>
-```
-
-完整批次见 [workflow.md](./workflow.md)。
-
-## 外部停止
-
-任务长时间无有效推进时，读取最新 session 判断，再写停止请求：
-
-```sh
-vp run playground:stop-task -- --variant native --environment base --worker <N>
-```
-
-`run-scenario` 在下一个轮询点保存当前截图和会话证据，写 `blocked` record，`run-batch` 继续后续任务。不要用 `playground:status` 的摘要替代 session 判断。
+`session-tail` 输出最后若干个事件的类型、时间和 `latestAge`；根据事件推进判断是否需要 `playground:stop-task`。`scenarioTimeoutMs` 是最终 hard timeout。
 
 ## 证据
 
-`run-scenario` 在 worker evidence 目录写机械脱敏后的 `record.json` 和本地 `record.source.json`。`collect` 只从 `record.source.json` 复制截图和记录到 `evidence/runs/<variant>-<environment>/scenarios/<scenario>/<variant>-<environment>/`；`session.jsonl.zstd` 只保留本地。`manifest.json` 记录快照范围和批次。`record.source.json`、`record.safe.json`、session 文件都不提交。
+`run-scenario` 在 worker evidence 目录写脱敏 record 和本地 source 文件；`collect` 只把 record 和截图复制到 `playground/evidence/runs/`。session 文件保留在 worker home，不进入快照。共享 evidence 的构造见 `runner/evidence/review-snapshot.ts`。
 
 ## 完成标准
 
-- 容器只挂载上表路径；没有仓库根、宿主 home 或场景目录。
-- `prepare --reuse` 后 worker home patch 的模型与当前 `config.ts` 一致。
-- `bootstrap --all` 通过并生成 `bootstrap-ready.json`。
-- 每个 worker 的 `record.json` 与截图能从 `record.source.json` 收集。
+- worker 只挂载上述 `/dsh` 路径，没有仓库根、场景目录或宿主 home。
+- `prepare` 后 worker 的模型配置与当前 `config.ts` 一致。
+- `bootstrap --all` 通过并生成环境级 readiness 标记。
+- `run-scenario` 的 record 和截图能由 `collect` 收集。

@@ -1,105 +1,43 @@
-# Playground 配置
+# 配置
 
-本文件定义 `playground/config.ts` 的字段、provider 来源和凭证/浏览器策略。命令与阶段见 [workflow.md](./workflow.md)。
+本文件说明 `playground/config.ts` 的配置边界。字段、默认值和类型定义分别由 [config.example.ts](../config.example.ts) 与 `runner/types.ts` 维护。
 
-## 本地配置
+## 设置
 
-- 复制 [config.example.ts](../config.example.ts) 为 `playground/config.ts`，填写真实值。`config.ts` 已 gitignore；所有 `*.local` 文件也不入库。
-- `config.ts` 使用 `vite-plus` 的 `loadEnv("playground", process.cwd(), "PLAYGROUND_")` 读取 `.env`、`.env.local`、`.env.playground` 和 `.env.playground.local`。
-- 字段顺序：`copyCredentials`、`providers`、`testModel`、`roleModels`，然后是 `browser`。
-- `testModel` 必须指向 `providers` 中已有的 provider 和 model；`roleModels` 的每条路由也必须在同一模型目录内。
+复制 [config.example.ts](../config.example.ts) 为 `playground/config.ts` 并填写。`config.ts` 和 `*.local` 不入库。环境变量通过 `vite-plus` 的 `loadEnv("playground", ...)` 读取。
+
+配置在加载时完成解析和校验；缺少必填字段、provider 路由无效或凭证无法解析都会直接报错。解析代码见 `runner/config/config.ts`。
 
 ## Provider
 
-`ProviderConfig` 是判别联合，按 `kind` 分三种。
+`providers` 支持 `pi-ai`、`deepseek-api-key` 和 `deepseek-account` 三种路由。`testModel` 和 `roleModels` 中的每条路由都必须能在已配置的 provider/model/effort 目录中解析；provider 的校验与模型目录逻辑见 `runner/config/provider.ts`。
 
-| kind | 必填 | 可选 | 说明 |
-| --- | --- | --- | --- |
-| `pi-ai` | `apiKey`、`apiKeyEnv`、`reasoning`、`models` | `api`、`baseURL` | 自定义网关或 pi-ai 路由；`models` 每项必须含 `id`，efforts 只写模型自己的 `reasoningEfforts` |
-| `deepseek-api-key` | `apiKey`、`apiKeyEnv`、`models` | 无 | provider key 必须是 `deepseek-official` |
-| `deepseek-account` | 无模型字段 | `modelOverrides` | provider key 必须是 `deepseek-account`；模型目录由账号 `/models` 返回，不能用 `modelOverrides` 新增模型 |
-
-`pi-ai` 的 `reasoning` 是 provider 级默认档位，必填；模型级 `reasoningEfforts` 只保留需要测试的档位。默认成本策略是 `low`，需要更强档位时显式加 `high`。
-
-## 从宿主提取
-
-`fromHost(selections, { env })` 从宿主 DSH web profile 的 `cordis.patch.yml` 读取 provider、模型和 effort，避免手抄。
-
-```ts
-import { loadEnv } from "vite-plus";
-import { fromHost } from "./runner/config/config-host.ts";
-
-const env = loadEnv("playground", process.cwd(), "PLAYGROUND_");
-
-export default {
-  copyCredentials: false,
-  providers: fromHost(
-    {
-      "your-provider": {
-        reasoning: "low",
-        models: [
-          { id: "model-a", efforts: ["low", "high"] },
-          { id: "model-b", efforts: ["low"] },
-        ],
-      },
-    },
-    { env },
-  ),
-  testModel: { provider: "your-provider", model: "model-a", effort: "low" },
-  roleModels: {},
-} satisfies PlaygroundConfig;
-```
-
-- `models` 必填，只接受 `{ id, efforts? }` 对象；不再接受字符串简写。
-- `reasoning` 必填；`efforts` 必须写在具体模型上，provider 级不再有 `efforts`。
-- 模型未写 `efforts` 时默认 `["low", "high"]`。
-- 宿主 patch 默认是 `~/.dsh/profiles/web/cordis.patch.yml`，可用 `fromHost(..., { file: "..." })` 指定。
-- `config.ts` 可以直接写 `apiKey: "..."`；它已被 gitignore，适合本地密钥。
-- 也可以用 `apiKeyEnv` 从环境或 `.credentials.yaml` 解析，避免把密钥写进文件。
-- Linux 原生 Docker 默认 `runtime.networkMode: "host"`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
-- macOS/Windows 以及 WSL2 内的 Docker Desktop 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `runtime.networkMode: "host"` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
-- 运行目录默认 `playground/.workers`；workspace 默认在 `playground/.workspace`，`.workspace` 和 `.workers` 目录都被忽略。`runtime.workspaceRoot` / `runtime.workersDir` 可覆盖，测试隔离也通过这两个字段设置。
+`fromHost` 从宿主 DSH web profile 提取 provider、模型和 effort，避免手工抄写。选择结构和默认宿主 patch 路径见 `runner/config/config-host.ts`。
 
 ## 凭证
 
-- `copyCredentials` 默认 `false`：worker 不复制宿主 `.credentials.yaml`，模型密钥只通过环境变量进入容器。
-- 显式设为 `true` 才复制；文件不存在时 `prepare` 直接失败，不静默跳过。
-- `deepseek-account` 依赖账号登录凭证，必须在 `config.ts` 同时设置 `copyCredentials: true`；否则 `loadProviderPlan` 直接报错。
-- `doctor` 只报告凭证文件是否存在，不作为默认前置失败。
+`copyCredentials` 默认 `false`。开启后只复制 DSH 的 `.credentials.yaml` 到 worker home；文件不存在时 `prepare` 失败，不静默跳过。
+
+`deepseek-account` 需要账号登录，因此必须同时开启 `copyCredentials`。`doctor` 会报告凭证文件是否存在。
 
 ## 浏览器
 
-- `browser.mode: "managed"`（默认）：每个 worker 启动独立无头 Chrome，`agent-browser` 使用 worker 自己的 profile 目录。
-- `browser.mode: "cdp"`：连接宿主 Chrome，必须提供 `browser.cdpUrl`，并使用专用 `--user-data-dir`；`agent-browser` 会加 `--pin-tab`。
-- `browser.headed` 只对 managed 模式生效。
-- 不使用 `--state`。需要复现登录态时再单独评审，不把 auth 文件作为默认路径。
+`browser.mode` 支持 `managed` 和 `cdp`；`headed` 只影响 managed 模式。浏览器配置、Chrome 路径和 `agent-browser` 启动逻辑见 `runner/browser/session.ts`。
 
-## 运行配置
+## Runtime
 
-`config.runtime` 是唯一的运行时配置来源：
+`runtime` 是唯一的运行时配置来源，按用途分为：
 
-| 字段 | 默认 | 用途 |
-| --- | --- | --- |
-| `scenarioTimeoutMs` | `600000` | 单个场景最长执行时间（hard timeout） |
-| `turnTimeoutMs` | `180000` | 主 turn/end 后等待 session 稳定的上限 |
-| `subagentTimeoutMs` | `600000` | 等待子代理结束的上限 |
-| `networkMode` | Linux 原生 `host`，macOS/Windows/WSL2 `bridge` | worker 网络模式 |
-| `workerPortBase` | `8080` | host 模式基础端口；prepare 按 variant/environment 分块 |
-| `workerCapacity` | `{ coreHeadroom: 2, memoryFraction: 0.7, memoryPerWorkerGB: 1 }` | 机器容量策略，无硬上限 |
-| `workspaceRoot` | `playground/.workspace` | workspace 根目录 |
-| `workersDir` | `playground/.workers` | home、browser、evidence 根目录 |
-| `dockerBin` | `docker` | Docker-compatible CLI |
-| `dshBin` | `dsh` | 宿主 DSH CLI |
-| `vpxBin` | `vpx` | Vite+ CLI |
-| `pnpmBin` | `pnpm` | pnpm CLI |
-| `chromePath` | 自动发现 | 宿主 Chrome 可执行文件 |
+- 场景、turn、子代理超时；
+- worker 容量与端口；
+- workspace、worker 状态目录；
+- Docker、DSH、Vite+、pnpm 和 Chrome 路径；
+- worker 网络模式。
 
-需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。`runtime` 及除 `chromePath` 外的字段都是必填；缺失时配置加载直接报错。
-
-worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`。机器容量按 `nproc - coreHeadroom` 和 `freemem * memoryFraction / memoryPerWorkerGB` 两者取最小，不设硬上限。
+字段和默认值只从 [config.example.ts](../config.example.ts) 读取；校验见 `runner/config/config.ts`，容量计算见 `runner/worker/capacity.ts`。Linux 原生 Docker 可使用 host 网络；macOS、Windows 和 WSL2 使用 bridge。worker 数量自动计算；`prepare` 的 `--port` 只用于覆盖起始端口。
 
 ## 完成标准
 
-- `vp run playground:doctor` 通过；`config.ts` 存在且 provider 路由可解析。
-- `vp run playground:prepare` 能生成 worker home patch，且 `agent-default-model` 与 `testModel` 一致。
-- `copyCredentials: true` 时凭证文件确实存在；`deepseek-account` 不会在未复制凭证时静默启动。
+- `vp run playground:doctor` 通过。
+- `config.ts` 能被加载并解析，`testModel` 与 `roleModels` 路由有效。
+- `copyCredentials: true` 时 DSH 凭证文件存在；`deepseek-account` 不会在缺少凭证时启动。
