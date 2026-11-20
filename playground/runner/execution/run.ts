@@ -1,5 +1,13 @@
-import { existsSync, mkdirSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
+import { dirname, join, resolve } from "node:path";
 
 import type {
   BehaviorScenario,
@@ -35,7 +43,7 @@ import {
   UI_LABELS,
 } from "../worker/runtime.ts";
 import { runtimeSettings } from "../config/runtime.ts";
-import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";
+import { createEnvironment, environmentMatrix, REPOSITORY_ROOT } from "../worker/run-metadata.ts";
 import { stopRequestFile, type WorkerPaths } from "../worker/worker.ts";
 
 const {
@@ -266,6 +274,16 @@ export function materializeWorkspace(paths: WorkerPaths, scenario: BehaviorScena
     }
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, content);
+  }
+  for (const [relative, source] of Object.entries(scenario.workspace.assets ?? {})) {
+    const sourcePath = resolve(REPOSITORY_ROOT, source);
+    const target = join(workspace, relative);
+    if (target !== workspace && !target.startsWith(`${workspace}/`)) {
+      throw new Error(`fixture path escapes workspace: ${relative}`);
+    }
+    if (!existsSync(sourcePath)) throw new Error(`scenario fixture is missing: ${source}`);
+    mkdirSync(dirname(target), { recursive: true });
+    writeFileSync(target, readFileSync(sourcePath));
   }
   return workspace;
 }

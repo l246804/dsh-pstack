@@ -16,6 +16,7 @@
 - `id` 稳定且唯一；同一 probe 在 native/adapted 使用同一 id。
 - gap 场景的 `capability` 必须等于 `gap`；regression 不声明 `gap`。
 - 一个场景只覆盖一个行为分支，不写工具名、包名、实现路径或 variant 专属期望。
+- 场景 prompt 和 rubric 不绑定具体 provider、模型名、外部 URL 或宿主路径；需要资源时使用 workspace fixture。
 - `turns` 描述用户可观察目标；`workspace` 只放必要 fixture，不引用宿主路径。
 - `assertions` 只做机械事实，必须能在目标行为缺失时失败；`turn-completed` 只能作为基础项，不能是唯一断言。
 - `rubric` 描述用户可观察的合格边界；`uiObservations` 只在需要真实呈现时使用；`answers` 只用于自动回答 ask_user_question。

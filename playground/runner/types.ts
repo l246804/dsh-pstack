@@ -108,6 +108,8 @@ export type Assertion =
 
 export interface WorkspaceFixture {
   files: Record<string, string>;
+  /** Files copied from repository-relative fixture paths into the workspace. */
+  assets?: Record<string, string>;
 }
 
 export interface SemanticRubric {
