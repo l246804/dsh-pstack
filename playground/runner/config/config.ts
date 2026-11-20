@@ -134,9 +134,7 @@ function provider(value: unknown, label: string, credentialsFile: string): Provi
     return {
       kind,
       apiKey: parseApiKey(),
-      ...(parsed.apiKeyEnv === undefined
-        ? {}
-        : { apiKeyEnv: string(parsed.apiKeyEnv, `${label}.apiKeyEnv`) }),
+      apiKeyEnv: string(parsed.apiKeyEnv, `${label}.apiKeyEnv`),
       models: parsed.models.map((entry, index) => model(entry, `${label}.models[${index}]`)),
     };
   }
@@ -183,8 +181,8 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
     throw new Error("runtime.networkMode must be host or bridge");
   }
   const workerPortBase = number(parsed.workerPortBase, "runtime.workerPortBase");
-  if (workerPortBase === undefined) {
-    throw new Error("runtime.workerPortBase is required");
+  if (workerPortBase === undefined || workerPortBase < 1 || workerPortBase > 65535) {
+    throw new Error("runtime.workerPortBase must be a valid port number");
   }
   return {
     scenarioTimeoutMs: timeout,

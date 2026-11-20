@@ -9,17 +9,12 @@ const VARIANTS: readonly Variant[] = ["native", "adapted"];
 
 /** The runtime directory pair every worker child inherits. */
 export function runtimeEnv(paths: WorkerPaths): Record<string, string> {
-  // Every tool child of the worker inherits these, so they must not point into the
-  // repository tree or the tested session could derive the repo root from its own env.
+  // These paths stay under the ignored .workspace tree; the container only sees /dsh.
   const runtime = join(paths.isolatedRoot, "xdg-runtime");
   const tmp = join(paths.isolatedRoot, "tmp");
   mkdirSync(runtime, { recursive: true });
   mkdirSync(tmp, { recursive: true });
-  try {
-    chmodSync(runtime, 0o700);
-  } catch {
-    // Filesystems without POSIX modes can still use the isolated runtime.
-  }
+  chmodSync(runtime, 0o700);
   return { XDG_RUNTIME_DIR: runtime, TMPDIR: tmp };
 }
 
@@ -30,7 +25,7 @@ export interface WorkerPaths {
   variant: Variant;
   /** Audited worker state inside the repository: home, browser, evidence, log. */
   root: string;
-  /** Per-worker root outside the repository tree for everything the tested session can reach. */
+  /** Per-worker root under the ignored .workspace tree for everything the tested session can reach. */
   isolatedRoot: string;
   home: string;
   browserDir: string;
@@ -103,7 +98,7 @@ export function variantWorkersDirectory(environmentId: string, variant: Variant)
   return join(workersDirectory(), variant, environmentId);
 }
 
-/** The isolated (outside-repo) root for one variant and environment. */
+/** The .workspace state root for one variant and environment. */
 export function variantIsolatedDirectory(environmentId: string, variant: Variant): string {
   return join(isolatedRootDirectory(), variant, environmentId);
 }

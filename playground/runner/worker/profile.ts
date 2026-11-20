@@ -16,7 +16,7 @@ import { runtimeSettings } from "../config/runtime.ts";
 import { runtimeEnv, type WorkerPaths } from "./worker.ts";
 
 function dshBin(): string {
-  return runtimeSettings().dshBin ?? hostCommand("dsh");
+  return runtimeSettings().dshBin;
 }
 
 export function profileDirectory(paths: WorkerPaths): string {

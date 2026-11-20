@@ -48,6 +48,6 @@ export default {
     workersDir: "playground/.workers",
     dockerBin: "docker",
     dshBin: "dsh",
-    chromePath: process.env.AGENT_BROWSER_CHROME_PATH ?? "",
+    chromePath: process.env.AGENT_BROWSER_CHROME_PATH,
   },
 } satisfies PlaygroundConfig;

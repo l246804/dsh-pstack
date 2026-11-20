@@ -33,7 +33,7 @@ export type ProviderConfig =
   | {
       kind: "deepseek-api-key";
       apiKey: string;
-      apiKeyEnv?: string;
+      apiKeyEnv: string;
       models: ProviderModel[];
     }
   | {

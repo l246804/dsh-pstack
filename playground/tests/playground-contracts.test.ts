@@ -196,6 +196,7 @@ describe("playground configuration", () => {
           "deepseek-official": {
             kind: "deepseek-api-key",
             apiKey: "secret",
+            apiKeyEnv: "DEEPSEEK_API_KEY",
             models: [{ id: "deepseek-flash", reasoningEfforts: { high: "high" } }],
           },
         },

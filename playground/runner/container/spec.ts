@@ -35,6 +35,16 @@ export interface ContainerSpecInput {
   hostPort: number;
 }
 
+function containerUser(): string | null {
+  if (process.platform !== "linux") return null;
+  const uid = process.getuid?.();
+  const gid = process.getgid?.();
+  if (uid === undefined || gid === undefined) {
+    throw new Error("cannot resolve the Linux host uid/gid for the worker container");
+  }
+  return `${uid}:${gid}`;
+}
+
 /**
  * Everything the agent may reach is an explicit mount under /dsh: the workspace, the
  * worker home, the native tree read-only, and the runtime temp dirs. The repository and
@@ -66,11 +76,8 @@ export function containerSpec(input: ContainerSpecInput): ContainerSpec {
   return {
     name: paths.containerName,
     image,
-    // Docker Desktop maps bind-mount ownership itself; asking for a host uid fails there.
-    user:
-      process.platform === "linux"
-        ? `${process.getuid?.() ?? 1000}:${process.getgid?.() ?? 1000}`
-        : null,
+    // Docker Desktop maps bind-mount ownership itself; Linux uses the host uid/gid.
+    user: containerUser(),
     workdir: paths.containerWorkspace,
     mounts,
     env: {
@@ -117,10 +124,7 @@ export function dockerRunArgs(spec: ContainerSpec): string[] {
     args.push("-v", `${mount.source}:${mount.target}:${mount.readonly ? "ro" : "rw"}`);
   }
   if (spec.networkMode === "bridge") {
-    args.push(
-      "--publish",
-      `127.0.0.1:${spec.hostPort === undefined ? "" : String(spec.hostPort)}:${spec.containerPort}`,
-    );
+    args.push("--publish", `127.0.0.1:${String(spec.hostPort)}:${spec.containerPort}`);
   }
   for (const [key, value] of Object.entries(spec.env)) {
     args.push("--env", `${key}=${value}`);

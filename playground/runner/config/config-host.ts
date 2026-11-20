@@ -127,7 +127,10 @@ export function fromHost(
     if (name === "deepseek-official") {
       if ("account" in selection) throw new Error("deepseek-official is not an account route");
       const config = hostProvider(patch, "llm-deepseek");
-      const apiKeyEnv = (config.apiKeyEnv as string | undefined) ?? "DEEPSEEK_API_KEY";
+      const apiKeyEnv = config.apiKeyEnv;
+      if (typeof apiKeyEnv !== "string" || apiKeyEnv === "") {
+        throw new Error("host DeepSeek API-key route has no apiKeyEnv");
+      }
       const models = (config.models as ProviderModel[] | undefined) ?? DEEPSEEK_BUILTIN_MODELS;
       result[name] = {
         kind: "deepseek-api-key",

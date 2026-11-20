@@ -69,7 +69,7 @@ export function publicConfigHash(
             ? {
                 kind: entry.kind,
                 apiKeyEnv: entry.apiKeyEnv,
-                models: entry.models?.map((model) => model.id),
+                models: entry.models.map((model) => model.id),
               }
             : { kind: entry.kind, modelOverrides: entry.modelOverrides },
       ]),
@@ -88,7 +88,7 @@ function versionFromPackage(file: string): string {
 }
 
 export function dshVersion(): string {
-  const result = spawnSync("dsh", ["--version"], { encoding: "utf8" });
+  const result = spawnSync(runtimeSettings().dshBin, ["--version"], { encoding: "utf8" });
   if (result.status !== 0 || result.stdout.trim() === "") {
     throw new Error("cannot read the actual dsh version; prepare is blocked");
   }
