@@ -48,13 +48,6 @@ const {
 
 export class InfraError extends Error {}
 
-function scenarioTimeoutMs(value: number): number {
-  if (!Number.isSafeInteger(value) || value <= 0) {
-    throw new Error("runtime.scenarioTimeoutMs must be a positive integer number of milliseconds");
-  }
-  return value;
-}
-
 function sleep(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
@@ -64,8 +57,8 @@ function sessionSignature(file: string): string {
   return `${events.length}:${events.at(-1)?.type ?? "none"}`;
 }
 
-function waitForSettledSession(file: string): void {
-  const deadline = Date.now() + runtimeSettings().turnTimeoutMs;
+function waitForSettledSession(file: string, scenarioDeadline: number): void {
+  const deadline = Math.min(Date.now() + runtimeSettings().turnTimeoutMs, scenarioDeadline);
   let signature = sessionSignature(file);
   let stableSince = Date.now();
   while (Date.now() < deadline) {
@@ -78,7 +71,7 @@ function waitForSettledSession(file: string): void {
     }
     if (Date.now() - stableSince >= SETTLE_WINDOW_MS) return;
   }
-  throw new InfraError("session did not settle after turn/end");
+  throw new InfraError("scenario deadline exceeded while waiting for session to settle");
 }
 
 function eventText(event: SessionEvent): string {
@@ -131,8 +124,8 @@ function activeSubagents(file: string): number {
   return handles.size - finished.size;
 }
 
-function waitForSubagentsSettled(file: string): void {
-  const deadline = Date.now() + runtimeSettings().subagentTimeoutMs;
+function waitForSubagentsSettled(file: string, scenarioDeadline: number): void {
+  const deadline = Math.min(Date.now() + runtimeSettings().subagentTimeoutMs, scenarioDeadline);
   let signature = sessionSignature(file);
   let stableSince = Date.now();
   for (;;) {
@@ -168,8 +161,16 @@ function listSessionFiles(paths: WorkerPaths): SessionFile[] {
   });
 }
 
-export function latestSessionFile(paths: WorkerPaths): SessionFile | null {
-  const files = listSessionFiles(paths);
+export function latestSessionFile(
+  paths: WorkerPaths,
+  options: { scenarioId?: string; rootOnly?: boolean } = {},
+): SessionFile | null {
+  const files = listSessionFiles(paths).filter((entry) => {
+    if (options.scenarioId !== undefined && !entry.file.includes(options.scenarioId)) return false;
+    if (!options.rootOnly) return true;
+    const header = readSessionEvents(entry.file).find((event) => event.type === "session");
+    return header?.origin !== "subagent" && (header?.delegationDepth ?? 0) === 0;
+  });
   files.sort((left, right) => statSync(right.file).mtimeMs - statSync(left.file).mtimeMs);
   return files[0] ?? null;
 }
@@ -263,7 +264,10 @@ export function materializeWorkspace(paths: WorkerPaths, scenario: BehaviorScena
     mkdirSync(dirname(target), { recursive: true });
     writeFileSync(target, content);
   }
-  const git = spawnSync("git", ["init", "-q"], { cwd: workspace, encoding: "utf8" });
+  const git = spawnSync(runtimeSettings().gitBin, ["init", "-q"], {
+    cwd: workspace,
+    encoding: "utf8",
+  });
   if (git.error) throw new Error(`git init failed: ${git.error.message}`);
   if (git.status !== 0) throw new Error(`git init failed: ${git.stderr.trim() || git.status}`);
   return workspace;
@@ -302,7 +306,7 @@ function findMatchingSession(
  * Answer the open ask_user_question card as the absent user would. The card is a
  * one-question-per-page wizard: choosing an option on a non-last question advances on its
  * own, and the last question needs the primary submit button in the footer. So we act one
- * step per poll (select, or submit) and let React re-render before the next poll. A case's
+ * step per poll (select, or submit) and let React re-render before the next poll. A scenario's
  * `answers` rules win; otherwise take the first option, or type the default text when the
  * question offers no options. Every distinct answer is recorded once for the evidence.
  */
@@ -379,7 +383,7 @@ function answerPendingQuestions(
     );
   } catch {
     // A transient eval failure (for example the page context changed mid-poll when a
-    // preset switch or navigation reloads the app) must not abort the case; retry next poll.
+    // preset switch or navigation reloads the app) must not abort the scenario; retry next poll.
     return;
   }
   try {
@@ -492,8 +496,8 @@ export function attemptScenario(input: AttemptInput): {
     ...(browser === undefined ? {} : { browser }),
   });
   const autoAnswers: Array<{ question: string; answer: string }> = [];
-  const scenarioTimeout = scenarioTimeoutMs(timeoutOverride);
-  const caseDeadline = Date.now() + scenarioTimeout;
+  const scenarioTimeout = timeoutOverride;
+  const scenarioDeadline = Date.now() + scenarioTimeout;
   try {
     try {
       session.raw(["close", "--all"]);
@@ -540,7 +544,7 @@ export function attemptScenario(input: AttemptInput): {
         session.wait(2500);
       }
       for (;;) {
-        if (Date.now() > caseDeadline) {
+        if (Date.now() > scenarioDeadline) {
           throw new InfraError(`scenario exceeded ${scenarioTimeout} ms without completing`);
         }
         try {
@@ -563,7 +567,7 @@ export function attemptScenario(input: AttemptInput): {
             ).length;
             if (ends > seenTurnEnds) {
               seenTurnEnds = ends;
-              waitForSettledSession(match.file);
+              waitForSettledSession(match.file, scenarioDeadline);
               break;
             }
           }
@@ -576,7 +580,7 @@ export function attemptScenario(input: AttemptInput): {
     }
     if (!match) throw new InfraError("no session matched the scenario");
     const matched: MatchResult = match;
-    waitForSubagentsSettled(matched.file);
+    waitForSubagentsSettled(matched.file, scenarioDeadline);
     session.wait(1000);
     const lastPrompt = scenario.turns.at(-1)?.prompt ?? "";
     captureVerified(session, screenshotFile, lastPrompt);

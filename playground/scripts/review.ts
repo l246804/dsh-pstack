@@ -83,6 +83,12 @@ export function checkReview(target: ReviewTarget): CheckResult {
   for (const { scenarioId, record } of records) {
     if (record.semanticReview.status === "pending")
       problems.push(`record ${scenarioId} still has a pending semanticReview`);
+    const entry = entries[scenarioId];
+    if (entry === undefined) continue;
+    const expected = toSemanticReview(entry);
+    if (JSON.stringify(record.semanticReview) !== JSON.stringify(expected)) {
+      problems.push(`record ${scenarioId} semanticReview does not match review.json`);
+    }
   }
   return { ok: problems.length === 0, problems };
 }

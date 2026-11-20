@@ -13,7 +13,7 @@ function toolAnalysis(session: SessionFacts): ToolAttemptAnalysis[] {
     };
     current.attempts += 1;
     if (call.status === "error") current.failures += 1;
-    current.finalStatus = call.status === "error" ? "error" : "ok";
+    current.finalStatus = call.status;
     current.recovered = current.failures > 0 && current.finalStatus === "ok";
     grouped.set(call.name, current);
   }

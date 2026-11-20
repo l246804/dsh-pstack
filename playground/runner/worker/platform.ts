@@ -2,11 +2,6 @@
 export const IS_MACOS = process.platform === "darwin";
 export const IS_WINDOWS = process.platform === "win32";
 
-/** Windows package shims are `.cmd`; WSL2 reports linux and needs no shim. */
-export function hostCommand(name: string): string {
-  return IS_WINDOWS ? `${name}.cmd` : name;
-}
-
 export function hostCommandShell(): boolean {
   return IS_WINDOWS;
 }

@@ -59,6 +59,9 @@ const defaultRuntimeSettings = {
   workersDir: WORKERS_ROOT,
   dockerBin: "docker",
   dshBin: "dsh",
+  vpxBin: "vpx",
+  pnpmBin: "pnpm",
+  gitBin: "git",
 };
 setRuntimeSettings(defaultRuntimeSettings);
 
@@ -93,6 +96,9 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
       workersDir: "playground/.workers",
       dockerBin: "docker",
       dshBin: "dsh",
+      vpxBin: "vpx",
+      pnpmBin: "pnpm",
+      gitBin: "git",
     },
     providers: {
       "provider-a": {
@@ -470,6 +476,7 @@ describe("mechanical failures", () => {
       scenario,
       session,
       workspace: temporary,
+      sessionWorkspace: temporary,
       expectedTarget: target,
       expectedPreset: "standard",
     };

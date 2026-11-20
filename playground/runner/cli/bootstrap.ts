@@ -128,8 +128,18 @@ function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
       modelSelected ||
       modelLabels.some((label) => body.toLowerCase().includes(label.toLowerCase()));
     if (!nameShown) failures.push(`page does not show model chip "${plan.name}"`);
-    const effortShown =
-      body.toLowerCase().includes(plan.effort.toLowerCase()) || body.includes("低");
+    const effortLabels: Record<string, string[]> = {
+      off: ["off", "关闭"],
+      minimal: ["minimal", "最小"],
+      low: ["low", "低"],
+      medium: ["medium", "中"],
+      high: ["high", "高"],
+      max: ["max", "最大"],
+    };
+    const wantedEffortLabels = effortLabels[plan.effort] ?? [plan.effort];
+    const effortShown = wantedEffortLabels.some((label) =>
+      body.toLowerCase().includes(label.toLowerCase()),
+    );
     if (!effortShown) failures.push(`page does not show reasoning effort "${plan.effort}"`);
     if (/登录|401|authentication required|sign in|unauthorized|认证失败/i.test(body))
       failures.push("page shows a login / 401 / authentication wall");

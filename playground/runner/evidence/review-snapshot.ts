@@ -183,6 +183,9 @@ export function writeReviewSnapshot(
     );
   }
   const currentIds = new Set(current.map((record) => record.scenarioId));
+  const scoped =
+    batch === null ? current : current.filter((record) => batch.scope.includes(record.scenarioId));
+  const scopedIds = new Set(scoped.map((record) => record.scenarioId));
   const snapshot = reviewSnapshotDirectory(variant, environment, reviewsDirectory);
   const scenarios = join(snapshot, EVIDENCE_DIRECTORIES.scenarios);
 
@@ -190,13 +193,13 @@ export function writeReviewSnapshot(
   // batch did not rerun. An incremental batch preserves every unrerun scenario.
   if (batch?.mode === "full" && existsSync(scenarios)) {
     for (const scenario of readdirSync(scenarios, { withFileTypes: true })) {
-      if (scenario.isDirectory() && !currentIds.has(scenario.name)) {
+      if (scenario.isDirectory() && !scopedIds.has(scenario.name)) {
         rmSync(join(scenarios, scenario.name), { recursive: true, force: true });
       }
     }
   }
 
-  for (const record of current) {
+  for (const record of scoped) {
     const directory = scenarioDirectory(variant, environment, record.scenarioId, reviewsDirectory);
     rmSync(directory, { recursive: true, force: true });
     copyRunEvidence(record, directory);

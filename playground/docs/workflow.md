@@ -28,7 +28,7 @@
 - `run-batch --variant <native|adapted> --environment <ID> --full`：按场景声明的 `variants` 和 `environments` 选择全部适用场景；成功后整份当前快照更新。
 - `run-batch --scenarios a,b`：增量批次，只替换本次跑到的场景，其他场景沿用当前快照。
 - `run-batch --only-failed`：native 选择 gap，adapted 选择 not-verified。
-- `batchId` 在批次启动时生成，写入 `current-batch.json` 和 `manifest.json`；同一单元只允许一个批次写快照，失败批次丢弃 `.staging`。
+- `batchId` 在批次启动时生成，写入 `current-batch.json` 和 `manifest.json`；同一单元只允许一个批次写快照。
 
 ## 长批次检查
 
@@ -38,7 +38,7 @@
 
 ```sh
 vp run playground:status -- --variant <variant> --environment <environment>
-vp run playground:session-tail -- --variant <variant> --environment <environment> --worker <N> --limit 10
+vp run playground:session-tail -- --variant <variant> --environment <environment> --worker <N> --scenario <current scenarioId> --limit 10
 ```
 
 agent 直接看最后 10 个事件的 `type`、`time` 和 `latestAge`，出现以下任一情况就调用 `playground:stop-task`：

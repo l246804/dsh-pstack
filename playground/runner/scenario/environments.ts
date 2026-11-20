@@ -31,3 +31,10 @@ export const environments: readonly EnvironmentMatrix[] = [
     teamMode: true,
   },
 ];
+
+/** Stable index used to give each environment a disjoint host-port block. */
+export function environmentOffset(id: string): number {
+  const index = environments.findIndex((environment) => environment.id === id);
+  if (index < 0) throw new Error(`unknown playground environment: ${id}`);
+  return index;
+}

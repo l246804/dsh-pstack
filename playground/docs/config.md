@@ -16,7 +16,7 @@
 | kind | 必填 | 可选 | 说明 |
 | --- | --- | --- | --- |
 | `pi-ai` | `apiKey`、`apiKeyEnv`、`reasoning`、`models` | `api`、`baseURL` | 自定义网关或 pi-ai 路由；`models` 每项必须含 `id`，efforts 只写模型自己的 `reasoningEfforts` |
-| `deepseek-api-key` | `apiKey`、`models` | `apiKeyEnv` | provider key 必须是 `deepseek-official`；`apiKeyEnv` 默认 `DEEPSEEK_API_KEY` |
+| `deepseek-api-key` | `apiKey`、`apiKeyEnv`、`models` | 无 | provider key 必须是 `deepseek-official` |
 | `deepseek-account` | 无模型字段 | `modelOverrides` | provider key 必须是 `deepseek-account`；模型目录由账号 `/models` 返回，不能用 `modelOverrides` 新增模型 |
 
 `pi-ai` 的 `reasoning` 是 provider 级默认档位，必填；模型级 `reasoningEfforts` 只保留需要测试的档位。默认成本策略是 `low`，需要更强档位时显式加 `high`。
@@ -84,12 +84,15 @@ export default {
 | `turnTimeoutMs` | `180000` | 主 turn/end 后等待 session 稳定的上限 |
 | `subagentTimeoutMs` | `600000` | 等待子代理结束的上限 |
 | `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
-| `workerPortBase` | `8080` | host 模式下第一个 worker 的端口 |
+| `workerPortBase` | `8080` | host 模式基础端口；prepare 按 variant/environment 分块 |
 | `workerCapacity` | `{ coreHeadroom: 2, memoryFraction: 0.7, memoryPerWorkerGB: 1 }` | 机器容量策略，无硬上限 |
 | `workspaceRoot` | `playground/.workspace` | workspace 根目录 |
 | `workersDir` | `playground/.workers` | home、browser、evidence 根目录 |
 | `dockerBin` | `docker` | Docker-compatible CLI |
 | `dshBin` | `dsh` | 宿主 DSH CLI |
+| `vpxBin` | `vpx` | Vite+ CLI |
+| `pnpmBin` | `pnpm` | pnpm CLI |
+| `gitBin` | `git` | git CLI |
 | `chromePath` | 自动发现 | 宿主 Chrome 可执行文件 |
 
 需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。`runtime` 及除 `chromePath` 外的字段都是必填；缺失时配置加载直接报错。

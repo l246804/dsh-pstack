@@ -21,6 +21,7 @@ import { EVIDENCE_FILES } from "../evidence/evidence-files.ts";
 import { sanitizeRecord } from "../evidence/redaction.ts";
 import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";
 import { scenarioContentHash } from "../scenario/scenario-hash.ts";
+import { DEFAULT_ENVIRONMENTS } from "../scenario/defaults.ts";
 import { currentTaskFile, stopRequestFile, workerPaths } from "../worker/worker.ts";
 import {
   attemptScenario,
@@ -56,7 +57,7 @@ async function main(): Promise<void> {
   if (preparedVariant !== variant)
     throw new Error(`worker is prepared for ${preparedVariant || "nothing"}, not ${variant}`);
   const scenario = (await import("../scenario/scenarios.ts")).loadScenario(scenarioId);
-  const environments = scenario.environments ?? ["base"];
+  const environments = scenario.environments ?? DEFAULT_ENVIRONMENTS;
   if (!environments.includes(matrix.id)) {
     throw new Error(`scenario ${scenarioId} does not run in environment ${matrix.id}`);
   }
@@ -102,6 +103,7 @@ async function main(): Promise<void> {
       scenario,
       session,
       workspace,
+      sessionWorkspace: join(paths.containerWorkspace, scenario.id),
       route: outcome.digest.route,
       expectedTarget,
       expectedPreset,
@@ -130,7 +132,7 @@ async function main(): Promise<void> {
     };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    const lastSession = latestSessionFile(paths);
+    const lastSession = latestSessionFile(paths, { scenarioId, rootOnly: true });
     record = blockedRecord({
       scenarioId,
       variant,

@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { BehaviorScenario } from "../types.ts";
+import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "./defaults.ts";
 import { stableStringify } from "../shared/stable-json.ts";
 
 /**
@@ -13,8 +14,8 @@ export function scenarioContentHash(scenario: BehaviorScenario): string {
     capability: scenario.capability,
     kind: scenario.kind,
     gap: scenario.gap,
-    variants: scenario.variants ?? ["native", "adapted"],
-    environments: scenario.environments ?? ["base"],
+    variants: scenario.variants ?? DEFAULT_VARIANTS,
+    environments: scenario.environments ?? DEFAULT_ENVIRONMENTS,
     turns: scenario.turns,
     workspace: scenario.workspace,
     assertions: scenario.assertions,

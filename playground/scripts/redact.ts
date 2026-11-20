@@ -6,6 +6,7 @@ import { isVariant } from "../runner/types.ts";
 import type { Variant } from "../runner/types.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 import { EVIDENCE_FILES } from "../runner/evidence/evidence-files.ts";
+import { isRunRecord } from "../runner/evidence/evidence.ts";
 import { residualKinds } from "../runner/evidence/redaction.ts";
 import { reviewSnapshotDirectory } from "../runner/evidence/review-snapshot.ts";
 
@@ -48,6 +49,11 @@ function main(): void {
       parsed = JSON.parse(readFileSync(candidate, "utf8"));
     } catch (error) {
       console.error(`[redact] INVALID ${relative(root, candidate)}: ${String(error)}`);
+      errors += 1;
+      continue;
+    }
+    if (!isRunRecord(parsed)) {
+      console.error(`[redact] INVALID ${relative(root, candidate)}: not a RunRecord`);
       errors += 1;
       continue;
     }

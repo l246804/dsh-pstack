@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { isVariant } from "../types.ts";
 import type { Variant } from "../types.ts";
 import { environmentMatrix, workersDirectory } from "../worker/run-metadata.ts";
+import { environmentOffset } from "../scenario/environments.ts";
 import {
   copyCredentials,
   mountNativeTree,
@@ -25,7 +26,7 @@ import {
   packPlugin,
 } from "../worker/profile.ts";
 import { startWeb, stopWeb } from "../container/index.ts";
-import { listScenarioIds } from "../scenario/scenarios.ts";
+import { listScenarioIdsFor } from "../scenario/scenarios.ts";
 import { computeWorkers } from "../worker/capacity.ts";
 import {
   clearBootstrapReady,
@@ -112,10 +113,18 @@ async function main(): Promise<void> {
   const config = await readPlaygroundConfig(CONFIG_FILE);
 
   const plan = loadProviderPlan(config);
-  const scenarioIds = listScenarioIds();
+  const scenarioIds = listScenarioIdsFor(variant, matrix.id);
   const count = computeWorkers(scenarioIds.length).workers;
+  const portStride = 100;
+  const effectivePortBase =
+    config.runtime.workerPortBase +
+    (variant === "adapted" ? 1000 : 0) +
+    environmentOffset(matrix.id) * portStride;
   const portFlag = argValue("--port");
   const port = portFlag === undefined ? undefined : Number(portFlag);
+  if (port === undefined && effectivePortBase + count - 1 > 65_535) {
+    throw new Error("runtime.workerPortBase leaves no room for every worker");
+  }
   if (
     port !== undefined &&
     (!Number.isSafeInteger(port) || port < 1 || port > 65_535 || port + count - 1 > 65_535)
@@ -129,23 +138,25 @@ async function main(): Promise<void> {
     const workers = Array.from({ length: count }, (_, index) =>
       workerPaths(index, matrix.id, variant),
     );
+    for (const worker of workers) {
+      if (readVariant(worker) !== variant) {
+        throw new Error(
+          `cannot reuse ${variant}/${matrix.id}/w${worker.index}: worker is not prepared for ${variant}`,
+        );
+      }
+    }
     for (const worker of workers) stopWeb(worker);
     // The reused profile points at the worker's native mount outside the repo; refresh it so a
     // cleared temp root does not restart native workers with missing skills.
     for (const worker of workers) {
       if (readVariant(worker) === "native") mountNativeTree(worker);
-      writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime?.networkMode);
+      writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime.networkMode);
       writeWorkerInstructions(worker);
       writeRoleFile(worker, config);
       writePstackSettings(worker, variant === "adapted");
+      registerWorkspaces(worker, scenarioIds);
     }
-    await startWorkers(
-      workers,
-      plan,
-      port,
-      config.runtime.networkMode,
-      config.runtime.workerPortBase,
-    );
+    await startWorkers(workers, plan, port, config.runtime.networkMode, effectivePortBase);
     return;
   }
 
@@ -184,18 +195,12 @@ async function main(): Promise<void> {
     }
     writeFileSync(worker.variantFile, `${variant}\n`);
     if (config.copyCredentials) copyCredentials(worker, config.credentialsFile);
-    writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime?.networkMode);
+    writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime.networkMode);
     writeRoleFile(worker, config);
     writePstackSettings(worker, variant === "adapted");
     registerWorkspaces(worker, scenarioIds);
   }
-  await startWorkers(
-    workers,
-    plan,
-    port,
-    config.runtime.networkMode,
-    config.runtime.workerPortBase,
-  );
+  await startWorkers(workers, plan, port, config.runtime.networkMode, effectivePortBase);
   console.log(
     `[prepare] variant=${variant} environment=${matrix.id} workers=${count} model=${plan.main.provider}/${plan.main.model}[${plan.main.effort}]`,
   );

@@ -4,6 +4,7 @@ import type { BehaviorScenario, RunRecord } from "../runner/types.ts";
 import { listSnapshotRecords } from "./lib/review.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 import { scenarioContentHash } from "../runner/scenario/scenario-hash.ts";
+import { DEFAULT_ENVIRONMENTS } from "../runner/scenario/defaults.ts";
 
 export { scenarioContentHash } from "../runner/scenario/scenario-hash.ts";
 
@@ -46,10 +47,16 @@ export function compareOne(
   if (native.environment.matrix.id !== adapted.environment.matrix.id) {
     problems.push("native and adapted environment matrices differ");
   }
+  if (native.environment.configHash !== adapted.environment.configHash) {
+    problems.push("native and adapted config hashes differ");
+  }
   if (JSON.stringify(native.target) !== JSON.stringify(adapted.target)) {
     problems.push("native and adapted actual model routes differ");
   }
   const hash = scenarioContentHash(scenario);
+  if (native.scenarioHash === undefined || adapted.scenarioHash === undefined) {
+    problems.push("scenario content hash is missing");
+  }
   if (native.scenarioHash !== undefined && native.scenarioHash !== hash) {
     problems.push("native record scenario content differs from the current definition");
   }
@@ -113,7 +120,7 @@ function argValue(flag: string): string | undefined {
 }
 
 async function main(): Promise<void> {
-  const environment = argValue("--environment") ?? "base";
+  const environment = argValue("--environment") ?? DEFAULT_ENVIRONMENTS[0];
   environmentMatrix(environment);
   const scenario = argValue("--scenario");
   const all = process.argv.includes("--all");

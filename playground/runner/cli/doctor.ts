@@ -4,10 +4,10 @@ import { spawnSync } from "node:child_process";
 import { agentBrowserBin, chromeExecutable } from "../browser/session.ts";
 import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { runtimeSettings } from "../config/runtime.ts";
-import { hostCommand, IS_WINDOWS } from "../worker/platform.ts";
+import { IS_WINDOWS } from "../worker/platform.ts";
 import { imageProblems } from "../container/image.ts";
 
-await readPlaygroundConfig(CONFIG_FILE);
+const config = await readPlaygroundConfig(CONFIG_FILE);
 const failures: string[] = [];
 
 function check(name: string, ok: boolean, detail: string): void {
@@ -43,13 +43,13 @@ check(
   `${process.version} (expected ${requiredNode ?? "unknown"})`,
 );
 
-const vp = versionOf("vp");
+const vp = versionOf(runtimeSettings().vpxBin);
 check("vp", vp !== null, vp ?? "not found on PATH");
 
-const pnpm = versionOf(hostCommand("pnpm"));
+const pnpm = versionOf(runtimeSettings().pnpmBin);
 check("pnpm", pnpm !== null, pnpm ?? "not found on PATH");
 
-const dsh = versionOf(runtimeSettings().dshBin ?? hostCommand("dsh"));
+const dsh = versionOf(runtimeSettings().dshBin);
 check("dsh", dsh !== null, dsh ?? "not found on PATH");
 
 const sandboxProblems =
@@ -71,12 +71,13 @@ try {
 }
 
 check("config", true, CONFIG_FILE);
+const credentials = config.credentialsFile ?? DEFAULT_CREDENTIALS_FILE;
 check(
   "credentials",
-  true,
-  existsSync(DEFAULT_CREDENTIALS_FILE)
-    ? `${DEFAULT_CREDENTIALS_FILE} (copied only when copyCredentials is true)`
-    : "absent; optional unless copyCredentials is true",
+  !config.copyCredentials || existsSync(credentials),
+  existsSync(credentials)
+    ? `${credentials} (copied only when copyCredentials is true)`
+    : "absent; required by copyCredentials",
 );
 
 if (failures.length > 0) {

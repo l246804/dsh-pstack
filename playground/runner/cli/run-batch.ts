@@ -29,11 +29,11 @@ import {
   type ProgressState,
 } from "../worker/progress.ts";
 import { listScenarioIds, loadScenario } from "../scenario/scenarios.ts";
+import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "../scenario/defaults.ts";
 import { writeBatchMetadata } from "../evidence/review-snapshot.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../worker/worker.ts";
-
-const VPX = "vpx";
+import { runtimeSettings } from "../config/runtime.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
@@ -87,7 +87,7 @@ function selectedScenarios(variant: Variant, environmentId: string): string[] {
     return listScenarioIds().filter((id) => {
       const scenario = loadScenario(id);
       const variantAllowed = scenario.variants === undefined || scenario.variants.includes(variant);
-      const environments = scenario.environments ?? ["base"];
+      const environments = scenario.environments ?? DEFAULT_ENVIRONMENTS;
       return variantAllowed && environments.includes(environmentId);
     });
   }
@@ -114,14 +114,21 @@ interface ChildResult {
 
 function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
   return new Promise((resolvePromise) => {
-    const child = spawn(VPX, args, { cwd: REPOSITORY_ROOT, env });
+    const child = spawn(runtimeSettings().vpxBin, args, { cwd: REPOSITORY_ROOT, env });
     let output = "";
     let settled = false;
+    let timer: NodeJS.Timeout | undefined;
     const finish = (code: number | null): void => {
       if (settled) return;
       settled = true;
+      if (timer !== undefined) clearTimeout(timer);
       resolvePromise({ code, output });
     };
+    timer = setTimeout(() => {
+      output += "run-scenario exceeded its wall-clock budget";
+      child.kill("SIGKILL");
+      finish(-1);
+    }, runtimeSettings().scenarioTimeoutMs + 60_000);
     child.stdout.on("data", (chunk: Buffer) => {
       output += chunk.toString();
     });
@@ -174,8 +181,8 @@ async function main(): Promise<void> {
   if (argValue("--scenarios") !== undefined) {
     const offenders = ids.filter((id) => {
       const scenario = loadScenario(id);
-      const variants = scenario.variants ?? ["native", "adapted"];
-      const environments = scenario.environments ?? ["base"];
+      const variants = scenario.variants ?? DEFAULT_VARIANTS;
+      const environments = scenario.environments ?? DEFAULT_ENVIRONMENTS;
       return !variants.includes(variant) || !environments.includes(matrix.id);
     });
     if (offenders.length > 0) {
@@ -228,7 +235,6 @@ async function main(): Promise<void> {
     startedAt: new Date().toISOString(),
     upstreamRevision: upstreamRevision(),
   });
-  const childEnvironment = process.env;
   await Promise.all(
     Array.from({ length: workers }, async (_, worker) => {
       while (true) {
@@ -257,7 +263,7 @@ async function main(): Promise<void> {
           "--environment",
           matrix.id,
         ];
-        const result = await runCase(args, childEnvironment);
+        const result = await runCase(args, process.env);
         rmSync(taskFile, { force: true });
         rmSync(stopRequestFile(workerPathsForTask), { force: true });
         appendFileSync(
@@ -295,6 +301,10 @@ async function main(): Promise<void> {
     }),
   );
   console.log(`[run-batch] log=${logFile}`);
+  if (state.failures.length > 0) {
+    console.error(`[run-batch] ${state.failures.length} scenario(s) failed`);
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error: unknown) => {

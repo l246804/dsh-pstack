@@ -56,6 +56,18 @@ export function containerSpec(input: ContainerSpecInput): ContainerSpec {
   const containerPort = networkMode === "host" ? hostPort : CONTAINER_PORT;
   // Ensure the host-side runtime directories exist before they become mount sources.
   runtimeEnv(paths);
+  const providerEnv = {
+    ...Object.fromEntries(
+      Object.values(plan.providers).flatMap((provider) =>
+        provider.kind === "deepseek-account"
+          ? []
+          : [[provider.apiKeyEnv, provider.apiKey] as const],
+      ),
+    ),
+    ...(plan.apiKeyEnv === undefined || plan.apiKey === undefined
+      ? {}
+      : { [plan.apiKeyEnv]: plan.apiKey }),
+  };
   const mounts: ContainerMount[] = [
     { source: paths.workspaceRoot, target: paths.containerWorkspace, readonly: false },
     { source: paths.home, target: paths.containerHome, readonly: false },
@@ -89,9 +101,7 @@ export function containerSpec(input: ContainerSpecInput): ContainerSpec {
       GIT_TERMINAL_PROMPT: "0",
       DSH_PORT: String(containerPort),
       ...(networkMode === "host" ? { DSH_HOST: "127.0.0.1" } : {}),
-      ...(plan.apiKeyEnv === undefined || plan.apiKey === undefined
-        ? {}
-        : { [plan.apiKeyEnv]: plan.apiKey }),
+      ...providerEnv,
     },
     networkMode,
     hostPort,

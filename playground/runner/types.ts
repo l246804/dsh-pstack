@@ -66,7 +66,7 @@ export interface RuntimeConfig {
     memoryFraction: number;
     memoryPerWorkerGB: number;
   };
-  /** Root outside the repository where each worker keeps its workspace. */
+  /** Root under the ignored repository workspace where each worker keeps its workspace. */
   workspaceRoot: string;
   /** Root for worker home, browser, evidence, and logs. */
   workersDir: string;
@@ -74,6 +74,12 @@ export interface RuntimeConfig {
   dockerBin: string;
   /** DSH CLI binary. */
   dshBin: string;
+  /** Vite+ CLI binary. */
+  vpxBin: string;
+  /** pnpm binary. */
+  pnpmBin: string;
+  /** git binary. */
+  gitBin: string;
   /** Host Chrome binary; omitted means discover the installed browser. */
   chromePath?: string;
 }

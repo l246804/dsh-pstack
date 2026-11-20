@@ -318,7 +318,7 @@ export function resetHome(paths: WorkerPaths): void {
 }
 
 /**
- * Copy the generated native tree to the worker's mount outside the repository and return the
+ * Copy the generated native tree to the worker's ignored .workspace mount and return the
  * mount root. The native profile and persona reference this copy only; the in-repo path would
  * hand the tested session the repository root, and with it the scenario rubrics.
  */
@@ -395,9 +395,17 @@ export function readWorkspaceStore(paths: WorkerPaths): {
     global: { workspaceIds: string[]; defaultWorkspaceId: string };
     tables: { workspaces: Record<string, { path: string; title: string }> };
   };
+  const defaultWorkspace = store.tables.workspaces[store.global.defaultWorkspaceId];
+  if (defaultWorkspace === undefined) {
+    throw new Error("workspace store has no default workspace");
+  }
   return {
-    defaultTitle: store.tables.workspaces[store.global.defaultWorkspaceId]?.title ?? "",
-    workspaces: store.global.workspaceIds.map((id) => store.tables.workspaces[id]).filter(Boolean),
+    defaultTitle: defaultWorkspace.title,
+    workspaces: store.global.workspaceIds.map((id) => {
+      const workspace = store.tables.workspaces[id];
+      if (workspace === undefined) throw new Error(`workspace store is missing ${id}`);
+      return workspace;
+    }),
   };
 }
 

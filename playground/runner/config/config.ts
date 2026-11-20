@@ -193,7 +193,12 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
     throw new Error("runtime.networkMode must be host or bridge");
   }
   const workerPortBase = number(parsed.workerPortBase, "runtime.workerPortBase");
-  if (workerPortBase === undefined || workerPortBase < 1 || workerPortBase > 65535) {
+  if (
+    workerPortBase === undefined ||
+    !Number.isSafeInteger(workerPortBase) ||
+    workerPortBase < 1 ||
+    workerPortBase > 65535
+  ) {
     throw new Error("runtime.workerPortBase must be a valid port number");
   }
   const capacity = object(parsed.workerCapacity, "runtime.workerCapacity");
@@ -223,17 +228,22 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
     workersDir: string(parsed.workersDir, "runtime.workersDir"),
     dockerBin: string(parsed.dockerBin, "runtime.dockerBin"),
     dshBin: string(parsed.dshBin, "runtime.dshBin"),
+    vpxBin: string(parsed.vpxBin, "runtime.vpxBin"),
+    pnpmBin: string(parsed.pnpmBin, "runtime.pnpmBin"),
+    gitBin: string(parsed.gitBin, "runtime.gitBin"),
     ...(parsed.chromePath === undefined
       ? {}
       : { chromePath: string(parsed.chromePath, "runtime.chromePath") }),
   };
 }
 
-export function parseConfig(
-  value: unknown,
-  credentialsFile = join(homedir(), ".dsh/.credentials.yaml"),
-): PlaygroundConfig {
+export function parseConfig(value: unknown, credentialsFileOption?: string): PlaygroundConfig {
   const input = object(value, "playground config");
+  const credentialsFile =
+    credentialsFileOption ??
+    (input.credentialsFile === undefined
+      ? join(homedir(), ".dsh/.credentials.yaml")
+      : string(input.credentialsFile, "credentialsFile"));
   const providersInput = object(input.providers, "providers");
   const providers: Record<string, ProviderConfig> = {};
   for (const [name, value] of Object.entries(providersInput)) {

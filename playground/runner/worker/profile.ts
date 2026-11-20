@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { hostCommand, hostCommandShell } from "./platform.ts";
+import { hostCommandShell } from "./platform.ts";
 import {
   cpSync,
   existsSync,
@@ -48,7 +48,7 @@ export function packPlugin(destination: string): string {
   rmSync(destination, { recursive: true, force: true });
   mkdirSync(destination, { recursive: true });
   const result = spawnSync(
-    hostCommand("pnpm"),
+    runtimeSettings().pnpmBin,
     ["pack", "--ignore-scripts", "--pack-destination", destination],
     {
       cwd: REPOSITORY_ROOT,

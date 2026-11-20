@@ -2,9 +2,9 @@ import { spawnSync } from "node:child_process";
 
 import { runtimeSettings } from "../config/runtime.ts";
 
-/** The docker CLI binary from config.runtime; defaults to docker on PATH. */
+/** The docker CLI binary from config.runtime. */
 export function dockerBin(): string {
-  return runtimeSettings().dockerBin ?? "docker";
+  return runtimeSettings().dockerBin;
 }
 
 export interface DockerResult {

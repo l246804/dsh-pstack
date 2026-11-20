@@ -182,6 +182,8 @@ export function createBrowserSession(options: BrowserOptions): BrowserSession {
       env,
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
+      timeout: Math.min(runtimeSettings().scenarioTimeoutMs, 120_000),
+      killSignal: "SIGKILL",
     });
     if (result.error)
       throw new Error(`failed to run agent-browser ${args[0]}: ${result.error.message}`);

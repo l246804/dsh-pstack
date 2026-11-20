@@ -45,7 +45,10 @@ if (!state) {
         value.startedAt === undefined
           ? "unknown"
           : `${Math.max(0, Math.round((Date.now() - Date.parse(value.startedAt)) / 1000))}s`;
-      const session = latestSessionFile(paths);
+      const session = latestSessionFile(paths, {
+        scenarioId: entry.scenarioId,
+        rootOnly: true,
+      });
       console.log(
         `[status] current w${entry.worker}: ${value.scenarioId ?? entry.scenarioId} age=${elapsed} session=${session?.file ?? "none"}`,
       );

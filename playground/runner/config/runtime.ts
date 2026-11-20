@@ -1,21 +1,23 @@
+import type { RuntimeConfig } from "../types.ts";
+
 /** Process-wide settings populated from PlaygroundConfig.runtime by readConfig. */
-export interface RuntimeSettings {
-  scenarioTimeoutMs: number;
-  turnTimeoutMs: number;
-  subagentTimeoutMs: number;
-  networkMode: "host" | "bridge";
-  workerPortBase: number;
-  workerCapacity: {
-    coreHeadroom: number;
-    memoryFraction: number;
-    memoryPerWorkerGB: number;
-  };
-  workspaceRoot: string;
-  workersDir: string;
-  dockerBin: string;
-  dshBin: string;
-  chromePath?: string;
-}
+export type RuntimeSettings = Pick<
+  RuntimeConfig,
+  | "scenarioTimeoutMs"
+  | "turnTimeoutMs"
+  | "subagentTimeoutMs"
+  | "networkMode"
+  | "workerPortBase"
+  | "workerCapacity"
+  | "workspaceRoot"
+  | "workersDir"
+  | "dockerBin"
+  | "dshBin"
+  | "vpxBin"
+  | "pnpmBin"
+  | "gitBin"
+  | "chromePath"
+>;
 
 let current: RuntimeSettings | undefined;
 

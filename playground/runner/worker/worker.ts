@@ -2,10 +2,9 @@ import { chmodSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 
 import { join } from "node:path";
 
 import type { Variant } from "../types.ts";
+import { VARIANTS } from "../types.ts";
 import { isolatedRootDirectory, workersDirectory } from "./run-metadata.ts";
 import { CONTAINER_LAYOUT } from "../container/layout.ts";
-
-const VARIANTS: readonly Variant[] = ["native", "adapted"];
 
 /** The runtime directory pair every worker child inherits. */
 export function runtimeEnv(paths: WorkerPaths): Record<string, string> {
@@ -132,7 +131,7 @@ export function listWorkers(filter: WorkerFilter = {}): WorkerPaths[] {
       for (const name of readdirSync(directory)) {
         if (!/^w\d+$/.test(name) || !statSync(join(directory, name)).isDirectory()) continue;
         const paths = workerPaths(Number(name.slice(1)), environmentId, variant);
-        if (existsSync(paths.urlFile) || existsSync(paths.logFile)) workers.push(paths);
+        if (existsSync(paths.urlFile)) workers.push(paths);
       }
     }
   }
@@ -142,5 +141,9 @@ export function listWorkers(filter: WorkerFilter = {}): WorkerPaths[] {
 export function workerCount(environmentId: string, variant: Variant): number {
   const root = variantWorkersDirectory(environmentId, variant);
   if (!existsSync(root)) return 0;
-  return readdirSync(root).filter((name) => /^w\d+$/.test(name)).length;
+  return readdirSync(root).filter(
+    (name) =>
+      /^w\d+$/.test(name) &&
+      existsSync(workerPaths(Number(name.slice(1)), environmentId, variant).urlFile),
+  ).length;
 }

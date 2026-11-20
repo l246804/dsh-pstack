@@ -1,7 +1,5 @@
-import type { BehaviorScenario, Variant } from "../types.ts";
-
-const DEFAULT_VARIANTS: readonly Variant[] = ["native", "adapted"];
-const DEFAULT_ENVIRONMENTS: readonly string[] = ["base"];
+import type { BehaviorScenario } from "../types.ts";
+import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "./defaults.ts";
 
 /**
  * Probes live flat under playground/scenarios/probes. Each file default-exports a

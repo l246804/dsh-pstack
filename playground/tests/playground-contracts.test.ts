@@ -121,6 +121,9 @@ function config(provider = "provider-a", model = "model-a", effort = "low") {
       workersDir: "playground/.workers",
       dockerBin: "docker",
       dshBin: "dsh",
+      vpxBin: "vpx",
+      pnpmBin: "pnpm",
+      gitBin: "git",
     },
     providers: {
       "provider-a": {

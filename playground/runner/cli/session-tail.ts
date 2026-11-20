@@ -64,8 +64,12 @@ if (environment === undefined) throw new Error("session-tail requires --environm
 environmentMatrix(environment);
 const worker = nonNegativeInteger(argValue("--worker"), 0, "--worker");
 const limit = positiveInteger(argValue("--limit"), 10, "--limit");
+const scenario = argValue("--scenario");
 const paths = workerPaths(worker, environment, variant);
-const session = latestSessionFile(paths);
+const session = latestSessionFile(paths, {
+  rootOnly: true,
+  ...(scenario === undefined ? {} : { scenarioId: scenario }),
+});
 if (session === null || !existsSync(session.file)) {
   throw new Error(`no session file for ${variant}/${environment}/w${worker}`);
 }

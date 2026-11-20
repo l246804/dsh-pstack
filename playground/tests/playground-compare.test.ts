@@ -50,6 +50,7 @@ function record(variant: Variant, scenarioId = scenario.id): RunRecord {
       configHash: "hash-1",
     },
     target: { provider: "provider-a", model: "model-a", effort: "low" },
+    scenarioHash: scenarioContentHash(scenario),
     session: session(scenario.turns[0]!.prompt),
     artifacts: { recordFile: "record.json", observed: [] },
     semanticReview: { status: "pending", reason: "pending" },

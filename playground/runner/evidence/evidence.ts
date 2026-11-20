@@ -477,13 +477,14 @@ export function mechanicalFailures(input: {
   scenario: BehaviorScenario;
   session: SessionFacts;
   workspace: string;
+  sessionWorkspace: string;
   route: TestTarget | null;
   expectedTarget: TestTarget;
   expectedPreset: string;
 }): string[] {
   const failures = [
     ...evaluateAssertions(input.scenario.assertions, input.session, input.workspace),
-    ...expectedWorkspace(input.workspace, input.session),
+    ...expectedWorkspace(input.sessionWorkspace, input.session),
     ...assertExpectedEntry(
       input.scenario,
       input.session,
