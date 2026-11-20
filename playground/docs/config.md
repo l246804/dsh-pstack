@@ -1,6 +1,6 @@
 # 配置
 
-本文件说明 `playground/config.ts` 的配置边界。字段、默认值和类型定义分别由 [config.example.ts](../config.example.ts) 与 `runner/types.ts` 维护。
+本文件说明 `playground/config.ts` 的配置边界。字段、默认值和类型定义以 [config.example.ts](../config.example.ts) 与 `runner/types.ts` 为准。
 
 ## 设置
 
@@ -16,7 +16,7 @@
 
 ## 凭证
 
-`copyCredentials` 默认 `false`。开启后只复制 DSH 的 `.credentials.yaml` 到 worker home；文件不存在时 `prepare` 失败，不静默跳过。
+`copyCredentials` 默认 `false`。开启后只复制配置的 DSH 凭证文件（默认 `.credentials.yaml`）到 worker home；文件不存在时 `prepare` 失败，不静默跳过。
 
 `deepseek-account` 需要账号登录，因此必须同时开启 `copyCredentials`。`doctor` 会报告凭证文件是否存在。
 

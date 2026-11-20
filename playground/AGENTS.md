@@ -27,6 +27,6 @@ Playground 用真实 DSH Web 会话验证 native 运行时与当前适配实现�
 - 运行维度是 variant × environment。`native` 只使用 DSH 标准运行时；`adapted` 使用当前适配实现。
 - worker 是独立 Docker 容器，只挂载固定 `/dsh` 路径。仓库根、`playground/scenarios`、宿主 home、Docker socket 和宿主的 browser profile 都不进入容器。
 - `playground/config.ts` 是唯一用户配置源；字段和默认值从示例与类型读取，不在文档中复制。
-- `copyCredentials` 默认关闭；开启时只复制 DSH 的 `.credentials.yaml`。
+- `copyCredentials` 默认关闭；开启时只复制配置的 DSH 凭证文件（默认 `.credentials.yaml`）。
 - `prepare` 自动计算 worker 数量；`run-batch` 退出后不会自动停止 worker，需要时运行 `playground:stop`。
 - 批次必须按 `prepare → bootstrap → run-batch → collect` 串行执行。提交前运行 `vp run ci`。

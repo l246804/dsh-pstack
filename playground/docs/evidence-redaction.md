@@ -18,7 +18,7 @@ vp run playground:redact -- --variant <variant> --environment <environment>
 vp run playground:redact -- --variant <variant> --environment <environment> --apply
 ```
 
-`--apply` 会用 safe record 替换 `record.json`，实现见 `scripts/redact.ts`。
+`--apply` 会用 safe record 替换 `record.json`。
 
 ## 脱敏范围
 

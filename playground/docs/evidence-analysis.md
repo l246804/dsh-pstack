@@ -37,11 +37,11 @@
 5. 待用户判断的问题。
 6. 后续动作：`dsh-md`、`plugin`、`upstream`、`ignore-environment`。
 
-问题条目和 `dsh.md` 表格的字段以 `scripts/lib/review.ts` 和本文件的结构为准；不要为同一根因按场景重复建条目。
+问题条目和 `dsh.md` 表格的字段以本文件的结构为准；`review.json` 由 `playground:review` 校验。不要为同一根因按场景重复建条目。
 
 ## Review
 
-每个场景写 `review.json`，结构由 `scripts/lib/review.ts` 解析。之后执行：
+每个场景写 `review.json`，由 `playground:review` 解析。之后执行：
 
 ```sh
 vp run playground:review -- --variant <variant> --environment <environment> --apply

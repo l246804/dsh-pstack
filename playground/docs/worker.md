@@ -14,7 +14,7 @@
 | `/dsh/runtime` | XDG runtime |
 | `/dsh/native` | native 技能树，只读；仅 native variant 使用 |
 
-宿主的 `playground/.workers/` 保存每个 worker 的 home、browser profile、evidence 和日志；`playground/.workspace/` 保存 workspace 及运行时目录。具体路径由 `runner/worker/worker.ts` 定义。
+宿主的 `playground/.workers/` 保存每个 worker 的 home、browser profile、evidence 和日志；`playground/.workspace/` 保存 workspace 及运行时目录。具体路径由 worker 配置和实现维护。
 
 容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid，启用 `cap-drop ALL` 和 `no-new-privileges`。仓库根、`playground/scenarios`、宿主 home、Docker socket 和宿主 browser profile 都不进入容器。
 
