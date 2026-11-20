@@ -98,13 +98,14 @@ function eventText(event: SessionEvent): string {
  * Capture must wait until every spawned subagent reports finished, so the record and
  * screenshot include the completion result instead of stopping at the dispatch notice.
  */
-function activeSubagents(file: string): number {
-  const events = readSessionEvents(file);
+export function activeSubagentCount(events: readonly SessionEvent[]): number {
   // rc.2 addresses children by name and its completion notice reads
   // "Background subagent <name>". Older runtimes used the Session id. Track both
   // handles per cataloged child and accept a finish notice that carries either.
+  // Workflow children never emit that notice; their run ends with a run-end event.
   const handles = new Map<string, Set<string>>();
   const finished = new Set<string>();
+  const workflowChildren = new Map<string, Set<string>>();
   for (const event of events) {
     if (event.type === "subagent/catalog") {
       const data = event.data as { childId?: unknown; name?: unknown } | undefined;
@@ -114,6 +115,20 @@ function activeSubagents(file: string): number {
       set.add(childId);
       if (typeof data?.name === "string" && data.name !== "") set.add(data.name);
       handles.set(childId, set);
+      continue;
+    }
+    if (event.type === "tool-workflow/agent-start") {
+      const data = event.data as { runId?: unknown; childId?: unknown } | undefined;
+      if (typeof data?.runId !== "string" || typeof data?.childId !== "string") continue;
+      const set = workflowChildren.get(data.runId) ?? new Set<string>();
+      set.add(data.childId);
+      workflowChildren.set(data.runId, set);
+      continue;
+    }
+    if (event.type === "tool-workflow/run-end") {
+      const data = event.data as { runId?: unknown } | undefined;
+      if (typeof data?.runId !== "string") continue;
+      for (const childId of workflowChildren.get(data.runId) ?? []) finished.add(childId);
       continue;
     }
     if (event.type !== "user/message") continue;
@@ -129,6 +144,10 @@ function activeSubagents(file: string): number {
     }
   }
   return handles.size - finished.size;
+}
+
+function activeSubagents(file: string): number {
+  return activeSubagentCount(readSessionEvents(file));
 }
 
 function waitForSubagentsSettled(file: string, scenarioDeadline: number): void {
