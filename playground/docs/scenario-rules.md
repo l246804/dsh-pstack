@@ -1,6 +1,6 @@
 # 场景规则
 
-本文件说明 `playground/scenarios/probes/` 的场景契约、gap 绑定和回归边界。运行维度见 [model.md](./model.md)；缺口生成规则见 [../../native/AGENTS.md](../../native/AGENTS.md)。
+本文件说明 `playground/scenarios/` 的场景契约、gap 绑定和回归边界。运行维度见 [model.md](./model.md)；缺口生成规则见 [../../native/AGENTS.md](../../native/AGENTS.md)。
 
 ## 来源
 
@@ -29,7 +29,7 @@
 - 缺口描述变化后先重读场景；确认场景仍成立后运行 `vp run playground:gap-lock -- --write`。
 - regression 场景不参与 gap 计数，也不进入 gap-lock。
 
-守卫实现见 `scripts/lib/coverage.ts` 和 `scripts/lib/gap-lock.ts`。
+守卫实现见 `scripts/lib/coverage.ts` 和 `scripts/lib/gap-lock.ts`。锁文件是场景集合旁的 `playground/scenarios/gap-lock.json`，不要把它移进证据目录。
 
 ## 完成标准
 

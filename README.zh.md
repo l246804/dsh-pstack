@@ -192,7 +192,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 移植由真实 DeepSeek Harness Web 会话验证，不靠与上游比对文本。完整流程见 [playground/docs/workflow.md](./playground/docs/workflow.md)。
 
 - **native 基准。** 生成器把上游 pstack 复制到 `playground/fixtures/native/pstack`，不装其他插件。`playground/fixtures/native/dsh.md` 把每项上游能力写成三种情况之一：DSH 原生、仅官方可选插件提供、没有此能力。生成器只复制该文档并替换引用链接，上游文案保持原样。
-- **场景驱动。** 覆盖来自 `native/gaps.json` 与 `playground/scenarios/probes/` 下的场景文件；缺口清单记录 DSH 标准运行时缺少的能力，场景负责验证这些缺口。
+- **场景驱动。** 覆盖来自 `native/gaps.json` 与 `playground/scenarios/` 下的场景文件；缺口清单记录 DSH 标准运行时缺少的能力，场景负责验证这些缺口。
 - **语义审核。** 技能能加载，只证明它可被触达。每个场景单独记录 `supported`、`gap` 或 `inconclusive` 结论，并附审核者与理由。adapted 运行记录 `verified`、`not-verified` 或 `inconclusive`。
 - **adapted 复验。** 审核结论驱动 [src/dsh.zh.md](./src/dsh.zh.md)。用 `vp run build` 重建适配包，再重跑同一批场景，确认映射后的行为。
 - **环境矩阵。** 能力探针默认在 `base` 运行。`render` 是渲染对照环境。`agent-team` 是开启团队协作的环境，用于验证开启智能体团队协作后的 pstack 委派。

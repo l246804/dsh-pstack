@@ -251,7 +251,7 @@ describe("gapCoverageProblems", () => {
 
   it("requires every confirmed gap to have a gap scenario", () => {
     expect(gapCoverageProblems([], [{ id: "gap-a", status: "confirmed" }])).toEqual([
-      "confirmed gap gap-a has no gap scenario; add one under playground/scenarios/probes or revert the status",
+      "confirmed gap gap-a has no gap scenario; add one under playground/scenarios or revert the status",
     ]);
   });
 
@@ -287,7 +287,7 @@ describe("gapCoverageProblems", () => {
     ).toEqual(
       expect.arrayContaining([
         "gap scenario probe-a references unknown gap gap-x",
-        "confirmed gap gap-a has no gap scenario; add one under playground/scenarios/probes or revert the status",
+        "confirmed gap gap-a has no gap scenario; add one under playground/scenarios or revert the status",
       ]),
     );
   });

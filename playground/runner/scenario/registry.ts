@@ -2,11 +2,11 @@ import type { BehaviorScenario } from "../types.ts";
 import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "./defaults.ts";
 
 /**
- * Probes live flat under playground/scenarios/probes. Each file default-exports a
+ * Probes live flat under playground/scenarios. Each file default-exports a
  * BehaviorScenario; the registry supplies shared defaults for variants and
  * environments so individual probes only declare deliberate deviations.
  */
-const modules = import.meta.glob<{ default: BehaviorScenario }>("../../scenarios/probes/*.ts", {
+const modules = import.meta.glob<{ default: BehaviorScenario }>("../../scenarios/*.ts", {
   eager: true,
 });
 

@@ -17,7 +17,7 @@ Playground 用真实 DSH Web 会话验证 native 运行时与当前适配实现�
 ## 事实源
 
 - 用户配置：[config.example.ts](./config.example.ts) 和本地的 `playground/config.ts`。
-- 场景定义：`playground/scenarios/probes/`；结构和断言类型见 `runner/types.ts`。
+- 场景定义：`playground/scenarios/`；结构和断言类型见 `runner/types.ts`。
 - 容器挂载和启动参数：`runner/container/spec.ts`。
 - worker 路径、状态和 workspace 布局：`runner/worker/worker.ts`。
 - 证据快照：`runner/evidence/review-snapshot.ts`。

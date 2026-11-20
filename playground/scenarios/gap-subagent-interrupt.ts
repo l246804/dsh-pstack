@@ -1,4 +1,4 @@
-import type { BehaviorScenario } from "../../runner/types.ts";
+import type { BehaviorScenario } from "../runner/types.ts";
 
 const scenario: BehaviorScenario = {
   id: "gap-subagent-interrupt",

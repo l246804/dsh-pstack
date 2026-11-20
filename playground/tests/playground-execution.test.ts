@@ -346,7 +346,7 @@ describe("tool call argument summaries", () => {
           data: {
             name: "read",
             callId: "c1",
-            arguments: { file_path: "../../playground/scenarios/probes/tdd.ts" },
+            arguments: { file_path: "../../playground/scenarios/tdd.ts" },
           },
         },
         {
@@ -357,7 +357,7 @@ describe("tool call argument summaries", () => {
       "session-4",
     );
     expect(digest.toolCalls[0]?.argsSummary).toBe(
-      "read file_path=../../playground/scenarios/probes/tdd.ts",
+      "read file_path=../../playground/scenarios/tdd.ts",
     );
     expect(digest.toolCalls[0]?.status).toBe("ok");
   });

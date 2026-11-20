@@ -62,7 +62,7 @@ export function gapCoverageProblems(
   for (const gap of gaps) {
     if (gap.status === "confirmed" && !scenariosByGap.has(gap.id)) {
       problems.push(
-        `confirmed gap ${gap.id} has no gap scenario; add one under playground/scenarios/probes or revert the status`,
+        `confirmed gap ${gap.id} has no gap scenario; add one under playground/scenarios or revert the status`,
       );
     }
   }

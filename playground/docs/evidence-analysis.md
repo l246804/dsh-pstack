@@ -7,7 +7,7 @@
 - `playground/evidence/runs/<variant>-<environment>/manifest.json`：当前快照范围和批次信息。
 - 快照下每个场景的 `record.json` 和 `screenshot.png`。
 - `native/gaps.json`：native 判断缺口；adapted 判断缺口是否闭合。
-- `playground/scenarios/probes/`：prompt、assertions、rubric 和 UI 观察点。
+- `playground/scenarios/`：prompt、assertions、rubric 和 UI 观察点。
 - native 对照 `native/dsh.md`；adapted 对照 `src/dsh.md`。
 
 完整 session 只保存在本地 worker。需要时按 record 的 `session.sessionId` 定位，不复制到快照。
