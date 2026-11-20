@@ -92,7 +92,7 @@ export default {
 
 需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。`runtime` 及除 `chromePath` 外的字段都是必填；缺失时配置加载直接报错。
 
-worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`，`--workers` 无效果。机器容量按 `nproc - coreHeadroom` 和 `freemem * memoryFraction / memoryPerWorkerGB` 两者取最小，不设硬上限。
+worker 数量自动计算为 `max(1, min(机器容量, 当前任务数))`。机器容量按 `nproc - coreHeadroom` 和 `freemem * memoryFraction / memoryPerWorkerGB` 两者取最小，不设硬上限。
 
 ## 完成标准
 
