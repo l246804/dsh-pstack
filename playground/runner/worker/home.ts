@@ -102,46 +102,6 @@ function providerRows(
   return rows;
 }
 
-interface WorkerInstructionSection {
-  heading: string;
-  rules: readonly string[];
-}
-
-const WORKER_INSTRUCTION_SECTIONS: readonly WorkerInstructionSection[] = [
-  {
-    heading: "External side effects",
-    rules: [
-      "Treat git as local-only. Never add an origin or remote to a repository.",
-      "Never modify the DSH installation or project source.",
-      "Never create, modify, delete, push, tag, or otherwise change a remote repository or external service.",
-      "Do not use gh or another forge CLI, and do not read or use credentials or tokens.",
-      "If a task requires remote work, state that it is unavailable and produce a local plan instead.",
-    ],
-  },
-  {
-    heading: "Reporting",
-    rules: ["Continue with work that stays inside the workspace."],
-  },
-];
-
-function renderWorkerInstructions(): string {
-  return [
-    "# Playground Worker Instructions",
-    "",
-    ...WORKER_INSTRUCTION_SECTIONS.flatMap((section) => [
-      `## ${section.heading}`,
-      "",
-      ...section.rules.map((rule) => `- ${rule}`),
-      "",
-    ]),
-  ].join("\n");
-}
-
-export function writeWorkerInstructions(paths: WorkerPaths): void {
-  mkdirSync(paths.home, { recursive: true });
-  writeFileSync(join(paths.home, "AGENTS.md"), renderWorkerInstructions());
-}
-
 export function writeRoleFile(paths: WorkerPaths, config: PlaygroundConfig): void {
   mkdirSync(paths.home, { recursive: true });
   const roles: Record<
@@ -184,6 +144,7 @@ export function writeHomePatch(
   networkMode: NetworkMode,
 ): void {
   mkdirSync(paths.home, { recursive: true });
+  rmSync(join(paths.home, "AGENTS.md"), { force: true });
   const patch: Array<Record<string, unknown>> = [
     // Test stability: the worker serves a built artifact, so live reload must stay off.
     { id: "hmr", disabled: true },
@@ -257,7 +218,6 @@ export function writeHomePatch(
       if (typeof entry.id === "string" && !present.has(entry.id)) merged.push(entry);
     writeFileSync(profilePatchPath, yamlDump(merged, { lineWidth: 120 }));
   }
-  writeWorkerInstructions(paths);
 }
 
 export interface HomePlan extends TestTarget {

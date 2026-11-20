@@ -14,7 +14,6 @@ import {
   writeHomePatch,
   writeRoleFile,
   writePstackSettings,
-  writeWorkerInstructions,
   CONFIG_FILE,
 } from "../worker/home.ts";
 import { loadProviderPlan, type ProviderPlan } from "../config/provider.ts";
@@ -151,7 +150,6 @@ async function main(): Promise<void> {
     for (const worker of workers) {
       if (readVariant(worker) === "native") mountNativeTree(worker);
       writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime.networkMode);
-      writeWorkerInstructions(worker);
       writeRoleFile(worker, config);
       writePstackSettings(worker, variant === "adapted");
       registerWorkspaces(worker, scenarioIds);
