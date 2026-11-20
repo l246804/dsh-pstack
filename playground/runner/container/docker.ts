@@ -57,7 +57,7 @@ export class DockerSandbox {
     paths: WorkerPaths,
     plan: ProviderPlan,
     networkMode: NetworkMode,
-    hostPort?: number,
+    hostPort: number,
   ): Promise<StartedWeb> {
     const image = requireImage();
     const spec = containerSpec({ paths, plan, image, hostPort, networkMode });

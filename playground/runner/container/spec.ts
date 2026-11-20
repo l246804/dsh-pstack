@@ -23,7 +23,7 @@ export interface ContainerSpec {
   mounts: ContainerMount[];
   env: Record<string, string>;
   networkMode: NetworkMode;
-  hostPort?: number;
+  hostPort: number;
   containerPort: number;
 }
 
@@ -32,7 +32,7 @@ export interface ContainerSpecInput {
   plan: ProviderPlan;
   image: string;
   networkMode: NetworkMode;
-  hostPort?: number;
+  hostPort: number;
 }
 
 /**
@@ -43,10 +43,7 @@ export interface ContainerSpecInput {
 export function containerSpec(input: ContainerSpecInput): ContainerSpec {
   const { paths, plan, image, hostPort } = input;
   const networkMode = input.networkMode;
-  if (networkMode === "host" && hostPort === undefined) {
-    throw new Error("host network requires a worker host port");
-  }
-  const containerPort = networkMode === "host" ? (hostPort as number) : CONTAINER_PORT;
+  const containerPort = networkMode === "host" ? hostPort : CONTAINER_PORT;
   // Ensure the host-side runtime directories exist before they become mount sources.
   runtimeEnv(paths);
   const mounts: ContainerMount[] = [

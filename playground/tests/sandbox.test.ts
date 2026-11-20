@@ -57,6 +57,7 @@ describe("docker container spec", () => {
       plan,
       image: "dsh-playground:test",
       networkMode: "bridge",
+      hostPort: 49152,
     });
     expect(spec.mounts).toEqual([
       { source: paths.workspaceRoot, target: paths.containerWorkspace, readonly: false },
@@ -80,6 +81,7 @@ describe("docker container spec", () => {
       plan,
       image: "dsh-playground:test",
       networkMode: "bridge",
+      hostPort: 49152,
     });
     expect(spec.env.TEST_PROVIDER_KEY).toBe("secret-value");
     expect(spec.env.DSH_HOME).toBe(paths.containerHome);

@@ -15,7 +15,7 @@ export function startWeb(
   port: number,
   networkMode: NetworkMode,
 ): Promise<StartedWeb> {
-  return sandbox.start(paths, plan, networkMode, port > 0 ? port : undefined);
+  return sandbox.start(paths, plan, networkMode, port);
 }
 
 export function stopWeb(paths: WorkerPaths): { stopped: boolean; id: string | null } {
