@@ -27,7 +27,7 @@ import {
 } from "../runner/evidence/evidence.ts";
 import {
   adaptedVersion,
-  WORKERS_ROOT,
+  WORKSPACE_ROOT,
   isolatedRootDirectory,
   publicConfigHash,
   REPOSITORY_ROOT,
@@ -526,18 +526,15 @@ function writeFakeNativeTree(root: string): void {
 describe("workspace isolation", () => {
   it("keeps worker state under ignored paths and exposes only /dsh paths to the session", () => {
     const paths = workerPaths(1, "base", "adapted");
-    expect(paths.workspaceRoot).toBe(
-      join(WORKERS_ROOT, "isolated", "adapted", "base", "w1", "workspace"),
-    );
-    expect(paths.nativeMount).toBe(
-      join(WORKERS_ROOT, "isolated", "adapted", "base", "w1", "native"),
-    );
+    expect(paths.workspaceRoot).toBe(join(WORKSPACE_ROOT, "adapted", "base", "w1", "workspace"));
+    expect(paths.nativeMount).toBe(join(WORKSPACE_ROOT, "adapted", "base", "w1", "native"));
     expect(paths.containerWorkspace).toBe("/dsh/workspace");
     expect(paths.containerNative).toBe("/dsh/native");
-    // Audited state and the isolated workspace stay under the ignored .workers tree.
-    for (const dir of [paths.home, paths.browserDir, paths.evidenceDir, paths.workspaceRoot]) {
+    // Audited state stays under .workers; the session workspace stays under .workspace.
+    for (const dir of [paths.home, paths.browserDir, paths.evidenceDir]) {
       expect(dir.startsWith(`${REPOSITORY_ROOT}/playground/.workers/`)).toBe(true);
     }
+    expect(paths.workspaceRoot.startsWith(`${REPOSITORY_ROOT}/playground/.workspace/`)).toBe(true);
     expect(workerPaths(1, "other", "adapted").workspaceRoot).not.toBe(paths.workspaceRoot);
     expect(workerPaths(1, "base", "native").workspaceRoot).not.toBe(paths.workspaceRoot);
     expect(workerPaths(2, "base", "adapted").isolatedRoot).not.toBe(paths.isolatedRoot);
@@ -558,7 +555,7 @@ describe("workspace isolation", () => {
     } finally {
       setRuntimeSettings(undefined);
     }
-    expect(isolatedRootDirectory()).toBe(join(WORKERS_ROOT, "isolated"));
+    expect(isolatedRootDirectory()).toBe(WORKSPACE_ROOT);
   });
 
   it("mounts a native copy so no worker profile path exposes the repository root", () => {

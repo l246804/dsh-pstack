@@ -1,4 +1,5 @@
 # Per-worker runtime: DSH home, browser profile, workspaces, evidence.
+.workspace/
 .workers/
 .workers-*/
 

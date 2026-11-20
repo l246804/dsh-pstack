@@ -58,7 +58,7 @@ export default {
 - 也可以用 `apiKeyEnv` 从环境或 `.credentials.yaml` 解析，避免把密钥写进文件。
 - Linux 默认 `runtime.networkMode: "host"`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
 - macOS/Windows 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `runtime.networkMode: "host"` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
-- 运行目录默认 `playground/.workers`；workspace 默认在其下的 `isolated/`，整个 `.workers` 目录被忽略。`runtime.workspaceRoot` / `runtime.workersDir` 可覆盖，测试隔离也通过这两个字段设置。
+- 运行目录默认 `playground/.workers`；workspace 默认在 `playground/.workspace`，`.workspace` 和 `.workers` 目录都被忽略。`runtime.workspaceRoot` / `runtime.workersDir` 可覆盖，测试隔离也通过这两个字段设置。
 
 ## 凭证
 
@@ -82,7 +82,7 @@ export default {
 | --- | --- | --- |
 | `caseTimeoutMs` | `600000` | 单个场景最长执行时间 |
 | `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
-| `workspaceRoot` | `playground/.workers/isolated` | workspace 根目录 |
+| `workspaceRoot` | `playground/.workspace` | workspace 根目录 |
 | `workersDir` | `playground/.workers` | home、browser、evidence 根目录 |
 | `dockerBin` | `docker` | Docker-compatible CLI |
 | `dshBin` | `dsh` | 宿主 DSH CLI |

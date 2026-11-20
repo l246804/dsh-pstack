@@ -19,6 +19,7 @@ export const NATIVE_ROOT = join(REPOSITORY_ROOT, "native");
 export const NATIVE_TREE = join(NATIVE_ROOT, "pstack");
 export const NATIVE_SKILLS = join(NATIVE_TREE, "skills");
 export const WORKERS_ROOT = join(PLAYGROUND_DIRECTORY, ".workers");
+export const WORKSPACE_ROOT = join(PLAYGROUND_DIRECTORY, ".workspace");
 
 export function workersDirectory(): string {
   const configured = runtimeSettings().workersDir;
@@ -26,13 +27,12 @@ export function workersDirectory(): string {
 }
 
 /**
- * Root of the per-worker directories the tested session can reach: its workspace and the
- * native skill mount. Defaults under the ignored .workers tree; only the workspace and home
- * subdirectories are mounted into the container, never the repository root.
+ * Root of the per-worker state the tested session can reach. Defaults to the ignored
+ * .workspace tree, sibling of .workers; only its workspace/home children are mounted.
  */
 export function isolatedRootDirectory(): string {
   const configured = runtimeSettings().workspaceRoot;
-  return configured ? resolve(PLAYGROUND_DIRECTORY, configured) : join(WORKERS_ROOT, "isolated");
+  return configured ? resolve(PLAYGROUND_DIRECTORY, configured) : WORKSPACE_ROOT;
 }
 
 export function environmentMatrix(id: string): RunEnvironment["matrix"] {

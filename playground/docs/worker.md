@@ -8,15 +8,15 @@
 
 | 容器路径 | 宿主来源 | 用途 |
 | --- | --- | --- |
-| `/dsh/workspace` | `<isolatedRoot>/workspace` | 场景 workspace，可写 |
+| `/dsh/workspace` | `<workspaceRoot>/workspace` | 场景 workspace，可写 |
 | `/dsh/home` | `playground/.workers/<treatment>/<env>/w<k>/home` | DSH home、stock `web` profile、AGENTS.md、角色文件和可选凭证 |
-| `/dsh/tmp` | `<isolatedRoot>/tmp` | tmp |
-| `/dsh/runtime` | `<isolatedRoot>/xdg-runtime` | XDG runtime |
-| `/dsh/native` | `<isolatedRoot>/native` | native 生成树，只读；仅 native treatment |
+| `/dsh/tmp` | `<workspaceRoot>/tmp` | tmp |
+| `/dsh/runtime` | `<workspaceRoot>/xdg-runtime` | XDG runtime |
+| `/dsh/native` | `<workspaceRoot>/native` | native 生成树，只读；仅 native treatment |
 
-`isolatedRoot` 默认是 `playground/.workers/isolated`，整个 `.workers` 目录被忽略；只有 workspace、home 等子目录挂载，仓库根、场景定义、rubric、证据目录和 Docker socket 都不挂载。容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid，启用 `cap-drop ALL` 和 `no-new-privileges`。
+`workspaceRoot` 默认是 `playground/.workspace`，`.workspace` 和 `.workers` 目录都被忽略；只有 workspace、home 等子目录挂载，仓库根、场景定义、rubric、证据目录和 Docker socket 都不挂载。容器根文件系统只读，`/tmp` 是 tmpfs，使用宿主 uid/gid，启用 `cap-drop ALL` 和 `no-new-privileges`。
 
-宿主状态保存在 `playground/.workers/<treatment>/<environmentId>/w<k>`：home、browser profile、evidence 和日志；隔离 workspace 在 `isolatedRoot`。
+宿主状态保存在 `playground/.workers/<treatment>/<environmentId>/w<k>`：home、browser profile、evidence 和日志；隔离 workspace 在 `workspaceRoot`。
 
 镜像名是 `dsh-playground:<dsh version>-<arch>`。`playground:doctor` 检查 Docker daemon、镜像存在、架构和版本；`playground:image` 按宿主架构在本机构建。
 
