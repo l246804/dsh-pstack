@@ -176,6 +176,18 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
   if (typeof timeout !== "number" || !Number.isSafeInteger(timeout) || timeout <= 0) {
     throw new Error("runtime.scenarioTimeoutMs must be a positive integer number of milliseconds");
   }
+  const turnTimeout = number(parsed.turnTimeoutMs, "runtime.turnTimeoutMs");
+  if (turnTimeout === undefined || !Number.isSafeInteger(turnTimeout) || turnTimeout <= 0) {
+    throw new Error("runtime.turnTimeoutMs must be a positive integer number of milliseconds");
+  }
+  const subagentTimeout = number(parsed.subagentTimeoutMs, "runtime.subagentTimeoutMs");
+  if (
+    subagentTimeout === undefined ||
+    !Number.isSafeInteger(subagentTimeout) ||
+    subagentTimeout <= 0
+  ) {
+    throw new Error("runtime.subagentTimeoutMs must be a positive integer number of milliseconds");
+  }
   const networkMode = parsed.networkMode;
   if (networkMode !== "host" && networkMode !== "bridge") {
     throw new Error("runtime.networkMode must be host or bridge");
@@ -202,6 +214,8 @@ function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
   }
   return {
     scenarioTimeoutMs: timeout,
+    turnTimeoutMs: turnTimeout,
+    subagentTimeoutMs: subagentTimeout,
     networkMode,
     workerPortBase,
     workerCapacity: { coreHeadroom, memoryFraction, memoryPerWorkerGB },

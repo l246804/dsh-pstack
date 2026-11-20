@@ -5,6 +5,7 @@ import type { Variant } from "../types.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { progressFilePath, readProgress } from "../worker/progress.ts";
 import { currentTaskFile, workerPaths } from "../worker/worker.ts";
+import { latestSessionFile } from "../execution/run.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 
 await readPlaygroundConfig(CONFIG_FILE);
@@ -32,7 +33,8 @@ if (!state) {
     `[status] running=${state.running.map((entry) => `w${entry.worker}:${entry.scenarioId}`).join(",") || "none"}`,
   );
   for (const entry of state.running) {
-    const task = currentTaskFile(workerPaths(entry.worker, environment, variant));
+    const paths = workerPaths(entry.worker, environment, variant);
+    const task = currentTaskFile(paths);
     if (!existsSync(task)) continue;
     try {
       const value = JSON.parse(readFileSync(task, "utf8")) as {
@@ -43,8 +45,9 @@ if (!state) {
         value.startedAt === undefined
           ? "unknown"
           : `${Math.max(0, Math.round((Date.now() - Date.parse(value.startedAt)) / 1000))}s`;
+      const session = latestSessionFile(paths);
       console.log(
-        `[status] current w${entry.worker}: ${value.scenarioId ?? entry.scenarioId} age=${elapsed}`,
+        `[status] current w${entry.worker}: ${value.scenarioId ?? entry.scenarioId} age=${elapsed} session=${session?.file ?? "none"}`,
       );
     } catch {
       console.log(`[status] current w${entry.worker}: unreadable current-task.json`);

@@ -108,6 +108,8 @@ function config(provider = "provider-a", model = "model-a", effort = "low") {
     testModel: { provider, model, effort },
     runtime: {
       scenarioTimeoutMs: 600000,
+      turnTimeoutMs: 180000,
+      subagentTimeoutMs: 600000,
       networkMode: "host",
       workerPortBase: 8080,
       workerCapacity: {

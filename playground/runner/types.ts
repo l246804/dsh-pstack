@@ -52,6 +52,10 @@ export type RoleModels = Record<string, TestTarget | TestTarget[]>;
 export interface RuntimeConfig {
   /** One scenario's wall-clock budget in milliseconds. */
   scenarioTimeoutMs: number;
+  /** Wait budget after one main turn ends. */
+  turnTimeoutMs: number;
+  /** Wait budget for delegated subagents after the main turn. */
+  subagentTimeoutMs: number;
   /** Network namespace strategy for worker containers. */
   networkMode: "host" | "bridge";
   /** Base host port for the first worker in host mode. */

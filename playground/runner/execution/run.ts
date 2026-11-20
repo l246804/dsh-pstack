@@ -33,10 +33,9 @@ import {
   POLL_INTERVAL_MS,
   PRESET_LABELS,
   SETTLE_WINDOW_MS,
-  SUBAGENT_TIMEOUT_MS,
-  TURN_TIMEOUT_MS,
   UI_LABELS,
 } from "../worker/runtime.ts";
+import { runtimeSettings } from "../config/runtime.ts";
 import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";
 import { stopRequestFile, type WorkerPaths } from "../worker/worker.ts";
 
@@ -66,7 +65,7 @@ function sessionSignature(file: string): string {
 }
 
 function waitForSettledSession(file: string): void {
-  const deadline = Date.now() + TURN_TIMEOUT_MS;
+  const deadline = Date.now() + runtimeSettings().turnTimeoutMs;
   let signature = sessionSignature(file);
   let stableSince = Date.now();
   while (Date.now() < deadline) {
@@ -133,7 +132,7 @@ function activeSubagents(file: string): number {
 }
 
 function waitForSubagentsSettled(file: string): void {
-  const deadline = Date.now() + SUBAGENT_TIMEOUT_MS;
+  const deadline = Date.now() + runtimeSettings().subagentTimeoutMs;
   let signature = sessionSignature(file);
   let stableSince = Date.now();
   for (;;) {

@@ -80,7 +80,9 @@ export default {
 
 | 字段 | 默认 | 用途 |
 | --- | --- | --- |
-| `scenarioTimeoutMs` | `600000` | 单个场景最长执行时间 |
+| `scenarioTimeoutMs` | `600000` | 单个场景最长执行时间（hard timeout） |
+| `turnTimeoutMs` | `180000` | 主 turn/end 后等待 session 稳定的上限 |
+| `subagentTimeoutMs` | `600000` | 等待子代理结束的上限 |
 | `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
 | `workerPortBase` | `8080` | host 模式下第一个 worker 的端口 |
 | `workerCapacity` | `{ coreHeadroom: 2, memoryFraction: 0.7, memoryPerWorkerGB: 1 }` | 机器容量策略，无硬上限 |

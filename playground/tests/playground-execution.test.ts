@@ -46,6 +46,8 @@ afterAll(() => rmSync(temporary, { recursive: true, force: true }));
 
 const defaultRuntimeSettings = {
   scenarioTimeoutMs: 600_000,
+  turnTimeoutMs: 180_000,
+  subagentTimeoutMs: 600_000,
   networkMode: "host" as const,
   workerPortBase: 8080,
   workerCapacity: {
@@ -78,6 +80,8 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
     testModel: target,
     runtime: {
       scenarioTimeoutMs: 600000,
+      turnTimeoutMs: 180000,
+      subagentTimeoutMs: 600000,
       networkMode: "host" as const,
       workerPortBase: 8080,
       workerCapacity: {

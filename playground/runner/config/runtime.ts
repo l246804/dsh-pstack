@@ -1,6 +1,8 @@
 /** Process-wide settings populated from PlaygroundConfig.runtime by readConfig. */
 export interface RuntimeSettings {
   scenarioTimeoutMs: number;
+  turnTimeoutMs: number;
+  subagentTimeoutMs: number;
   networkMode: "host" | "bridge";
   workerPortBase: number;
   workerCapacity: {

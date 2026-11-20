@@ -30,6 +30,16 @@
 - `run-batch --only-failed`：native 选择 gap，adapted 选择 not-verified。
 - `batchId` 在批次启动时生成，写入 `current-batch.json` 和 `manifest.json`；同一单元只允许一个批次写快照，失败批次丢弃 `.staging`。
 
+## 长批次检查
+
+批次预计超过 10 分钟时，主 agent 可以创建一个每 10 分钟触发的 schedule 消息。消息只要求读取：
+
+- `playground/.workers/<variant>/<environment>/progress.json`
+- 当前 worker 的 `current-task.json`
+- `playground:status` 输出的最新 session 文件
+
+agent 直接读取 session 的 `assistant` / tool 事件判断是否仍有有效推进；发现偏移或空转时调用 `playground:stop-task`。不需要 runner 额外维护 stalled 状态。`scenarioTimeoutMs` 仍是最终 hard timeout。
+
 ## 命令
 
 ### native

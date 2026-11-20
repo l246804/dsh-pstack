@@ -42,6 +42,8 @@ export default {
 
   runtime: {
     scenarioTimeoutMs: 600_000,
+    turnTimeoutMs: 180_000,
+    subagentTimeoutMs: 600_000,
     networkMode: process.platform === "linux" ? "host" : "bridge",
     workerPortBase: 8080,
     workerCapacity: {
