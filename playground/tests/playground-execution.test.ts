@@ -47,6 +47,13 @@ afterAll(() => rmSync(temporary, { recursive: true, force: true }));
 const defaultRuntimeSettings = {
   scenarioTimeoutMs: 600_000,
   networkMode: "host" as const,
+  workerPortBase: 8080,
+  workerCapacity: {
+    maxWorkers: 12,
+    coreHeadroom: 2,
+    memoryFraction: 0.7,
+    memoryPerWorkerGB: 1,
+  },
   workspaceRoot: WORKSPACE_ROOT,
   workersDir: WORKERS_ROOT,
   dockerBin: "docker",
@@ -74,6 +81,12 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
       scenarioTimeoutMs: 600000,
       networkMode: "host" as const,
       workerPortBase: 8080,
+      workerCapacity: {
+        maxWorkers: 12,
+        coreHeadroom: 2,
+        memoryFraction: 0.7,
+        memoryPerWorkerGB: 1,
+      },
       workspaceRoot: "playground/.workspace",
       workersDir: "playground/.workers",
       dockerBin: "docker",

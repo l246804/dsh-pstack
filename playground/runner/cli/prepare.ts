@@ -89,7 +89,12 @@ async function main(): Promise<void> {
   const variant = argValue("--variant") as Variant | undefined;
   if (!isVariant(variant)) {
     throw new Error(
-      "usage: prepare.ts --variant native|adapted --environment ID [--workers N] [--port N] [--reset|--reuse]",
+      "usage: prepare.ts --variant native|adapted --environment ID [--port N] [--reset|--reuse]",
+    );
+  }
+  if (process.argv.includes("--workers")) {
+    throw new Error(
+      "--workers is no longer supported; workers are derived from task count and machine capacity",
     );
   }
   const environmentId = argValue("--environment");
@@ -112,9 +117,8 @@ async function main(): Promise<void> {
   const config = await readPlaygroundConfig(CONFIG_FILE);
 
   const plan = loadProviderPlan(config);
-  const workerFlag = argValue("--workers");
-  const requested = workerFlag === undefined ? undefined : Number(workerFlag);
-  const count = computeWorkers(requested).workers;
+  const scenarioIds = listScenarioIds();
+  const count = computeWorkers(scenarioIds.length).workers;
   const portFlag = argValue("--port");
   const port = portFlag === undefined ? undefined : Number(portFlag);
   if (
@@ -188,7 +192,7 @@ async function main(): Promise<void> {
     writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime?.networkMode);
     writeRoleFile(worker, config);
     writePstackSettings(worker, variant === "adapted");
-    registerWorkspaces(worker, listScenarioIds());
+    registerWorkspaces(worker, scenarioIds);
   }
   await startWorkers(
     workers,

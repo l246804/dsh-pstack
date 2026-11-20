@@ -56,6 +56,13 @@ export interface RuntimeConfig {
   networkMode: "host" | "bridge";
   /** Base host port for the first worker in host mode. */
   workerPortBase: number;
+  /** Machine-capacity policy for parallel workers. */
+  workerCapacity: {
+    maxWorkers: number;
+    coreHeadroom: number;
+    memoryFraction: number;
+    memoryPerWorkerGB: number;
+  };
   /** Root outside the repository where each worker keeps its workspace. */
   workspaceRoot: string;
   /** Root for worker home, browser, evidence, and logs. */

@@ -110,6 +110,12 @@ function config(provider = "provider-a", model = "model-a", effort = "low") {
       scenarioTimeoutMs: 600000,
       networkMode: "host",
       workerPortBase: 8080,
+      workerCapacity: {
+        maxWorkers: 12,
+        coreHeadroom: 2,
+        memoryFraction: 0.7,
+        memoryPerWorkerGB: 1,
+      },
       workspaceRoot: "playground/.workspace",
       workersDir: "playground/.workers",
       dockerBin: "docker",

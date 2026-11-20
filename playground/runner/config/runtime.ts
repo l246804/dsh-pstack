@@ -2,6 +2,13 @@
 export interface RuntimeSettings {
   scenarioTimeoutMs: number;
   networkMode: "host" | "bridge";
+  workerPortBase: number;
+  workerCapacity: {
+    maxWorkers: number;
+    coreHeadroom: number;
+    memoryFraction: number;
+    memoryPerWorkerGB: number;
+  };
   workspaceRoot: string;
   workersDir: string;
   dockerBin: string;

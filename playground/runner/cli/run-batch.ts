@@ -164,7 +164,12 @@ async function main(): Promise<void> {
   const variant = argValue("--variant") as Variant | undefined;
   if (!isVariant(variant)) {
     throw new Error(
-      "usage: run-batch.ts --variant native|adapted --environment ID [--full|--scenarios a,b|--only-failed] [--workers N] [--round N]",
+      "usage: run-batch.ts --variant native|adapted --environment ID [--full|--scenarios a,b|--only-failed] [--round N]",
+    );
+  }
+  if (process.argv.includes("--workers")) {
+    throw new Error(
+      "--workers is no longer supported; workers are derived from task count and machine capacity",
     );
   }
   const environmentId = argValue("--environment");
@@ -188,10 +193,9 @@ async function main(): Promise<void> {
     console.log("[run-batch] no scenarios selected");
     return;
   }
-  const requested = argValue("--workers") === undefined ? undefined : Number(argValue("--workers"));
   const prepared = workerCount(matrix.id, variant);
   if (prepared === 0) throw new Error("no prepared workers; run playground:prepare first");
-  const workers = Math.min(computeWorkers(requested).workers, prepared, ids.length);
+  const workers = Math.min(computeWorkers(ids.length).workers, prepared);
   const pending = [...ids];
   const roundFlag = argValue("--round");
   const file = progressFilePath(matrix.id, variant);

@@ -44,6 +44,12 @@ export default {
     scenarioTimeoutMs: 600_000,
     networkMode: process.platform === "linux" ? "host" : "bridge",
     workerPortBase: 8080,
+    workerCapacity: {
+      maxWorkers: 12,
+      coreHeadroom: 2,
+      memoryFraction: 0.7,
+      memoryPerWorkerGB: 1,
+    },
     workspaceRoot: "playground/.workspace",
     workersDir: "playground/.workers",
     dockerBin: "docker",
