@@ -20,7 +20,7 @@ import type {
 } from "../types.ts";
 import { readConfig } from "../config/config.ts";
 import type { ProviderPlan } from "../config/provider.ts";
-import { defaultNetworkMode, type NetworkMode } from "../container/spec.ts";
+import { type NetworkMode } from "../container/spec.ts";
 import { profilePatchFile } from "./profile.ts";
 import { NATIVE_ROOT } from "./run-metadata.ts";
 import type { WorkerPaths } from "./worker.ts";
@@ -38,7 +38,7 @@ function anonymousModels(models: ProviderModel[]): ProviderModel[] {
 }
 
 /** Host network keeps loopback; bridge needs the Docker host gateway. */
-function workerBaseURL(value: string, mode = defaultNetworkMode()): string {
+function workerBaseURL(value: string, mode: NetworkMode): string {
   if (mode === "host") return value;
   const url = new URL(value);
   if (url.hostname === "127.0.0.1" || url.hostname === "localhost") {
@@ -50,7 +50,7 @@ function workerBaseURL(value: string, mode = defaultNetworkMode()): string {
 /** Translate config providers into the DSH patch rows the worker profile needs. */
 function providerRows(
   providers: Record<string, ProviderConfig>,
-  networkMode?: NetworkMode,
+  networkMode: NetworkMode,
 ): Array<Record<string, unknown>> {
   const rows: Array<Record<string, unknown>> = [];
   const piAi = Object.entries(providers).filter(
@@ -200,8 +200,8 @@ export function writeHomePatch(
   paths: WorkerPaths,
   plan: ProviderPlan,
   treatment: Treatment,
-  teamMode = false,
-  networkMode?: NetworkMode,
+  teamMode: boolean,
+  networkMode: NetworkMode,
 ): void {
   mkdirSync(paths.home, { recursive: true });
   const patch: Array<Record<string, unknown>> = [

@@ -106,6 +106,15 @@ function scenarios(): GapCoverageScenario[] {
 function config(provider = "provider-a", model = "model-a", effort = "low") {
   return {
     testModel: { provider, model, effort },
+    runtime: {
+      caseTimeoutMs: 600000,
+      networkMode: "host",
+      workerPortBase: 8080,
+      workspaceRoot: "playground/.workspace",
+      workersDir: "playground/.workers",
+      dockerBin: "docker",
+      dshBin: "dsh",
+    },
     providers: {
       "provider-a": {
         kind: "pi-ai",

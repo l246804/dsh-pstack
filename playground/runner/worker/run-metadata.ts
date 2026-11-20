@@ -22,8 +22,7 @@ export const WORKERS_ROOT = join(PLAYGROUND_DIRECTORY, ".workers");
 export const WORKSPACE_ROOT = join(PLAYGROUND_DIRECTORY, ".workspace");
 
 export function workersDirectory(): string {
-  const configured = runtimeSettings().workersDir;
-  return configured ? resolve(PLAYGROUND_DIRECTORY, configured) : WORKERS_ROOT;
+  return resolve(PLAYGROUND_DIRECTORY, runtimeSettings().workersDir);
 }
 
 /**
@@ -31,8 +30,7 @@ export function workersDirectory(): string {
  * .workspace tree, sibling of .workers; only its workspace/home children are mounted.
  */
 export function isolatedRootDirectory(): string {
-  const configured = runtimeSettings().workspaceRoot;
-  return configured ? resolve(PLAYGROUND_DIRECTORY, configured) : WORKSPACE_ROOT;
+  return resolve(PLAYGROUND_DIRECTORY, runtimeSettings().workspaceRoot);
 }
 
 export function environmentMatrix(id: string): RunEnvironment["matrix"] {

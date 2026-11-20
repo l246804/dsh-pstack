@@ -32,21 +32,22 @@ export default {
 
   roleModels: {},
 
-  runtime: {
-    // caseTimeoutMs: 600000,
-    // networkMode: "host", // Linux default; macOS/Windows default is bridge
-    // workspaceRoot: "playground/.workspace",
-    // workersDir: "playground/.workers",
-    // dockerBin: "docker",
-    // dshBin: "dsh",
-    // chromePath: "/path/to/chrome",
-  },
-
   browser: {
     mode: "managed",
     headed: false,
     // To drive a host Chrome instead, launch it with a dedicated --user-data-dir and:
     // mode: "cdp",
     // cdpUrl: "http://127.0.0.1:9222",
+  },
+
+  runtime: {
+    caseTimeoutMs: 600_000,
+    networkMode: process.platform === "linux" ? "host" : "bridge",
+    workerPortBase: 8080,
+    workspaceRoot: "playground/.workspace",
+    workersDir: "playground/.workers",
+    dockerBin: "docker",
+    dshBin: "dsh",
+    chromePath: process.env.AGENT_BROWSER_CHROME_PATH ?? "",
   },
 } satisfies PlaygroundConfig;

@@ -12,10 +12,10 @@ const sandbox = new DockerSandbox();
 export function startWeb(
   paths: WorkerPaths,
   plan: ProviderPlan,
-  port = 0,
-  networkMode?: NetworkMode,
+  port: number,
+  networkMode: NetworkMode,
 ): Promise<StartedWeb> {
-  return sandbox.start(paths, plan, port > 0 ? port : undefined, networkMode);
+  return sandbox.start(paths, plan, networkMode, port > 0 ? port : undefined);
 }
 
 export function stopWeb(paths: WorkerPaths): { stopped: boolean; id: string | null } {

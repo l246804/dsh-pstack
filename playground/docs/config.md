@@ -82,13 +82,14 @@ export default {
 | --- | --- | --- |
 | `caseTimeoutMs` | `600000` | 单个场景最长执行时间 |
 | `networkMode` | Linux `host`，macOS/Windows `bridge` | worker 网络模式 |
+| `workerPortBase` | `8080` | host 模式下第一个 worker 的端口 |
 | `workspaceRoot` | `playground/.workspace` | workspace 根目录 |
 | `workersDir` | `playground/.workers` | home、browser、evidence 根目录 |
 | `dockerBin` | `docker` | Docker-compatible CLI |
 | `dshBin` | `dsh` | 宿主 DSH CLI |
 | `chromePath` | 自动发现 | 宿主 Chrome 可执行文件 |
 
-需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。
+需要环境变量时，在 `config.ts` 里用 `process.env` 填入字段即可；代码本身不再直接读取这些变量。`runtime` 及除 `chromePath` 外的字段都是必填；缺失时配置加载直接报错。
 
 ## 完成标准
 

@@ -9,14 +9,6 @@ import { runtimeEnv } from "../worker/worker.ts";
 export const CONTAINER_PORT = 8080;
 export type NetworkMode = "bridge" | "host";
 
-/**
- * Linux uses host networking so the container sees the host loopback and routes.
- * Docker Desktop on macOS/Windows defaults to bridge plus host.docker.internal.
- */
-export function defaultNetworkMode(): NetworkMode {
-  return process.platform === "linux" ? "host" : "bridge";
-}
-
 export interface ContainerMount {
   source: string;
   target: string;
@@ -39,7 +31,7 @@ export interface ContainerSpecInput {
   paths: WorkerPaths;
   plan: ProviderPlan;
   image: string;
-  networkMode?: NetworkMode;
+  networkMode: NetworkMode;
   hostPort?: number;
 }
 
@@ -50,11 +42,11 @@ export interface ContainerSpecInput {
  */
 export function containerSpec(input: ContainerSpecInput): ContainerSpec {
   const { paths, plan, image, hostPort } = input;
-  const networkMode = input.networkMode ?? defaultNetworkMode();
-  const resolvedHostPort =
-    hostPort ?? (networkMode === "host" ? CONTAINER_PORT + paths.index : undefined);
-  const containerPort =
-    networkMode === "host" ? (resolvedHostPort ?? CONTAINER_PORT) : CONTAINER_PORT;
+  const networkMode = input.networkMode;
+  if (networkMode === "host" && hostPort === undefined) {
+    throw new Error("host network requires a worker host port");
+  }
+  const containerPort = networkMode === "host" ? (hostPort as number) : CONTAINER_PORT;
   // Ensure the host-side runtime directories exist before they become mount sources.
   runtimeEnv(paths);
   const mounts: ContainerMount[] = [
@@ -98,7 +90,7 @@ export function containerSpec(input: ContainerSpecInput): ContainerSpec {
         : { [plan.apiKeyEnv]: plan.apiKey }),
     },
     networkMode,
-    hostPort: resolvedHostPort,
+    hostPort,
     containerPort,
   };
 }

@@ -51,18 +51,20 @@ export type RoleModels = Record<string, TestTarget | TestTarget[]>;
 
 export interface RuntimeConfig {
   /** One scenario's wall-clock budget in milliseconds. */
-  caseTimeoutMs?: number;
+  caseTimeoutMs: number;
   /** Network namespace strategy for worker containers. */
-  networkMode?: "host" | "bridge";
+  networkMode: "host" | "bridge";
+  /** Base host port for the first worker in host mode. */
+  workerPortBase: number;
   /** Root outside the repository where each worker keeps its workspace. */
-  workspaceRoot?: string;
+  workspaceRoot: string;
   /** Root for worker home, browser, evidence, and logs. */
-  workersDir?: string;
+  workersDir: string;
   /** Docker-compatible CLI binary. */
-  dockerBin?: string;
+  dockerBin: string;
   /** DSH CLI binary. */
-  dshBin?: string;
-  /** Host Chrome binary for agent-browser. */
+  dshBin: string;
+  /** Host Chrome binary; omitted means discover the installed browser. */
   chromePath?: string;
 }
 
@@ -71,7 +73,7 @@ export interface PlaygroundConfig {
   providers: Record<string, ProviderConfig>;
   roleModels?: RoleModels;
   browser?: BrowserConfig;
-  runtime?: RuntimeConfig;
+  runtime: RuntimeConfig;
   copyCredentials?: boolean;
   credentialsFile?: string;
 }

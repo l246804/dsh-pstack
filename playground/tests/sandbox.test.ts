@@ -52,7 +52,12 @@ describe("docker container spec", () => {
     const paths = workerPaths();
     mkdirSync(paths.home, { recursive: true });
     mkdirSync(paths.nativeMount, { recursive: true });
-    const spec = containerSpec({ paths, plan, image: "dsh-playground:test" });
+    const spec = containerSpec({
+      paths,
+      plan,
+      image: "dsh-playground:test",
+      networkMode: "bridge",
+    });
     expect(spec.mounts).toEqual([
       { source: paths.workspaceRoot, target: paths.containerWorkspace, readonly: false },
       { source: paths.home, target: paths.containerHome, readonly: false },
@@ -70,7 +75,12 @@ describe("docker container spec", () => {
   it("passes the provider key and strips host credentials", () => {
     const paths = workerPaths();
     mkdirSync(paths.home, { recursive: true });
-    const spec = containerSpec({ paths, plan, image: "dsh-playground:test" });
+    const spec = containerSpec({
+      paths,
+      plan,
+      image: "dsh-playground:test",
+      networkMode: "bridge",
+    });
     expect(spec.env.TEST_PROVIDER_KEY).toBe("secret-value");
     expect(spec.env.DSH_HOME).toBe(paths.containerHome);
     expect(spec.env.HOME).toBe(paths.containerHome);

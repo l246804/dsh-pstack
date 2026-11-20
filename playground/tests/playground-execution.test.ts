@@ -27,6 +27,7 @@ import {
 } from "../runner/evidence/evidence.ts";
 import {
   adaptedVersion,
+  WORKERS_ROOT,
   WORKSPACE_ROOT,
   isolatedRootDirectory,
   publicConfigHash,
@@ -42,6 +43,16 @@ import {
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
+
+const defaultRuntimeSettings = {
+  caseTimeoutMs: 600_000,
+  networkMode: "host" as const,
+  workspaceRoot: WORKSPACE_ROOT,
+  workersDir: WORKERS_ROOT,
+  dockerBin: "docker",
+  dshBin: "dsh",
+};
+setRuntimeSettings(defaultRuntimeSettings);
 
 const testScenario: BehaviorScenario = {
   id: "capability-test",
@@ -59,6 +70,15 @@ function record(treatment: "native" | "adapted", environmentId: string): RunReco
   const target = { provider: "provider-a", model: "model-a", effort: "low" };
   const config = {
     testModel: target,
+    runtime: {
+      caseTimeoutMs: 600000,
+      networkMode: "host" as const,
+      workerPortBase: 8080,
+      workspaceRoot: "playground/.workspace",
+      workersDir: "playground/.workers",
+      dockerBin: "docker",
+      dshBin: "dsh",
+    },
     providers: {
       "provider-a": {
         kind: "pi-ai" as const,
@@ -543,7 +563,11 @@ describe("workspace isolation", () => {
   it("reads workspace and workers roots from runtime settings", () => {
     const override = join(temporary, "workspace-override");
     const workersRoot = join(temporary, "workers-override");
-    setRuntimeSettings({ workspaceRoot: override, workersDir: workersRoot });
+    setRuntimeSettings({
+      ...defaultRuntimeSettings,
+      workspaceRoot: override,
+      workersDir: workersRoot,
+    });
     try {
       expect(isolatedRootDirectory()).toBe(resolve(override));
       expect(workerPaths(0, "base", "adapted").workspaceRoot).toBe(
@@ -553,7 +577,7 @@ describe("workspace isolation", () => {
         join(resolve(workersRoot), "adapted", "base", "w0", "home"),
       );
     } finally {
-      setRuntimeSettings(undefined);
+      setRuntimeSettings(defaultRuntimeSettings);
     }
     expect(isolatedRootDirectory()).toBe(WORKSPACE_ROOT);
   });
@@ -569,7 +593,7 @@ describe("workspace isolation", () => {
       /native tree is missing/,
     );
 
-    writeHomePatch(paths, isolationPlan, "native");
+    writeHomePatch(paths, isolationPlan, "native", false, "host");
     const patch = readFileSync(join(paths.home, "cordis.patch.yml"), "utf8");
     expect(patch).not.toContain("system-prompt");
     expect(patch).toContain(join(paths.containerNative, "pstack/skills"));
@@ -629,7 +653,11 @@ describe("treatment isolation of worker evidence", () => {
   it("resets only one treatment and leaves the other treatment's evidence on disk", () => {
     const workersRoot = join(temporary, "treatment-workers");
     const isolatedRoot = join(temporary, "treatment-isolated");
-    setRuntimeSettings({ workersDir: workersRoot, workspaceRoot: isolatedRoot });
+    setRuntimeSettings({
+      ...defaultRuntimeSettings,
+      workersDir: workersRoot,
+      workspaceRoot: isolatedRoot,
+    });
     try {
       const native = workerPaths(0, "base", "native");
       const adapted = workerPaths(0, "base", "adapted");
@@ -645,7 +673,7 @@ describe("treatment isolation of worker evidence", () => {
       expect(existsSync(adapted.evidenceDir)).toBe(false);
       expect(existsSync(treatmentWorkersDirectory("base", "native"))).toBe(true);
     } finally {
-      setRuntimeSettings(undefined);
+      setRuntimeSettings(defaultRuntimeSettings);
     }
   });
 });

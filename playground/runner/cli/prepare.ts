@@ -60,13 +60,19 @@ async function waitReachable(url: string): Promise<boolean> {
 async function startWorkers(
   paths: WorkerPaths[],
   plan: ProviderPlan,
-  port?: number,
-  networkMode?: Parameters<typeof startWeb>[3],
+  port: number | undefined,
+  networkMode: NonNullable<Parameters<typeof startWeb>[3]>,
+  workerPortBase: number,
 ): Promise<void> {
   const started = await Promise.all(
     paths.map(async (worker, index) => ({
       worker,
-      ...(await startWeb(worker, plan, port === undefined ? 0 : port + index, networkMode)),
+      ...(await startWeb(
+        worker,
+        plan,
+        port === undefined ? workerPortBase + index : port + index,
+        networkMode,
+      )),
     })),
   );
   const ports = started.map((entry) => entry.port);
@@ -140,7 +146,13 @@ async function main(): Promise<void> {
       writeRoleFile(worker, config);
       writePstackSettings(worker, treatment === "adapted");
     }
-    await startWorkers(workers, plan, port, config.runtime?.networkMode);
+    await startWorkers(
+      workers,
+      plan,
+      port,
+      config.runtime.networkMode,
+      config.runtime.workerPortBase,
+    );
     return;
   }
 
@@ -184,7 +196,13 @@ async function main(): Promise<void> {
     writePstackSettings(worker, treatment === "adapted");
     registerWorkspaces(worker, listScenarioIds());
   }
-  await startWorkers(workers, plan, port, config.runtime?.networkMode);
+  await startWorkers(
+    workers,
+    plan,
+    port,
+    config.runtime.networkMode,
+    config.runtime.workerPortBase,
+  );
   console.log(
     `[prepare] treatment=${treatment} environment=${matrix.id} workers=${count} model=${plan.main.provider}/${plan.main.model}[${plan.main.effort}]`,
   );

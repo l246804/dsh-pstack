@@ -49,16 +49,11 @@ const {
 
 export class InfraError extends Error {}
 
-const DEFAULT_CASE_TIMEOUT_MS = 600_000;
-
-function caseTimeoutMs(override?: number): number {
-  if (override !== undefined) {
-    if (!Number.isSafeInteger(override) || override <= 0) {
-      throw new Error("runtime.caseTimeoutMs must be a positive integer number of milliseconds");
-    }
-    return override;
+function caseTimeoutMs(value: number): number {
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new Error("runtime.caseTimeoutMs must be a positive integer number of milliseconds");
   }
-  return DEFAULT_CASE_TIMEOUT_MS;
+  return value;
 }
 
 function sleep(ms: number): void {
@@ -409,7 +404,7 @@ interface AttemptInput {
   screenshotFile: string;
   expectedPreset: string;
   browser?: BrowserConfig;
-  caseTimeoutMs?: number;
+  caseTimeoutMs: number;
 }
 
 function captureScreenshot(session: BrowserSession, path: string): void {

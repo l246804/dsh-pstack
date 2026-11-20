@@ -174,29 +174,25 @@ function browser(value: unknown): BrowserConfig {
 function runtime(value: unknown): NonNullable<PlaygroundConfig["runtime"]> {
   const parsed = object(value, "runtime");
   const timeout = parsed.caseTimeoutMs;
-  if (
-    timeout !== undefined &&
-    (typeof timeout !== "number" || !Number.isSafeInteger(timeout) || timeout <= 0)
-  ) {
+  if (typeof timeout !== "number" || !Number.isSafeInteger(timeout) || timeout <= 0) {
     throw new Error("runtime.caseTimeoutMs must be a positive integer number of milliseconds");
   }
   const networkMode = parsed.networkMode;
-  if (networkMode !== undefined && networkMode !== "host" && networkMode !== "bridge") {
+  if (networkMode !== "host" && networkMode !== "bridge") {
     throw new Error("runtime.networkMode must be host or bridge");
   }
+  const workerPortBase = number(parsed.workerPortBase, "runtime.workerPortBase");
+  if (workerPortBase === undefined) {
+    throw new Error("runtime.workerPortBase is required");
+  }
   return {
-    ...(timeout === undefined ? {} : { caseTimeoutMs: timeout }),
-    ...(networkMode === undefined ? {} : { networkMode }),
-    ...(parsed.workspaceRoot === undefined
-      ? {}
-      : { workspaceRoot: string(parsed.workspaceRoot, "runtime.workspaceRoot") }),
-    ...(parsed.workersDir === undefined
-      ? {}
-      : { workersDir: string(parsed.workersDir, "runtime.workersDir") }),
-    ...(parsed.dockerBin === undefined
-      ? {}
-      : { dockerBin: string(parsed.dockerBin, "runtime.dockerBin") }),
-    ...(parsed.dshBin === undefined ? {} : { dshBin: string(parsed.dshBin, "runtime.dshBin") }),
+    caseTimeoutMs: timeout,
+    networkMode,
+    workerPortBase,
+    workspaceRoot: string(parsed.workspaceRoot, "runtime.workspaceRoot"),
+    workersDir: string(parsed.workersDir, "runtime.workersDir"),
+    dockerBin: string(parsed.dockerBin, "runtime.dockerBin"),
+    dshBin: string(parsed.dshBin, "runtime.dshBin"),
     ...(parsed.chromePath === undefined
       ? {}
       : { chromePath: string(parsed.chromePath, "runtime.chromePath") }),
@@ -227,12 +223,13 @@ export function parseConfig(
         : target(value, `roleModels.${role}`);
     }
   }
+  if (input.runtime === undefined) throw new Error("runtime is required");
   return {
     testModel,
     providers,
     ...(Object.keys(roleModels).length === 0 ? {} : { roleModels }),
     ...(input.browser === undefined ? {} : { browser: browser(input.browser) }),
-    ...(input.runtime === undefined ? {} : { runtime: runtime(input.runtime) }),
+    runtime: runtime(input.runtime),
     ...(input.copyCredentials === undefined
       ? {}
       : (() => {
