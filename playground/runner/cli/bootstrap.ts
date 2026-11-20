@@ -93,7 +93,7 @@ function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
         const title = ${JSON.stringify(defaultTitle)};
         const button = [...document.querySelectorAll("button")].find((element) => {
           const label = element.getAttribute("aria-label") || "";
-          return label.includes(title) && (label.includes("新建会话") || label.toLowerCase().includes("new session"));
+          return label.includes(title);
         });
         if (!button) return false;
         button.click();
@@ -128,8 +128,15 @@ function validateWorker(paths: WorkerPaths, browser?: BrowserConfig): string[] {
       max: ["max", "最大"],
     };
     const wantedEffortLabels = effortLabels[plan.effort] ?? [plan.effort];
+    const effortText = session.eval<string>(
+      `(() => {
+        const model = [...document.querySelectorAll("[data-model-id]")].find((element) => element.getAttribute("data-model-id") === ${JSON.stringify(plan.model)});
+        const button = model?.closest("button");
+        return button ? (button.getAttribute("aria-label") || "") + " " + (button.innerText || "") : "";
+      })()`,
+    );
     const effortShown = wantedEffortLabels.some((label) =>
-      body.toLowerCase().includes(label.toLowerCase()),
+      effortText.toLowerCase().includes(label.toLowerCase()),
     );
     if (!effortShown) failures.push(`page does not show reasoning effort "${plan.effort}"`);
     if (/登录|401|authentication required|sign in|unauthorized|认证失败/i.test(body))

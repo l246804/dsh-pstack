@@ -209,7 +209,7 @@ function startSession(session: BrowserSession, scenarioId: string): void {
       const title = ${JSON.stringify(scenarioId)};
       const button = [...document.querySelectorAll("button")].find((element) => {
         const label = element.getAttribute("aria-label") || "";
-        return label.includes(title) && (label.includes("新建会话") || label.toLowerCase().includes("new session"));
+        return label.includes(title);
       });
       if (button) { button.click(); return "workspace"; }
       const header = [...document.querySelectorAll("button")].find((element) => element.innerText.trim() === ${JSON.stringify(NEW_SESSION_LABEL)});
@@ -230,10 +230,12 @@ function selectPreset(session: BrowserSession, preset: string): void {
   const labels = PRESET_LABELS[preset] ?? [preset];
   const current = session.eval<string>(
     `(() => {
-      const button = [...document.querySelectorAll("button")].find((element) =>
+      const stable = document.querySelector('[data-composer-card] button[aria-haspopup="menu"]:not([aria-label])');
+      const fallback = [...document.querySelectorAll("button")].find((element) =>
         (element.className || "").toString().includes("seat") ||
         (element.getAttribute("aria-haspopup") === "menu" && !element.getAttribute("aria-label") && /模式|Mode/.test(element.innerText || ""))
       );
+      const button = stable || fallback;
       if (!button) return "no-seat";
       button.setAttribute("data-playground-preset-seat", "1");
       return (button.innerText || "").trim();
