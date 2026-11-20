@@ -413,7 +413,8 @@ export function isRunRecord(value: unknown): value is RunRecord {
     typeof candidate.environment === "object" &&
     candidate.environment !== null &&
     typeof candidate.environment.matrix?.id === "string" &&
-    typeof candidate.capturedAt === "string"
+    typeof candidate.capturedAt === "string" &&
+    Array.isArray(candidate.mechanicalFailures)
   );
 }
 

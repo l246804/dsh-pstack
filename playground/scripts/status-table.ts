@@ -132,21 +132,9 @@ export function checkStatusTable(target: StatusPivotTarget = {}): { ok: boolean;
   return { ok: existsSync(file) && readFileSync(file, "utf8") === statusTableText(pivot), file };
 }
 
-async function registryCapabilityResolver(): Promise<
-  ((scenarioId: string) => string | undefined) | undefined
-> {
-  try {
-    const { loadScenario } = await import("../runner/scenario/scenarios.ts");
-    return (scenarioId: string) => {
-      try {
-        return loadScenario(scenarioId).capability;
-      } catch {
-        return undefined;
-      }
-    };
-  } catch {
-    return undefined;
-  }
+async function registryCapabilityResolver(): Promise<(scenarioId: string) => string> {
+  const { loadScenario } = await import("../runner/scenario/scenarios.ts");
+  return (scenarioId: string) => loadScenario(scenarioId).capability;
 }
 
 function argValue(flag: string): string | undefined {

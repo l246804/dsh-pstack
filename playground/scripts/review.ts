@@ -49,12 +49,14 @@ export function applyReview(target: ReviewTarget): ApplyResult {
   }
   const updated: string[] = [];
   for (const { scenarioId, file, record } of records) {
-    const semanticReview = toSemanticReview(entries[scenarioId]!);
+    const entry = entries[scenarioId];
+    if (entry === undefined) throw new Error(`missing review entry for ${scenarioId}`);
+    const semanticReview = toSemanticReview(entry);
     record.semanticReview = semanticReview;
     if (record.verdict.status !== "blocked") {
       record.verdict = verdictFor({
         variant: record.variant,
-        failures: record.mechanicalFailures ?? [],
+        failures: record.mechanicalFailures,
         semanticReview,
       });
     }

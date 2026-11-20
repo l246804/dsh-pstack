@@ -40,13 +40,17 @@ function routeOf(value: unknown, context: string): TestTarget {
   if (value === null || typeof value !== "object") {
     throw new Error(`${context}: reviewer.route must be an object`);
   }
-  const route = value as Partial<TestTarget>;
-  for (const key of ["provider", "model", "effort"] as const) {
-    if (typeof route[key] !== "string" || route[key] === "") {
-      throw new Error(`${context}: reviewer.route.${key} must be a non-empty string`);
-    }
+  const route = value as { provider?: unknown; model?: unknown; effort?: unknown };
+  if (typeof route.provider !== "string" || route.provider === "") {
+    throw new Error(`${context}: reviewer.route.provider must be a non-empty string`);
   }
-  return { provider: route.provider!, model: route.model!, effort: route.effort! };
+  if (typeof route.model !== "string" || route.model === "") {
+    throw new Error(`${context}: reviewer.route.model must be a non-empty string`);
+  }
+  if (typeof route.effort !== "string" || route.effort === "") {
+    throw new Error(`${context}: reviewer.route.effort must be a non-empty string`);
+  }
+  return { provider: route.provider, model: route.model, effort: route.effort };
 }
 
 function reviewerOf(value: unknown, context: string): ReviewReviewer {
@@ -72,17 +76,17 @@ function entryOf(scenarioId: string, value: unknown): ReviewEntry {
     throw new Error(`${context}: entry must be an object`);
   }
   const entry = value as { status?: unknown; reason?: unknown; reviewer?: unknown };
-  const status = entry.status;
-  if (typeof status !== "string" || !SEMANTIC_REVIEW_STATUSES.some((known) => known === status)) {
+  const status = SEMANTIC_REVIEW_STATUSES.find((known) => known === entry.status);
+  if (status === undefined) {
     throw new Error(
-      `${context}: status ${JSON.stringify(status)} is not one of ${SEMANTIC_REVIEW_STATUSES.join("/")}`,
+      `${context}: status ${JSON.stringify(entry.status)} is not one of ${SEMANTIC_REVIEW_STATUSES.join("/")}`,
     );
   }
   if (typeof entry.reason !== "string") {
     throw new Error(`${context}: reason must be a string`);
   }
   return {
-    status: status as SemanticReviewStatus,
+    status,
     reason: entry.reason,
     reviewer: reviewerOf(entry.reviewer, context),
   };
