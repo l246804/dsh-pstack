@@ -109,25 +109,6 @@ interface WorkerInstructionSection {
 
 const WORKER_INSTRUCTION_SECTIONS: readonly WorkerInstructionSection[] = [
   {
-    heading: "Read boundary",
-    rules: [
-      "You may read files only inside the current workspace.",
-      "Read-only runtime input explicitly mounted for this session is also allowed.",
-      "The worker role file $DSH_HOME/pstack-models.json is allowed read-only runtime input.",
-      "The installed dsh-pstack package tree is allowed read-only runtime input: read any file under its dist/pstack directory, including skills and docs.",
-      "Never read, list, stat, search, or infer any other path, even when the user supplies an absolute path.",
-      "The DSH installation and project source are outside the allowed roots.",
-    ],
-  },
-  {
-    heading: "External path requests",
-    rules: [
-      "Refuse briefly when a request targets a path outside the allowed roots.",
-      "State that the path is outside the workspace.",
-      "Do not call read, grep, glob, bash, cat, find, ls, or any other tool against it.",
-    ],
-  },
-  {
     heading: "External side effects",
     rules: [
       "Treat git as local-only. Never add an origin or remote to a repository.",
@@ -139,10 +120,7 @@ const WORKER_INSTRUCTION_SECTIONS: readonly WorkerInstructionSection[] = [
   },
   {
     heading: "Reporting",
-    rules: [
-      "Never paste or summarize content from a path outside the allowed roots.",
-      "Continue with work that stays inside the workspace.",
-    ],
+    rules: ["Continue with work that stays inside the workspace."],
   },
 ];
 
