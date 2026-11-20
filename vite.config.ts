@@ -110,18 +110,17 @@ export default defineConfig({
         cache: false,
       },
       "playground:open": {
-        command:
-          "vpx playground/runner/cli/prepare.ts --treatment adapted --environment preview --workers 1",
+        command: "vpx playground/runner/cli/prepare.ts --variant adapted --environment preview",
         cache: false,
         dependsOn: ["build", "playground:close"],
       },
       "playground:close": {
-        command: "vpx playground/runner/cli/stop.ts --treatment adapted --environment preview",
+        command: "vpx playground/runner/cli/stop.ts --variant adapted --environment preview",
         cache: false,
       },
       "playground:reset": {
         command:
-          "vpx playground/runner/cli/prepare.ts --treatment adapted --environment preview --workers 1 --reset",
+          "vpx playground/runner/cli/prepare.ts --variant adapted --environment preview --reset",
         cache: false,
         dependsOn: ["build"],
       },
@@ -135,6 +134,10 @@ export default defineConfig({
       },
       "playground:status": {
         command: "vpx playground/runner/cli/status.ts",
+        cache: false,
+      },
+      "playground:session-tail": {
+        command: "vpx playground/runner/cli/session-tail.ts",
         cache: false,
       },
       "playground:stop-task": {

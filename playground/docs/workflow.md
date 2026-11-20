@@ -32,13 +32,23 @@
 
 ## 长批次检查
 
-批次预计超过 10 分钟时，主 agent 可以创建一个每 10 分钟触发的 schedule 消息。消息只要求读取：
+批次预计超过 10 分钟时，主 agent 创建每 10 分钟触发的 schedule 消息；批次结束、失败或被停止后删除该 schedule。
 
-- `playground/.workers/<variant>/<environment>/progress.json`
-- 当前 worker 的 `current-task.json`
-- `playground:status` 输出的最新 session 文件
+每次检查执行：
 
-agent 直接读取 session 的 `assistant` / tool 事件判断是否仍有有效推进；发现偏移或空转时调用 `playground:stop-task`。不需要 runner 额外维护 stalled 状态。`scenarioTimeoutMs` 仍是最终 hard timeout。
+```sh
+vp run playground:status -- --variant <variant> --environment <environment>
+vp run playground:session-tail -- --variant <variant> --environment <environment> --worker <N> --limit 10
+```
+
+agent 直接看最后 10 个事件的 `type`、`time` 和 `latestAge`，出现以下任一情况就调用 `playground:stop-task`：
+
+- 同一个 tool 在最后 10 个事件中重复 3 次以上，且没有新的 `assistant/message` 或有效 `tool/result`；
+- 连续出现 `wait_agent`、`job_output` 或反复查看子代理进度，但没有 `subagent/finished`、新的 assistant 输出或任务推进；
+- `latestAge` 超过 5 分钟，且状态仍显示 running；
+- assistant 内容或 tool 参数明显偏离当前 `scenarioId`，或在反复空转。
+
+不要使用固定的 15 分钟等待。`scenarioTimeoutMs` 仍是最终 hard timeout。
 
 ## 命令
 
