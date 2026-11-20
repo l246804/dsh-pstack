@@ -10,7 +10,7 @@ const scenario: BehaviorScenario = {
   turns: [
     {
       prompt: [
-        "读取工作区的 `review-brief.md` 和 `proposal.md`。这是评审任务，不要读取 DSH 安装目录，也不要实现提案里的缓存。",
+        "读取工作区的 `review-brief.md` 和 `proposal.md`。这是评审任务，不要实现提案里的缓存。",
         "先用一次模型发现确认可用路由；从两个不同的 provider 或 model 各委派一名独立评审者。若运行时只允许父级路由或拒绝模型选择，记录实际错误并结束，不要继续探索。",
         "把合并评审写入 `review/report.md`，每个评审者一行 `reviewer: provider=... model=... effort=...`，不要只写计划或声称已经委派。",
       ].join("\n"),

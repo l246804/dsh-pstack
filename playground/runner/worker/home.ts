@@ -116,6 +116,7 @@ const WORKER_INSTRUCTION_SECTIONS: readonly WorkerInstructionSection[] = [
       "The worker role file $DSH_HOME/pstack-models.json is allowed read-only runtime input.",
       "The installed dsh-pstack package tree is allowed read-only runtime input: read any file under its dist/pstack directory, including skills and docs.",
       "Never read, list, stat, search, or infer any other path, even when the user supplies an absolute path.",
+      "The DSH installation and project source are outside the allowed roots.",
     ],
   },
   {
@@ -130,6 +131,7 @@ const WORKER_INSTRUCTION_SECTIONS: readonly WorkerInstructionSection[] = [
     heading: "External side effects",
     rules: [
       "Treat git as local-only. Never add an origin or remote to a repository.",
+      "Never modify the DSH installation or project source.",
       "Never create, modify, delete, push, tag, or otherwise change a remote repository or external service.",
       "Do not use gh or another forge CLI, and do not read or use credentials or tokens.",
       "If a task requires remote work, state that it is unavailable and produce a local plan instead.",
