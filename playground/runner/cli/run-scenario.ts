@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { isTreatment } from "../types.ts";
-import type { BehaviorScenario, RunRecord, Treatment } from "../types.ts";
+import type { RunRecord, Treatment } from "../types.ts";
 import { analyzeSession } from "../evidence/analysis.ts";
 import {
   assertSafeRecord,
@@ -21,7 +21,7 @@ import { EVIDENCE_FILES } from "../evidence/evidence-files.ts";
 import { sanitizeRecord } from "../evidence/redaction.ts";
 import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";
 import { scenarioContentHash } from "../scenario/scenario-hash.ts";
-import { stopRequestFile, workerPaths } from "../worker/worker.ts";
+import { currentTaskFile, stopRequestFile, workerPaths } from "../worker/worker.ts";
 import {
   attemptScenario,
   blockedRecord,
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
   const scenarioId = argValue("--scenario");
   if (!isTreatment(treatment) || !scenarioId) {
     throw new Error(
-      "usage: run-scenario.ts --worker N --scenario ID --treatment native|adapted --environment ID [--config FILE]",
+      "usage: run-scenario.ts --worker N --scenario ID --treatment native|adapted --environment ID",
     );
   }
   const worker = Number(argValue("--worker") ?? "0");
@@ -54,15 +54,7 @@ async function main(): Promise<void> {
     : "";
   if (preparedTreatment !== treatment)
     throw new Error(`worker is prepared for ${preparedTreatment || "nothing"}, not ${treatment}`);
-  const bundlePath = process.env.PLAYGROUND_SCENARIO_BUNDLE;
-  const scenario = bundlePath
-    ? (() => {
-        const scenarios = JSON.parse(readFileSync(bundlePath, "utf8")) as BehaviorScenario[];
-        const found = scenarios.find((entry) => entry.id === scenarioId);
-        if (!found) throw new Error(`scenario ${scenarioId} is missing from the batch bundle`);
-        return found;
-      })()
-    : (await import("../scenario/scenarios.ts")).loadScenario(scenarioId);
+  const scenario = (await import("../scenario/scenarios.ts")).loadScenario(scenarioId);
   const environments = scenario.environments ?? ["base"];
   if (!environments.includes(matrix.id)) {
     throw new Error(`scenario ${scenarioId} does not run in environment ${matrix.id}`);
@@ -70,8 +62,17 @@ async function main(): Promise<void> {
   if (scenario.treatments !== undefined && !scenario.treatments.includes(treatment)) {
     throw new Error(`scenario ${scenarioId} is not allowed in ${treatment}`);
   }
-  const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
-  const config = await readPlaygroundConfig(configFile);
+  const config = await readPlaygroundConfig(CONFIG_FILE);
+  const taskFile = currentTaskFile(paths);
+  const batchId = (() => {
+    if (!existsSync(taskFile)) return undefined;
+    try {
+      const value = JSON.parse(readFileSync(taskFile, "utf8")) as { batchId?: unknown };
+      return typeof value.batchId === "string" ? value.batchId : undefined;
+    } catch {
+      return undefined;
+    }
+  })();
   const expectedTarget = readHomePlan(paths);
   // DSH starts every session on its default Standard preset; the poteto workflow is a
   // session toggle, not a root preset, so both treatments assert the same preset id.
@@ -126,7 +127,7 @@ async function main(): Promise<void> {
       semanticReview,
       mechanicalFailures: failures,
       verdict: verdictFor({ treatment, failures, semanticReview }),
-      batchId: process.env.PLAYGROUND_BATCH_ID,
+      batchId,
       capturedAt,
     };
   } catch (error) {
@@ -141,6 +142,7 @@ async function main(): Promise<void> {
       screenshotFile,
       sessionFile: lastSession?.file,
       sessionId: lastSession?.id,
+      batchId,
       reason,
       capturedAt,
     });

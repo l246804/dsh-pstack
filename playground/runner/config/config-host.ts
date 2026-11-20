@@ -17,6 +17,8 @@ export type HostProviderSelection =
       models: HostModelSelection[];
       /** Provider-level reasoning is required. */
       reasoning: string;
+      /** Optional direct key for the gitignored config.ts; otherwise apiKeyEnv/credentials. */
+      apiKey?: string;
     }
   | { account: true };
 
@@ -113,7 +115,7 @@ export function fromHost(
       }
       result[name] = {
         kind: "pi-ai",
-        apiKey: env[host.apiKeyEnv] ?? `\${${host.apiKeyEnv}}`,
+        apiKey: selection.apiKey ?? env[host.apiKeyEnv] ?? `\${${host.apiKeyEnv}}`,
         apiKeyEnv: host.apiKeyEnv,
         ...(host.api === undefined ? {} : { api: host.api }),
         ...(host.baseURL === undefined ? {} : { baseURL: host.baseURL }),
@@ -129,7 +131,7 @@ export function fromHost(
       const models = (config.models as ProviderModel[] | undefined) ?? DEEPSEEK_BUILTIN_MODELS;
       result[name] = {
         kind: "deepseek-api-key",
-        apiKey: env[apiKeyEnv] ?? `\${${apiKeyEnv}}`,
+        apiKey: selection.apiKey ?? env[apiKeyEnv] ?? `\${${apiKeyEnv}}`,
         apiKeyEnv,
         models: selectedModels(models, selection.models, "host DeepSeek API-key route"),
       };

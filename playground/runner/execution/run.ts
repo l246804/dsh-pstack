@@ -602,6 +602,7 @@ export function blockedRecord(input: {
   sessionFile?: string;
   sessionId?: string;
   reason: string;
+  batchId?: string;
   /** The attempt start stamp shared with the record and source filenames. */
   capturedAt: string;
 }): RunRecord {
@@ -646,7 +647,7 @@ export function blockedRecord(input: {
       semanticReview: pendingSemanticReview(),
       blockedReason: input.reason,
     }),
-    batchId: process.env.PLAYGROUND_BATCH_ID,
+    batchId: input.batchId,
     capturedAt: input.capturedAt,
   };
 }

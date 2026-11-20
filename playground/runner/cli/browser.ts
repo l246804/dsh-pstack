@@ -53,7 +53,7 @@ async function main(): Promise<void> {
   let url: string | undefined;
   if (argv.length > 0 && !argv[0].startsWith("--")) url = argv.shift();
   const target = url ?? readWebUrl(paths);
-  const config = await readPlaygroundConfig(process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE);
+  const config = await readPlaygroundConfig(CONFIG_FILE);
   const session = createBrowserSession({
     session: `w${workerIndex}`,
     browserDir: paths.browserDir,

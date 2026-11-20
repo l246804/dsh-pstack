@@ -102,8 +102,8 @@ async function main(): Promise<void> {
     treatment === "adapted"
       ? ["dsh-pstack", ...matrix.enabledPluginPackages]
       : matrix.enabledPluginPackages;
-  const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
-  const config = await readPlaygroundConfig(configFile);
+  const config = await readPlaygroundConfig(CONFIG_FILE);
+
   const plan = loadProviderPlan(config);
   const workerFlag = argValue("--workers");
   const requested = workerFlag === undefined ? undefined : Number(workerFlag);

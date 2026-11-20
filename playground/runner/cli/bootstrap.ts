@@ -166,8 +166,8 @@ async function main(): Promise<void> {
     console.log(`[bootstrap] environment ${environment}/${treatment} already ready`);
     return;
   }
-  const configFile = argValue("--config") ?? process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
-  const config = await readPlaygroundConfig(configFile);
+  const config = await readPlaygroundConfig(CONFIG_FILE);
+
   let failed = 0;
   for (const paths of workers) {
     const failures = validateWorker(paths, config.browser);

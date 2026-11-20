@@ -68,7 +68,7 @@ try {
   check("chrome", false, error instanceof Error ? error.message : String(error));
 }
 
-const configFile = process.env.PLAYGROUND_CONFIG_FILE ?? CONFIG_FILE;
+const configFile = CONFIG_FILE;
 check("config", existsSync(configFile), configFile);
 check(
   "credentials",

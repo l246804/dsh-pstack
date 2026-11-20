@@ -3,13 +3,11 @@ import {
   appendFileSync,
   existsSync,
   mkdirSync,
-  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { isTreatment } from "../types.ts";
@@ -142,13 +140,6 @@ function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
   });
 }
 
-function createScenarioBundle(ids: string[]): { directory: string; file: string } {
-  const directory = mkdtempSync(join(tmpdir(), "pstack-scenario-bundle-"));
-  const file = join(directory, "scenarios.json");
-  writeFileSync(file, JSON.stringify(ids.map((id) => loadScenario(id))), { mode: 0o600 });
-  return { directory, file };
-}
-
 function statuses(): ProgressState["statuses"] {
   return {
     observed: 0,
@@ -238,83 +229,72 @@ async function main(): Promise<void> {
     startedAt: new Date().toISOString(),
     upstreamRevision: upstreamRevision(),
   });
-  const bundle = createScenarioBundle(ids);
-  const childEnvironment = {
-    ...process.env,
-    PLAYGROUND_BATCH_ID: batchId,
-    PLAYGROUND_SCENARIO_BUNDLE: bundle.file,
-  };
-  try {
-    await Promise.all(
-      Array.from({ length: workers }, async (_, worker) => {
-        while (true) {
-          const scenarioId = pending.shift();
-          if (scenarioId === undefined) return;
-          updateProgress(file, (current) => {
-            current.running.push({ worker, scenarioId });
-            const perWorker = current.perWorker[`w${worker}`];
-            if (perWorker) perWorker.total += 1;
-          });
-          const workerPathsForTask = workerPaths(worker, matrix.id, treatment);
-          const taskFile = currentTaskFile(workerPathsForTask);
-          rmSync(stopRequestFile(workerPathsForTask), { force: true });
-          writeFileSync(
-            taskFile,
-            `${JSON.stringify({ scenarioId, startedAt: new Date().toISOString(), batchId }, null, 2)}\n`,
+  const childEnvironment = process.env;
+  await Promise.all(
+    Array.from({ length: workers }, async (_, worker) => {
+      while (true) {
+        const scenarioId = pending.shift();
+        if (scenarioId === undefined) return;
+        updateProgress(file, (current) => {
+          current.running.push({ worker, scenarioId });
+          const perWorker = current.perWorker[`w${worker}`];
+          if (perWorker) perWorker.total += 1;
+        });
+        const workerPathsForTask = workerPaths(worker, matrix.id, treatment);
+        const taskFile = currentTaskFile(workerPathsForTask);
+        rmSync(stopRequestFile(workerPathsForTask), { force: true });
+        writeFileSync(
+          taskFile,
+          `${JSON.stringify({ scenarioId, startedAt: new Date().toISOString(), batchId }, null, 2)}\n`,
+        );
+        const args = [
+          "playground/runner/cli/run-scenario.ts",
+          "--worker",
+          String(worker),
+          "--scenario",
+          scenarioId,
+          "--treatment",
+          treatment,
+          "--environment",
+          matrix.id,
+        ];
+        const result = await runCase(args, childEnvironment);
+        rmSync(taskFile, { force: true });
+        rmSync(stopRequestFile(workerPathsForTask), { force: true });
+        appendFileSync(
+          logFile,
+          `\n===== ${scenarioId} ${treatment} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
+        );
+        const records = readRecords(
+          join(workersDirectory(), treatment, matrix.id, `w${worker}/evidence`),
+        );
+        const record = records.find(
+          (entry) =>
+            entry.scenarioId === scenarioId &&
+            entry.treatment === treatment &&
+            entry.batchId === batchId,
+        );
+        const status = statusFor(record, treatment);
+        updateProgress(file, (current) => {
+          current.running = current.running.filter(
+            (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
           );
-          const args = [
-            "playground/runner/cli/run-scenario.ts",
-            "--worker",
-            String(worker),
-            "--scenario",
-            scenarioId,
-            "--treatment",
-            treatment,
-            "--environment",
-            matrix.id,
-          ];
-          const config = argValue("--config");
-          if (config) args.push("--config", config);
-          const result = await runCase(args, childEnvironment);
-          rmSync(taskFile, { force: true });
-          rmSync(stopRequestFile(workerPathsForTask), { force: true });
-          appendFileSync(
-            logFile,
-            `\n===== ${scenarioId} ${treatment} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
-          );
-          const records = readRecords(
-            join(workersDirectory(), treatment, matrix.id, `w${worker}/evidence`),
-          );
-          const record = records.find(
-            (entry) =>
-              entry.scenarioId === scenarioId &&
-              entry.treatment === treatment &&
-              entry.batchId === batchId,
-          );
-          const status = statusFor(record, treatment);
-          updateProgress(file, (current) => {
-            current.running = current.running.filter(
-              (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
-            );
-            current.done += 1;
-            current.statuses[status] += 1;
-            const perWorker = current.perWorker[`w${worker}`];
-            if (perWorker) perWorker.done += 1;
-            if (status !== "verified" && status !== "observed") {
-              current.failures.push({
-                scenarioId,
-                worker,
-                reason: record?.verdict.status ?? "no record for this batch",
-              });
-            }
-          });
-          console.log(`[run-batch] ${scenarioId} ${treatment} ${matrix.id} ${status}`);
-        }
-      }),
-    );
-  } finally {
-    rmSync(bundle.directory, { recursive: true, force: true });
-  }
+          current.done += 1;
+          current.statuses[status] += 1;
+          const perWorker = current.perWorker[`w${worker}`];
+          if (perWorker) perWorker.done += 1;
+          if (status !== "verified" && status !== "observed") {
+            current.failures.push({
+              scenarioId,
+              worker,
+              reason: record?.verdict.status ?? "no record for this batch",
+            });
+          }
+        });
+        console.log(`[run-batch] ${scenarioId} ${treatment} ${matrix.id} ${status}`);
+      }
+    }),
+  );
   console.log(`[run-batch] log=${logFile}`);
 }
 

@@ -54,9 +54,11 @@ export default {
 - `reasoning` 必填；`efforts` 必须写在具体模型上，provider 级不再有 `efforts`。
 - 模型未写 `efforts` 时默认 `["low", "high"]`。
 - 宿主 patch 默认是 `~/.dsh/profiles/web/cordis.patch.yml`，可用 `PLAYGROUND_HOST_PATCH_FILE` 指定。
-- `apiKey` 先按 `apiKeyEnv` 从 `env` 取值，取不到时保留 `${ENV}` 占位符，由配置读取器从环境或 `.credentials.yaml` 解析。
+- `config.ts` 可以直接写 `apiKey: "..."`；它已被 gitignore，适合本地密钥。
+- 也可以用 `apiKeyEnv` 从环境或 `.credentials.yaml` 解析，避免把密钥写进文件。
 - Linux 默认 `PLAYGROUND_NETWORK_MODE=host`：容器共享宿主网络命名空间，loopback 和路由与宿主一致，baseURL 保持 `127.0.0.1`。
 - macOS/Windows 默认 `bridge`：baseURL 的 `127.0.0.1` / `localhost` 会重写为 `host.docker.internal`，Docker 以 host-gateway 暴露宿主回环；可用 `PLAYGROUND_NETWORK_MODE=host` 强制尝试；若 Docker 不支持宿主网络，prepare 会失败，改用 bridge。
+- 运行目录默认 `$HOME/.dsh-playground/isolated` 和 `playground/.workers`；`PLAYGROUND_WORKSPACE_ROOT` / `PLAYGROUND_WORKERS_DIR` 只用于测试隔离，不作为日常配置。
 
 ## 凭证
 
