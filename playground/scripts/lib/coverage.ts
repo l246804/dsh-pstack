@@ -17,7 +17,8 @@ export interface GapCoverageScenario {
  * Cross-check gap scenarios against the native gap list. A confirmed gap needs at least one
  * gap scenario; every gap scenario must reference an existing confirmed gap, carry the same
  * capability id as its gap, and run in native. Adapted coverage is optional for gaps that are
- * an expected client-side degradation. A regression scenario must not claim a gap.
+ * an expected client-side degradation. A regression scenario must not claim a gap. Empty
+ * inputs are allowed until the gap list and scenarios are generated.
  */
 export function gapCoverageProblems(
   scenarios: readonly GapCoverageScenario[],

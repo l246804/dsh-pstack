@@ -9,6 +9,7 @@
 - `native/gaps.json`：native 判断缺口；adapted 判断缺口是否闭合。
 - `playground/scenarios/`：prompt、assertions、rubric 和 UI 观察点。
 - native 对照 `native/dsh.md`；adapted 对照 `src/dsh.md`。
+- 场景声明了 `variants: ["native"]` 时，adapted 快照没有对应 record 是声明范围，不是缺失或 blocked。
 
 完整 session 只保存在本地 worker。需要时按 record 的 `session.sessionId` 定位，不复制到快照。
 
