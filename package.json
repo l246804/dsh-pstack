@@ -82,6 +82,7 @@
     "@deepseek-ai/dsh-plugin-manager": "catalog:types",
     "@deepseek-ai/dsh-sandbox-policy": "catalog:runtime",
     "@deepseek-ai/dsh-session": "catalog:types",
+    "@deepseek-ai/dsh-session-persistence": "catalog:types",
     "@deepseek-ai/dsh-session-projection": "catalog:types",
     "@deepseek-ai/dsh-settings": "catalog:types",
     "@deepseek-ai/dsh-skill": "catalog:types",

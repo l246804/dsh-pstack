@@ -15,6 +15,7 @@ function memoryTable(): PotetoModeTable {
     put: async (sessionId, record) => {
       records.set(sessionId, record);
     },
+    delete: async (sessionId) => records.delete(sessionId),
   };
 }
 

@@ -12,6 +12,7 @@ export interface PotetoModeRecord {
 export interface PotetoModeTable {
   get(sessionId: string): PotetoModeRecord | undefined;
   put(sessionId: string, record: PotetoModeRecord): Promise<void>;
+  delete(sessionId: string): Promise<boolean>;
 }
 
 const potetoModesTable: DomainTableSpec<string, PotetoModeRecord> = {

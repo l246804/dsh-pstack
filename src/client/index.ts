@@ -12,6 +12,7 @@ import type {} from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-plugin-manager/client";
 
 import { pstackClientRemote, type PstackRolesNamespace } from "../roles/role-remote.ts";
+import { type PstackPotetoMaintenanceNamespace } from "../poteto/maintenance-remote.ts";
 import { type PstackPotetoModeNamespace } from "../poteto/remote.ts";
 import { createPstackConfigAction } from "./pages/PstackConfigDialog.tsx";
 import { PotetoModeToggle, POTETO_MODE_EVENT } from "./components/PotetoModeToggle.tsx";
@@ -21,6 +22,7 @@ import { NS, catalogs } from "./locales/index.ts";
 import type { PluginManagerApi } from "./pages/RecommendedPluginsPage.tsx";
 import type { RoleSettingsApi } from "./pages/RoleSettingsPage.tsx";
 import type { PotetoSettingsApi } from "./pages/GeneralSettingsPage.tsx";
+import type { MaintenanceSettingsApi } from "./pages/MaintenanceSettingsPage.tsx";
 
 /** Browser services this plugin needs. `remote.pluginManager` stays optional, so roles load without it. */
 export const inject = ["remote", "slots", "locale"];
@@ -67,7 +69,10 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   });
   const pluginApi = createPluginManagerApi(() => pluginManager);
 
-  let potetoApi: PstackPotetoModeNamespace["pstackPotetoMode"] | undefined;
+  let potetoApi:
+    | (PstackPotetoModeNamespace["pstackPotetoMode"] &
+        PstackPotetoMaintenanceNamespace["pstackPotetoMode"])
+    | undefined;
   const potetoSettingsApi: PotetoSettingsApi = {
     readDefault: async () => {
       if (potetoApi === undefined) throw new Error("poteto mode is not available yet");
@@ -89,6 +94,38 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       const result = await potetoApi.setAgentTeamDefault(enabled);
       return result.ok ? null : result.error.message;
     },
+  };
+
+  const maintenanceApi: MaintenanceSettingsApi = {
+    scan: async () => {
+      if (potetoApi === undefined) throw new Error("poteto maintenance is not available yet");
+      return unwrap(await potetoApi.scanLegacySessions());
+    },
+    queue: async (sessionIds) => {
+      if (potetoApi === undefined) throw new Error("poteto maintenance is not available yet");
+      return unwrap(await potetoApi.queueLegacyRepair(sessionIds));
+    },
+  };
+
+  const showRepairOutcome = (
+    outcome: { readonly repaired: number; readonly failed: readonly unknown[] } | null,
+  ): void => {
+    if (outcome === null) return;
+    const t = ctx.locale.bind(NS.config);
+    if (outcome.failed.length === 0) {
+      showToast({
+        tone: "success",
+        text: t("maintenanceRepairSuccess", { count: outcome.repaired }),
+      });
+      return;
+    }
+    showToast({
+      tone: outcome.repaired === 0 ? "error" : "warn",
+      text: t("maintenanceRepairPartial", {
+        repaired: outcome.repaired,
+        failed: outcome.failed.length,
+      }),
+    });
   };
 
   const togglePoteto = async (sessionId: string): Promise<void> => {
@@ -166,13 +203,27 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
           order: 20,
           label: translations.config("configureAction"),
         },
-        createPstackConfigAction(roleApi, pluginApi, potetoSettingsApi, translations),
+        createPstackConfigAction(
+          roleApi,
+          pluginApi,
+          potetoSettingsApi,
+          maintenanceApi,
+          translations,
+        ),
       ),
     );
   });
 
   ctx.inject(["remote.pstackPotetoMode"], (scope: Context) => {
-    potetoApi = (scope.remote as ClientRemote & PstackPotetoModeNamespace).pstackPotetoMode;
+    potetoApi = (
+      scope.remote as ClientRemote & PstackPotetoModeNamespace & PstackPotetoMaintenanceNamespace
+    ).pstackPotetoMode;
+    void potetoApi.consumeLegacyRepairResult().then(
+      (result) => {
+        if (result.ok) showRepairOutcome(result.value);
+      },
+      () => undefined,
+    );
     return () => {
       potetoApi = undefined;
     };

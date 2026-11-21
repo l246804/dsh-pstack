@@ -7,6 +7,7 @@ import type {} from "@deepseek-ai/dsh-agent-team";
 import type { AgentPresetRegistry } from "@deepseek-ai/dsh-agent-preset-registry";
 import type { ConfigEditor } from "@deepseek-ai/dsh-config-editor";
 import type { SessionId } from "@deepseek-ai/dsh-session";
+import type {} from "@deepseek-ai/dsh-session-persistence";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import type {} from "@deepseek-ai/dsh-agent-instructions";
 import { renderSkillContent } from "@deepseek-ai/dsh-skill";
@@ -22,6 +23,15 @@ import {
   shouldSeedPotetoDefault,
 } from "./poteto/preset-gate.ts";
 import { createPotetoProjectionDefinition } from "./poteto/projection.ts";
+import {
+  clearRepairQueue,
+  executeRepairQueue,
+  readRepairQueue,
+  scanLegacySessions as scanLegacySessionRefs,
+  writeRepairQueue,
+  type StoredSessionRef,
+} from "./poteto/maintenance.ts";
+import type { MaintenanceScanResult, RepairOutcome } from "./poteto/maintenance-types.ts";
 import {
   potetoDomainSpec,
   readPotetoMode,
@@ -45,12 +55,17 @@ function writeDefaultEnabled(enabled: boolean): void {
   writeSettings({ version: 1, potetoDefault: enabled });
 }
 
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** Toggle poteto workflow for one Session. */
 export class PotetoModeService extends TypertRemoteService {
   static inject = [
     "agents",
     "skills",
     "sessions",
+    "sessionPersistence",
     "sessionProjections",
     "storageDomain",
     "systemPrompt",
@@ -66,6 +81,7 @@ export class PotetoModeService extends TypertRemoteService {
   private sectionText = "";
   private domain!: Domain<typeof potetoDomainSpec>;
   private modeTable!: PotetoModeTable;
+  private repairOutcome: RepairOutcome | undefined;
 
   constructor(ctx: Context) {
     super(ctx, POTETO_SERVICE);
@@ -77,6 +93,7 @@ export class PotetoModeService extends TypertRemoteService {
     this.domain = await this.ctx.storageDomain.open(potetoDomainSpec);
     this.modeTable = this.domain.table("poteto_modes");
     this.ctx.effect(() => () => this.domain.close(), "pstack.poteto-toggle.domain");
+    this.repairOutcome = await this.processRepairQueue();
     await this.ctx.sessionProjections.register(
       createPotetoProjectionDefinition((sessionId) => readPotetoMode(this.modeTable, sessionId)),
     );
@@ -170,6 +187,87 @@ export class PotetoModeService extends TypertRemoteService {
     return {
       enabled: agent === undefined ? (selected ?? this.defaultEnabled) : this.isEnabledFor(agent),
     };
+  }
+
+  /** Scan stored logs for Sessions that still carry the retired poteto/mode event. */
+  async scanLegacySessions(): Promise<MaintenanceScanResult> {
+    const sources = (await this.storedSessionRefs()).filter(
+      (source) => this.ctx.agents.get(source.sessionId as SessionId) === undefined,
+    );
+    return scanLegacySessionRefs(sources);
+  }
+
+  /** Queue selected Session ids for repair on the next DSH start. */
+  queueLegacyRepair(sessionIds: readonly string[]): { queued: number } {
+    for (const sessionId of sessionIds) {
+      if (this.ctx.agents.get(sessionId as SessionId) !== undefined) {
+        throw new Error(`session ${sessionId} is live`);
+      }
+    }
+    return { queued: writeRepairQueue(sessionIds) };
+  }
+
+  /** Return the one-shot result produced by the last restart. */
+  consumeLegacyRepairResult(): RepairOutcome | null {
+    const result = this.repairOutcome;
+    this.repairOutcome = undefined;
+    return result ?? null;
+  }
+
+  private async storedSessionRefs(): Promise<StoredSessionRef[]> {
+    const snapshots = await this.ctx.sessionPersistence.list();
+    return snapshots.flatMap((snapshot) => {
+      const logPath = snapshot.location?.path;
+      if (logPath === undefined) return [];
+      return [
+        {
+          sessionId: String(snapshot.header.id),
+          workspace: snapshot.header.cwd,
+          logPath,
+        },
+      ];
+    });
+  }
+
+  private async processRepairQueue(): Promise<RepairOutcome | undefined> {
+    let queue;
+    try {
+      queue = readRepairQueue();
+    } catch (error) {
+      clearRepairQueue();
+      return { repaired: 0, failed: [{ sessionId: "", message: messageOf(error) }] };
+    }
+    if (queue === undefined) return undefined;
+
+    const ids = [...new Set(queue.sessionIds)];
+    let sources: StoredSessionRef[];
+    try {
+      sources = await this.storedSessionRefs();
+    } catch (error) {
+      clearRepairQueue();
+      return {
+        repaired: 0,
+        failed: ids.map((sessionId) => ({ sessionId, message: messageOf(error) })),
+      };
+    }
+
+    const outcome = await executeRepairQueue(queue, sources, {
+      table: this.modeTable,
+      openRead: async (sessionId) => {
+        const handle = await this.ctx.sessionPersistence.open(sessionId as SessionId, "read");
+        return { close: () => handle.close() };
+      },
+      isLive: (sessionId) => this.ctx.agents.get(sessionId as SessionId) !== undefined,
+    });
+    try {
+      clearRepairQueue();
+    } catch (error) {
+      return {
+        repaired: outcome.repaired,
+        failed: [...outcome.failed, { sessionId: "", message: messageOf(error) }],
+      };
+    }
+    return outcome;
   }
 
   /** Read the global default used by new sessions. */

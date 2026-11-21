@@ -9,6 +9,10 @@ import { IconSettings } from "../components/icons.tsx";
 import { RecommendedPluginsView, type PluginManagerApi } from "./RecommendedPluginsPage.tsx";
 import { RoleSettingsView, type RoleSettingsApi } from "./RoleSettingsPage.tsx";
 import { GeneralSettingsView, type PotetoSettingsApi } from "./GeneralSettingsPage.tsx";
+import {
+  MaintenanceSettingsView,
+  type MaintenanceSettingsApi,
+} from "./MaintenanceSettingsPage.tsx";
 import { ensurePstackStyles } from "../lib/styles.ts";
 import { Button, SegmentedTabs } from "../components/ui.tsx";
 import { useDiscardConfirm } from "../components/DiscardConfirmation.tsx";
@@ -20,11 +24,12 @@ export interface PstackConfigDialogProps {
   readonly roleApi: RoleSettingsApi;
   readonly pluginApi: PluginManagerApi | undefined;
   readonly potetoApi: PotetoSettingsApi;
+  readonly maintenanceApi: MaintenanceSettingsApi;
   readonly translations: PstackTranslations;
   readonly onClose: () => void;
 }
 
-type ConfigTab = "general" | "plugins" | "roles";
+type ConfigTab = "general" | "maintenance" | "plugins" | "roles";
 
 export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement | null {
   const [tab, setTab] = useState<ConfigTab>("general");
@@ -33,7 +38,7 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
   );
   const [rolesDirty, setRolesDirty] = useState(false);
   const tabsId = useId();
-  const { roleApi, pluginApi, potetoApi, translations, onClose } = props;
+  const { roleApi, pluginApi, potetoApi, maintenanceApi, translations, onClose } = props;
 
   const { request: requestDiscard, dialog: discardDialog } = useDiscardConfirm({
     title: translations.roles("discardTitle"),
@@ -90,6 +95,12 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
               panelId: `${tabsId}-general-panel`,
             },
             {
+              value: "maintenance",
+              label: translations.config("tabMaintenance"),
+              id: `${tabsId}-maintenance`,
+              panelId: `${tabsId}-maintenance-panel`,
+            },
+            {
               value: "plugins",
               label: translations.config("tabPlugins"),
               id: `${tabsId}-plugins`,
@@ -113,6 +124,16 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
             aria-labelledby={`${tabsId}-general`}
           >
             <GeneralSettingsView api={potetoApi} translations={translations} />
+          </div>
+        ) : null}
+        {visited.has("maintenance") ? (
+          <div
+            hidden={tab !== "maintenance"}
+            id={`${tabsId}-maintenance-panel`}
+            role="tabpanel"
+            aria-labelledby={`${tabsId}-maintenance`}
+          >
+            <MaintenanceSettingsView api={maintenanceApi} translations={translations} />
           </div>
         ) : null}
         {visited.has("plugins") ? (
@@ -150,6 +171,7 @@ export function createPstackConfigAction(
   roleApi: RoleSettingsApi,
   pluginApi: PluginManagerApi | undefined,
   potetoApi: PotetoSettingsApi,
+  maintenanceApi: MaintenanceSettingsApi,
   translations: PstackTranslations,
 ): (props: PropsRuntime<"plugins.detail.actions">) => ReactElement | null {
   return function PstackConfigAction(
@@ -187,6 +209,7 @@ export function createPstackConfigAction(
             roleApi={roleApi}
             pluginApi={pluginApi}
             potetoApi={potetoApi}
+            maintenanceApi={maintenanceApi}
             translations={translations}
             onClose={() => setOpen(false)}
           />
