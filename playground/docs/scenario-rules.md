@@ -13,6 +13,8 @@
 
 一个文件一份 probe，默认导出 `BehaviorScenario`。字段定义和断言类型见 `runner/types.ts`；默认 variants/environments 见 `runner/scenario/defaults.ts`。
 
+- `variants` 可显式声明。默认是 native 和 adapted；gap 场景至少覆盖 native。若 adapted 预期只是客户端降级，可声明 `variants: ["native"]`，不要求 adapted 记录。
+
 - `id` 稳定且唯一；同一 probe 在 native/adapted 使用同一 id。
 - gap 场景的 `capability` 必须等于 `gap`；regression 不声明 `gap`。
 - 一个场景只覆盖一个行为分支，不写工具名、包名、实现路径或 variant 专属期望。
@@ -25,6 +27,7 @@
 ## Gap 守卫
 
 - 每个 confirmed 缺口至少有一个 gap 场景。
+- gap 场景必须覆盖 native；adapted 是否覆盖由 `variants` 声明决定。
 - gap 场景引用的缺口必须存在且仍为 confirmed；缺口被推翻或排除时，删除场景或改成 regression。
 - gap 场景的 capability 必须与 gap 相同。
 - 缺口描述变化后先重读场景；确认场景仍成立后运行 `vp run playground:gap-lock -- --write`。

@@ -16,8 +16,8 @@ export interface GapCoverageScenario {
 /**
  * Cross-check gap scenarios against the native gap list. A confirmed gap needs at least one
  * gap scenario; every gap scenario must reference an existing confirmed gap, carry the same
- * capability id as its gap, and run in both variants; a regression scenario must not claim
- * a gap. Empty inputs are allowed until the gap list and scenarios are generated.
+ * capability id as its gap, and run in native. Adapted coverage is optional for gaps that are
+ * an expected client-side degradation. A regression scenario must not claim a gap.
  */
 export function gapCoverageProblems(
   scenarios: readonly GapCoverageScenario[],
@@ -45,11 +45,8 @@ export function gapCoverageProblems(
           `gap scenario ${scenario.id} must use its gap id as capability (${scenario.gap}), not ${scenario.capability}`,
         );
       }
-      if (
-        scenario.variants !== undefined &&
-        (!scenario.variants.includes("native") || !scenario.variants.includes("adapted"))
-      ) {
-        problems.push(`gap scenario ${scenario.id} must run in both native and adapted`);
+      if (scenario.variants !== undefined && !scenario.variants.includes("native")) {
+        problems.push(`gap scenario ${scenario.id} must run in native`);
       }
     } else if (scenario.kind === "regression") {
       if (scenario.gap !== undefined) {

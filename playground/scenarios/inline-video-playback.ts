@@ -5,6 +5,7 @@ export default {
   kind: "gap",
   gap: "inline-video-playback",
   capability: "inline-video-playback",
+  variants: ["native"],
   environments: ["base", "render"],
   turns: [
     {

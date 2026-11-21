@@ -292,13 +292,19 @@ describe("gapCoverageProblems", () => {
     );
   });
 
-  it("requires a gap scenario to run in both variants and a regression to have no gap", () => {
+  it("requires a gap scenario to run in native and a regression to have no gap", () => {
+    expect(
+      gapCoverageProblems(
+        [scenario("probe-a", "gap", "gap-a", ["native"])],
+        [{ id: "gap-a", status: "confirmed" }],
+      ),
+    ).toEqual([]);
     expect(
       gapCoverageProblems(
         [scenario("probe-a", "gap", "gap-a", ["adapted"])],
         [{ id: "gap-a", status: "confirmed" }],
       ),
-    ).toContain("gap scenario probe-a must run in both native and adapted");
+    ).toContain("gap scenario probe-a must run in native");
     expect(
       gapCoverageProblems(
         [scenario("probe-r", "regression", "gap-a")],

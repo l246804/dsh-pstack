@@ -6,7 +6,7 @@
 
 - `variant`：`native` 使用 DSH 标准运行时，不加载被测插件；`adapted` 加载当前插件和适配配置。
 - `environment`：环境列表与能力由 `runner/scenario/environments.ts` 维护；`base` 是默认对照。
-- 同一场景在每个 variant 上保持相同的 prompt、workspace 和断言；variant 专属判断属于分析规则，不写进场景。
+- 同一场景在成对运行时保持相同的 prompt、workspace 和断言；variant 专属判断属于分析规则，不写进场景。场景可以声明只跑某一个 variant，缺失的 variant 不是可比较记录。
 - 场景和环境的默认值见 `runner/scenario/defaults.ts`；解析和适用性判断见 `runner/scenario/registry.ts`。
 
 ## 运行身份
@@ -24,7 +24,7 @@
 
 ## 不变量
 
-- native 和 adapted 使用同一 scenario 定义和同一 environment。
+- native 和 adapted 使用同一 scenario 定义和同一 environment；场景声明只跑一个 variant 时，只比较该 variant 的记录。
 - 只有可比较的运行身份才能对比；缺失的 scenario hash 或 config hash 不是“未知但可以比较”。
 - 生成物必须能由记录重建；快照范围由 manifest 和实际目录共同决定。
 - 合并视图只读，不把一侧结论写进另一侧的分析结果。
@@ -32,5 +32,5 @@
 ## 完成标准
 
 - `manifest.json` 的 `scenarioIds` 与快照实际场景一致。
-- 同一场景的 native/adapted record 使用相同 scenario 定义和 environment。
+- 同一场景的 native/adapted record 使用相同 scenario 定义和 environment；只声明单 variant 的场景只要求该 variant 的记录。
 - `playground:compare` 和 `playground:status-table` 的检查通过。
