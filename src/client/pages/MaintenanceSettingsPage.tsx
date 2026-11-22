@@ -3,6 +3,7 @@
 import { useMemo, useState, type ReactElement } from "react";
 
 import { Button, Checkbox, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
+import { IconInfo } from "../components/icons.tsx";
 import { Spinner } from "../components/ui.tsx";
 import { messageOf } from "../lib/message.ts";
 import { ensurePstackStyles } from "../lib/styles.ts";
@@ -154,11 +155,6 @@ export function MaintenanceSettingsView(props: {
                   {error}
                 </p>
               )}
-              {notice === undefined ? null : (
-                <p className="pstack-setting-description" role="status">
-                  {notice}
-                </p>
-              )}
               {failures.length === 0 ? null : (
                 <p className="pstack-setting-description" role="alert">
                   {t("maintenanceScanFailed", {
@@ -239,6 +235,13 @@ export function MaintenanceSettingsView(props: {
                 </div>
               )}
             </div>
+
+            {notice === undefined ? null : (
+              <div className="pstack-notice pstack-maintenance-notice" role="status">
+                <IconInfo size={14} />
+                <span>{notice}</span>
+              </div>
+            )}
 
             <div className="pstack-maintenance-foot">
               <span className="pstack-setting-description">

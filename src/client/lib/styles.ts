@@ -870,6 +870,10 @@ const CSS = `
   padding-top: 12px;
   border-top: 0.5px solid var(--dsw-alias-border-l4);
 }
+.pstack-maintenance-notice {
+  flex: none;
+  margin: 12px 0 0;
+}
 .pstack-maintenance-actions {
   display: flex;
   align-items: center;
