@@ -737,12 +737,6 @@ const CSS = `
   min-height: 0;
   height: 100%;
 }
-.pstack-maintenance-toolbar {
-  display: flex;
-  flex: none;
-  justify-content: flex-end;
-  padding-bottom: 8px;
-}
 .pstack-maintenance-scroll {
   flex: 1;
   min-height: 0;
@@ -791,18 +785,30 @@ const CSS = `
   flex: 1;
   min-width: 0;
 }
-.pstack-maintenance-check {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.pstack-maintenance-title {
   color: var(--dsw-alias-label-primary);
   font-size: 13px;
   line-height: 20px;
-}
-.pstack-maintenance-check > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.pstack-maintenance-check {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+.pstack-maintenance-check > span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 .pstack-maintenance-meta {
   margin-top: 2px;
@@ -819,6 +825,11 @@ const CSS = `
   margin-top: 12px;
   padding-top: 12px;
   border-top: 0.5px solid var(--dsw-alias-border-l4);
+}
+.pstack-maintenance-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 `;
 

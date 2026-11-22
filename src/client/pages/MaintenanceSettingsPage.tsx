@@ -3,8 +3,7 @@
 import { useMemo, useState, type ReactElement } from "react";
 
 import { Button, Checkbox, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
-import { IconTrash } from "../components/icons.tsx";
-import { IconButton, Spinner } from "../components/ui.tsx";
+import { Spinner } from "../components/ui.tsx";
 import { messageOf } from "../lib/message.ts";
 import { ensurePstackStyles } from "../lib/styles.ts";
 import type { PstackTranslations } from "../locales/index.ts";
@@ -85,15 +84,6 @@ export function MaintenanceSettingsView(props: {
     scan();
   };
 
-  const remove = (sessionId: string): void => {
-    setSessions((current) => current?.filter((session) => session.sessionId !== sessionId));
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      next.delete(sessionId);
-      return next;
-    });
-  };
-
   const toggle = (sessionId: string, selected: boolean): void => {
     setSelectedIds((current) => {
       const next = new Set(current);
@@ -145,18 +135,6 @@ export function MaintenanceSettingsView(props: {
           contentClassName="pstack-maintenance-content"
         >
           <div className="pstack-maintenance-body">
-            <div className="pstack-maintenance-toolbar">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={scanning || queuing}
-                onClick={scan}
-              >
-                {scanning ? t("maintenanceScanning") : t("maintenanceScan")}
-              </Button>
-            </div>
-
             <div className="pstack-maintenance-scroll">
               {error === undefined ? null : (
                 <p className="pstack-setting-description" role="alert">
@@ -202,12 +180,7 @@ export function MaintenanceSettingsView(props: {
                             key={session.sessionId}
                           >
                             <div className="pstack-maintenance-copy">
-                              <Checkbox
-                                checked={selectedIds.has(session.sessionId)}
-                                label={session.title}
-                                className="pstack-maintenance-check"
-                                onChange={(selected) => toggle(session.sessionId, selected)}
-                              />
+                              <div className="pstack-maintenance-title">{session.title}</div>
                               <div className="pstack-maintenance-meta">
                                 {session.enabled
                                   ? t("maintenanceEnabled")
@@ -216,14 +189,12 @@ export function MaintenanceSettingsView(props: {
                                 {t("maintenanceEventCount", { count: session.eventCount })}
                               </div>
                             </div>
-                            <IconButton
-                              type="button"
-                              danger
-                              label={t("maintenanceRemove")}
-                              onClick={() => remove(session.sessionId)}
-                            >
-                              <IconTrash size={13} />
-                            </IconButton>
+                            <Checkbox
+                              checked={selectedIds.has(session.sessionId)}
+                              label={session.title}
+                              className="pstack-maintenance-check"
+                              onChange={(selected) => toggle(session.sessionId, selected)}
+                            />
                           </li>
                         ))}
                       </ul>
@@ -233,11 +204,20 @@ export function MaintenanceSettingsView(props: {
               )}
             </div>
 
-            {sessions === undefined || sessions.length === 0 ? null : (
-              <div className="pstack-maintenance-foot">
-                <span className="pstack-setting-description">
-                  {t("maintenanceSelectedCount", { count: selectedCount })}
-                </span>
+            <div className="pstack-maintenance-foot">
+              <span className="pstack-setting-description">
+                {t("maintenanceSelectedCount", { count: selectedCount })}
+              </span>
+              <div className="pstack-maintenance-actions">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={scanning || queuing}
+                  onClick={scan}
+                >
+                  {scanning ? t("maintenanceScanning") : t("maintenanceScan")}
+                </Button>
                 <Button
                   type="button"
                   variant="primary"
@@ -248,7 +228,7 @@ export function MaintenanceSettingsView(props: {
                   {t("maintenanceRepair")}
                 </Button>
               </div>
-            )}
+            </div>
           </div>
         </Modal>
       ) : null}
