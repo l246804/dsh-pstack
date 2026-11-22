@@ -711,11 +711,48 @@ const CSS = `
   align-items: center;
   padding-top: 0;
 }
+.pstack-maintenance-panel {
+  gap: 0;
+  width: min(760px, 100%);
+  max-width: calc(100vw - 48px);
+  height: min(700px, calc(100vh - 2 * max(24px, var(--dsh-frame-overlay-top, 24px))));
+}
+.pstack-maintenance-content {
+  flex: 1;
+  min-height: 0;
+}
+.pstack-maintenance-content > div:last-child {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin-top: 16px;
+  padding: 0 24px 24px;
+  overflow: hidden;
+}
+.pstack-maintenance-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+.pstack-maintenance-toolbar {
+  display: flex;
+  flex: none;
+  justify-content: flex-end;
+  padding-bottom: 8px;
+}
+.pstack-maintenance-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
 .pstack-maintenance-groups {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  padding-top: 16px;
 }
 .pstack-maintenance-group {
   display: flex;
@@ -767,10 +804,13 @@ const CSS = `
 }
 .pstack-maintenance-foot {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding-top: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--dsw-alias-border-l4);
 }
 `;
 

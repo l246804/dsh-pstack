@@ -1,10 +1,10 @@
-/** Maintenance tab for scanning and queueing legacy session repair. */
+/** Repair tab for scanning and queueing legacy session repair. */
 
 import { useMemo, useState, type ReactElement } from "react";
 
-import { Button } from "@deepseek-ai/dsh-client-ui-primitives";
+import { Button, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
 import { IconTrash } from "../components/icons.tsx";
-import { IconButton } from "../components/ui.tsx";
+import { IconButton, Spinner } from "../components/ui.tsx";
 import { messageOf } from "../lib/message.ts";
 import { ensurePstackStyles } from "../lib/styles.ts";
 import type { PstackTranslations } from "../locales/index.ts";
@@ -45,6 +45,7 @@ export function MaintenanceSettingsView(props: {
 }): ReactElement {
   const { api, translations } = props;
   const t = translations.config;
+  const [open, setOpen] = useState(false);
   const [sessions, setSessions] = useState<readonly LegacySessionInfo[] | undefined>();
   const [failures, setFailures] = useState<readonly MaintenanceFailure[]>([]);
   const [scanning, setScanning] = useState(false);
@@ -74,6 +75,11 @@ export function MaintenanceSettingsView(props: {
       .finally(() => setScanning(false));
   };
 
+  const openDialog = (): void => {
+    setOpen(true);
+    scan();
+  };
+
   const remove = (sessionId: string): void => {
     setSessions((current) => current?.filter((session) => session.sessionId !== sessionId));
   };
@@ -93,89 +99,130 @@ export function MaintenanceSettingsView(props: {
   };
 
   return (
-    <section className="pstack-setting-list" aria-label={t("maintenanceTitle")}>
-      <div className="pstack-setting-item">
-        <div className="pstack-setting-copy">
-          <div className="pstack-setting-title">{t("maintenanceTitle")}</div>
-          <p className="pstack-setting-description">{t("maintenanceDescription")}</p>
-        </div>
-        <div className="pstack-setting-control">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={scanning || queuing}
-            onClick={scan}
-          >
-            {scanning ? t("maintenanceScanning") : t("maintenanceScan")}
-          </Button>
-        </div>
-      </div>
-
-      {error === undefined ? null : (
-        <p className="pstack-setting-description" role="alert">
-          {error}
-        </p>
-      )}
-      {notice === undefined ? null : (
-        <p className="pstack-setting-description" role="status">
-          {notice}
-        </p>
-      )}
-      {failures.length === 0 ? null : (
-        <p className="pstack-setting-description" role="alert">
-          {t("maintenanceScanFailed", {
-            message: failures
-              .map((failure) => `${failure.sessionId}: ${failure.message}`)
-              .join("; "),
-          })}
-        </p>
-      )}
-
-      {sessions === undefined ? null : sessions.length === 0 ? (
-        <p className="pstack-setting-description">{t("maintenanceScanEmpty")}</p>
-      ) : (
-        <>
-          <div className="pstack-maintenance-groups">
-            {groups.map((group) => (
-              <div className="pstack-maintenance-group" key={group.workspace}>
-                <h4 className="pstack-maintenance-group-title">
-                  {group.workspace === "" ? t("maintenanceWorkspaceUnknown") : group.workspace}
-                </h4>
-                <ul className="pstack-maintenance-list">
-                  {group.sessions.map((session) => (
-                    <li className="pstack-maintenance-item" key={session.sessionId}>
-                      <div className="pstack-maintenance-copy">
-                        <div className="pstack-maintenance-title">{session.title}</div>
-                        <div className="pstack-maintenance-meta">
-                          {session.enabled ? t("maintenanceEnabled") : t("maintenanceDisabled")}
-                          {" · "}
-                          {t("maintenanceEventCount", { count: session.eventCount })}
-                        </div>
-                      </div>
-                      <IconButton
-                        type="button"
-                        label={t("maintenanceRemove")}
-                        onClick={() => remove(session.sessionId)}
-                      >
-                        <IconTrash size={13} />
-                      </IconButton>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+    <>
+      <section className="pstack-setting-list" aria-label={t("maintenanceTitle")}>
+        <div className="pstack-setting-item">
+          <div className="pstack-setting-copy">
+            <div className="pstack-setting-title">{t("maintenanceTitle")}</div>
+            <p className="pstack-setting-description">{t("maintenanceDescription")}</p>
           </div>
-          <div className="pstack-maintenance-foot">
-            <span className="pstack-setting-description">
-              {t("maintenanceSelectedCount", { count: sessions.length })}
-            </span>
-            <Button type="button" variant="primary" size="sm" disabled={queuing} onClick={repair}>
-              {t("maintenanceRepair")}
+          <div className="pstack-setting-control">
+            <Button type="button" variant="outline" size="sm" onClick={openDialog}>
+              {t("maintenanceOpen")}
             </Button>
           </div>
-        </>
-      )}
-    </section>
+        </div>
+      </section>
+
+      {open ? (
+        <Modal
+          open
+          title={t("maintenanceTitle")}
+          description={t("maintenanceDescription")}
+          closeLabel={translations.common("close")}
+          onClose={() => setOpen(false)}
+          className="pstack-maintenance-panel"
+          contentClassName="pstack-maintenance-content"
+        >
+          <div className="pstack-maintenance-body">
+            <div className="pstack-maintenance-toolbar">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={scanning || queuing}
+                onClick={scan}
+              >
+                {scanning ? t("maintenanceScanning") : t("maintenanceScan")}
+              </Button>
+            </div>
+
+            <div className="pstack-maintenance-scroll">
+              {error === undefined ? null : (
+                <p className="pstack-setting-description" role="alert">
+                  {error}
+                </p>
+              )}
+              {notice === undefined ? null : (
+                <p className="pstack-setting-description" role="status">
+                  {notice}
+                </p>
+              )}
+              {failures.length === 0 ? null : (
+                <p className="pstack-setting-description" role="alert">
+                  {t("maintenanceScanFailed", {
+                    message: failures
+                      .map((failure) => `${failure.sessionId}: ${failure.message}`)
+                      .join("; "),
+                  })}
+                </p>
+              )}
+
+              {scanning && sessions === undefined ? (
+                <div className="pstack-loading">
+                  <Spinner />
+                  <span>{t("maintenanceScanning")}</span>
+                </div>
+              ) : sessions === undefined ? null : sessions.length === 0 ? (
+                <p className="pstack-setting-description">{t("maintenanceScanEmpty")}</p>
+              ) : (
+                <div className="pstack-maintenance-groups">
+                  {groups.map((group) => (
+                    <div className="pstack-maintenance-group" key={group.workspace}>
+                      <h4 className="pstack-maintenance-group-title">
+                        {group.workspace === ""
+                          ? t("maintenanceWorkspaceUnknown")
+                          : group.workspace}
+                      </h4>
+                      <ul className="pstack-maintenance-list">
+                        {group.sessions.map((session) => (
+                          <li className="pstack-maintenance-item" key={session.sessionId}>
+                            <div className="pstack-maintenance-copy">
+                              <div className="pstack-maintenance-title">{session.title}</div>
+                              <div className="pstack-maintenance-meta">
+                                {session.enabled
+                                  ? t("maintenanceEnabled")
+                                  : t("maintenanceDisabled")}
+                                {" · "}
+                                {t("maintenanceEventCount", { count: session.eventCount })}
+                              </div>
+                            </div>
+                            <IconButton
+                              type="button"
+                              danger
+                              label={t("maintenanceRemove")}
+                              onClick={() => remove(session.sessionId)}
+                            >
+                              <IconTrash size={13} />
+                            </IconButton>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {sessions === undefined || sessions.length === 0 ? null : (
+              <div className="pstack-maintenance-foot">
+                <span className="pstack-setting-description">
+                  {t("maintenanceSelectedCount", { count: sessions.length })}
+                </span>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  disabled={queuing}
+                  onClick={repair}
+                >
+                  {t("maintenanceRepair")}
+                </Button>
+              </div>
+            )}
+          </div>
+        </Modal>
+      ) : null}
+    </>
   );
 }

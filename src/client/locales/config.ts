@@ -11,6 +11,7 @@ const en = {
   maintenanceTitle: "Legacy session repair (poteto/mode)",
   maintenanceDescription:
     "Older versions wrote the Poteto switch as a poteto/mode session event. New DSH builds reject this unknown event and refuse to load the session history. Scan, remove any session you want to keep untouched, then repair the rest after restarting DSH.",
+  maintenanceOpen: "Scan and repair",
   maintenanceScan: "Scan sessions",
   maintenanceScanning: "Scanning...",
   maintenanceScanEmpty: "No sessions need repair.",
@@ -39,6 +40,7 @@ const zh = {
   maintenanceTitle: "旧会话修复（poteto/mode）",
   maintenanceDescription:
     "旧版本的 Poteto 开关曾写成 poteto/mode 会话事件。新版 DSH 读到这个未知事件会拒绝加载整份会话历史。扫描后可以移除不想修复的会话，其余会话在重启 DSH 后自动修复。",
+  maintenanceOpen: "扫描并修复",
   maintenanceScan: "扫描会话",
   maintenanceScanning: "扫描中...",
   maintenanceScanEmpty: "没有需要修复的会话。",
