@@ -753,13 +753,57 @@ const CSS = `
   flex-direction: column;
   gap: 8px;
 }
+.pstack-maintenance-group + .pstack-maintenance-group {
+  padding-top: 18px;
+  border-top: 0.5px solid var(--dsw-alias-border-l4);
+}
+.pstack-maintenance-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
 .pstack-maintenance-group-title {
-  margin: 0;
-  color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+.pstack-maintenance-group-label {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 18px;
+}
+.pstack-maintenance-group-name {
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
   font-weight: 600;
   line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pstack-maintenance-group-count {
+  flex: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 18px;
+}
+.pstack-maintenance-group-path {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+.pstack-maintenance-group-path-label {
+  flex: none;
+}
+.pstack-maintenance-group-path-value {
   overflow-wrap: anywhere;
+  font-family: var(--ds-font-family-code);
 }
 .pstack-maintenance-list {
   display: flex;

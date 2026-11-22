@@ -26,12 +26,25 @@ interface WorkspaceGroup {
   readonly sessions: readonly LegacySessionInfo[];
 }
 
+function normalizeWorkspace(workspace: string): string {
+  const value = workspace.trim();
+  if (value === "/" || /^[A-Za-z]:[\\/]$/.test(value)) return value;
+  return value.replace(/[\\/]+$/, "");
+}
+
+function workspaceName(workspace: string): string {
+  const value = normalizeWorkspace(workspace);
+  const index = Math.max(value.lastIndexOf("/"), value.lastIndexOf("\\"));
+  return index >= 0 && index < value.length - 1 ? value.slice(index + 1) : value;
+}
+
 function groupByWorkspace(sessions: readonly LegacySessionInfo[]): readonly WorkspaceGroup[] {
   const groups = new Map<string, LegacySessionInfo[]>();
   for (const session of sessions) {
-    const group = groups.get(session.workspace) ?? [];
+    const workspace = normalizeWorkspace(session.workspace);
+    const group = groups.get(workspace) ?? [];
     group.push(session);
-    groups.set(session.workspace, group);
+    groups.set(workspace, group);
   }
   return [...groups.entries()]
     .map(([workspace, entries]) => ({ workspace, sessions: entries }))
@@ -167,11 +180,34 @@ export function MaintenanceSettingsView(props: {
                 <div className="pstack-maintenance-groups">
                   {groups.map((group) => (
                     <div className="pstack-maintenance-group" key={group.workspace}>
-                      <h4 className="pstack-maintenance-group-title">
-                        {group.workspace === ""
-                          ? t("maintenanceWorkspaceUnknown")
-                          : group.workspace}
-                      </h4>
+                      <div className="pstack-maintenance-group-head">
+                        <div className="pstack-maintenance-group-title">
+                          <span className="pstack-maintenance-group-label">
+                            {t("maintenanceWorkspaceLabel")}
+                          </span>
+                          <span className="pstack-maintenance-group-name">
+                            {group.workspace === ""
+                              ? t("maintenanceWorkspaceUnknown")
+                              : workspaceName(group.workspace)}
+                          </span>
+                        </div>
+                        <span className="pstack-maintenance-group-count">
+                          {t("maintenanceSessionCount", { count: group.sessions.length })}
+                        </span>
+                      </div>
+                      {group.workspace === "" ? null : (
+                        <div className="pstack-maintenance-group-path">
+                          <span className="pstack-maintenance-group-path-label">
+                            {t("maintenanceWorkspacePath")}
+                          </span>
+                          <span
+                            className="pstack-maintenance-group-path-value"
+                            title={group.workspace}
+                          >
+                            {group.workspace}
+                          </span>
+                        </div>
+                      )}
                       <ul className="pstack-maintenance-list">
                         {group.sessions.map((session) => (
                           <li
