@@ -3,10 +3,10 @@
 import { useMemo, useState, type ReactElement } from "react";
 
 import { Button, Checkbox, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
-import { IconInfo } from "../components/icons.tsx";
 import { Spinner } from "../components/ui.tsx";
 import { messageOf } from "../lib/message.ts";
 import { ensurePstackStyles } from "../lib/styles.ts";
+import { showToast } from "../lib/toast.ts";
 import type { PstackTranslations } from "../locales/index.ts";
 import type {
   LegacySessionInfo,
@@ -64,7 +64,7 @@ export function MaintenanceSettingsView(props: {
   const [failures, setFailures] = useState<readonly MaintenanceFailure[]>([]);
   const [scanning, setScanning] = useState(false);
   const [queuing, setQueuing] = useState(false);
-  const [notice, setNotice] = useState<string | undefined>();
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | undefined>();
 
   const groups = useMemo(() => groupByWorkspace(sessions ?? []), [sessions]);
@@ -77,7 +77,6 @@ export function MaintenanceSettingsView(props: {
     setSelectedIds(new Set());
     setFailures([]);
     setError(undefined);
-    setNotice(undefined);
     void api
       .scan()
       .then(
@@ -94,6 +93,7 @@ export function MaintenanceSettingsView(props: {
   };
 
   const openDialog = (): void => {
+    setConfirmOpen(false);
     setOpen(true);
     scan();
   };
@@ -107,17 +107,36 @@ export function MaintenanceSettingsView(props: {
     });
   };
 
-  const repair = (): void => {
+  const requestRepair = (): void => {
+    if (selectedCount === 0) return;
+    setConfirmOpen(true);
+  };
+
+  const confirmRepair = (): void => {
     const selected = sessions?.filter((session) => selectedIds.has(session.sessionId)) ?? [];
-    if (selected.length === 0) return;
+    if (selected.length === 0) {
+      setConfirmOpen(false);
+      return;
+    }
     setQueuing(true);
-    setError(undefined);
-    setNotice(undefined);
     void api
       .queue(selected.map((session) => session.sessionId))
       .then(
-        (result) => setNotice(t("maintenanceQueued", { count: result.queued })),
-        (reason: unknown) => setError(messageOf(reason)),
+        (result) => {
+          setConfirmOpen(false);
+          setOpen(false);
+          showToast({
+            tone: "success",
+            text: t("maintenanceQueued", { count: result.queued }),
+          });
+        },
+        (reason: unknown) => {
+          setConfirmOpen(false);
+          showToast({
+            tone: "error",
+            text: t("maintenanceRepairFailed", { message: messageOf(reason) }),
+          });
+        },
       )
       .finally(() => setQueuing(false));
   };
@@ -144,7 +163,10 @@ export function MaintenanceSettingsView(props: {
           title={t("maintenanceTitle")}
           description={t("maintenanceDescription")}
           closeLabel={translations.common("close")}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            setConfirmOpen(false);
+            setOpen(false);
+          }}
           className="pstack-maintenance-panel"
           contentClassName="pstack-maintenance-content"
         >
@@ -236,13 +258,6 @@ export function MaintenanceSettingsView(props: {
               )}
             </div>
 
-            {notice === undefined ? null : (
-              <div className="pstack-notice pstack-maintenance-notice" role="status">
-                <IconInfo size={14} />
-                <span>{notice}</span>
-              </div>
-            )}
-
             <div className="pstack-maintenance-foot">
               <span className="pstack-setting-description">
                 {t("maintenanceSelectedCount", { count: selectedCount })}
@@ -262,7 +277,7 @@ export function MaintenanceSettingsView(props: {
                   variant="primary"
                   size="sm"
                   disabled={queuing || selectedCount === 0}
-                  onClick={repair}
+                  onClick={requestRepair}
                 >
                   {t("maintenanceRepair")}
                 </Button>
@@ -270,6 +285,35 @@ export function MaintenanceSettingsView(props: {
             </div>
           </div>
         </Modal>
+      ) : null}
+
+      {confirmOpen ? (
+        <Modal
+          open
+          tone="warning"
+          title={t("maintenanceConfirmTitle")}
+          description={t("maintenanceConfirmDescription", { count: selectedCount })}
+          closeLabel={translations.common("close")}
+          onClose={() => {
+            if (!queuing) setConfirmOpen(false);
+          }}
+          className="pstack-maintenance-confirm"
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={queuing}
+                onClick={() => setConfirmOpen(false)}
+              >
+                {translations.common("cancel")}
+              </Button>
+              <Button type="button" variant="primary" disabled={queuing} onClick={confirmRepair}>
+                {queuing ? t("maintenanceConfirming") : t("maintenanceConfirm")}
+              </Button>
+            </>
+          }
+        />
       ) : null}
     </>
   );
