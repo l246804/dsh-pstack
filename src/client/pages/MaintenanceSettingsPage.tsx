@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type ReactElement } from "react";
 
-import { Button, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
+import { Button, Checkbox, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
 import { IconTrash } from "../components/icons.tsx";
 import { IconButton, Spinner } from "../components/ui.tsx";
 import { messageOf } from "../lib/message.ts";
@@ -47,6 +47,7 @@ export function MaintenanceSettingsView(props: {
   const t = translations.config;
   const [open, setOpen] = useState(false);
   const [sessions, setSessions] = useState<readonly LegacySessionInfo[] | undefined>();
+  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [failures, setFailures] = useState<readonly MaintenanceFailure[]>([]);
   const [scanning, setScanning] = useState(false);
   const [queuing, setQueuing] = useState(false);
@@ -54,10 +55,13 @@ export function MaintenanceSettingsView(props: {
   const [error, setError] = useState<string | undefined>();
 
   const groups = useMemo(() => groupByWorkspace(sessions ?? []), [sessions]);
+  const selectedCount =
+    sessions?.filter((session) => selectedIds.has(session.sessionId)).length ?? 0;
 
   const scan = (): void => {
     setScanning(true);
     setSessions(undefined);
+    setSelectedIds(new Set());
     setFailures([]);
     setError(undefined);
     setNotice(undefined);
@@ -66,6 +70,7 @@ export function MaintenanceSettingsView(props: {
       .then(
         (result) => {
           setSessions(result.sessions);
+          setSelectedIds(new Set(result.sessions.map((session) => session.sessionId)));
           setFailures(result.failures);
         },
         (reason: unknown) => {
@@ -82,15 +87,30 @@ export function MaintenanceSettingsView(props: {
 
   const remove = (sessionId: string): void => {
     setSessions((current) => current?.filter((session) => session.sessionId !== sessionId));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.delete(sessionId);
+      return next;
+    });
+  };
+
+  const toggle = (sessionId: string, selected: boolean): void => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (selected) next.add(sessionId);
+      else next.delete(sessionId);
+      return next;
+    });
   };
 
   const repair = (): void => {
-    if (sessions === undefined || sessions.length === 0) return;
+    const selected = sessions?.filter((session) => selectedIds.has(session.sessionId)) ?? [];
+    if (selected.length === 0) return;
     setQueuing(true);
     setError(undefined);
     setNotice(undefined);
     void api
-      .queue(sessions.map((session) => session.sessionId))
+      .queue(selected.map((session) => session.sessionId))
       .then(
         (result) => setNotice(t("maintenanceQueued", { count: result.queued })),
         (reason: unknown) => setError(messageOf(reason)),
@@ -176,9 +196,18 @@ export function MaintenanceSettingsView(props: {
                       </h4>
                       <ul className="pstack-maintenance-list">
                         {group.sessions.map((session) => (
-                          <li className="pstack-maintenance-item" key={session.sessionId}>
+                          <li
+                            className="pstack-maintenance-item"
+                            data-selected={selectedIds.has(session.sessionId)}
+                            key={session.sessionId}
+                          >
                             <div className="pstack-maintenance-copy">
-                              <div className="pstack-maintenance-title">{session.title}</div>
+                              <Checkbox
+                                checked={selectedIds.has(session.sessionId)}
+                                label={session.title}
+                                className="pstack-maintenance-check"
+                                onChange={(selected) => toggle(session.sessionId, selected)}
+                              />
                               <div className="pstack-maintenance-meta">
                                 {session.enabled
                                   ? t("maintenanceEnabled")
@@ -207,13 +236,13 @@ export function MaintenanceSettingsView(props: {
             {sessions === undefined || sessions.length === 0 ? null : (
               <div className="pstack-maintenance-foot">
                 <span className="pstack-setting-description">
-                  {t("maintenanceSelectedCount", { count: sessions.length })}
+                  {t("maintenanceSelectedCount", { count: selectedCount })}
                 </span>
                 <Button
                   type="button"
                   variant="primary"
                   size="sm"
-                  disabled={queuing}
+                  disabled={queuing || selectedCount === 0}
                   onClick={repair}
                 >
                   {t("maintenanceRepair")}

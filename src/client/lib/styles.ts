@@ -784,14 +784,22 @@ const CSS = `
   border-radius: var(--dsw-radius-md);
   background: var(--dsw-alias-settings-card-fill);
 }
+.pstack-maintenance-item[data-selected="false"] {
+  opacity: 0.62;
+}
 .pstack-maintenance-copy {
   flex: 1;
   min-width: 0;
 }
-.pstack-maintenance-title {
+.pstack-maintenance-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--dsw-alias-label-primary);
   font-size: 13px;
   line-height: 20px;
+}
+.pstack-maintenance-check > span {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
