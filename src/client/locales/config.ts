@@ -14,7 +14,8 @@ const en = {
   maintenanceOpen: "Scan and repair",
   maintenanceScan: "Scan sessions",
   maintenanceScanning: "Scanning...",
-  maintenanceScanEmpty: "No sessions need repair.",
+  maintenanceScanEmpty:
+    "No sessions need repair. Sessions already in the queue are handled after DSH restarts.",
   maintenanceScanFailed: "Could not scan sessions: {message}",
   maintenanceSelectedCount: "{count} selected",
   maintenanceRepair: "Repair selected sessions",
@@ -50,7 +51,7 @@ const zh = {
   maintenanceOpen: "扫描并修复",
   maintenanceScan: "扫描会话",
   maintenanceScanning: "扫描中...",
-  maintenanceScanEmpty: "没有需要修复的会话。",
+  maintenanceScanEmpty: "没有需要修复的会话。已加入队列的会话会在重启 DSH 后处理。",
   maintenanceScanFailed: "扫描会话失败：{message}",
   maintenanceSelectedCount: "已选择 {count} 个",
   maintenanceRepair: "修复选中会话",

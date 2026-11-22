@@ -25,10 +25,11 @@ import {
 import { createPotetoProjectionDefinition } from "./poteto/projection.ts";
 import {
   clearRepairQueue,
+  enqueueRepair,
   executeRepairQueue,
+  queuedSessionIds,
   readRepairQueue,
   scanLegacySessions as scanLegacySessionRefs,
-  writeRepairQueue,
   type StoredSessionRef,
 } from "./poteto/maintenance.ts";
 import type { MaintenanceScanResult, RepairOutcome } from "./poteto/maintenance-types.ts";
@@ -194,7 +195,17 @@ export class PotetoModeService extends TypertRemoteService {
     const sources = (await this.storedSessionRefs()).filter(
       (source) => this.ctx.agents.get(source.sessionId as SessionId) === undefined,
     );
-    return scanLegacySessionRefs(sources);
+    const result = scanLegacySessionRefs(sources);
+    let queued: ReadonlySet<string>;
+    try {
+      queued = queuedSessionIds();
+    } catch {
+      queued = new Set();
+    }
+    return {
+      sessions: result.sessions.filter((session) => !queued.has(session.sessionId)),
+      failures: result.failures,
+    };
   }
 
   /** Queue selected Session ids for repair on the next DSH start. */
@@ -204,7 +215,7 @@ export class PotetoModeService extends TypertRemoteService {
         throw new Error(`session ${sessionId} is live`);
       }
     }
-    return { queued: writeRepairQueue(sessionIds) };
+    return { queued: enqueueRepair(sessionIds) };
   }
 
   /** Return the one-shot result produced by the last restart. */

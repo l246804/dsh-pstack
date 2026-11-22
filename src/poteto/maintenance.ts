@@ -154,6 +154,22 @@ export function writeRepairQueue(
   return unique.length;
 }
 
+/** Append selected Session ids without dropping sessions queued earlier. */
+export function enqueueRepair(
+  sessionIds: readonly string[],
+  path: string = repairQueuePath(),
+): number {
+  const selected = [...new Set(sessionIds.filter((id) => id.trim() !== ""))];
+  const existing = readRepairQueue(path)?.sessionIds ?? [];
+  writeRepairQueue([...existing, ...selected], path);
+  return selected.length;
+}
+
+/** Session ids already waiting for the next DSH start. */
+export function queuedSessionIds(path: string = repairQueuePath()): ReadonlySet<string> {
+  return new Set(readRepairQueue(path)?.sessionIds ?? []);
+}
+
 /** Remove the consumed repair queue. */
 export function clearRepairQueue(path: string = repairQueuePath()): void {
   rmSync(path, { force: true });
