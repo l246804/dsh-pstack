@@ -47,7 +47,6 @@ export interface StoredSessionRef {
 /** Result of rewriting one Session's log and sidecar record. */
 export interface LegacyRepairResult {
   readonly changed: boolean;
-  readonly enabled?: boolean;
   readonly backupPath?: string;
   readonly previousRecord?: { readonly enabled: boolean };
 }
@@ -56,7 +55,6 @@ type StoredEvent = Record<string, unknown>;
 
 interface ParsedLog {
   readonly headerLine: string;
-  readonly eventLines: readonly string[];
   readonly events: readonly StoredEvent[];
 }
 
@@ -80,7 +78,7 @@ function parseLog(path: string): ParsedLog {
       throw new Error(`invalid event at line ${index + 2}: ${String(error)}`);
     }
   });
-  return { headerLine, eventLines, events };
+  return { headerLine, events };
 }
 
 function isLegacyEvent(event: StoredEvent): boolean {
@@ -251,7 +249,7 @@ export async function repairLegacySession(
     await restoreSidecar(table, source.sessionId, previousRecord);
     throw error;
   }
-  return { changed: true, enabled, backupPath, previousRecord };
+  return { changed: true, backupPath, previousRecord };
 }
 
 /** Host capabilities needed to execute one queued repair run. */
