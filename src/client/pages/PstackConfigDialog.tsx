@@ -95,12 +95,6 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
               panelId: `${tabsId}-general-panel`,
             },
             {
-              value: "maintenance",
-              label: translations.config("tabMaintenance"),
-              id: `${tabsId}-maintenance`,
-              panelId: `${tabsId}-maintenance-panel`,
-            },
-            {
               value: "plugins",
               label: translations.config("tabPlugins"),
               id: `${tabsId}-plugins`,
@@ -111,6 +105,12 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
               label: translations.config("tabRoles"),
               id: `${tabsId}-roles`,
               panelId: `${tabsId}-roles-panel`,
+            },
+            {
+              value: "maintenance",
+              label: translations.config("tabMaintenance"),
+              id: `${tabsId}-maintenance`,
+              panelId: `${tabsId}-maintenance-panel`,
             },
           ]}
         />
@@ -124,16 +124,6 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
             aria-labelledby={`${tabsId}-general`}
           >
             <GeneralSettingsView api={potetoApi} translations={translations} />
-          </div>
-        ) : null}
-        {visited.has("maintenance") ? (
-          <div
-            hidden={tab !== "maintenance"}
-            id={`${tabsId}-maintenance-panel`}
-            role="tabpanel"
-            aria-labelledby={`${tabsId}-maintenance`}
-          >
-            <MaintenanceSettingsView api={maintenanceApi} translations={translations} />
           </div>
         ) : null}
         {visited.has("plugins") ? (
@@ -158,6 +148,16 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
               translations={translations}
               onDirtyChange={setRolesDirty}
             />
+          </div>
+        ) : null}
+        {visited.has("maintenance") ? (
+          <div
+            hidden={tab !== "maintenance"}
+            id={`${tabsId}-maintenance-panel`}
+            role="tabpanel"
+            aria-labelledby={`${tabsId}-maintenance`}
+          >
+            <MaintenanceSettingsView api={maintenanceApi} translations={translations} />
           </div>
         ) : null}
       </main>
