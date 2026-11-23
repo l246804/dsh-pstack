@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-16
 Scope: changes/**, scripts/**, .github/workflows/release.yml, package.json, docs/architecture.md, docs/decisions/**
 Implemented-by: commit:0d5b722
-Review: 2026-11-17
+Review: 2026-11-22
 
 ## 背景
 

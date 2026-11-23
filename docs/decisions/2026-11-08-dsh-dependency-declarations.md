@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-08
 Scope: package.json, pnpm-workspace.yaml, pnpm-lock.yaml, vite.config.ts, docs/architecture.md, tests/harness-types.test.ts, docs/decisions/**
 Implemented-by: commit:670c9028e01cc00f1adf5cdfd516dce18b6283cc
-Review: 2026-11-08
+Review: 2026-11-22
 
 ## 背景
 

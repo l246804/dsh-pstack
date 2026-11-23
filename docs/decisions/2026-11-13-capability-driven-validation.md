@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-13
 Scope: playground/**, docs/decisions/**
 Implemented-by: commit:99e6036
-Review: 2026-11-15
+Review: 2026-11-22
 
 ## 背景
 

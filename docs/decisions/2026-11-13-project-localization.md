@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-13
 Scope: README.md, README.zh.md, docs/**, port/**, playground/**, scripts/release-compatibility.ts, bump.config.ts
 Implemented-by: commit:e0bb1d6
-Review: 2026-11-15
+Review: 2026-11-22
 
 ## 背景
 

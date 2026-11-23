@@ -55,30 +55,16 @@ describe("resolvePotetoEnabled", () => {
 });
 
 describe("shouldSeedPotetoDefault", () => {
-  it("seeds an explicit on selection for a default-on capable session", () => {
-    expect(
-      shouldSeedPotetoDefault({ agentPreset: "standard", selected: undefined, byDefault: true }),
-    ).toBe(true);
-  });
-
-  it("does not seed when the default is off", () => {
-    expect(
-      shouldSeedPotetoDefault({ agentPreset: "standard", selected: undefined, byDefault: false }),
-    ).toBe(false);
+  it("seeds a selection for a capable session that has none, whatever the default", () => {
+    expect(shouldSeedPotetoDefault({ agentPreset: "standard", selected: undefined })).toBe(true);
   });
 
   it("does not overwrite an explicit selection", () => {
-    expect(
-      shouldSeedPotetoDefault({ agentPreset: "standard", selected: false, byDefault: true }),
-    ).toBe(false);
-    expect(
-      shouldSeedPotetoDefault({ agentPreset: "standard", selected: true, byDefault: true }),
-    ).toBe(false);
+    expect(shouldSeedPotetoDefault({ agentPreset: "standard", selected: false })).toBe(false);
+    expect(shouldSeedPotetoDefault({ agentPreset: "standard", selected: true })).toBe(false);
   });
 
   it("does not seed under the Minimal preset", () => {
-    expect(
-      shouldSeedPotetoDefault({ agentPreset: "minimal", selected: undefined, byDefault: true }),
-    ).toBe(false);
+    expect(shouldSeedPotetoDefault({ agentPreset: "minimal", selected: undefined })).toBe(false);
   });
 });

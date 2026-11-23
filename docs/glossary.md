@@ -30,6 +30,10 @@ Role 的路由基数由 `shape` 描述：
 
 DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会话能力。DSH 的根 preset 面向用户会话；本插件只随包提供子代理 preset（`poteto-agent`、`comment-sicko`、`readonly`），用户会话的 Poteto 工作流改由会话级开关启用。`pstack_subagent` 的 `agent_preset` 选择 preset 类别；模型路由由调用方读取角色文件后通过 `provider`/`model`/`reasoning_effort` 传入，两者是正交配置。
 
+## Session sidecar（会话 sidecar）
+
+插件拥有的按 Session 维度持久化、但不进入 Session 事件日志的 Host 状态。本插件的 Poteto 开关用 `ctx.storageDomain` 的 `pstack` domain 保存；它不参与模型历史重放，也不改变 Session 日志的读取契约。
+
 ## Generated tree（生成树）
 
 由 `native/scripts/generate-pstack.ts` 从钉定的已发布上游树和 `native/dsh.md` 生成的 `native/pstack/` 目录，是全仓唯一生成树；构建时复制到 `dist/pstack/`，并把适配答案盖章为 `src/dsh.md`。
@@ -55,3 +59,7 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 ## Upstream pin（上游钉定）
 
 `native/upstream.lock.json` 记录当前钉定的已发布上游 pstack 版本与对应 commit，由 `native/scripts/fetch-upstream.ts` 维护；`native/upstream/` 是钉定的树，不入库，由 `native/scripts/fetch-upstream.ts` 按 lock 重建。上游 monorepo 没有 tag，发布版本以把 `plugin.json` 改到目标版本的 bump commit 为边界。它不是 playground 的测试基线，也不是 README 兼容表的数据源；DSH 兼容范围以 `package.json` 的 `engines.dsh` 为准，兼容表由 `scripts/release-compatibility.ts` 直接维护。
+
+## Repair queue（修复队列）
+
+`$DSH_HOME/pstack-repair.json` 保存等待下次启动处理的 Session id。用户在配置弹窗的修复页确认后追加写入；DSH 启动时读取、逐个修复并删除该文件。它是一次性迁移队列，不是 Session 日志，也不是 storageDomain sidecar。

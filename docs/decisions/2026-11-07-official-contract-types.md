@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-07
 Scope: src/**, tests/**, package.json, pnpm-workspace.yaml, docs/architecture.md
 Implemented-by: commit:ff64abe0a068157cc1f0041ba68fe5db32a8eba4
-Review: 2026-11-08
+Review: 2026-11-22
 
 ## 背景
 

@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-17
 Scope: README.md, README.zh.md, package.json, bump.config.ts, changes/AGENTS.md, scripts/release-compatibility.ts, port/**, docs/**, tests/release-compatibility.test.ts, tests/playground-execution.test.ts, upstream/cursor-plugins
 Implemented-by: commit:fcfd343
-Review: 2026-11-17
+Review: 2026-11-22
 
 ## 背景
 

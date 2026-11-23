@@ -42,6 +42,10 @@ describe("Harness contract ownership", () => {
       expect(manifest.peerDependencies?.[name]).toBe("catalog:runtime");
     }
     expect(manifest.dependencies?.["@deepseek-ai/schemastery"]).toBe("catalog:runtime");
+    expect(manifest.devDependencies?.["@deepseek-ai/dsh-session-persistence"]).toBe(
+      "catalog:types",
+    );
+    expect(manifest.devDependencies?.["@deepseek-ai/dsh-storage-domain"]).toBe("catalog:types");
     expect(manifest.peerDependencies?.["react"]).toBeUndefined();
     expect(manifest.dependencies?.["react"]).toBeUndefined();
   });

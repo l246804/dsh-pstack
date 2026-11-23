@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-13
 Scope: src/**, playground/**, tests/**, scripts/**, tsconfig.json, playground/tsconfig.json, docs/decisions/**
 Implemented-by: commit:f613f24
-Review: 2026-11-15
+Review: 2026-11-22
 
 ## 背景
 

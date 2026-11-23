@@ -14,6 +14,7 @@ import type {
 import type { TypertContribution } from "@deepseek-ai/dsh-typert-registry";
 
 import type { CatalogueResult } from "../models.ts";
+import { pstackPotetoMaintenanceRemote } from "../poteto/maintenance-remote.ts";
 import { pstackPotetoRemote } from "../poteto/remote.ts";
 import { REMOTE_PACKAGE, codec, directMethod, parameter } from "../lib/typert-method.ts";
 import { type BudgetApplyRequest, parseBudgetApplyRequest } from "./budget.ts";
@@ -93,10 +94,15 @@ export const pstackRolesRemote: TypertRemoteInfo = {
 /** One Client mount carrying both pstack Remote namespaces. */
 export const pstackClientRemote: TypertRemoteInfo = {
   package: REMOTE_PACKAGE,
-  descriptors: [...pstackRolesRemote.descriptors, ...pstackPotetoRemote.descriptors],
+  descriptors: [
+    ...pstackRolesRemote.descriptors,
+    ...pstackPotetoRemote.descriptors,
+    ...pstackPotetoMaintenanceRemote.descriptors,
+  ],
   methods: {
     ...pstackRolesRemote.methods,
     ...pstackPotetoRemote.methods,
+    ...pstackPotetoMaintenanceRemote.methods,
   } as TypertRemoteInfo["methods"],
 };
 

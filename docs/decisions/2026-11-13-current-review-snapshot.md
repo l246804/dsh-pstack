@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-13
 Scope: playground/harness/cli/collect.ts, playground/harness/lib/review-snapshot.ts, playground/harness/cli/run-batch.ts, playground/harness/cli/run-case.ts, playground/AGENTS.md, playground/docs/workflow.md, playground/docs/evidence-analysis.md, playground/evidence/runs/**
 Implemented-by: commit:ef01e56
-Review: 2026-11-13
+Review: 2026-11-22
 
 ## 背景
 

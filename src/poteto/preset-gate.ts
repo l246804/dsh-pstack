@@ -28,15 +28,13 @@ export function resolvePotetoEnabled(input: {
 }
 
 /**
- * Whether a new Session should record an explicit on selection from the global
- * default. Seeding the selection makes the saved value match what
- * {@link resolvePotetoEnabled} already reports, so the client projection and the
- * running session agree without a default lookup on the browser side.
+ * Whether a new Session should record its resolved default as an explicit
+ * selection. Every capable Session gets one at creation, so a later change to
+ * the global default cannot silently flip an existing Session.
  */
 export function shouldSeedPotetoDefault(input: {
   readonly agentPreset: string | undefined;
   readonly selected: boolean | undefined;
-  readonly byDefault: boolean;
 }): boolean {
-  return potetoSupportsPreset(input.agentPreset) && input.selected === undefined && input.byDefault;
+  return potetoSupportsPreset(input.agentPreset) && input.selected === undefined;
 }

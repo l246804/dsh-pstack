@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-07
 Scope: AGENTS.md, pnpm-workspace.yaml, pnpm-lock.yaml, package.json, tests/**, docs/decisions/**
 Implemented-by: commit:ea63839ce3a1cfddeb4564b3cdb0a204df58a553
-Review: 2026-11-08
+Review: 2026-11-22
 
 ## 背景
 

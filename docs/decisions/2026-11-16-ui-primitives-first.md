@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-16
 Scope: src/client/**, tests/**, vite.config.ts, docs/decisions/**
 Implemented-by: commit:c9f76c3
-Review: 2026-11-17
+Review: 2026-11-22
 
 ## 背景
 

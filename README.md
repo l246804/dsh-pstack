@@ -87,7 +87,11 @@ Use the plugin UI to set workflow defaults, enable related plugins, and route ea
 
    ![Role models](./assets/plugin-roles.png)
 
-5. In a Session, open the model and reasoning menu. Turn on **Poteto workflow** and **Use Agent Teams** independently. Both work under any preset.
+5. Open **Repair** for maintenance actions that bring older Sessions up to date after an upgrade.
+
+   ![Repair tab](./assets/plugin-repair.png)
+
+6. In a Session, open the model and reasoning menu. Turn on **Poteto workflow** and **Use Agent Teams** independently. The Poteto workflow works under any preset except the built-in Minimal preset.
 
    ![Session workflow switches](./assets/session-workflow-switches.png)
 
@@ -127,7 +131,7 @@ Use pstack skills to start workflows directly from a Session.
 
 ### 🎛️ Workflow switches
 
-The Poteto workflow and Agent Teams collaboration are independent switches, and you can turn on both in one Session. They work under any preset.
+The Poteto workflow and Agent Teams collaboration are independent switches, and you can turn on both in one Session. The Poteto workflow works under any preset except the built-in Minimal preset.
 
 - **Poteto workflow** keeps the poteto-mode rules in the system prompt on every turn.
 - **Use Agent Teams** makes `pstack_subagent` start a teammate, so pstack delegation can track shared work on the Team board.
@@ -235,7 +239,7 @@ Choose a release by its declared DSH range. Each range has its own table of rele
 
 | dsh-pstack release | pstack version |
 |---|---|
-| `0.5.0` | `0.15.43` |
+| `0.5.2` | `0.15.43` |
 
 **DSH `>=0.2.2-rc.1`**
 

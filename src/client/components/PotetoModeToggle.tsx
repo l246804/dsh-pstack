@@ -62,16 +62,32 @@ export function PotetoModeToggle(
   props: PotetoModeToggleInjected &
     Pick<PropsRuntime<"conversation.input.model.options">, "useProjection">,
 ): ReactElement | null {
-  const { sessionId, selectMode, t, useProjection } = props;
-  // Read the saved selection from the Session projection. The wire view ships it
-  // with the snapshot, so the first paint is the real value instead of a false
-  // initial state that flips after an async status call.
-  const mode = useProjection("potetoMode");
+  const { sessionId, readMode, selectMode, t, useProjection } = props;
+  // The projection carries the first-paint snapshot from the storage sidecar.
+  // Live changes update local state and the shared browser event.
+  const projected = useProjection("potetoMode");
+  const [mode, setMode] = useState<boolean | undefined>(projected?.enabled);
   const [pending, setPending] = useState(false);
 
   useEffect(() => {
     ensureStyle();
-  }, []);
+    let live = true;
+    void readMode().then(
+      (value) => {
+        if (live) setMode(value);
+      },
+      () => undefined,
+    );
+    const onChange = (event: Event): void => {
+      const detail = (event as CustomEvent<{ sessionId: string; enabled: boolean }>).detail;
+      if (detail.sessionId === sessionId) setMode(detail.enabled);
+    };
+    window.addEventListener(POTETO_MODE_EVENT, onChange);
+    return () => {
+      live = false;
+      window.removeEventListener(POTETO_MODE_EVENT, onChange);
+    };
+  }, [readMode, sessionId]);
 
   if (mode === undefined) return null;
 
@@ -80,6 +96,7 @@ export function PotetoModeToggle(
     void selectMode(next)
       .then((failure) => {
         if (failure === null) {
+          setMode(next);
           window.dispatchEvent(
             new CustomEvent(POTETO_MODE_EVENT, { detail: { sessionId, enabled: next } }),
           );
@@ -118,7 +135,7 @@ export function PotetoModeToggle(
       </span>
       <Switch
         className="pstack-poteto-switch"
-        checked={mode.enabled}
+        checked={mode}
         disabled={pending}
         label={t("label")}
         onChange={select}

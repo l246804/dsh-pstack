@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-13
 Scope: playground/harness/lib/env.ts, playground/harness/cli/prepare.ts, playground/harness/cli/run-case.ts, playground/scenarios/capabilities/, playground/AGENTS.md, playground/docs/worker.md
 Implemented-by: commit:7d7ba2f
-Review: 2026-11-13
+Review: 2026-11-22
 
 ## 背景
 

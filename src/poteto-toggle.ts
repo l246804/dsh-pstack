@@ -7,10 +7,11 @@ import type {} from "@deepseek-ai/dsh-agent-team";
 import type { AgentPresetRegistry } from "@deepseek-ai/dsh-agent-preset-registry";
 import type { ConfigEditor } from "@deepseek-ai/dsh-config-editor";
 import type { SessionId } from "@deepseek-ai/dsh-session";
+import type {} from "@deepseek-ai/dsh-session-persistence";
 import { createUserMessage } from "@deepseek-ai/dsh-llm";
 import type {} from "@deepseek-ai/dsh-agent-instructions";
-import type { ProjectionHandle } from "@deepseek-ai/dsh-session-projection";
 import { renderSkillContent } from "@deepseek-ai/dsh-skill";
+import type { Domain } from "@deepseek-ai/dsh-storage-domain";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
 import type {} from "@deepseek-ai/dsh-tools";
 import type {} from "@deepseek-ai/dsh-system-prompt";
@@ -21,7 +22,24 @@ import {
   resolvePotetoEnabled,
   shouldSeedPotetoDefault,
 } from "./poteto/preset-gate.ts";
-import { potetoProjectionDefinition, type PotetoProjectionState } from "./poteto/projection.ts";
+import { createPotetoProjectionDefinition } from "./poteto/projection.ts";
+import {
+  clearRepairQueue,
+  enqueueRepair,
+  executeRepairQueue,
+  queuedSessionIds,
+  readRepairQueue,
+  scanLegacySessions as scanLegacySessionRefs,
+  writeRepairQueue,
+  type StoredSessionRef,
+} from "./poteto/maintenance.ts";
+import type { MaintenanceScanResult, RepairOutcome } from "./poteto/maintenance-types.ts";
+import {
+  potetoDomainSpec,
+  readPotetoMode,
+  writePotetoMode,
+  type PotetoModeTable,
+} from "./poteto/storage.ts";
 import { POTETO_SERVICE } from "./poteto/remote.ts";
 import { readSettings, writeSettings } from "./poteto/settings.ts";
 
@@ -39,9 +57,22 @@ function writeDefaultEnabled(enabled: boolean): void {
   writeSettings({ version: 1, potetoDefault: enabled });
 }
 
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** Toggle poteto workflow for one Session. */
 export class PotetoModeService extends TypertRemoteService {
-  static inject = ["agents", "skills", "sessions", "sessionProjections", "systemPrompt", "typert"];
+  static inject = [
+    "agents",
+    "skills",
+    "sessions",
+    "sessionPersistence",
+    "sessionProjections",
+    "storageDomain",
+    "systemPrompt",
+    "typert",
+  ];
 
   private readonly lastUserMessage = new WeakMap<Agent, string>();
   private readonly lifts = new WeakMap<Agent, Array<() => void>>();
@@ -50,7 +81,9 @@ export class PotetoModeService extends TypertRemoteService {
   private readonly seededDefaults = new WeakSet<Agent>();
   private defaultEnabled = false;
   private sectionText = "";
-  private projection!: ProjectionHandle<PotetoProjectionState>;
+  private domain!: Domain<typeof potetoDomainSpec>;
+  private modeTable!: PotetoModeTable;
+  private repairOutcome: RepairOutcome | undefined;
 
   constructor(ctx: Context) {
     super(ctx, POTETO_SERVICE);
@@ -59,7 +92,19 @@ export class PotetoModeService extends TypertRemoteService {
   protected async [Service.init](): Promise<void> {
     const settings = readSettings();
     this.defaultEnabled = settings.potetoDefault;
-    this.projection = await this.ctx.sessionProjections.register(potetoProjectionDefinition);
+    this.domain = await this.ctx.storageDomain.open(potetoDomainSpec);
+    this.modeTable = this.domain.table("poteto_modes");
+    this.ctx.effect(() => () => this.domain.close(), "pstack.poteto-toggle.domain");
+    this.repairOutcome = await this.processRepairQueue();
+    await this.ctx.sessionProjections.register(
+      createPotetoProjectionDefinition((header) =>
+        resolvePotetoEnabled({
+          agentPreset: header.agentPreset,
+          selected: readPotetoMode(this.modeTable, header.id),
+          byDefault: this.defaultEnabled,
+        }),
+      ),
+    );
     const skill = await this.ctx.skills.get("poteto-mode", {});
     if (skill === undefined) throw new Error("poteto-mode skill is not available");
     this.sectionText = [
@@ -132,7 +177,7 @@ export class PotetoModeService extends TypertRemoteService {
   isEnabledFor(agent: Agent): boolean {
     return resolvePotetoEnabled({
       agentPreset: this.presetOf(agent),
-      selected: this.projection.stateOf(agent.session).enabled,
+      selected: readPotetoMode(this.modeTable, agent.session.id),
       byDefault: this.defaultEnabled,
     });
   }
@@ -146,7 +191,107 @@ export class PotetoModeService extends TypertRemoteService {
   /** Read the saved switch for one Session id. */
   status(sessionId: string): { enabled: boolean } {
     const agent = this.ctx.agents.get(sessionId as SessionId);
-    return { enabled: agent === undefined ? this.defaultEnabled : this.isEnabledFor(agent) };
+    const selected = readPotetoMode(this.modeTable, sessionId);
+    return {
+      enabled: agent === undefined ? (selected ?? this.defaultEnabled) : this.isEnabledFor(agent),
+    };
+  }
+
+  /** Scan stored logs for Sessions that still carry the retired poteto/mode event. */
+  async scanLegacySessions(): Promise<MaintenanceScanResult> {
+    const sources = (await this.storedSessionRefs()).filter(
+      (source) => this.ctx.agents.get(source.sessionId as SessionId) === undefined,
+    );
+    const result = scanLegacySessionRefs(sources);
+    let queued: ReadonlySet<string>;
+    try {
+      queued = queuedSessionIds();
+    } catch {
+      queued = new Set();
+    }
+    return {
+      sessions: result.sessions.filter((session) => !queued.has(session.sessionId)),
+      failures: result.failures,
+    };
+  }
+
+  /** Queue selected Session ids for repair on the next DSH start. */
+  queueLegacyRepair(sessionIds: readonly string[]): { queued: number } {
+    for (const sessionId of sessionIds) {
+      if (this.ctx.agents.get(sessionId as SessionId) !== undefined) {
+        throw new Error(`session ${sessionId} is live`);
+      }
+    }
+    return { queued: enqueueRepair(sessionIds) };
+  }
+
+  /** Return the one-shot result produced by the last restart. */
+  consumeLegacyRepairResult(): RepairOutcome | null {
+    const result = this.repairOutcome;
+    this.repairOutcome = undefined;
+    return result ?? null;
+  }
+
+  private async storedSessionRefs(): Promise<StoredSessionRef[]> {
+    const snapshots = await this.ctx.sessionPersistence.list();
+    return snapshots.flatMap((snapshot) => {
+      const logPath = snapshot.location?.path;
+      if (logPath === undefined) return [];
+      return [
+        {
+          sessionId: String(snapshot.header.id),
+          workspace: snapshot.header.cwd,
+          logPath,
+        },
+      ];
+    });
+  }
+
+  private async processRepairQueue(): Promise<RepairOutcome | undefined> {
+    let queue;
+    try {
+      queue = readRepairQueue();
+    } catch (error) {
+      clearRepairQueue();
+      return { repaired: 0, failed: [{ sessionId: "", message: messageOf(error) }] };
+    }
+    if (queue === undefined) return undefined;
+
+    const ids = [...new Set(queue.sessionIds)];
+    let sources: StoredSessionRef[];
+    try {
+      sources = await this.storedSessionRefs();
+    } catch (error) {
+      clearRepairQueue();
+      return {
+        repaired: 0,
+        failed: ids.map((sessionId) => ({ sessionId, message: messageOf(error) })),
+      };
+    }
+
+    const outcome = await executeRepairQueue(queue, sources, {
+      table: this.modeTable,
+      openRead: async (sessionId) => {
+        const handle = await this.ctx.sessionPersistence.open(sessionId as SessionId, "read");
+        return { close: () => handle.close() };
+      },
+      isLive: (sessionId) => this.ctx.agents.get(sessionId as SessionId) !== undefined,
+    });
+    // Keep sessions that failed for a retryable reason so the user does not have
+    // to rescan; drop "not found" ids, which will never repair.
+    const retryable = outcome.failed
+      .filter((failure) => failure.sessionId !== "" && failure.message !== "session not found")
+      .map((failure) => failure.sessionId);
+    try {
+      if (retryable.length > 0) writeRepairQueue(retryable);
+      else clearRepairQueue();
+    } catch (error) {
+      return {
+        repaired: outcome.repaired,
+        failed: [...outcome.failed, { sessionId: "", message: messageOf(error) }],
+      };
+    }
+    return outcome;
   }
 
   /** Read the global default used by new sessions. */
@@ -159,6 +304,9 @@ export class PotetoModeService extends TypertRemoteService {
     signal?.throwIfAborted();
     writeDefaultEnabled(enabled);
     this.defaultEnabled = enabled;
+    // Only sessions created before this build can still lack an explicit
+    // selection and depend on the live default, so re-apply tool denial for them.
+    this.reconcileNativeTools();
     return { enabled };
   }
 
@@ -211,10 +359,7 @@ export class PotetoModeService extends TypertRemoteService {
       throw new Error(`the poteto workflow is not available for the "${preset}" agent preset`);
     }
     if (this.isEnabledFor(agent) !== enabled) {
-      agent.session.append("poteto/mode", { enabled });
-      if (!(await this.ctx.sessions.flush(agent.session))) {
-        throw new Error(`poteto mode for session ${sessionId} was not persisted`);
-      }
+      await writePotetoMode(this.modeTable, sessionId, enabled);
     }
     if (enabled) this.ensureNativeToolsRestricted(agent);
     else this.clearNativeToolsRestriction(agent);
@@ -222,24 +367,21 @@ export class PotetoModeService extends TypertRemoteService {
   }
 
   /**
-   * Record an explicit on selection for a Session that would run the workflow
-   * from the global default. Mirrors Agent Teams, whose Team projection carries
-   * the default as a real `team/mode` event so the client reads it synchronously.
+   * Record the resolved default as an explicit selection for a new Session. The
+   * sidecar then holds the creation-time value, so a later change to the global
+   * default cannot flip this Session, and the projection paints it on first pass.
    */
   private async seedDefaultMode(agent: Agent): Promise<void> {
     if (this.seededDefaults.has(agent)) return;
-    const selected = this.projection.stateOf(agent.session).enabled;
-    const seed = shouldSeedPotetoDefault({
-      agentPreset: this.presetOf(agent),
-      selected,
-      byDefault: this.defaultEnabled,
-    });
+    const selected = readPotetoMode(this.modeTable, agent.session.id);
+    const seed = shouldSeedPotetoDefault({ agentPreset: this.presetOf(agent), selected });
     if (!seed) return;
     this.seededDefaults.add(agent);
-    agent.session.append("poteto/mode", { enabled: true });
-    if (!(await this.ctx.sessions.flush(agent.session))) {
+    try {
+      await writePotetoMode(this.modeTable, agent.session.id, this.defaultEnabled);
+    } catch {
+      // Best effort: a failed seed falls back to the live default in isEnabledFor.
       this.seededDefaults.delete(agent);
-      throw new Error(`poteto default for session ${agent.session.id} was not persisted`);
     }
   }
 

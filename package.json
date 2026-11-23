@@ -1,6 +1,6 @@
 {
   "name": "dsh-pstack",
-  "version": "0.5.0",
+  "version": "0.5.2",
   "description": "pstack for DeepSeek Harness: rigorous agent workflows ported from cursor/plugins.",
   "keywords": [
     "agent-skills",
@@ -82,9 +82,11 @@
     "@deepseek-ai/dsh-plugin-manager": "catalog:types",
     "@deepseek-ai/dsh-sandbox-policy": "catalog:runtime",
     "@deepseek-ai/dsh-session": "catalog:types",
+    "@deepseek-ai/dsh-session-persistence": "catalog:types",
     "@deepseek-ai/dsh-session-projection": "catalog:types",
     "@deepseek-ai/dsh-settings": "catalog:types",
     "@deepseek-ai/dsh-skill": "catalog:types",
+    "@deepseek-ai/dsh-storage-domain": "catalog:types",
     "@deepseek-ai/dsh-subagent": "catalog:types",
     "@deepseek-ai/dsh-system-prompt": "catalog:types",
     "@deepseek-ai/dsh-tools": "catalog:types",
