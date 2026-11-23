@@ -227,7 +227,7 @@ These limits remain even with every optional plugin that can run alongside pstac
 
 2. **Some rendering needs a plugin**
 
-   Native DSH renders images and SVG inline. A Mermaid diagram returns as text, and audio or video shows as a file card. That is expected degradation, not a broken skill. For the full experience, you can install a plugin that enhances native rendering, for example `dsh-genui`.
+   Native DSH renders images and SVG inline. A Mermaid diagram returns as text, and audio or video shows as a file card. That is expected degradation, not a broken skill. For the full experience, install an optional plugin that enhances native rendering.
 
 </details>
 
