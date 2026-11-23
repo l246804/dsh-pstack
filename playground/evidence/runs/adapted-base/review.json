@@ -1,0 +1,38 @@
+{
+  "subagent-interrupt": {
+    "status": "supported",
+    "reason": "pstack_interrupt 成功中断子代理，started.txt 存在而 done.txt 不存在；这是系统级中断路径。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/minimax-m3.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "subagent-model-routing": {
+    "status": "supported",
+    "reason": "pstack_models 可发现路由，pstack_subagent 使用不同模型路由完成分拣并产出 urgent.md、later.md、done.txt。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/minimax-m3.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "subagent-readonly-sandbox": {
+    "status": "supported",
+    "reason": "只读子代理尝试写 readonly-probe.txt 被沙箱拒绝，review.md 记录 DENIED，工作区没有该文件。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/minimax-m3.1-flash",
+        "effort": "low"
+      }
+    }
+  }
+}

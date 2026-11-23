@@ -334,8 +334,8 @@
     "observed": ["skillLoads=none", "toolCalls=49", "warnings=0"]
   },
   "semanticReview": {
-    "status": "supported",
-    "reason": "subagent 工具的显式换路由被拒绝，但 workflow 工具的逐子代理 provider/model 覆盖成功把子代理路由到 magpie/workbuddy/deepseek-v4.1-flash，并产出了 urgent.md、later.md、done.txt。",
+    "status": "gap",
+    "reason": "subagent 工具的显式换路由被拒绝；workflow 的逐子代理 provider/model 覆盖只是绕过路径，不是正规的 subagent 派发方式。应由插件提供模型路由工具。",
     "reviewer": {
       "kind": "model",
       "route": {
@@ -348,8 +348,10 @@
   "mechanicalFailures": [],
   "verdict": {
     "variant": "native",
-    "status": "observed",
-    "gaps": []
+    "status": "gap",
+    "gaps": [
+      "subagent 工具的显式换路由被拒绝；workflow 的逐子代理 provider/model 覆盖只是绕过路径，不是正规的 subagent 派发方式。应由插件提供模型路由工具。"
+    ]
   },
   "batchId": "native-base-20261120191653",
   "capturedAt": "2026-11-20T11:16:53.921Z",

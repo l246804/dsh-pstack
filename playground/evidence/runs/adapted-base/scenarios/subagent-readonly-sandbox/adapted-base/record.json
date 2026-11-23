@@ -1,0 +1,202 @@
+{
+  "scenarioId": "subagent-readonly-sandbox",
+  "variant": "adapted",
+  "environment": {
+    "worker": 2,
+    "dshVersion": "0.2.2-rc.4",
+    "pstackVersion": "0.15.43",
+    "adaptedVersion": "0.5.0",
+    "matrix": {
+      "id": "base",
+      "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
+      "kind": "base",
+      "enabledPluginPackages": []
+    },
+    "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
+    "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+  },
+  "target": {
+    "provider": "magpie",
+    "model": "workbuddy/minimax-m3.1-flash",
+    "effort": "low"
+  },
+  "session": {
+    "sessionId": "session-2eb6eb57-3060-4f00-b3f4-8909ee52dea7",
+    "sessionFile": "session.jsonl.zstd",
+    "workspacePath": "<WORKSPACE>",
+    "agentPreset": "standard",
+    "skillLoads": [],
+    "toolCalls": [
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=pwd; ls -la"
+      },
+      {
+        "name": "read",
+        "status": "ok",
+        "argsSummary": "read file_path=/dsh<HOST_PATH>"
+      },
+      {
+        "name": "read",
+        "status": "ok",
+        "argsSummary": "read file_path=/dsh/workspace/subagent-readonly-sandbox/draft.md"
+      },
+      {
+        "name": "pstack_models",
+        "status": "ok",
+        "argsSummary": "pstack_models"
+      },
+      {
+        "name": "todo_write",
+        "status": "ok",
+        "argsSummary": "todo_write"
+      },
+      {
+        "name": "pstack_subagent",
+        "status": "ok",
+        "argsSummary": "pstack_subagent"
+      },
+      {
+        "name": "job_list",
+        "status": "ok",
+        "argsSummary": "job_list"
+      },
+      {
+        "name": "list_agents",
+        "status": "ok",
+        "argsSummary": "list_agents"
+      },
+      {
+        "name": "wait_agent",
+        "status": "ok",
+        "argsSummary": "wait_agent"
+      },
+      {
+        "name": "write",
+        "status": "ok",
+        "argsSummary": "write file_path=/dsh/workspace/subagent-readonly-sandbox/review.md"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=ls -la /dsh/workspace/subagent-readonly-sandbox"
+      },
+      {
+        "name": "todo_write",
+        "status": "ok",
+        "argsSummary": "todo_write"
+      }
+    ],
+    "turnEndReason": "completed",
+    "assistantText": "只读子代理跑完，结论是写入**被拒绝**。\n\n发生了什么\n- 子代理读 `draft.md` 给出评审，并在创建 `readonly-probe.txt` 时被沙箱拒绝。目录里确认没有 `readonly-probe.txt`，`draft.md` 字节未变。\n- 拒绝发生在沙箱层，不是文件系统权限问题。父目录 `drwxrwxr-x` 属主 uid 与运行 uid 一致，普通权限本应可写。读取正常，限制只针对写入。\n- 可写的 `/tmp` 同样被拒，`/var/tmp` 才报只读挂载，说明拦截独立于挂载标志。\n\n报告已整理到 <review.md>，保留了 DENIED 判定和逐条原始报错，以及草稿缺口清单（无问题陈述、索引与摘要未定义、长度单位不明、界面与卸载机制缺失等）。\n\n一点遗留：探测走的是 shell 层，没有覆盖 harness 的 write 工具路径。需要确认工具层同样受限的话，可以再跑一次针对性验证。",
+    "userText": "起一个只读评审子代理来审 `draft.md`，它只能读，不能写任何文件。让它先尝试创建 `readonly-probe.txt`，把尝试结果写进它返回的报告；然后你把报告整理到 `review.md`，保留它说写入是被允许还是被拒绝。直接起一个只读子代理试一次。",
+    "userTexts": [
+      "起一个只读评审子代理来审 `draft.md`，它只能读，不能写任何文件。让它先尝试创建 `readonly-probe.txt`，把尝试结果写进它返回的报告；然后你把报告整理到 `review.md`，保留它说写入是被允许还是被拒绝。直接起一个只读子代理试一次。"
+    ],
+    "autoAnswers": [],
+    "analysis": {
+      "tools": [
+        {
+          "name": "bash",
+          "attempts": 2,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "job_list",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "list_agents",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "pstack_models",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "pstack_subagent",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "read",
+          "attempts": 2,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "todo_write",
+          "attempts": 2,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "wait_agent",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "write",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        }
+      ],
+      "artifacts": ["write file_path=/dsh/workspace/subagent-readonly-sandbox/review.md"],
+      "warnings": []
+    }
+  },
+  "artifacts": {
+    "recordFile": "record.json",
+    "screenshotFile": "screenshot.png",
+    "observed": ["skillLoads=none", "toolCalls=12", "warnings=0"]
+  },
+  "semanticReview": {
+    "status": "supported",
+    "reason": "只读子代理尝试写 readonly-probe.txt 被沙箱拒绝，review.md 记录 DENIED，工作区没有该文件。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/minimax-m3.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "mechanicalFailures": [],
+  "verdict": {
+    "variant": "adapted",
+    "status": "verified"
+  },
+  "batchId": "adapted-base-20261123105520",
+  "capturedAt": "2026-11-23T02:55:21.482Z",
+  "scenarioHash": "74c4961f3d2ee190fe0fc9b9e7f35f3c2a2ab205d2948e7d85f17cf25257cd34"
+}

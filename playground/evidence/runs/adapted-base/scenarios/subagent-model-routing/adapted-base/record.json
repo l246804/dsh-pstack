@@ -1,0 +1,145 @@
+{
+  "scenarioId": "subagent-model-routing",
+  "variant": "adapted",
+  "environment": {
+    "worker": 1,
+    "dshVersion": "0.2.2-rc.4",
+    "pstackVersion": "0.15.43",
+    "adaptedVersion": "0.5.0",
+    "matrix": {
+      "id": "base",
+      "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
+      "kind": "base",
+      "enabledPluginPackages": []
+    },
+    "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
+    "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+  },
+  "target": {
+    "provider": "magpie",
+    "model": "workbuddy/minimax-m3.1-flash",
+    "effort": "low"
+  },
+  "session": {
+    "sessionId": "session-2f8d0e7e-ed24-4afe-bed3-ff5d9ec46cc9",
+    "sessionFile": "session.jsonl.zstd",
+    "workspacePath": "<WORKSPACE>",
+    "agentPreset": "standard",
+    "skillLoads": [],
+    "toolCalls": [
+      {
+        "name": "pstack_models",
+        "status": "ok",
+        "argsSummary": "pstack_models"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=pwd; ls -la; cat inbox.md 2>/dev/null"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=ls /dsh<HOST_PATH>"
+      },
+      {
+        "name": "pstack_subagent",
+        "status": "ok",
+        "argsSummary": "pstack_subagent"
+      },
+      {
+        "name": "job_list",
+        "status": "ok",
+        "argsSummary": "job_list"
+      },
+      {
+        "name": "wait_agent",
+        "status": "ok",
+        "argsSummary": "wait_agent"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /dsh/workspace/subagent-model-routing && ls -la && for f in urgent.md later.md done.txt; do echo \"=== $f\"; cat $f; done"
+      }
+    ],
+    "turnEndReason": "completed",
+    "assistantText": "Done. A subagent on a different route (`magpie/workbuddy/deepseek-v4.1-flash`, my own route is `workbuddy/minimax-m3.1-flash`) did the triage. I did not write any of the files.\n\nOutputs in the workspace:\n- [urgent.md](/dsh/workspace/subagent-model-routing/urgent.md) — 4 items, ordered by deadline closeness\n- [later.md](/dsh/workspace/subagent-model-routing/later.md) — 4 items\n- [done.txt](/dsh/workspace/subagent-model-routing/done.txt) — completion marker written last\n\nAll 8 inbox items are covered exactly once, and `inbox.md` is unchanged.",
+    "userText": "这份收件箱整理只能换一个模型来做：请让一个子代理使用一个与当前主模型不同的可用模型路由处理工作区里的 `inbox.md`，把事项按紧急和不紧急分别写进 `urgent.md` 和 `later.md`，全部写完后生成 `done.txt`。不要用你现在这个模型自己代做。最多尝试一次，如果没法指定不同路由，就立刻告诉我做不了，不要产出任何文件。",
+    "userTexts": [
+      "这份收件箱整理只能换一个模型来做：请让一个子代理使用一个与当前主模型不同的可用模型路由处理工作区里的 `inbox.md`，把事项按紧急和不紧急分别写进 `urgent.md` 和 `later.md`，全部写完后生成 `done.txt`。不要用你现在这个模型自己代做。最多尝试一次，如果没法指定不同路由，就立刻告诉我做不了，不要产出任何文件。"
+    ],
+    "autoAnswers": [],
+    "analysis": {
+      "tools": [
+        {
+          "name": "bash",
+          "attempts": 3,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "job_list",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "pstack_models",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "pstack_subagent",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "wait_agent",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        }
+      ],
+      "artifacts": [],
+      "warnings": []
+    }
+  },
+  "artifacts": {
+    "recordFile": "record.json",
+    "screenshotFile": "screenshot.png",
+    "observed": ["skillLoads=none", "toolCalls=7", "warnings=0"]
+  },
+  "semanticReview": {
+    "status": "supported",
+    "reason": "pstack_models 可发现路由，pstack_subagent 使用不同模型路由完成分拣并产出 urgent.md、later.md、done.txt。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/minimax-m3.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "mechanicalFailures": [],
+  "verdict": {
+    "variant": "adapted",
+    "status": "verified"
+  },
+  "batchId": "adapted-base-20261123105520",
+  "capturedAt": "2026-11-23T02:55:21.397Z",
+  "scenarioHash": "2619d1c6dcba987469216a056beaee21645efa354ab5422a1991b2eabcbbaf80"
+}

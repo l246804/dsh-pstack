@@ -1,0 +1,178 @@
+{
+  "scenarioId": "subagent-interrupt",
+  "variant": "adapted",
+  "environment": {
+    "worker": 0,
+    "dshVersion": "0.2.2-rc.4",
+    "pstackVersion": "0.15.43",
+    "adaptedVersion": "0.5.0",
+    "matrix": {
+      "id": "base",
+      "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
+      "kind": "base",
+      "enabledPluginPackages": []
+    },
+    "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
+    "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+  },
+  "target": {
+    "provider": "magpie",
+    "model": "workbuddy/minimax-m3.1-flash",
+    "effort": "low"
+  },
+  "session": {
+    "sessionId": "session-e7a61ebe-434a-4072-a2e3-ff4b386aa0c2",
+    "sessionFile": "session.jsonl.zstd",
+    "workspacePath": "<WORKSPACE>",
+    "agentPreset": "standard",
+    "skillLoads": [],
+    "toolCalls": [
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=pwd && ls -la && cat slow_task.mjs"
+      },
+      {
+        "name": "read",
+        "status": "ok",
+        "argsSummary": "read file_path=/dsh<HOST_PATH>"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=ls /dsh<HOST_PATH>"
+      },
+      {
+        "name": "todo_write",
+        "status": "ok",
+        "argsSummary": "todo_write"
+      },
+      {
+        "name": "pstack_subagent",
+        "status": "ok",
+        "argsSummary": "pstack_subagent name=slow-runner"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=sleep 8; ls -la /dsh/workspace/subagent-interrupt; cat /dsh/workspace/subagent-interrupt/runner_note.txt 2>/dev/null"
+      },
+      {
+        "name": "pstack_interrupt",
+        "status": "ok",
+        "argsSummary": "pstack_interrupt"
+      },
+      {
+        "name": "list_agents",
+        "status": "ok",
+        "argsSummary": "list_agents"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /dsh/workspace/subagent-interrupt && ls -la && ps aux | grep -i slow_task | grep -v grep"
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /dsh/workspace/subagent-interrupt && for p in /proc/[0-9]*; do c=$(tr '\\0' ' ' < $p/cmdline 2>/dev/null); case \"$c\" in *slow_task*) echo \"ALIVE $p $c\";; esac; done; echo \"---\""
+      },
+      {
+        "name": "bash",
+        "status": "ok",
+        "argsSummary": "bash command=cd /dsh/workspace/subagent-interrupt && sleep 95 && ls -la && test -e done.txt && echo \"DONE_EXISTS\" || echo \"DONE_ABSENT\""
+      },
+      {
+        "name": "todo_write",
+        "status": "ok",
+        "argsSummary": "todo_write"
+      }
+    ],
+    "turnEndReason": "completed",
+    "assistantText": "Goal: start a background subagent that runs `slow_task.mjs`, cancel it right away, and confirm `done.txt` never appears. Smallest change: one delegated child, one interrupt, one file check.\nstarted.txt exists. Now interrupting the child.\nIt worked. The interrupt path works in this harness.\n\nWhat happened:\n- Started subagent `slow-runner` (preset `poteto-agent`) with the task of running `node slow_task.mjs` in the background from [/dsh/workspace/subagent-interrupt](file:///dsh/workspace/subagent-interrupt).\n- The child got the script running. `started.txt` was written (measured, file present with 8 bytes).\n- Called `pstack_interrupt` on `slow-runner`. It reported \"interrupt admitted to the child\" and the child went inactive. It left no closing message.\n- The lingering `node slow_task.mjs` process was gone with the child. A scan of `/proc` found no surviving process for it.\n- Waited 95 seconds, past the script's 90 second timer. `done.txt` was never created. `ls` shows only `slow_task.mjs` and `started.txt`.\n\nOne note on the child's brief: I asked it to write a `runner_note.txt` with the job id before answering, so I could confirm the start without waiting on it. That file was not there when I checked. The script had already started by then, so `started.txt` served as the confirmation instead.\n\nNothing else is pending. The workspace has no `done.txt` and no running process.",
+    "userText": "起一个后台子代理运行工作区里的 `slow_task.mjs`。这个脚本会先写 `started.txt`，等待 90 秒后再创建 `done.txt`。启动后马上取消它，别让它跑完；取消后确认 done.txt 没有出现。直接启动子代理并尝试取消，失败就告诉我结果。",
+    "userTexts": [
+      "起一个后台子代理运行工作区里的 `slow_task.mjs`。这个脚本会先写 `started.txt`，等待 90 秒后再创建 `done.txt`。启动后马上取消它，别让它跑完；取消后确认 done.txt 没有出现。直接启动子代理并尝试取消，失败就告诉我结果。"
+    ],
+    "autoAnswers": [],
+    "analysis": {
+      "tools": [
+        {
+          "name": "bash",
+          "attempts": 6,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "list_agents",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "pstack_interrupt",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "pstack_subagent",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "read",
+          "attempts": 1,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        },
+        {
+          "name": "todo_write",
+          "attempts": 2,
+          "failures": 0,
+          "firstAttemptStatus": "ok",
+          "finalStatus": "ok",
+          "recovered": false
+        }
+      ],
+      "artifacts": [],
+      "warnings": []
+    }
+  },
+  "artifacts": {
+    "recordFile": "record.json",
+    "screenshotFile": "screenshot.png",
+    "observed": ["skillLoads=none", "toolCalls=12", "warnings=0"]
+  },
+  "semanticReview": {
+    "status": "supported",
+    "reason": "pstack_interrupt 成功中断子代理，started.txt 存在而 done.txt 不存在；这是系统级中断路径。",
+    "reviewer": {
+      "kind": "model",
+      "route": {
+        "provider": "magpie",
+        "model": "workbuddy/minimax-m3.1-flash",
+        "effort": "low"
+      }
+    }
+  },
+  "mechanicalFailures": [],
+  "verdict": {
+    "variant": "adapted",
+    "status": "verified"
+  },
+  "batchId": "adapted-base-20261123105520",
+  "capturedAt": "2026-11-23T02:55:21.489Z",
+  "scenarioHash": "e9ad13199a77b485e687eb03245ef4ea4c0272bf4aee955253b066bd59cd4a86"
+}
