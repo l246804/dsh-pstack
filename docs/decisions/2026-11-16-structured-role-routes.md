@@ -14,7 +14,7 @@ Review: 2026-11-23
 
 ## 决策
 
-角色文件的每条路由改为结构化对象：`{ "kind": "route", "provider", "model", "effort"? }`，继承用 `{ "kind": "inherit", "alias": "auto" | "inherit-parent" }`。角色文件版本升到 `version: 2`。读取前统一由 `compat/upgrade-role-file.ts` 的 `upgradeRoleFile` 检测并迁移：`.mdc` 由 `compat/mdc-to-json.ts` 迁移成 `version: 2` JSON 并删除旧文件，`version: 1` 由 `compat/version-1-to-2.ts` 原地重写成 `version: 2` 对象，之后正常读取只处理当前版本，`compat/` 可在大版本后整目录删除。`role-store` 读写对象，`role-wire`、`role-editor`、客户端共用同一个 `Route`/`RouteView` 形状。`pstack_models` 的 catalogue 去掉 `route: "provider/model"` 字符串，改带 `provider` 字段，`budget` 直接用 `provider` 和 `id`，删除 `splitRoute`。
+角色文件的每条路由改为结构化对象：`{ "kind": "route", "provider", "model", "effort"? }`，继承用 `{ "kind": "inherit", "alias": "auto" | "inherit-parent" }`。角色文件版本升到 `version: 2`。角色文件的迁移时机和目录由 [2026-11-23-pstack-home-directory.md](./2026-11-23-pstack-home-directory.md) 统一到启动阶段；本条记录只保留 schema 决策。`compat/upgrade-role-file.ts` 的 `upgradeRoleFile` 负责 `version: 1` 到 2 的升级，`compat/mdc-to-json.ts` 负责 `.mdc` 转换，`compat/` 可在大版本后整目录删除。`role-store` 读写对象，`role-wire`、`role-editor`、客户端共用同一个 `Route`/`RouteView` 形状。`pstack_models` 的 catalogue 去掉 `route: "provider/model"` 字符串，改带 `provider` 字段，`budget` 直接用 `provider` 和 `id`，删除 `splitRoute`。
 
 ## 替代方案
 

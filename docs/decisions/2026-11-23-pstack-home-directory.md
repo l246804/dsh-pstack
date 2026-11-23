@@ -38,4 +38,4 @@ pstack 的全局文件此前平铺在 `$DSH_HOME` 根目录，包括 `pstack-mod
 - `pstack_roles` 变为并发安全，角色文件读取不再写盘。
 - 旧 `pstack-repair.json` 保持原样，不再被读取。
 - Issue #36 可以直接使用 `$DSH_HOME/pstack/paths.json`。
-- 相关记录：[2026-11-16-structured-role-routes.md](./2026-11-16-structured-role-routes.md) 记录角色文件 schema，不涉及目录；本记录与其在角色文件路径上重叠。
+- 相关记录：[2026-11-16-structured-role-routes.md](./2026-11-16-structured-role-routes.md) 记录角色文件 schema；本记录改变其迁移执行时机，并把路径和目录决策统一到这里。
