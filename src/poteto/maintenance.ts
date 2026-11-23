@@ -1,4 +1,8 @@
-/** One-off maintenance for Sessions written before the storageDomain switch. */
+/**
+ * One-off maintenance for Sessions written before the storageDomain switch.
+ * Remove together with maintenance-remote.ts, maintenance-types.ts, and
+ * MaintenanceSettingsPage.tsx when the migration window closes.
+ */
 
 import {
   copyFileSync,
@@ -58,10 +62,96 @@ interface ParsedLog {
   readonly events: readonly StoredEvent[];
 }
 
+const ZSTD_MAGIC = 0xfd2fb528;
+
+interface ZstdFrameRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+interface ZstdFrameScan {
+  readonly frames: readonly ZstdFrameRange[];
+  readonly tornStart?: number;
+}
+
+/** Locate complete Zstandard frame ranges; tornStart marks an incomplete final frame. */
+function scanZstdFrames(buffer: Buffer): ZstdFrameScan {
+  const frames: ZstdFrameRange[] = [];
+  let offset = 0;
+
+  while (offset < buffer.length) {
+    const start = offset;
+    if (buffer.length - offset < 4) return { frames, tornStart: start };
+    if (buffer.readUInt32LE(offset) !== ZSTD_MAGIC) {
+      throw new Error(`corrupt Zstandard session log: invalid frame magic at byte ${offset}`);
+    }
+    offset += 4;
+
+    if (offset === buffer.length) return { frames, tornStart: start };
+    const descriptor = buffer.readUInt8(offset);
+    offset += 1;
+    if ((descriptor & 0x18) !== 0) {
+      throw new Error(
+        `corrupt Zstandard session log: reserved frame-header bit at byte ${offset - 1}`,
+      );
+    }
+
+    const contentSizeFlag = descriptor >>> 6;
+    const singleSegment = (descriptor & 0x20) !== 0;
+    const checksum = (descriptor & 0x04) !== 0;
+    const dictionaryFlag = descriptor & 0x03;
+    const dictionaryBytes = dictionaryFlag === 3 ? 4 : dictionaryFlag;
+    const contentSizeBytes = contentSizeFlag === 0 ? (singleSegment ? 1 : 0) : 1 << contentSizeFlag;
+    const remainingHeaderBytes = (singleSegment ? 0 : 1) + dictionaryBytes + contentSizeBytes;
+    if (buffer.length - offset < remainingHeaderBytes) return { frames, tornStart: start };
+    offset += remainingHeaderBytes;
+
+    for (;;) {
+      if (buffer.length - offset < 3) return { frames, tornStart: start };
+      const blockHeader = buffer.readUIntLE(offset, 3);
+      offset += 3;
+      const lastBlock = (blockHeader & 1) !== 0;
+      const blockType = (blockHeader >>> 1) & 0x03;
+      const blockSize = blockHeader >>> 3;
+      if (blockType === 0x03) {
+        throw new Error(`corrupt Zstandard session log: reserved block type at byte ${offset - 3}`);
+      }
+      const payloadBytes = blockType === 0x01 ? 1 : blockSize;
+      if (buffer.length - offset < payloadBytes) return { frames, tornStart: start };
+      offset += payloadBytes;
+      if (lastBlock) break;
+    }
+
+    if (checksum) {
+      if (buffer.length - offset < 4) return { frames, tornStart: start };
+      offset += 4;
+    }
+    frames.push({ start, end: offset });
+  }
+
+  return { frames };
+}
+
+/**
+ * Decode a DSH session log, which stores concatenated Zstandard frames: one
+ * header frame plus one frame per durable append batch. Decode per frame because
+ * a whole-buffer one-shot decode can return only the first frame and silently
+ * truncate the log.
+ */
+export function decodeZstdFrames(buffer: Buffer): Buffer {
+  const { frames, tornStart } = scanZstdFrames(buffer);
+  if (tornStart !== undefined) {
+    throw new Error(`incomplete Zstandard session log: torn frame at byte ${tornStart}`);
+  }
+  return Buffer.concat(
+    frames.map(({ start, end }) => zstdDecompressSync(buffer.subarray(start, end))),
+  );
+}
+
 function readText(path: string): string {
   const bytes = readFileSync(path);
   if (!path.endsWith(".zstd")) return bytes.toString("utf8");
-  return zstdDecompressSync(bytes).toString("utf8");
+  return decodeZstdFrames(bytes).toString("utf8");
 }
 
 function parseLog(path: string): ParsedLog {

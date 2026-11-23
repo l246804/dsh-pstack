@@ -1,12 +1,13 @@
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { constants, zstdCompressSync, zstdDecompressSync } from "node:zlib";
+import { constants, zstdCompressSync } from "node:zlib";
 
 import { describe, expect, it } from "vite-plus/test";
 
 import {
   clearRepairQueue,
+  decodeZstdFrames,
   enqueueRepair,
   executeRepairQueue,
   queuedSessionIds,
@@ -69,7 +70,7 @@ function writeLegacyLog(dir: string): string {
 }
 
 function readEvents(path: string): readonly Record<string, unknown>[] {
-  const lines = zstdDecompressSync(readFileSync(path)).toString("utf8").trim().split("\n");
+  const lines = decodeZstdFrames(readFileSync(path)).toString("utf8").trim().split("\n");
   return lines.slice(1).map((line) => JSON.parse(line) as Record<string, unknown>);
 }
 
@@ -144,6 +145,12 @@ describe("poteto legacy session maintenance", () => {
         isLive: () => false,
       });
       expect(repaired).toEqual({ repaired: 1, failed: [] });
+      expect(readEvents(logPath).map((event) => event["ignorable"])).toEqual([
+        undefined,
+        true,
+        true,
+      ]);
+      expect(table.get("session-1")).toEqual({ enabled: true });
 
       const skipped = await executeRepairQueue(queue, [ref], {
         table,
