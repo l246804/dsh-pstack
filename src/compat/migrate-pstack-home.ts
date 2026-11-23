@@ -6,7 +6,6 @@ import { dirname, join } from "node:path";
 import { migrateMdcToJson } from "./mdc-to-json.ts";
 import { upgradeRoleFile } from "./upgrade-role-file.ts";
 import { ROLE_FILE_VERSION, serializeRoleDocument } from "../roles/role-store.ts";
-import { describeError } from "../lib/errors.ts";
 import { resolveDshHome } from "../lib/dsh-home.ts";
 import { pstackHomePaths, type PstackHomePaths } from "../pstack/home.ts";
 
@@ -30,29 +29,21 @@ function moveLegacyIfDestinationMissing(legacyPath: string, currentPath: string)
   }
 }
 
-/** Non-fatal problems from one startup migration pass. */
-export interface PstackHomeMigration {
-  readonly errors: readonly string[];
-}
-
-/** Converge `$DSH_HOME` on the current pstack layout in one startup pass. */
-export function migratePstackHome(dshHome: string = resolveDshHome()): PstackHomeMigration {
+/** Converge `$DSH_HOME` on the current pstack layout in one best-effort startup pass. */
+export function migratePstackHome(dshHome: string = resolveDshHome()): void {
   const paths = pstackHomePaths(dshHome);
-  const errors: string[] = [];
 
   try {
     migrateModels(dshHome, paths);
-  } catch (error) {
-    errors.push(`role file: ${describeError(error)}`);
+  } catch {
+    // A malformed legacy file is recoverable by setting the roles again.
   }
 
   try {
     moveLegacyIfDestinationMissing(join(dshHome, LEGACY_SETTINGS_FILENAME), paths.settings);
-  } catch (error) {
-    errors.push(`settings file: ${describeError(error)}`);
+  } catch {
+    // A failed settings move leaves the old file in place; the next save recreates settings.
   }
-
-  return { errors };
 }
 
 function migrateModels(dshHome: string, paths: PstackHomePaths): void {
@@ -71,10 +62,9 @@ function migrateModels(dshHome: string, paths: PstackHomePaths): void {
   }
 
   if (existsSync(paths.models)) {
-    const result = upgradeRoleFile(paths.models, {
+    upgradeRoleFile(paths.models, {
       currentVersion: ROLE_FILE_VERSION,
       serialize: serializeRoleDocument,
     });
-    if (result.status === "unreadable") throw new Error(result.reason);
   }
 }

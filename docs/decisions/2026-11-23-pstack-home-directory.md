@@ -34,7 +34,7 @@ pstack 的全局文件此前平铺在 `$DSH_HOME` 根目录，包括 `pstack-mod
 
 - 首次启动把旧根目录文件迁入 `$DSH_HOME/pstack/`，之后运行时只读写当前路径。
 - 迁移重复执行不产生重复文件，当前文件优先。
-- 文件移动失败或旧 `.mdc` 无法解析时记录到 `PstackHomeService.migrationErrors`，不阻止服务启动；角色页以可保存的 missing 状态显示错误，修复旧文件后可重试迁移或直接保存新的角色文件恢复。
+- 迁移失败按 best-effort 忽略，不阻止服务启动；角色文件缺失时设置页保持可保存状态，用户重新配置角色即可恢复。
 - `pstack_roles` 变为并发安全，角色文件读取不再写盘。
 - 旧 `pstack-repair.json` 保持原样，不再被读取。
 - Issue #36 可以直接使用 `$DSH_HOME/pstack/paths.json`。

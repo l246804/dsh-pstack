@@ -9,12 +9,10 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { Context } from "@deepseek-ai/cordis";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
 import { EMPTY_SETTINGS, readSettings } from "../poteto/settings.ts";
 import { migratePstackHome } from "../compat/migrate-pstack-home.ts";
-import PstackHomeService from "../index.ts";
 import { pstackHomePaths } from "../pstack/home.ts";
 import { readRoleConfiguration } from "../roles/role-store.ts";
 
@@ -194,39 +192,16 @@ describe("migratePstackHome", () => {
     expect(existsSync(join(home, "pstack-models.json"))).toBe(true);
   });
 
-  it("reports a malformed legacy mdc but still migrates settings", () => {
+  it("ignores a malformed legacy mdc and still migrates settings", () => {
     const home = tempHome();
     writeFile(join(home, "pstack-models.mdc"), "not a role line\n");
     writeJson(join(home, "pstack-settings.json"), { version: 1, potetoDefault: true });
 
-    const result = migratePstackHome(home);
+    migratePstackHome(home);
 
-    expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain("role file");
     expect(existsSync(pstackHomePaths(home).models)).toBe(false);
     expect(existsSync(join(home, "pstack-models.mdc"))).toBe(true);
     expect(readSettings(pstackHomePaths(home).settings).potetoDefault).toBe(true);
-  });
-
-  it("keeps the pstack home service available when legacy role parsing fails", async () => {
-    const home = tempHome();
-    writeFile(join(home, "pstack-models.mdc"), "not a role line\n");
-    const previousHome = process.env.DSH_HOME;
-    process.env.DSH_HOME = home;
-    try {
-      const ctx = new Context();
-      await ctx.plugin(PstackHomeService);
-      const service = ctx.get("pstackHome") as PstackHomeService;
-      expect(service.migrationErrors).toHaveLength(1);
-      expect(service.migrationErrors[0]).toContain("role file");
-
-      writeFile(join(home, "pstack-models.mdc"), "bug-fix: cpa/model-a [high]\n");
-      expect(service.retryMigration().errors).toEqual([]);
-      expect(readFileSync(pstackHomePaths(home).models, "utf8")).toContain('"model-a"');
-    } finally {
-      if (previousHome === undefined) delete process.env.DSH_HOME;
-      else process.env.DSH_HOME = previousHome;
-    }
   });
 
   it("is idempotent across repeated runs", () => {
