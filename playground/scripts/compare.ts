@@ -4,7 +4,7 @@ import type { BehaviorScenario, RunRecord } from "../runner/types.ts";
 import { listSnapshotRecords } from "./lib/review.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 import { scenarioContentHash } from "../runner/scenario/scenario-hash.ts";
-import { DEFAULT_ENVIRONMENTS } from "../runner/scenario/defaults.ts";
+import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "../runner/scenario/defaults.ts";
 
 export { scenarioContentHash } from "../runner/scenario/scenario-hash.ts";
 
@@ -81,8 +81,9 @@ function byScenarioId(
 
 /**
  * Compare one environment's committed native and adapted records. A scenario present on only
- * one side is a problem; a scenario present on both is compared field by field. Read-only:
- * it never writes a record.
+ * one side is a problem only when that side is declared by the scenario's `variants`; a
+ * native-only scenario intentionally has no adapted record. Scenarios present on both sides
+ * are compared field by field. Read-only: it never writes a record.
  */
 export function compareSnapshot(input: CompareSnapshotInput): CompareResult {
   const nativeRecords = byScenarioId(listSnapshotRecords("native", input.environment, input.root));
@@ -98,15 +99,15 @@ export function compareSnapshot(input: CompareSnapshotInput): CompareResult {
   const compared: string[] = [];
   const failures: CompareFailure[] = [];
   for (const id of ids) {
+    const defined = input.loadScenario(id);
+    const variants = defined.variants ?? DEFAULT_VARIANTS;
     const native = nativeRecords.get(id);
     const adapted = adaptedRecords.get(id);
     const problems: string[] = [];
-    if (!native) problems.push(`${id}: missing on native`);
-    if (!adapted) problems.push(`${id}: missing on adapted`);
+    if (!native && variants.includes("native")) problems.push(`${id}: missing on native`);
+    if (!adapted && variants.includes("adapted")) problems.push(`${id}: missing on adapted`);
     if (native && adapted) {
-      problems.push(
-        ...compareOne(native, adapted, input.loadScenario(id)).map((p) => `${id}: ${p}`),
-      );
+      problems.push(...compareOne(native, adapted, defined).map((p) => `${id}: ${p}`));
       compared.push(id);
     }
     if (problems.length > 0) failures.push({ scenarioId: id, problems });

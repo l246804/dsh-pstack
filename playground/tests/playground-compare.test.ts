@@ -177,6 +177,22 @@ describe("compareSnapshot", () => {
     expect(result.failures[0]!.problems.join(" ")).toContain("missing on native");
   });
 
+  it("does not report missing adapted for a native-only scenario", () => {
+    const root = mkdtempSync(join(temporary, "native-only-"));
+    const nativeOnly: BehaviorScenario = { ...scenario, variants: ["native"] };
+    const native = record("native", "cap-native-only");
+    native.scenarioHash = scenarioContentHash(nativeOnly);
+    writeRecord(root, "native", "base", native);
+
+    const result = compareSnapshot({
+      environment: "base",
+      root,
+      loadScenario: () => nativeOnly,
+    });
+    expect(result.compared).toEqual([]);
+    expect(result.failures).toEqual([]);
+  });
+
   it("reports a scenario missing on adapted when only native exists", () => {
     const root = mkdtempSync(join(temporary, "missing-adapted-"));
     writeRecord(root, "native", "base", record("native", "cap-native-only"));
