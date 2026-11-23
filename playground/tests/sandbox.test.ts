@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
@@ -6,6 +6,8 @@ import { afterAll, describe, expect, it } from "vite-plus/test";
 import type { ProviderPlan } from "../runner/config/provider.ts";
 import { imageTag } from "../runner/container/image.ts";
 import { containerSpec, dockerRunArgs } from "../runner/container/spec.ts";
+import { writePstackSettings, writeRoleFile } from "../runner/worker/home.ts";
+import type { PlaygroundConfig } from "../runner/types.ts";
 import type { WorkerPaths } from "../runner/worker/worker.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "dsh-sandbox-"));
@@ -45,6 +47,37 @@ const plan: ProviderPlan = {
   apiKey: "secret-value",
   main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
 };
+
+describe("worker pstack seeding", () => {
+  it("keeps native pstack files at the legacy root and adapted files under pstack", () => {
+    const base = workerPaths();
+    const native = {
+      ...base,
+      variant: "native" as const,
+      home: join(temporary, "native-home"),
+    };
+    const adapted = {
+      ...base,
+      variant: "adapted" as const,
+      home: join(temporary, "adapted-home"),
+    };
+    const config: Pick<PlaygroundConfig, "roleModels"> = {
+      roleModels: { "bug-fix": { provider: "p", model: "m", effort: "low" } },
+    };
+
+    writeRoleFile(native, config);
+    writePstackSettings(native, false);
+    writeRoleFile(adapted, config);
+    writePstackSettings(adapted, true);
+
+    expect(existsSync(join(native.home, "pstack-models.json"))).toBe(true);
+    expect(existsSync(join(native.home, "pstack-settings.json"))).toBe(true);
+    expect(existsSync(join(native.home, "pstack"))).toBe(false);
+    expect(existsSync(join(adapted.home, "pstack", "models.json"))).toBe(true);
+    expect(existsSync(join(adapted.home, "pstack", "settings.json"))).toBe(true);
+    expect(readFileSync(join(native.home, "pstack-models.json"), "utf8")).toContain('"p"');
+  });
+});
 
 describe("docker container spec", () => {
   it("mounts only the worker roots and never the repository", () => {
