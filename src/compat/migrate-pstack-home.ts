@@ -35,15 +35,11 @@ export function migratePstackHome(dshHome: string = resolveDshHome()): void {
 
   try {
     migrateModels(dshHome, paths);
-  } catch {
-    // A malformed legacy file is recoverable by setting the roles again.
-  }
+  } catch {}
 
   try {
     moveLegacyIfDestinationMissing(join(dshHome, LEGACY_SETTINGS_FILENAME), paths.settings);
-  } catch {
-    // A failed settings move leaves the old file in place; the next save recreates settings.
-  }
+  } catch {}
 }
 
 function migrateModels(dshHome: string, paths: PstackHomePaths): void {
