@@ -4,15 +4,26 @@ pstack skills use Cursor names. In DeepSeek Harness, read this file once per ses
 
 Use only tools visible in the current session. If a mapped tool or optional capability is unavailable, follow the fallback in that row. Do not assume optional plugins are enabled because a name appears here.
 
+## Plugin tools
+
+The package registers its own model-facing tools. The Tools block below maps Cursor operations to them.
+
+| Tool | Purpose |
+| --- | --- |
+| `pstack_subagent` | Start one subagent per call and report completion by notice. It is not a background job; do not wait for it with `job_output`. |
+| `pstack_interrupt` | Stop one pstack child's current turn by the name from `list_agents` or its Session id. Built-in presets disable native `interrupt_agent`, so this is the interruption path. |
+| `pstack_models` | List the live `provider`, `model`, and `reasoning_effort` routes. A listed route is not proof of availability; confirm with an actual call. |
+| `pstack_roles` | Report each role's configured routes, served `efforts`, and defaults. Use those route values when selecting a model for `pstack_subagent`. |
+
 ## Tools
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `pstack_subagent` starts one subagent per call; fan out by calling it once per child in one message, passing `description` and `prompt`. To override the route, pass `provider` and `model` as a pair, never one alone, plus an optional `reasoning_effort`. Omit all three to inherit the parent route. `pstack_models` lists each model id on its own line under a provider heading: pass the heading's provider id as `provider` and the listed id as `model`, never the combined `provider/model` route. |
-| `AskQuestion` | `ask_user_question` takes a batch of questions with options and free input. Only a live root agent has a human answerer; a delegated child keeps its questions in its result. Ask in plain text when the tool is absent. |
-| Open a todolist | `todo_write` replaces the whole list and has no `skipped` status. Keep a skipped step visible as `skip: <reason> - <step>` in `content` and mark it `completed`. |
-| Run another pstack skill (`/name` or "the **name** skill") | Use the native `skill` tool for skills in the session catalog. A bundled pstack skill with `disable-model-invocation: true` is hidden from `skill`, so `read` `<pstack>/skills/<name>/SKILL.md` and follow it, including playbooks and references under the skill directory. A user `/name` gesture injects one directly; the built-in help skill is `poteto-help`. |
-| `Grep`, `Glob` | `grep` and `glob` are native tools; call them directly. Use `bash` with `rg` only when the session has neither. |
+| `Task` | `pstack_subagent` starts one child per call; call it once per child in one message with `description` and `prompt`. Route overrides use the values from `pstack_models`: pass the `provider` heading id as `provider`, the listed model id as `model`, and an optional `reasoning_effort`; omit them to inherit the parent route. |
+| `AskQuestion` | `ask_user_question` accepts a batch of questions with options and free input. Only a live root agent has a human answerer; a delegated child keeps questions in its result. Use plain text when the tool is absent. |
+| Open a todolist | `todo_write` replaces the whole list and has no `skipped` status. Keep a skipped step visible in `content` as `skip: <reason> - <step>` and mark it `completed`. |
+| Run another pstack skill (`/name` or "the **name** skill") | Use native `skill` for catalog skills. A bundled skill with `disable-model-invocation: true` is hidden from `skill`, so read `<pstack>/skills/<name>/SKILL.md` and follow it. A user `/name` gesture injects it directly; built-in help is `poteto-help`. |
+| `Grep`, `Glob` | `grep` and `glob` are native; use `bash` with `rg` only when neither exists. |
 
 ## Subagent fields
 
@@ -26,28 +37,32 @@ Use only tools visible in the current session. If a mapped tool or optional capa
 | `environment: "local"` | Omit `cwd`; the child inherits the session directory. |
 | `cloud_base_branch: <b>` | Pass `<b>` as `create_worktree.from`; otherwise tell the child to check out `<b>`. |
 | `run_in_background: true` | Omit. `pstack_subagent` is managed and reports by completion notice. |
-| `resume` | Use the native `send_message`, addressing the pstack child by the name `list_agents` reports or by its Session id. Start a new `pstack_subagent` only when it stopped permanently. |
+| `resume` | Use native `send_message`, addressing the pstack child by the name `list_agents` reports or by its Session id. Start a new `pstack_subagent` only when it stopped permanently. |
 | `file_attachments` | List the real paths in `prompt`; the child reads them with `read`. |
+
+## Agent Teams
+
+When the session enables Agent Teams, `pstack_subagent` starts a teammate. Create the shared task first, start the child with a `name`, then reassign the task to that returned name and include the task id in the child prompt. Use the Team board for durable work with an owner, dependencies, write scopes, or handoff; keep private or one-shot exploration as ordinary `pstack_subagent` delegation. After each Team dispatch, bind the task owner and re-read the task before every update. Only the task owner completes it; reassign it to the Lead before the Lead finishes it. `pstack_roles` reports model routes, not Team members.
 
 ## Models
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]` | Do not pass a Cursor slug. Read `pstack_roles` for the role's `provider`, `model`, `reasoningEffort`, and served `efforts`, then pass them as `provider`, `model`, and `reasoning_effort` when changing effort; use `pstack_models` only for setup or to verify a route. Drop `-fast`; DSH has no speed parameter. |
-| A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route, or omit `provider` and `model` so the child inherits the parent route, and say so. |
-| `auto` or `inherit-parent` | Omit `provider` and `model`; the child inherits the parent route. |
-| The pstack role file | `$DSH_HOME/pstack-models.json`. Read `pstack_roles` to map a role to its route; `pstack_subagent` does not parse it. A missing file leaves no configured route, so the child inherits the parent route. |
-| A role value such as `<model> <effort>` | Write a structured route object `{ kind: "route", provider, model, effort? }`; a role holds an array of these, or `{ kind: "inherit", alias }` for `auto` or `inherit-parent`. Read `provider`, `model`, and `effort` from `pstack_models` or `pstack_roles`; never join or split a `provider/model` string. |
+| `claude-<family>-<version>-<effort>[-fast]` | Use `pstack_roles` to read the role's `provider`, `model`, `reasoningEffort`, and served `efforts`; pass those values to `pstack_subagent`. Use `pstack_models` for setup or route verification. Drop `-fast`; DSH has no speed parameter. |
+| A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route, or omit the route and let the child inherit the parent route; say which you did. |
+| `auto` or `inherit-parent` | Omit the route; the child inherits the parent route. |
+| The pstack role file | `$DSH_HOME/pstack-models.json`. Read it through `pstack_roles`; `pstack_subagent` does not parse it. A missing file leaves the parent route in effect. |
+| A role value such as `<model> <effort>` | Use the structured route values reported by `pstack_roles` or `pstack_models`; do not join or split a `provider/model` string. |
 
-When passing `provider` and `model` to override the child route, also pass `reasoning_effort` when the target model does not support the parent's current effort. Omitting it inherits the parent's effort and can fail before the child starts.
+When overriding a child route, pass a `reasoning_effort` when the target model does not serve the parent's current effort. Omitting it inherits the parent effort and can fail before the child starts.
 
 ## setup-pstack
 
-`setup-pstack` writes the role file the calling agent reads to choose a route. Use `pstack_models` to discover the live provider, model, and effort routes; do not infer them from Cursor slugs.
+`setup-pstack` writes the role file the calling agent uses to choose a route. Use `pstack_models` to discover the live `provider`, `model`, and `effort` routes; do not infer them from Cursor slugs.
 
-- Detect: write each real route as a structured `{ provider, model, effort? }` object. If nothing is detectable, ask the user to paste the routes.
-- Defaults: map each found route; use `inherit-parent` or `auto` for an unserved route. Apply the selected budget to the closest advertised effort and say what was chosen.
-- Write: write `version: 2` with a `roles` object of route-object arrays and an optional `budget`. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
+- Detect: write each real route found by `pstack_models`; if none is detectable, ask the user to paste the routes.
+- Defaults: map each found route; use `inherit-parent` or `auto` for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
+- Write: overwrite the whole role file so a rerun is idempotent; a missing role inherits the parent route.
 
 ## Paths
 
@@ -58,6 +73,16 @@ When passing `provider` and `model` to override the child route, also pass `reas
 | `.cursor/rules/*.mdc`, always-applied rules | The `AGENTS.md`-compatible chain. DSH never reads `.mdc`; the calling agent reads the pstack role file, and `pstack_subagent` does not parse it. |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | `<pstack>/<path>` when the package ships it. Read the local copy and give the user the public URL when needed. |
 | Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session>.jsonl`. Optional session search adds model-facing search tools. |
+
+## Local replacements
+
+| Cursor | DeepSeek Harness |
+| --- | --- |
+| `create-skill` | Use the vendored `writing-for-agents` skill to create or review a skill, then write and validate its `SKILL.md` directly. |
+| `/deslop` | Use the vendored `deslop` skill for code slop; `unslop` is only for prose. |
+| `/loop` | Use `create_goal` for automatic continuation, `schedule_create` for a timed heartbeat, or a background `bash` watcher for observable events. |
+| `/automate` | Use `writing-for-agents` to turn verified work patterns into a personal skill; fall back to available session evidence when history search is unavailable. |
+| `control-ui`, `control-cli`, `cursor-team-kit` | Use the vendored instruction skills; their browser or PTY requirements are stated in their own `SKILL.md`. |
 
 ## Cursor-only features
 
@@ -70,32 +95,3 @@ DeepSeek Harness has no Cursor Automations, Bugbot, Cursor cloud agents, or buil
 | Cursor cloud agents | Map `environment: "cloud"` to a local worktree; skip steps that need the cloud machine itself. |
 | A built-in PR tool | Use the step's `gh` command through `bash`; that is not a skip, so write no line. |
 | Cursor Projects | Skip with the line; there is no persistent cloud Project coordinator. |
-
-## Plugin tools
-
-The package registers its own model-facing tools beyond the native DSH tools above.
-
-| Tool | Purpose |
-| --- | --- |
-| `pstack_subagent` | Start one subagent. Requires `description` and `prompt`; optional `agent_preset` (default `general`), `name`, `cwd`, `maxDepth`, and a route override with `provider`, `model`, and `reasoning_effort`. Returns `{kind:"activation", name}`. Completion arrives as a notice. A subagent is not a background job: never pass its name to `job_output`; wait for the completion notice, or use the native `list_agents`/`send_message`. |
-| `pstack_interrupt` | Stop one pstack child's current turn by its name from `list_agents` or its Session id. Built-in presets disable the native `interrupt_agent`, so this is the interruption path for a pstack child. |
-| `pstack_models` | List the advertised provider, model, and reasoning-effort routes for this deployment. Availability is confirmed only by an actual call; a listed route can still fail or be disallowed for the Session. |
-| `pstack_roles` | Report each pstack role with its configured routes as provider, model, and reasoningEffort values, plus each route's served efforts and default. Pass them to `pstack_subagent` as `provider`, `model`, and `reasoning_effort`. |
-
-## Agent Teams
-
-When the session enables Agent Teams, `pstack_subagent` starts a teammate. Create the shared task with `team_task_create` first, start the child with a `name`, then reassign the task to that returned name with `team_task_update` action `reassign`. Include the task id in the child prompt so the child can claim and complete it. The role entries reported by `pstack_roles` are model routes, not Team members.
-
-Use the Team board for durable work that needs an owner, dependencies, write scopes, or handoff to another member. Do not create a Team task for private or one-shot exploration, quick lookups, tool setup, or a single-turn check the Lead can finish directly; those remain ordinary `pstack_subagent` delegation without a task.
-
-After each `pstack_subagent` call made for a Team task, immediately bind the task owner with `team_task_update`. After dispatching a batch, run `team_task_list` and reject any pending task that has no owner; reassign or delete it before waiting. Re-read the task immediately before every `team_task_update` so its revision is current. Only the task owner completes a task; if the Lead must finish it, reassign it to the Lead first instead of completing a child's in-progress task.
-
-## Local replacements
-
-| Cursor | DeepSeek Harness |
-| --- | --- |
-| `create-skill` | Use the vendored `writing-for-agents` skill to create or review a skill, then write and validate its `SKILL.md` directly. |
-| `/deslop` | Use the vendored `deslop` skill for code slop; `unslop` is only for prose. |
-| `/loop` | Use `create_goal` for automatic continuation, `schedule_create` for a timed heartbeat, or a background `bash` watcher for observable events. |
-| `/automate` | Use `writing-for-agents` to turn verified work patterns into a personal skill; fall back to available session evidence when history search is unavailable. |
-| `control-ui`, `control-cli`, `cursor-team-kit` | Use the vendored instruction skills; their browser or PTY requirements are stated in their own `SKILL.md`. |
