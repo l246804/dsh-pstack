@@ -219,6 +219,10 @@ describe("migratePstackHome", () => {
       const service = ctx.get("pstackHome") as PstackHomeService;
       expect(service.migrationErrors).toHaveLength(1);
       expect(service.migrationErrors[0]).toContain("role file");
+
+      writeFile(join(home, "pstack-models.mdc"), "bug-fix: cpa/model-a [high]\n");
+      expect(service.retryMigration().errors).toEqual([]);
+      expect(readFileSync(pstackHomePaths(home).models, "utf8")).toContain('"model-a"');
     } finally {
       if (previousHome === undefined) delete process.env.DSH_HOME;
       else process.env.DSH_HOME = previousHome;

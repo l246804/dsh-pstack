@@ -8,7 +8,7 @@
 import { Service } from "@deepseek-ai/cordis";
 import type { Context } from "@deepseek-ai/cordis";
 
-import { migratePstackHome } from "./compat/migrate-pstack-home.ts";
+import { migratePstackHome, type PstackHomeMigration } from "./compat/migrate-pstack-home.ts";
 import { describeError } from "./lib/errors.ts";
 import { resolveDshHome } from "./lib/dsh-home.ts";
 import { pstackHomePaths, type PstackHomePaths } from "./pstack/home.ts";
@@ -30,11 +30,17 @@ export class PstackHomeService extends Service {
   }
 
   protected [Service.init](): void {
+    this.retryMigration();
+  }
+
+  /** Re-run migration after the user fixes a legacy file. */
+  retryMigration(): PstackHomeMigration {
     try {
       this.migrationErrors = migratePstackHome(this.dshHome).errors;
     } catch (error) {
       this.migrationErrors = [describeError(error)];
     }
+    return { errors: this.migrationErrors };
   }
 }
 

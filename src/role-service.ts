@@ -37,13 +37,16 @@ export class PstackRolesService extends TypertRemoteService {
 
   /** Current path, status, values, and per-role issues. */
   status(): RoleFileSnapshot {
-    const configuration = readRoleConfiguration(this.home.paths.models);
+    let configuration = readRoleConfiguration(this.home.paths.models);
     if (configuration.status === "missing" && this.home.migrationErrors.length > 0) {
-      return snapshotFromConfiguration({
-        status: "unreadable",
-        path: configuration.path,
-        reason: this.home.migrationErrors[0]!,
-      });
+      this.home.retryMigration();
+      configuration = readRoleConfiguration(this.home.paths.models);
+    }
+    if (configuration.status === "missing" && this.home.migrationErrors.length > 0) {
+      return {
+        ...snapshotFromConfiguration(configuration),
+        issues: [{ message: this.home.migrationErrors[0]! }],
+      };
     }
     return snapshotFromConfiguration(configuration);
   }
