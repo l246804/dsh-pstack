@@ -34,14 +34,14 @@
 | `claude-<family>-<version>-<effort>[-fast]` | `@deepseek-ai/dsh-tool-subagent` 的 `Config.modelSelection`/`modelDiscovery` 与参数 `provider`/`model`/`reasoning_effort`；`list_subagent_models` 仅在 `modelDiscovery: true` 时注册；`dsh-base/cordis.patch.yml` 的 `tool-subagent` 未启用这两项 |
 | `grok-*`、`gpt-*` 等非 Claude slug | 同上；DSH 只接受实际公布的 provider/model/effort 路由，否则省略并继承 |
 | `auto` / `inherit-parent` | 同上；省略 `provider`/`model`/`reasoning_effort` 时使用父级路由 |
-| `pstack-models.mdc` / `~/.cursor/rules/pstack-models.mdc` | `@deepseek-ai/dsh-agent-instructions` 只读 AGENTS 链；`@deepseek-ai/dsh-base` 无 `.mdc` rules 目录，也不读取 `$DSH_HOME/pstack-models.json` |
+| `pstack-models.mdc` / `~/.cursor/rules/pstack-models.mdc` | `@deepseek-ai/dsh-agent-instructions` 只读 AGENTS 链；`@deepseek-ai/dsh-base` 无 `.mdc` rules 目录，也不读取 `$DSH_HOME/pstack/models.json` |
 | 角色值 `<model> <effort>` | `@deepseek-ai/dsh-tool-subagent` 的 `provider`、`model`、`reasoning_effort` 三个独立参数 |
 
 ## setup-pstack
 
 | dsh.md 行 | DSH 证据 |
 | --- | --- |
-| DSH 无 rules 目录、角色文件位置 | `@deepseek-ai/dsh-agent-instructions` 的 AGENTS 链；`@deepseek-ai/dsh-home-paths` 的 `resolveDshHome`（`$DSH_HOME` 默认 `~/.dsh`）；base 无读取 `$DSH_HOME/pstack-models.json` 的路径 |
+| DSH 无 rules 目录、角色文件位置 | `@deepseek-ai/dsh-agent-instructions` 的 AGENTS 链；`@deepseek-ai/dsh-home-paths` 的 `resolveDshHome`（`$DSH_HOME` 默认 `~/.dsh`）；base 无读取 `$DSH_HOME/pstack/models.json` 的路径 |
 | Detect / Defaults 用的模型发现 | `@deepseek-ai/dsh-tool-subagent` 的 `list_subagent_models` 注册与 `modelDiscovery` 配置 |
 | profile 与补丁文件 | `@deepseek-ai/dsh-app-boot` 的 `PROFILES_DIR`（`profiles`）与 `PROFILE_PATCH_FILENAME`（`cordis.patch.yml`） |
 

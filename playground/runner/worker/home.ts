@@ -92,29 +92,12 @@ function providerRows(
   return rows;
 }
 
-/** Native keeps the legacy root paths; adapted uses the pstack home layout. */
-function pstackSeedPaths(paths: WorkerPaths): { root: string; models: string; settings: string } {
-  if (paths.variant === "native") {
-    return {
-      root: paths.home,
-      models: join(paths.home, "pstack-models.json"),
-      settings: join(paths.home, "pstack-settings.json"),
-    };
-  }
-  const root = join(paths.home, "pstack");
-  return {
-    root,
-    models: join(root, "models.json"),
-    settings: join(root, "settings.json"),
-  };
-}
-
 export function writeRoleFile(
   paths: WorkerPaths,
   config: Pick<PlaygroundConfig, "roleModels">,
 ): void {
-  const seed = pstackSeedPaths(paths);
-  mkdirSync(seed.root, { recursive: true });
+  const root = join(paths.home, "pstack");
+  mkdirSync(root, { recursive: true });
   const roles: Record<
     string,
     Array<{ kind: "route"; provider: string; model: string; effort?: string }>
@@ -128,7 +111,7 @@ export function writeRoleFile(
       ...(route.effort === undefined ? {} : { effort: route.effort }),
     }));
   }
-  writeFileSync(seed.models, `${JSON.stringify({ version: 2, roles }, null, 2)}\n`);
+  writeFileSync(join(root, "models.json"), `${JSON.stringify({ version: 2, roles }, null, 2)}\n`);
 }
 
 /**
@@ -137,9 +120,12 @@ export function writeRoleFile(
  * native keeps it off.
  */
 export function writePstackSettings(paths: WorkerPaths, potetoDefault: boolean): void {
-  const seed = pstackSeedPaths(paths);
-  mkdirSync(seed.root, { recursive: true });
-  writeFileSync(seed.settings, `${JSON.stringify({ version: 1, potetoDefault }, null, 2)}\n`);
+  const root = join(paths.home, "pstack");
+  mkdirSync(root, { recursive: true });
+  writeFileSync(
+    join(root, "settings.json"),
+    `${JSON.stringify({ version: 1, potetoDefault }, null, 2)}\n`,
+  );
 }
 
 export function writeHomePatch(

@@ -49,7 +49,7 @@ const plan: ProviderPlan = {
 };
 
 describe("worker pstack seeding", () => {
-  it("keeps native pstack files at the legacy root and adapted files under pstack", () => {
+  it("seeds both native and adapted pstack files under the pstack directory", () => {
     const base = workerPaths();
     const native = {
       ...base,
@@ -70,12 +70,13 @@ describe("worker pstack seeding", () => {
     writeRoleFile(adapted, config);
     writePstackSettings(adapted, true);
 
-    expect(existsSync(join(native.home, "pstack-models.json"))).toBe(true);
-    expect(existsSync(join(native.home, "pstack-settings.json"))).toBe(true);
-    expect(existsSync(join(native.home, "pstack"))).toBe(false);
-    expect(existsSync(join(adapted.home, "pstack", "models.json"))).toBe(true);
-    expect(existsSync(join(adapted.home, "pstack", "settings.json"))).toBe(true);
-    expect(readFileSync(join(native.home, "pstack-models.json"), "utf8")).toContain('"p"');
+    for (const worker of [native, adapted]) {
+      expect(existsSync(join(worker.home, "pstack", "models.json"))).toBe(true);
+      expect(existsSync(join(worker.home, "pstack", "settings.json"))).toBe(true);
+      expect(existsSync(join(worker.home, "pstack-models.json"))).toBe(false);
+      expect(existsSync(join(worker.home, "pstack-settings.json"))).toBe(false);
+    }
+    expect(readFileSync(join(native.home, "pstack", "models.json"), "utf8")).toContain('"p"');
   });
 });
 
