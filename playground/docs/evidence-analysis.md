@@ -26,6 +26,7 @@
 3. 性能、质量和精确数量不是默认门槛；有操作或测量但未达目标时，优先 `inconclusive` 或待用户判断。
 4. 非文本产物必须看到实际呈现；源码、路径、文件卡片和 assistant 文本不能替代渲染、播放或 UI 观察。
 5. 证据不足时留给用户判断，不把模型表现当成 DSH 能力结论。
+6. `dsh.md` 审查只依据当前 variant 的实际实现、文档内容和实测证据；不把另一 variant 的结构或术语作为判定标准。
 
 ## 输出
 
@@ -33,10 +34,8 @@
 
 1. 本轮范围：full/incremental、覆盖场景、沿用快照、实际版本。
 2. 按 probe 汇总：通过、失败或未完成、未观察到、能力缺失。
-3. 按根因去重的问题问答，每条带 capability id 和证据。
-4. `dsh.md` 审查：按章节或行判断 `够用`、`缺失`、`误导`、`不适用`。
-5. 待用户判断的问题。
-6. 后续动作：`dsh-md`、`plugin`、`upstream`、`ignore-environment`。
+3. `dsh.md` 审查：按当前 variant 的实际实现和章节判断 `够用`、`缺失`、`误导`、`不适用`；判定只针对当前 variant，不与其他 variant 的组织方式比较。
+4. 问题与建议：按根因去重，每条带 capability id、证据、建议和需要用户确认的事项。
 
 问题条目和 `dsh.md` 表格的字段以本文件的结构为准；`review.json` 由 `playground:review` 校验。不要为同一根因按场景重复建条目。
 
@@ -54,6 +53,6 @@ vp run playground:review -- --variant <variant> --environment <environment> --ch
 ## 完成标准
 
 - 每个快照场景都有明确结论和 reason。
-- 问题条目按根因去重，带 capability id、证据和后续动作。
+- 问题条目按根因去重，带 capability id、证据、建议和需要用户确认的事项。
 - `dsh.md` 审查只覆盖当前 variant 的那一份。
 - `review --check` 通过，没有 pending。
