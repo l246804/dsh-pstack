@@ -6,8 +6,9 @@ import { dirname, join } from "node:path";
 import { migrateMdcToJson } from "./mdc-to-json.ts";
 import { upgradeRoleFile } from "./upgrade-role-file.ts";
 import { ROLE_FILE_VERSION, serializeRoleDocument } from "../roles/role-store.ts";
+import { describeError } from "../lib/errors.ts";
 import { resolveDshHome } from "../lib/dsh-home.ts";
-import { pstackHomePaths } from "../pstack/home.ts";
+import { pstackHomePaths, type PstackHomePaths } from "../pstack/home.ts";
 
 /** Legacy filenames at the `$DSH_HOME` root. `pstack-repair.json` is never migrated. */
 const LEGACY_MODELS_FILENAME = "pstack-models.json";
@@ -29,12 +30,34 @@ function moveLegacyIfDestinationMissing(legacyPath: string, currentPath: string)
   }
 }
 
+/** Non-fatal problems from one startup migration pass. */
+export interface PstackHomeMigration {
+  readonly errors: readonly string[];
+}
+
 /** Converge `$DSH_HOME` on the current pstack layout in one startup pass. */
-export function migratePstackHome(dshHome: string = resolveDshHome()): void {
+export function migratePstackHome(dshHome: string = resolveDshHome()): PstackHomeMigration {
   const paths = pstackHomePaths(dshHome);
+  const errors: string[] = [];
+
+  try {
+    migrateModels(dshHome, paths);
+  } catch (error) {
+    errors.push(`role file: ${describeError(error)}`);
+  }
+
+  try {
+    moveLegacyIfDestinationMissing(join(dshHome, LEGACY_SETTINGS_FILENAME), paths.settings);
+  } catch (error) {
+    errors.push(`settings file: ${describeError(error)}`);
+  }
+
+  return { errors };
+}
+
+function migrateModels(dshHome: string, paths: PstackHomePaths): void {
   const legacyModels = join(dshHome, LEGACY_MODELS_FILENAME);
   const legacyMdc = join(dshHome, LEGACY_MODELS_MDC_FILENAME);
-  const legacySettings = join(dshHome, LEGACY_SETTINGS_FILENAME);
 
   if (!existsSync(paths.models)) {
     if (existsSync(legacyModels)) {
@@ -48,11 +71,10 @@ export function migratePstackHome(dshHome: string = resolveDshHome()): void {
   }
 
   if (existsSync(paths.models)) {
-    upgradeRoleFile(paths.models, {
+    const result = upgradeRoleFile(paths.models, {
       currentVersion: ROLE_FILE_VERSION,
       serialize: serializeRoleDocument,
     });
+    if (result.status === "unreadable") throw new Error(result.reason);
   }
-
-  moveLegacyIfDestinationMissing(legacySettings, paths.settings);
 }

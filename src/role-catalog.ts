@@ -145,6 +145,7 @@ const TOOL_DESCRIPTION = [
 export function createPstackRolesTool(
   dshHome: string = resolveDshHome(),
   llm?: LlmRuntime,
+  migrationErrors: readonly string[] = [],
 ): ToolDefinition {
   return {
     name: TOOL_NAME,
@@ -167,6 +168,9 @@ export function createPstackRolesTool(
           `the pstack role file at ${roleFile.path} cannot be read: ${roleFile.reason}`,
         );
       }
+      if (roleFile.status === "missing" && migrationErrors.length > 0) {
+        throw new Error(`the pstack role file could not be migrated: ${migrationErrors[0]}`);
+      }
       const entries = roleFile.status === "loaded" ? roleFile.roles : undefined;
       const roles = roleCapabilities(entries);
       if (llm === undefined) return { roles };
@@ -183,7 +187,7 @@ export function createPstackRolesTool(
 
 export function apply(ctx: Context): void {
   const home = ctx.get("pstackHome") as PstackHomeService;
-  ctx.tools.register(createPstackRolesTool(home.dshHome, ctx.llm));
+  ctx.tools.register(createPstackRolesTool(home.dshHome, ctx.llm, home.migrationErrors));
 }
 
 function routeToChoice(route: Route): RoleRoute {
