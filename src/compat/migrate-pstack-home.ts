@@ -52,6 +52,11 @@ function migrateModels(dshHome: string, paths: PstackHomePaths): void {
 
   if (!existsSync(paths.models)) {
     if (existsSync(legacyModels)) {
+      const result = upgradeRoleFile(legacyModels, {
+        currentVersion: ROLE_FILE_VERSION,
+        serialize: serializeRoleDocument,
+      });
+      if (result.status === "unreadable") return;
       moveLegacyIfDestinationMissing(legacyModels, paths.models);
     } else if (existsSync(legacyMdc)) {
       migrateMdcToJson(legacyMdc, paths.models, {

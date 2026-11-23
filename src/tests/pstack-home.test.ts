@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from "vite-plus/test";
 import { EMPTY_SETTINGS, readSettings } from "../poteto/settings.ts";
 import { migratePstackHome } from "../compat/migrate-pstack-home.ts";
 import { pstackHomePaths } from "../pstack/home.ts";
+import { snapshotFromConfiguration } from "../roles/role-editor.ts";
 import { readRoleConfiguration } from "../roles/role-store.ts";
 
 const directories: string[] = [];
@@ -238,13 +239,18 @@ describe("migratePstackHome", () => {
     expect(raw.roles["bug-fix"]).toEqual([route]);
   });
 
-  it("leaves corrupt legacy role JSON unreadable through readRoleConfiguration", () => {
+  it("leaves corrupt legacy role JSON at the root and keeps roles saveable", () => {
     const home = tempHome();
     writeFile(join(home, "pstack-models.json"), "{ not valid json");
+    writeJson(join(home, "pstack-settings.json"), { version: 1, potetoDefault: true });
 
     migratePstackHome(home);
 
-    expect(readRoleConfiguration(pstackHomePaths(home).models).status).toBe("unreadable");
+    const configuration = readRoleConfiguration(pstackHomePaths(home).models);
+    expect(configuration.status).toBe("missing");
+    expect(snapshotFromConfiguration(configuration).canSave).toBe(true);
+    expect(existsSync(join(home, "pstack-models.json"))).toBe(true);
+    expect(readSettings(pstackHomePaths(home).settings).potetoDefault).toBe(true);
   });
 
   it("falls back to defaults for corrupt settings", () => {

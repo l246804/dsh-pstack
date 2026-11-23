@@ -99,8 +99,8 @@ export interface MdcMigrationOptions {
 
 /**
  * Parse `mdcPath`, write the current JSON version at `jsonPath`, then delete the
- * `.mdc`. Throws on a parse issue or write failure so the caller can report the
- * role file as unreadable instead of treating it as missing.
+ * `.mdc`. Throws on a parse issue or write failure; the startup migration treats
+ * that as best effort and leaves the legacy file in place.
  */
 export function migrateMdcToJson(
   mdcPath: string,
