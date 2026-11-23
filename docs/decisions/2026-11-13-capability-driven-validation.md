@@ -32,3 +32,4 @@ Review: 2026-11-15
 - capability 覆盖由 inventory 和 probe 驱动，skill/playbook 不再决定测试数量。
 - raw/adapted 的输入边界和特殊环境更清楚。
 - 本记录不定义全项目类型规则；类型规则见 [2026-11-13-project-type-discipline.md](./2026-11-13-project-type-discipline.md)。
+- 当前的 `native`/`playground`/`src` 边界见 [2026-11-23-native-playground-src-boundary.md](./2026-11-23-native-playground-src-boundary.md)；本记录的 capability 原则仍适用，旧 `raw/adapted` 和 `playground/adapter` 路径属于历史术语。

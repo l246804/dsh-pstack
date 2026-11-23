@@ -34,3 +34,4 @@ Review: 2026-11-13
 - `index.md` 成为后续 dsh.md 和插件开发的问题来源。
 - 提交体积从完整的多轮 history 降低为当前快照；历史依赖 Git，不在工作区保留。
 - 本记录取代 [2026-11-11-test-driven-port-baseline.md](./2026-11-11-test-driven-port-baseline.md) 中 `reports/`、`reviews/scenarios`、`reviews/runtime-review` 和 `history` 相关部分；其余场景注册表与 baseline.json 决策仍有效。
+- 当前的 `native`/`playground`/`src` 边界见 [2026-11-23-native-playground-src-boundary.md](./2026-11-23-native-playground-src-boundary.md)；快照原则仍适用，旧 `playground/harness` 路径属于历史路径。

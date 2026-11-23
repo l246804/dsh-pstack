@@ -191,7 +191,7 @@ Steps that depend on a disabled plugin report skipped or blocked, never passed. 
 
 Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/workflow.md](./playground/docs/workflow.md) documents the full procedure.
 
-- **Native baseline.** The generator copies upstream pstack into `playground/fixtures/native/pstack` and installs nothing else. `playground/fixtures/native/dsh.md` states each upstream capability as one of three cases: native in DSH, provided only by an official optional plugin, or absent. The generator copies that document and rewrites link references only, so the upstream wording stays intact.
+- **Native baseline.** `native/` pins the upstream pstack and generates `native/pstack`; `native/dsh.md` states each upstream capability as one of three cases: native in DSH, provided only by an official optional plugin, or absent. The generator inserts that document into the generated tree, so the upstream wording stays intact.
 - **Capability-driven runs.** Coverage comes from `native/gaps.json` and the scenario files under `playground/scenarios/`; the gap list records what the DSH standard runtime lacks, and the scenarios verify those gaps.
 - **Semantic review.** A skill that loads only proves it was reachable. Each scenario records a separate verdict (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason. The adapted run records `verified`, `not-verified`, or `inconclusive`.
 - **Adapted re-check.** Review findings drive [src/dsh.md](./src/dsh.md). Rebuild the adapted package with `vp run build`, then rerun the same scenarios to confirm the mapped behavior.

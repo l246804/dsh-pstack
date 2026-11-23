@@ -1,12 +1,12 @@
 # DSH 适配判定依据
 
-本文件只记录 `dsh.md` 每个替换项背后的 DSH 事实和可复查位置。不记录 port 实现、插件建议、角色设计或任何推测结论。
+本文件只记录 `dsh.md` 每个替换项背后的 DSH 事实和可复查位置。不记录移植实现、插件建议、角色设计或任何推测结论。
 
 ## Tools
 
 | dsh.md 行 | DSH 证据 |
 | --- | --- |
-| `Task` | `@deepseek-ai/dsh-tool-subagent` 的 `subagent`（`0.2.2-rc.2` 工具目录，源 `packages/subagent/tool-subagent/src/index.ts`）：参数 `cwd`/`description`/`name`/`prompt`，立即返回子代理名称；`subagent_fork` 由 `toolName` 另注册；`@deepseek-ai/dsh-tool-subagent-control` 的 `send_message`/`interrupt_agent`/`list_agents`/`wait_agent` |
+| `Task` | `@deepseek-ai/dsh-tool-subagent` 的 `subagent`（`0.2.2-rc.4` 工具目录，源 `packages/subagent/tool-subagent/src/index.ts`）：参数 `cwd`/`description`/`name`/`prompt`，立即返回子代理名称；`subagent_fork` 由 `toolName` 另注册；`@deepseek-ai/dsh-tool-subagent-control` 的 `send_message`/`interrupt_agent`/`list_agents`/`wait_agent` |
 | `AskQuestion` | `@deepseek-ai/dsh-tool-ask-user` 的 `lib/index.js`：`questions`（`id`/`question`/`header`/`options`/`multi_select`）与答案的 `selected`/`custom`、timed 模式的 `pending`；README 说明 `DELEGATED_CALLER` 拒绝 live child |
 | Open a todolist | `@deepseek-ai/dsh-tool-todo` 的 `lib/index.js`：`name: "todo_write"`，整表替换，状态仅 `pending`/`in_progress`/`completed`，无 `skipped` |
 | Run another pstack skill | `@deepseek-ai/dsh-tool-skill` 的 `skill` 工具；`@deepseek-ai/dsh-skill-filesystem` 的 `disable-model-invocation`/`modelInvocable`/`userInvocable` 解析，以及 `/name` 用户手势直接注入技能 |
@@ -24,7 +24,7 @@
 | `environment: "local"` | `@deepseek-ai/dsh-tool-subagent` 的 `cwd` 省略即继承调用目录 |
 | `cloud_base_branch: <b>` | `@deepseek-ai/dsh-tool-subagent` 无该字段；`@deepseek-ai/dsh-experimental-tool-worktree` 的 `create_worktree` 用 `from` 指定本地基线 |
 | `run_in_background: true` | `@deepseek-ai/dsh-tool-subagent` 无后台字段；工具立即返回子代理名称，由运行时在完成时通知 |
-| `resume` | `@deepseek-ai/dsh-tool-subagent-control` 的 `send_message`/`interrupt_agent` 参数都是 `agent`，取名称或会话 id；`0.2.2-rc.2` 内置 preset 把 `tool-subagent-control` 的 `config.interrupt` 设为 `false`，模型拿不到 `interrupt_agent`，服务层 `interrupt` API 仍在 |
+| `resume` | `@deepseek-ai/dsh-tool-subagent-control` 的 `send_message`/`interrupt_agent` 参数都是 `agent`，取名称或会话 id；`0.2.2-rc.4` 内置 preset 把 `tool-subagent-control` 的 `config.interrupt` 设为 `false`，模型拿不到 `interrupt_agent`，服务层 `interrupt` API 仍在 |
 | `file_attachments` | `@deepseek-ai/dsh-tool-subagent` 无附件字段；路径只能列在 `prompt`，由子代理用 `read` 读取 |
 
 ## Models
