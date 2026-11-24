@@ -23,9 +23,10 @@
 1. `vp run native:fetch` 按现有 lock 恢复 `upstream/`；没有 lock 时按 main 当前版本钉定。
 2. `vp run native:fetch:latest` 把钉定移到 main 当前版本；`vp run native:fetch -- --version <x.y.z>` 钉定指定版本，加 `--commit <sha>` 钉定指定提交。
 3. `vp run native:generate` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
-4. `upstream.lock.json` 与 `pstack/` 同波提交；`upstream/` 不入库。
+4. `vpx scripts/release-compatibility.ts` 同步两份 README 的兼容表，再把两份 README 的 pstack 徽标改到同一版本。脚本只维护表格，徽标靠手改。
+5. `upstream.lock.json`、`pstack/`、`gaps.json` 与两份 README 同波提交；`upstream/` 不入库。
 
-完成标准：`vp run native:generate:check` 绿，提交只含本节的产物。
+完成标准：`vp run ci` 绿，提交只含本节的产物。
 
 ## 如何维护 dsh.md
 

@@ -11,7 +11,7 @@
 //   vpx native/scripts/fetch-upstream.ts             # restore from the lock; bootstrap with
 //                                                    # main's current version when no lock exists
 //   vpx native/scripts/fetch-upstream.ts --latest    # force an upgrade check against main
-//   vpx native/scripts/fetch-upstream.ts --version 0.15.43   # pin an exact released version
+//   vpx native/scripts/fetch-upstream.ts --version 0.15.48   # pin an exact released version
 //        [--source <git url or local path>] [--path pstack] [--commit <sha>]
 //
 // Rules:
