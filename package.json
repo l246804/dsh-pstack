@@ -56,7 +56,6 @@
     "ci": "vp check && vp run typecheck && vp run playground:typecheck && vp test && vp run native:generate:check && vp run surface:check && vp run compatibility:check && vp run playground:gap-lock -- --check && vp run build && vp run playground:status-table -- --check",
     "surface:generate": "vpx scripts/release-surface.ts --write",
     "surface:check": "vpx scripts/release-surface.ts --check",
-    "paths:check": "vpx scripts/verify-paths-index.ts",
     "prerelease": "vp run ci",
     "release": "bash scripts/release.sh",
     "prepublishOnly": "vp run build"
