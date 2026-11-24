@@ -3,7 +3,7 @@
   "skills": {
     "control-cli": {
       "source": "cursor/plugins",
-      "ref": "ae5650febf4320793844c12c4adaa937f417f8da",
+      "ref": "ca782ed8b3c2c521cead8e1720d55c3a5dbf2347",
       "sourceType": "github",
       "skillPath": "cursor-team-kit/skills/control-cli/SKILL.md",
       "computedHash": "3f6ccb21788bdf59ee96b54eac9ad35aa75e733e44700910c8d2998b165e888b",
@@ -11,7 +11,7 @@
     },
     "control-ui": {
       "source": "cursor/plugins",
-      "ref": "ae5650febf4320793844c12c4adaa937f417f8da",
+      "ref": "ca782ed8b3c2c521cead8e1720d55c3a5dbf2347",
       "sourceType": "github",
       "skillPath": "cursor-team-kit/skills/control-ui/SKILL.md",
       "computedHash": "29343abf8da1f692915ef82d11a1ce6d03d211101792b39f8c66e2f7c7868d05",
@@ -19,7 +19,7 @@
     },
     "deslop": {
       "source": "cursor/plugins",
-      "ref": "ae5650febf4320793844c12c4adaa937f417f8da",
+      "ref": "ca782ed8b3c2c521cead8e1720d55c3a5dbf2347",
       "sourceType": "github",
       "skillPath": "cursor-team-kit/skills/deslop/SKILL.md",
       "computedHash": "8883a7d459c07a0b2ee06972e79baa634009aa3bab969a6650acbefac394ad41",
@@ -27,7 +27,7 @@
     },
     "retro": {
       "source": "mattpocock/skills",
-      "ref": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
+      "ref": "d1478fcb140db0b93c0c8df17bcfd311844749d0",
       "sourceType": "github",
       "skillPath": "skills/engineering/retro/SKILL.md",
       "computedHash": "b8d55851a2909e26c2dbb2e8563719c87b3b700559f604e4df344f8c27e21047",
@@ -35,7 +35,7 @@
     },
     "writing-for-agents": {
       "source": "mattpocock/skills",
-      "ref": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
+      "ref": "d1478fcb140db0b93c0c8df17bcfd311844749d0",
       "sourceType": "github",
       "skillPath": "skills/productivity/writing-for-agents/SKILL.md",
       "computedHash": "95da47fc97af998e85b7d7e6d57b3ac76727c1e290cfe9ea09005aacb826959f",
