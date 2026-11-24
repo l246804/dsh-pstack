@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import { applyReview, checkReview } from "../scripts/review.ts";
-import type { ReviewEntry } from "../scripts/lib/review.ts";
+import type { ReviewEntry } from "../runner/evidence/review-snapshot.ts";
 import { checkStatusTable, statusTableContent, writeStatusTable } from "../scripts/status-table.ts";
 import type { RunRecord, Variant, Verdict } from "../runner/types.ts";
 
@@ -181,6 +181,36 @@ describe("applyReview", () => {
     expect((failed.verdict as { failures?: string[] }).failures).toContain("assertion failed");
   });
 
+  it("keeps an adapted execution block when review says supported", () => {
+    const root = mkdtempSync(join(temporary, "adapted-blocked-"));
+    const variant: Variant = "adapted";
+    const environment = "base";
+    writeSnapshot(root, variant, environment, [
+      makeRecord(variant, environment, "cap-blocked", {
+        blockedReason: "scenario execution failed",
+        verdict: {
+          variant: "adapted",
+          status: "inconclusive",
+          reason: "scenario execution failed",
+        },
+      }),
+    ]);
+    writeReview(root, variant, environment, {
+      "cap-blocked": review("supported"),
+    });
+
+    applyReview({ variant, environment, root });
+
+    const blocked = readRecord(root, variant, environment, "cap-blocked");
+    expect(blocked.verdict).toEqual({
+      variant: "adapted",
+      status: "inconclusive",
+      reason: "scenario execution failed",
+    });
+    expect(blocked.blockedReason).toBe("scenario execution failed");
+    expect(checkReview({ variant, environment, root }).ok).toBe(true);
+  });
+
   it("fails loudly on unknown or missing scenario ids", () => {
     const root = mkdtempSync(join(temporary, "ids-"));
     const variant: Variant = "native";
@@ -305,5 +335,10 @@ describe("status table", () => {
       `${JSON.stringify(changed, null, 2)}\n`,
     );
     expect(checkStatusTable(target).ok).toBe(false);
+  });
+
+  it("fails an empty snapshot tree instead of passing with no columns", () => {
+    const root = mkdtempSync(join(temporary, "status-empty-"));
+    expect(checkStatusTable({ root }).ok).toBe(false);
   });
 });

@@ -270,6 +270,11 @@ export interface RunRecord {
    */
   mechanicalFailures: string[];
   verdict: Verdict;
+  /**
+   * Set when the scenario did not produce a normal record, for example because execution
+   * failed before assertions ran. Review must never recompute such a record into a pass.
+   */
+  blockedReason?: string;
   capturedAt: string;
   /** Batch that produced this record; optional on records written before current snapshots. */
   batchId?: string;

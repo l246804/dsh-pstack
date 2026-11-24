@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -8,19 +8,14 @@ import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 import { EVIDENCE_FILES } from "../runner/evidence/evidence-files.ts";
 import { isRunRecord } from "../runner/evidence/evidence.ts";
 import { residualKinds } from "../runner/evidence/redaction.ts";
-import { reviewSnapshotDirectory } from "../runner/evidence/review-snapshot.ts";
+import {
+  listSnapshotRecordFiles,
+  reviewSnapshotDirectory,
+} from "../runner/evidence/review-snapshot.ts";
 
 function argValue(flag: string): string | undefined {
   const index = process.argv.indexOf(flag);
   return index >= 0 ? process.argv[index + 1] : undefined;
-}
-
-function walk(dir: string): string[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const file = join(dir, entry.name);
-    return entry.isDirectory() ? walk(file) : entry.name === EVIDENCE_FILES.record ? [file] : [];
-  });
 }
 
 function main(): void {
@@ -31,14 +26,14 @@ function main(): void {
   const environment = environmentMatrix(environmentId).id;
   const apply = process.argv.includes("--apply");
   const root = reviewSnapshotDirectory(variant, environment);
-  const records = walk(root);
+  const records = listSnapshotRecordFiles(variant, environment);
   if (records.length === 0) throw new Error(`no review records under ${root}`);
 
   let errors = 0;
   let checked = 0;
-  for (const record of records) {
-    const safe = join(dirname(record), EVIDENCE_FILES.safe);
-    const candidate = apply ? safe : existsSync(safe) ? safe : record;
+  for (const { file: recordPath } of records) {
+    const safe = join(dirname(recordPath), EVIDENCE_FILES.safe);
+    const candidate = apply ? safe : existsSync(safe) ? safe : recordPath;
     if (apply && !existsSync(safe)) {
       console.error(`[redact] MISSING ${relative(root, safe)}; create it in the redaction session`);
       errors += 1;
@@ -64,7 +59,7 @@ function main(): void {
       continue;
     }
     if (apply) {
-      writeFileSync(record, `${JSON.stringify(parsed, null, 2)}\n`);
+      writeFileSync(recordPath, `${JSON.stringify(parsed, null, 2)}\n`);
       rmSync(safe, { force: true });
     }
     checked += 1;

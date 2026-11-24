@@ -4,7 +4,11 @@ import { pathToFileURL } from "node:url";
 import { isVariant } from "../runner/types.ts";
 import type { Variant } from "../runner/types.ts";
 import { verdictFor } from "../runner/evidence/evidence.ts";
-import { listSnapshotRecords, readReviewEntries, toSemanticReview } from "./lib/review.ts";
+import {
+  listSnapshotRecords,
+  readReviewEntries,
+  toSemanticReview,
+} from "../runner/evidence/review-snapshot.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 
 function argValue(flag: string): string | undefined {
@@ -29,8 +33,8 @@ export interface CheckResult {
 
 /**
  * Write each review.json entry onto its committed record.json and recompute the verdict.
- * A record whose verdict is already `blocked` keeps that block, so applying a review never
- * overwrites a startup-conflict block. Every other field on the record is preserved.
+ * A record that carries a `blockedReason` keeps its original verdict, so applying a review
+ * never turns an execution block into a pass. Every other field on the record is preserved.
  */
 export function applyReview(target: ReviewTarget): ApplyResult {
   const entries = readReviewEntries(target.variant, target.environment, target.root);
@@ -53,7 +57,7 @@ export function applyReview(target: ReviewTarget): ApplyResult {
     if (entry === undefined) throw new Error(`missing review entry for ${scenarioId}`);
     const semanticReview = toSemanticReview(entry);
     record.semanticReview = semanticReview;
-    if (record.verdict.status !== "blocked") {
+    if (record.verdict.status !== "blocked" && record.blockedReason === undefined) {
       record.verdict = verdictFor({
         variant: record.variant,
         failures: record.mechanicalFailures,
@@ -91,7 +95,7 @@ export function checkReview(target: ReviewTarget): CheckResult {
     if (JSON.stringify(record.semanticReview) !== JSON.stringify(expected)) {
       problems.push(`record ${scenarioId} semanticReview does not match review.json`);
     }
-    if (record.verdict.status !== "blocked") {
+    if (record.verdict.status !== "blocked" && record.blockedReason === undefined) {
       const expectedVerdict = verdictFor({
         variant: record.variant,
         failures: record.mechanicalFailures,

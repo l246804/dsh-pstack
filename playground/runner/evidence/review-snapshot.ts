@@ -1,15 +1,25 @@
 import {
   copyFileSync,
+  cpSync,
   existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { RunEnvironment, RunRecord, Variant } from "../types.ts";
+import {
+  SEMANTIC_REVIEW_STATUSES,
+  type RunEnvironment,
+  type RunRecord,
+  type SemanticReview,
+  type SemanticReviewStatus,
+  type TestTarget,
+  type Variant,
+} from "../types.ts";
 import { isRunRecord, latestRecords, recordFileName } from "./evidence.ts";
 import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "./evidence-files.ts";
 import { sanitizeRecord } from "./redaction.ts";
@@ -34,6 +44,175 @@ export function reviewSnapshotDirectory(
   root = REVIEWS_DIRECTORY,
 ): string {
   return join(root, `${variant}-${environment}`);
+}
+
+export type ReviewReviewer = { kind: "human"; name: string } | { kind: "model"; route: TestTarget };
+
+/** One scenario's reviewed result, matching the non-pending `SemanticReview` variant. */
+export interface ReviewEntry {
+  status: SemanticReviewStatus;
+  reason: string;
+  reviewer: ReviewReviewer;
+}
+
+export type ReviewEntries = Record<string, ReviewEntry>;
+
+export interface SnapshotRecord {
+  scenarioId: string;
+  file: string;
+  record: RunRecord;
+}
+
+export const REVIEW_FILE = "review.json";
+
+export function reviewInputPath(variant: Variant, environment: string, root?: string): string {
+  return join(reviewSnapshotDirectory(variant, environment, root), REVIEW_FILE);
+}
+
+function routeOf(value: unknown, context: string): TestTarget {
+  if (value === null || typeof value !== "object") {
+    throw new Error(`${context}: reviewer.route must be an object`);
+  }
+  const route = value as { provider?: unknown; model?: unknown; effort?: unknown };
+  if (typeof route.provider !== "string" || route.provider === "") {
+    throw new Error(`${context}: reviewer.route.provider must be a non-empty string`);
+  }
+  if (typeof route.model !== "string" || route.model === "") {
+    throw new Error(`${context}: reviewer.route.model must be a non-empty string`);
+  }
+  if (typeof route.effort !== "string" || route.effort === "") {
+    throw new Error(`${context}: reviewer.route.effort must be a non-empty string`);
+  }
+  return { provider: route.provider, model: route.model, effort: route.effort };
+}
+
+function reviewerOf(value: unknown, context: string): ReviewReviewer {
+  if (value === null || typeof value !== "object") {
+    throw new Error(`${context}: reviewer must be an object`);
+  }
+  const reviewer = value as { kind?: unknown; name?: unknown; route?: unknown };
+  if (reviewer.kind === "human") {
+    if (typeof reviewer.name !== "string" || reviewer.name === "") {
+      throw new Error(`${context}: human reviewer.name must be a non-empty string`);
+    }
+    return { kind: "human", name: reviewer.name };
+  }
+  if (reviewer.kind === "model") {
+    return { kind: "model", route: routeOf(reviewer.route, context) };
+  }
+  throw new Error(`${context}: reviewer.kind must be "human" or "model"`);
+}
+
+function entryOf(scenarioId: string, value: unknown): ReviewEntry {
+  const context = `review ${scenarioId}`;
+  if (value === null || typeof value !== "object") {
+    throw new Error(`${context}: entry must be an object`);
+  }
+  const entry = value as { status?: unknown; reason?: unknown; reviewer?: unknown };
+  const status = SEMANTIC_REVIEW_STATUSES.find((known) => known === entry.status);
+  if (status === undefined) {
+    throw new Error(
+      `${context}: status ${JSON.stringify(entry.status)} is not one of ${SEMANTIC_REVIEW_STATUSES.join("/")}`,
+    );
+  }
+  if (typeof entry.reason !== "string") {
+    throw new Error(`${context}: reason must be a string`);
+  }
+  return {
+    status,
+    reason: entry.reason,
+    reviewer: reviewerOf(entry.reviewer, context),
+  };
+}
+
+/**
+ * Parse a `review.json` payload. The file is external analysis input, so this is the one
+ * place it is narrowed to typed entries; both CLI checks and status reads trust the result.
+ */
+export function parseReviewEntries(text: string, file = REVIEW_FILE): ReviewEntries {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch (error) {
+    throw new Error(
+      `${file}: invalid JSON: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${file}: review.json must be an object keyed by scenario id`);
+  }
+  const entries: ReviewEntries = {};
+  for (const [scenarioId, value] of Object.entries(parsed)) {
+    entries[scenarioId] = entryOf(scenarioId, value);
+  }
+  return entries;
+}
+
+export function readReviewEntries(
+  variant: Variant,
+  environment: string,
+  root?: string,
+): ReviewEntries {
+  const file = reviewInputPath(variant, environment, root);
+  if (!existsSync(file)) throw new Error(`review.json is missing: ${file}`);
+  return parseReviewEntries(readFileSync(file, "utf8"), file);
+}
+
+/** Convert a parsed review entry to the reviewed `SemanticReview` variant. */
+export function toSemanticReview(entry: ReviewEntry): SemanticReview {
+  return { status: entry.status, reason: entry.reason, reviewer: entry.reviewer };
+}
+
+/**
+ * Every committed record.json in one review snapshot, ordered by scenario id. A record is
+ * a `record.json` under `scenarios/<scenarioId>/<variant>-<environment>/`.
+ */
+export interface SnapshotRecordFile {
+  scenarioId: string;
+  file: string;
+}
+
+/** List the canonical record.json paths without parsing them. */
+export function listSnapshotRecordFiles(
+  variant: Variant,
+  environment: string,
+  root?: string,
+): SnapshotRecordFile[] {
+  const scenarios = join(
+    reviewSnapshotDirectory(variant, environment, root),
+    EVIDENCE_DIRECTORIES.scenarios,
+  );
+  if (!existsSync(scenarios)) return [];
+  const found: SnapshotRecordFile[] = [];
+  for (const entry of readdirSync(scenarios, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const file = join(scenarios, entry.name, `${variant}-${environment}`, EVIDENCE_FILES.record);
+    if (existsSync(file)) found.push({ scenarioId: entry.name, file });
+  }
+  return found.sort((left, right) => left.scenarioId.localeCompare(right.scenarioId));
+}
+
+/**
+ * Every committed record.json in one review snapshot, ordered by scenario id. A record is
+ * a `record.json` under `scenarios/<scenarioId>/<variant>-<environment>/`.
+ */
+export function listSnapshotRecords(
+  variant: Variant,
+  environment: string,
+  root?: string,
+): SnapshotRecord[] {
+  return listSnapshotRecordFiles(variant, environment, root).map(({ scenarioId, file }) => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(readFileSync(file, "utf8"));
+    } catch (error) {
+      throw new Error(
+        `invalid RunRecord JSON in ${file}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    if (!isRunRecord(parsed)) throw new Error(`not a RunRecord: ${file}`);
+    return { scenarioId, file, record: parsed };
+  });
 }
 
 export function batchMetadataFile(variant: Variant, environment: string): string {
@@ -75,7 +254,51 @@ export function readBatchMetadata(variant: Variant, environment: string): BatchM
 export function writeBatchMetadata(metadata: BatchMetadata): void {
   const file = batchMetadataFile(metadata.variant, metadata.environment);
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, `${JSON.stringify(metadata, null, 2)}\n`);
+  writeJsonAtomically(file, metadata);
+}
+
+/** Lock file that prevents two batches from writing the same variant/environment. */
+export function batchLockFile(variant: Variant, environment: string): string {
+  return join(workersDirectory(), variant, environment, "batch.lock");
+}
+
+/** Acquire the batch lock; returns an idempotent release function. */
+export function acquireBatchLock(metadata: BatchMetadata): () => void {
+  const file = batchLockFile(metadata.variant, metadata.environment);
+  mkdirSync(dirname(file), { recursive: true });
+  try {
+    writeFileSync(
+      file,
+      `${JSON.stringify({ batchId: metadata.batchId, pid: process.pid, startedAt: metadata.startedAt })}\n`,
+      { flag: "wx" },
+    );
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      throw new Error(`another batch holds ${file}; stop it before starting ${metadata.batchId}`);
+    }
+    throw error;
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    rmSync(file, { force: true });
+  };
+}
+
+/** Write one JSON file through a same-directory temporary file and rename. */
+function writeJsonAtomically(file: string, value: unknown): void {
+  const temporary = `${file}.tmp-${process.pid}-${Date.now()}`;
+  writeFileSync(temporary, `${JSON.stringify(value, null, 2)}\n`);
+  renameSync(temporary, file);
+}
+
+/** Problems when a batch would reuse a record produced by an earlier batch. */
+export function batchRecordProblems(batch: BatchMetadata, records: readonly RunRecord[]): string[] {
+  return records
+    .filter((record) => record.batchId !== batch.batchId)
+    .map((record) => `${record.scenarioId} has no record in batch ${batch.batchId}`)
+    .sort();
 }
 
 function readRecords(directory: string): RunRecord[] {
@@ -122,27 +345,14 @@ function sourceFor(record: RunRecord): RecordSource {
 function copyRunEvidence(record: RunRecord, directory: string): void {
   mkdirSync(directory, { recursive: true });
   const source = sourceFor(record);
-  writeFileSync(
-    join(directory, EVIDENCE_FILES.record),
-    `${JSON.stringify(sanitizeRecord(record), null, 2)}\n`,
-  );
+  writeJsonAtomically(join(directory, EVIDENCE_FILES.record), sanitizeRecord(record));
   if (source.screenshotFile && existsSync(source.screenshotFile)) {
     copyFileSync(source.screenshotFile, join(directory, EVIDENCE_FILES.screenshot));
+    return;
   }
-}
-
-function scenarioDirectory(
-  variant: Variant,
-  environment: string,
-  scenarioId: string,
-  root = REVIEWS_DIRECTORY,
-): string {
-  return join(
-    reviewSnapshotDirectory(variant, environment, root),
-    "scenarios",
-    scenarioId,
-    `${variant}-${environment}`,
-  );
+  if (record.verdict.status !== "blocked" && record.blockedReason === undefined) {
+    throw new Error(`missing screenshot for ${record.scenarioId} (${record.variant})`);
+  }
 }
 
 export interface ReviewSnapshotManifest {
@@ -182,55 +392,83 @@ export function writeReviewSnapshot(
   const scoped =
     batch === null ? current : current.filter((record) => batch.scope.includes(record.scenarioId));
   const scopedIds = new Set(scoped.map((record) => record.scenarioId));
-  if (batch?.mode === "full") {
+  if (batch !== null) {
     const missing = batch.scope.filter((scenarioId) => !scopedIds.has(scenarioId)).sort();
     if (missing.length > 0) {
       throw new Error(
-        `full batch has no record for ${missing.join(", ")}; refusing to prune the snapshot`,
+        `batch ${batch.batchId} has no record for ${missing.join(", ")}; refusing to reuse previous snapshot records`,
+      );
+    }
+    const reused = batchRecordProblems(batch, scoped);
+    if (reused.length > 0) {
+      throw new Error(
+        `batch ${batch.batchId} has no fresh record for ${reused.join(", ")}; refusing to reuse previous snapshot records`,
       );
     }
   }
   const manifestRecords = batch?.mode === "full" ? scoped : current;
   const manifestIds = new Set(manifestRecords.map((record) => record.scenarioId));
+  const dshVersions = new Set(manifestRecords.map((record) => record.environment.dshVersion));
+  const pstackVersions = new Set(manifestRecords.map((record) => record.environment.pstackVersion));
+  if (dshVersions.size > 1 || pstackVersions.size > 1) {
+    throw new Error(
+      `snapshot mixes DSH/pstack versions (${[...dshVersions].join(", ")} / ${[...pstackVersions].join(", ")}); rerun the full batch`,
+    );
+  }
   const snapshot = reviewSnapshotDirectory(variant, environment, reviewsDirectory);
-  const scenarios = join(snapshot, EVIDENCE_DIRECTORIES.scenarios);
+  const temporary = `${snapshot}.tmp-${process.pid}-${Date.now()}`;
 
-  // Only a full batch owns the whole snapshot, so only it may drop scenario dirs that this
-  // batch did not rerun. An incremental batch preserves every unrerun scenario.
-  if (batch?.mode === "full" && existsSync(scenarios)) {
-    for (const scenario of readdirSync(scenarios, { withFileTypes: true })) {
-      if (scenario.isDirectory() && !scopedIds.has(scenario.name)) {
-        rmSync(join(scenarios, scenario.name), { recursive: true, force: true });
-      }
+  try {
+    // A full batch owns the whole snapshot and starts from an empty tree; an incremental
+    // batch preserves every unrerun scenario. review.json is user-authored, so keep it in
+    // both modes.
+    if (batch?.mode === "full") {
+      mkdirSync(temporary, { recursive: true });
+      const reviewFile = join(snapshot, REVIEW_FILE);
+      if (existsSync(reviewFile)) copyFileSync(reviewFile, join(temporary, REVIEW_FILE));
+    } else if (existsSync(snapshot)) {
+      cpSync(snapshot, temporary, { recursive: true });
+    } else {
+      mkdirSync(temporary, { recursive: true });
     }
-  }
 
-  for (const record of scoped) {
-    const directory = scenarioDirectory(variant, environment, record.scenarioId, reviewsDirectory);
-    rmSync(directory, { recursive: true, force: true });
-    copyRunEvidence(record, directory);
-  }
+    for (const record of scoped) {
+      const directory = join(
+        temporary,
+        EVIDENCE_DIRECTORIES.scenarios,
+        record.scenarioId,
+        `${variant}-${environment}`,
+      );
+      rmSync(directory, { recursive: true, force: true });
+      copyRunEvidence(record, directory);
+    }
 
-  const manifest: ReviewSnapshotManifest = {
-    variant,
-    environment,
-    dshVersion: manifestRecords[0]?.environment.dshVersion ?? "",
-    pstackVersion: manifestRecords[0]?.environment.pstackVersion ?? "",
-    updatedAt: new Date().toISOString(),
-    lastBatchId: batch?.batchId ?? null,
-    lastMode: batch?.mode ?? null,
-    lastScope: batch?.scope ?? [],
-    scenarioIds: [...manifestIds].sort(),
-    scenarios: manifestRecords.map((record) => ({
-      id: record.scenarioId,
-      capturedAt: record.capturedAt,
-      batchId: record.batchId ?? null,
-      environment: record.environment,
-    })),
-  };
-  mkdirSync(snapshot, { recursive: true });
-  writeFileSync(join(snapshot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`);
-  return manifest;
+    const manifest: ReviewSnapshotManifest = {
+      variant,
+      environment,
+      dshVersion: manifestRecords[0]?.environment.dshVersion ?? "",
+      pstackVersion: manifestRecords[0]?.environment.pstackVersion ?? "",
+      updatedAt: new Date().toISOString(),
+      lastBatchId: batch?.batchId ?? null,
+      lastMode: batch?.mode ?? null,
+      lastScope: batch?.scope ?? [],
+      scenarioIds: [...manifestIds].sort(),
+      scenarios: manifestRecords.map((record) => ({
+        id: record.scenarioId,
+        capturedAt: record.capturedAt,
+        batchId: record.batchId ?? null,
+        environment: record.environment,
+      })),
+    };
+    mkdirSync(temporary, { recursive: true });
+    writeJsonAtomically(join(temporary, "manifest.json"), manifest);
+    rmSync(snapshot, { recursive: true, force: true });
+    renameSync(temporary, snapshot);
+    return manifest;
+  } catch (error) {
+    rmSync(temporary, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 export function collectReviewSnapshot(

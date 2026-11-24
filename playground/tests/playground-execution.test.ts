@@ -22,6 +22,7 @@ import {
   latestRecords,
   mechanicalFailures,
   pendingSemanticReview,
+  recordFileName,
   sessionMatchesPrompt,
   summarizeToolArguments,
   type SessionEvent,
@@ -43,6 +44,12 @@ import {
   type WorkerPaths,
 } from "../runner/worker/worker.ts";
 import { activeSubagentCount } from "../runner/execution/run.ts";
+import {
+  acquireBatchLock,
+  batchRecordProblems,
+  writeReviewSnapshot,
+  type BatchMetadata,
+} from "../runner/evidence/review-snapshot.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -182,6 +189,94 @@ describe("execution contracts", () => {
   it("does not pass an unreviewed semantic effect in either variant", () => {
     expect(record("native", "base").verdict.status).toBe("unobserved");
     expect(record("adapted", "base").verdict.status).toBe("inconclusive");
+  });
+
+  it("rejects a record from an earlier batch", () => {
+    const batch: BatchMetadata = {
+      batchId: "batch-new",
+      variant: "native",
+      environment: "base",
+      mode: "full",
+      scope: ["capability-test"],
+      startedAt: "2026-11-24T00:00:00.000Z",
+    };
+    expect(batchRecordProblems(batch, [record("native", "base")])).toEqual([
+      "capability-test has no record in batch batch-new",
+    ]);
+    expect(
+      batchRecordProblems(batch, [{ ...record("native", "base"), batchId: "batch-new" }]),
+    ).toEqual([]);
+  });
+
+  it("writes a snapshot and keeps it intact when a screenshot is missing", () => {
+    const reviews = join(temporary, "snapshot-reviews");
+    const workers = join(temporary, "snapshot-workers");
+    setRuntimeSettings({ ...defaultRuntimeSettings, workersDir: workers });
+    try {
+      const snapshotRecord = record("native", "base");
+      const paths = workerPaths(0, "base", "native");
+      const shot = join(paths.evidenceDir, "screenshot.png");
+      const stamp = snapshotRecord.capturedAt.replace(/[:.]/g, "-");
+      const source = join(
+        paths.evidenceDir,
+        recordFileName(
+          snapshotRecord.scenarioId,
+          snapshotRecord.variant,
+          snapshotRecord.environment.matrix.id,
+          stamp,
+        ).replace(/\.json$/, ".source.json"),
+      );
+      mkdirSync(paths.evidenceDir, { recursive: true });
+      writeFileSync(shot, "png");
+      writeFileSync(source, JSON.stringify({ screenshotFile: shot }));
+
+      const first = writeReviewSnapshot("native", "base", null, [snapshotRecord], reviews);
+      expect(first.scenarioIds).toEqual(["capability-test"]);
+      const recordPath = join(
+        reviews,
+        "native-base",
+        "scenarios",
+        "capability-test",
+        "native-base",
+        "record.json",
+      );
+      expect(existsSync(recordPath)).toBe(true);
+
+      rmSync(shot);
+      expect(() => writeReviewSnapshot("native", "base", null, [snapshotRecord], reviews)).toThrow(
+        /missing screenshot/,
+      );
+      expect(existsSync(recordPath)).toBe(true);
+    } finally {
+      setRuntimeSettings(defaultRuntimeSettings);
+    }
+  });
+
+  it("rejects a second active batch lock", () => {
+    setRuntimeSettings({
+      ...defaultRuntimeSettings,
+      workersDir: join(temporary, "lock-workers"),
+    });
+    const batch: BatchMetadata = {
+      batchId: "batch-lock",
+      variant: "native",
+      environment: "base",
+      mode: "full",
+      scope: ["capability-test"],
+      startedAt: "2026-11-24T00:00:00.000Z",
+    };
+    const release = acquireBatchLock(batch);
+    try {
+      expect(() => acquireBatchLock(batch)).toThrow(/another batch holds/);
+      release();
+      expect(() => {
+        const next = acquireBatchLock(batch);
+        next();
+      }).not.toThrow();
+    } finally {
+      release();
+      setRuntimeSettings(defaultRuntimeSettings);
+    }
   });
 
   it("rejects a record that carries an api key", () => {

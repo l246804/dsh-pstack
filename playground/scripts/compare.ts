@@ -1,7 +1,7 @@
 import { pathToFileURL } from "node:url";
 
 import type { BehaviorScenario, RunRecord } from "../runner/types.ts";
-import { listSnapshotRecords } from "./lib/review.ts";
+import { listSnapshotRecords } from "../runner/evidence/review-snapshot.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 import { scenarioContentHash } from "../runner/scenario/scenario-hash.ts";
 import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "../runner/scenario/defaults.ts";
@@ -25,6 +25,8 @@ export interface CompareResult {
   compared: string[];
   /** Every scenario with at least one problem, one-sided or mismatched. */
   failures: CompareFailure[];
+  /** Total committed records found for either side in this environment. */
+  recordCount: number;
 }
 
 export function recordHashProblems(record: RunRecord, scenario: BehaviorScenario): string[] {
@@ -115,7 +117,7 @@ export function compareSnapshot(input: CompareSnapshotInput): CompareResult {
     }
     if (problems.length > 0) failures.push({ scenarioId: id, problems });
   }
-  return { compared, failures };
+  return { compared, failures, recordCount: nativeRecords.size + adaptedRecords.size };
 }
 
 function argValue(flag: string): string | undefined {
@@ -145,8 +147,14 @@ async function main(): Promise<void> {
   );
   if (result.failures.length > 0) process.exitCode = 1;
   if (all && result.compared.length === 0 && result.failures.length === 0) {
-    console.error("[compare] no comparable scenarios");
-    process.exitCode = 1;
+    if (result.recordCount === 0) {
+      console.error("[compare] no snapshot records for this environment");
+      process.exitCode = 1;
+    } else {
+      // Render-only environments can contain native-only scenarios. No comparable pair is
+      // valid when records exist; an empty snapshot is handled as an error above.
+      console.log("[compare] no comparable scenarios");
+    }
   }
 }
 

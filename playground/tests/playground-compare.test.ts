@@ -212,6 +212,14 @@ describe("compareSnapshot", () => {
     );
   });
 
+  it("reports an empty snapshot as zero records", () => {
+    const root = mkdtempSync(join(temporary, "empty-"));
+    const result = compareSnapshot({ environment: "base", root, loadScenario: () => scenario });
+    expect(result.compared).toEqual([]);
+    expect(result.failures).toEqual([]);
+    expect(result.recordCount).toBe(0);
+  });
+
   it("reports a scenario missing on adapted when only native exists", () => {
     const root = mkdtempSync(join(temporary, "missing-adapted-"));
     writeRecord(root, "native", "base", record("native", "cap-native-only"));

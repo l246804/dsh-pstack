@@ -706,6 +706,7 @@ export function blockedRecord(input: {
       semanticReview: pendingSemanticReview(),
       blockedReason: input.reason,
     }),
+    blockedReason: input.reason,
     batchId: input.batchId,
     capturedAt: input.capturedAt,
   };
