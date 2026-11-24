@@ -35,6 +35,15 @@ function badge(version: string): string {
   return `<a href="https://github.com/cursor/plugins/tree/main/pstack"><img src="https://img.shields.io/badge/pstack-${version}-d97706?style=flat-square" alt="pstack ${version}" /></a>`;
 }
 
+function releasedReadme(badgeVersion: string, release: string, pstack: string, zh = false): string {
+  const heading = zh ? "## 📦 兼容性" : "## 📦 Compatibility";
+  const intro = zh ? "说明。" : "Intro.";
+  const header = zh ? ZH_HEADER : EN_HEADER;
+  return `${badge(badgeVersion)}\n\n${document(heading, intro, [
+    group(">=0.2.2-rc.1", [[release, pstack]], header),
+  ])}`;
+}
+
 function enReadme(badgeVersion = "0.15.36"): string {
   return `${badge(badgeVersion)}\n\n${document(
     "## 📦 Compatibility",
@@ -118,7 +127,7 @@ describe("release compatibility metadata", () => {
     });
   });
 
-  it("writes the lock pstack version into both README badges", () => {
+  it("writes the release pstack version into both README badges", () => {
     prepare();
     syncCompatibility(meta("0.4.0", ">=0.2.2-rc.2", "0.15.48"), true, ROOT);
     for (const file of ["README.md", "README.zh.md"]) {
@@ -131,11 +140,30 @@ describe("release compatibility metadata", () => {
     }
   });
 
-  it("rejects a README badge that lags the lock", () => {
+  it("rejects a README badge that does not match the newest release", () => {
     prepare();
     writeFileSync(join(ROOT, "README.zh.md"), zhReadme("0.15.43"));
     expect(() => verifyCompatibility(meta("0.4.0"), ROOT)).toThrow(
-      "README.zh.md pstack badge says 0.15.43, but the lock pins 0.15.36",
+      "README.zh.md pstack badge says 0.15.43, but the newest release ships 0.15.36",
+    );
+  });
+
+  it("keeps a released row when the pin moves ahead of it", () => {
+    prepare();
+    writeFileSync(join(ROOT, "README.md"), releasedReadme("0.15.36", "0.4.0", "0.15.36"));
+    writeFileSync(join(ROOT, "README.zh.md"), releasedReadme("0.15.36", "0.4.0", "0.15.36", true));
+    expect(verifyCompatibility(meta("0.4.0", ">=0.2.2-rc.1", "0.15.48"), ROOT)).toEqual({
+      pending: false,
+      releases: ["`0.4.0`"],
+    });
+  });
+
+  it("refuses to rewrite a released row for a new pin", () => {
+    prepare();
+    writeFileSync(join(ROOT, "README.md"), releasedReadme("0.15.36", "0.4.0", "0.15.36"));
+    writeFileSync(join(ROOT, "README.zh.md"), releasedReadme("0.15.36", "0.4.0", "0.15.36", true));
+    expect(() => syncCompatibility(meta("0.4.0", ">=0.2.2-rc.1", "0.15.48"), true, ROOT)).toThrow(
+      "0.4.0 already shipped pstack 0.15.36",
     );
   });
 

@@ -23,8 +23,7 @@
 1. `vp run native:fetch` 按现有 lock 恢复 `upstream/`；没有 lock 时按 main 当前版本钉定。
 2. `vp run native:fetch:latest` 把钉定移到 main 当前版本；`vp run native:fetch -- --version <x.y.z>` 钉定指定版本，加 `--commit <sha>` 钉定指定提交。
 3. `vp run native:generate` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
-4. `vpx scripts/release-compatibility.ts` 同步两份 README 的兼容表与 pstack 徽标；`compatibility:check` 校验两者，漏改即红。
-5. `upstream.lock.json`、`pstack/`、`gaps.json` 与两份 README 同波提交；`upstream/` 不入库。
+4. `upstream.lock.json`、`pstack/` 与 `gaps.json` 同波提交；`upstream/` 不入库。兼容表与 pstack 徽标不在 bump 时改：它们记录发布事实，由 `scripts/release-compatibility.ts` 在发布时随 bumpp 写入。bump 后 `compatibility:check` 应仍为绿，它允许 pin 领先于最新发布版本。
 
 完成标准：`vp run ci` 绿，提交只含本节的产物。
 

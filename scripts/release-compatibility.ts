@@ -227,6 +227,12 @@ function sortRowsDesc(rows: ReleaseRow[]): ReleaseRow[] {
 }
 
 function applyRelease(rows: ReleaseRow[], metadata: ReleaseMetadata): ReleaseRow[] {
+  const released = rows.find((row) => row.release === metadata.version);
+  if (released !== undefined && released.pstack !== metadata.pstackVersion) {
+    throw new Error(
+      `${released.release} already shipped pstack ${released.pstack}; bump the package version before syncing ${metadata.pstackVersion}`,
+    );
+  }
   const minor = metadata.version.split(".").slice(0, 2).join(".");
   const kept = rows.filter((row) => row.release.split(".").slice(0, 2).join(".") !== minor);
   return sortRowsDesc([...kept, { release: metadata.version, pstack: metadata.pstackVersion }]);
@@ -237,6 +243,13 @@ function sameRows(left: readonly ReleaseRow[], right: readonly ReleaseRow[]): bo
   return left.every(
     (row, index) => row.release === right[index]!.release && row.pstack === right[index]!.pstack,
   );
+}
+
+/** The latest released row across every DSH group. The README badge follows it. */
+function newestRow(groups: readonly Group[]): ReleaseRow | undefined {
+  return groups
+    .flatMap((group) => group.rows)
+    .sort((left, right) => compareVersions(right.release, left.release))[0];
 }
 
 function sameGroups(left: readonly Group[], right: readonly Group[]): boolean {
@@ -340,14 +353,10 @@ export function syncCompatibility(metadata = releaseMetadata(), write = true, ro
 
 export function verifyCompatibility(metadata = releaseMetadata(), root = ROOT) {
   const perLanguage: Group[][] = [];
+  const badges: string[] = [];
   for (const language of LANGUAGES) {
     const readme = readSection(language.readme, root);
-    const claimed = badgeVersion(readme.text, language.readme.file);
-    if (claimed !== metadata.pstackVersion) {
-      throw new Error(
-        `${language.readme.file} pstack badge says ${claimed}, but the lock pins ${metadata.pstackVersion}; run vpx scripts/release-compatibility.ts`,
-      );
-    }
+    badges.push(badgeVersion(readme.text, language.readme.file));
     const readmeGroups = readme.parsed.groups;
     const historyGroups = readSection(language.history, root).parsed.groups;
     const all = [...readmeGroups, ...historyGroups];
@@ -360,13 +369,29 @@ export function verifyCompatibility(metadata = releaseMetadata(), root = ROOT) {
     throw new Error("Bilingual compatibility tables differ");
   }
   const all = perLanguage[0]!;
+  const newest = newestRow(all);
+  if (newest !== undefined) {
+    for (const [position, language] of LANGUAGES.entries()) {
+      const claimed = badges[position]!;
+      if (claimed !== newest.pstack) {
+        throw new Error(
+          `${language.readme.file} pstack badge says ${claimed}, but the newest release ships ${newest.pstack}; run vpx scripts/release-compatibility.ts`,
+        );
+      }
+    }
+  }
   const index = all.findIndex((group) => group.dshRange === metadata.dshRange);
   if (index < 0) return { pending: true, releases: [] };
-  const expected = applyRelease(all[index]!.rows, metadata);
-  if (!sameRows(expected, all[index]!.rows)) {
-    throw new Error("Compatibility tables are stale; run vpx scripts/release-compatibility.ts");
+  const rows = all[index]!.rows;
+  // A row for the current version records what that release shipped. A pin bump after the
+  // release must not rewrite it; only a version bump makes the table sync require a new row.
+  if (!rows.some((row) => row.release === metadata.version)) {
+    const expected = applyRelease(rows, metadata);
+    if (!sameRows(expected, rows)) {
+      throw new Error("Compatibility tables are stale; run vpx scripts/release-compatibility.ts");
+    }
   }
-  return { pending: false, releases: expected.map((row) => wrap(row.release)) };
+  return { pending: false, releases: rows.map((row) => wrap(row.release)) };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -375,7 +400,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const result = verifyCompatibility(metadata);
     console.log(
       result.pending
-        ? `No compatibility group for DSH ${metadata.dshRange} yet; it will be added on release. Pstack badge current at ${metadata.pstackVersion}.`
+        ? `No compatibility group for DSH ${metadata.dshRange} yet; it will be added on release.`
         : `Compatibility tables and pstack badge current for ${result.releases.join("、")}.`,
     );
   } else {
