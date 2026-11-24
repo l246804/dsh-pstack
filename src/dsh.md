@@ -12,8 +12,8 @@ The package registers its own model-facing tools. The Tools block below maps Cur
 | --- | --- |
 | `pstack_subagent` | Start one subagent per call and report completion by notice. It is not a background job; do not wait for it with `job_output`. |
 | `pstack_interrupt` | Stop one pstack child's current turn by the name from `list_agents` or its Session id. Built-in presets disable native `interrupt_agent`, so this is the interruption path. |
-| `pstack_models` | List the live `provider`, `model`, and `reasoning_effort` routes for setup or route verification. Use it only during setup; it does not read the role file and cannot tell which model a role uses. Use `pstack_roles` for every role-to-model lookup. A listed route is not proof of availability; confirm with an actual call. |
-| `pstack_roles` | Report each role's configured routes, served `efforts`, and defaults. Use it first when asked which model a role uses, and use those route values when selecting a model for `pstack_subagent`. |
+| `pstack_models` | List the live `provider`, `model`, and `reasoning_effort` routes the deployment serves. Use it only during setup to discover the routes available to configure. It does not read the role file, so use `pstack_roles` for every role-to-model lookup. A listed route can still fail at call time. |
+| `pstack_roles` | Report each role's configured routes, served `efforts`, and defaults. Use it for every role-to-model lookup and for selecting a model for `pstack_subagent`. |
 
 ## Tools
 

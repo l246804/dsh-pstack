@@ -140,7 +140,7 @@ function entryFor(provider: string, info: LlmResolvedModelInfo): ModelEntry {
 const TOOL_DESCRIPTION = [
   "List the exact model routes this deployment serves, with each route's advertised reasoning-effort tokens.",
   "",
-  "Read-only. Use it only for setup-time discovery or to verify that a route exists. It reports what the live adapters actually serve, so a role route names a route that exists instead of a slug guessed from a Cursor name.",
+  "Read-only. Use it only during `/setup-pstack` to discover which routes you can configure. It does not read the role configuration. Role-to-model lookups go through `pstack_roles`. A listed route can still fail at call time.",
   "",
   "`provider` limits discovery to one registered provider id or display name; omit it to list every provider.",
   "",

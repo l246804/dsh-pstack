@@ -135,7 +135,7 @@ const OUTPUT_SCHEMA: JsonSchemaNode = {
 const TOOL_DESCRIPTION = [
   "List every pstack role with its shape and configured routes as structured provider, model, and reasoningEffort values, plus each route's served efforts and default effort.",
   "",
-  "Read-only. Use it to pick the provider, model, and reasoningEffort to pass to `pstack_subagent`, and to change the effort to another value from the route's `efforts` instead of guessing. Use `pstack_models` only to detect served routes during setup or verify one exists.",
+  "Read-only. Use it for every role-to-model lookup and to pick the provider, model, and reasoningEffort to pass to `pstack_subagent`. To change the effort, use a value from the route's `efforts` instead of guessing.",
   "",
   "A role with no configured route inherits the parent route when provider and model are omitted.",
 ].join("\n");
