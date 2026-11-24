@@ -52,17 +52,17 @@ When the session enables Agent Teams, `pstack_subagent` starts a teammate. Creat
 | A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route, or omit the route and let the child inherit the parent route; say which you did. |
 | `auto` or `inherit-parent` | Omit the route; the child inherits the parent route. |
 | The pstack role file | `$DSH_HOME/pstack/models.json`. Read it through `pstack_roles`; `pstack_subagent` does not parse it. A missing file leaves the parent route in effect. |
-| A role value such as `<model> <effort>` | Use the structured route values reported by `pstack_roles`. Do not join or split a `provider/model` string. |
+| A role value such as `<model> <effort>` | Use the structured route object described under setup-pstack; never join or split a `provider/model` string. |
 
 When overriding a child route, pass a `reasoning_effort` when the target model does not serve the parent's current effort. Omitting it inherits the parent effort and can fail before the child starts.
 
 ## setup-pstack
 
-`setup-pstack` writes the role file the calling agent uses to choose a route. Use `pstack_models` to discover the live `provider`, `model`, and `effort` routes; do not infer them from Cursor slugs.
+`setup-pstack` writes the role file the calling agent uses to choose a route. Use `pstack_models` to discover the live `provider`, `model`, and `effort` routes; do not infer them from Cursor slugs. DSH does not read the role file; read it through `pstack_roles` when it exists.
 
-- Detect: write each real route found by `pstack_models`; if none is detectable, ask the user to paste the routes.
+- Detect: write each real route found by `pstack_models` as a structured `{ kind: "route", provider, model, effort? }` object. If none is detectable, ask the user to paste the routes.
 - Defaults: map each found route; use `inherit-parent` or `auto` for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
-- Write: overwrite the whole role file so a rerun is idempotent; a missing role inherits the parent route.
+- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object of route-object arrays. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
 
 ## Paths
 

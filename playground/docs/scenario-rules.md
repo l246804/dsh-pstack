@@ -38,4 +38,4 @@
 
 - `vp run playground:gap-lock -- --check` 通过。
 - 新增 gap 场景不会破坏 confirmed gap 覆盖；regression 场景不携带 gap。
-- `vp run typecheck`、`vp run playground:typecheck` 和 `vp test` 通过。
+- 手动运行 `vp run typecheck`、`vp run playground:typecheck` 和 `vp test` 通过。

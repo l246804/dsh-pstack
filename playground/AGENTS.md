@@ -9,7 +9,7 @@ Playground 用真实 DSH Web 会话验证 native 运行时与当前适配实现�
 | 改配置、provider、凭证或浏览器 | [docs/config.md](./docs/config.md) |
 | 理解 variant、environment、运行身份或证据布局 | [docs/model.md](./docs/model.md) |
 | 新增或修改场景、gap 或 regression | [docs/scenario-rules.md](./docs/scenario-rules.md) |
-| 跑阶段、批次、增量或发版 | [docs/workflow.md](./docs/workflow.md) |
+| 上游 pstack 或 DSH 更新后的分析 | [docs/workflow.md](./docs/workflow.md) |
 | 改容器、prepare、bootstrap、预览或停止 | [docs/worker.md](./docs/worker.md) |
 | 分析记录、写 findings 或 review | [docs/evidence-analysis.md](./docs/evidence-analysis.md) |
 | 脱敏或提交证据 | [docs/evidence-redaction.md](./docs/evidence-redaction.md) |
@@ -29,4 +29,4 @@ Playground 用真实 DSH Web 会话验证 native 运行时与当前适配实现�
 - `playground/config.ts` 是唯一用户配置源；字段和默认值从示例与类型读取，不在文档中复制。
 - `copyCredentials` 默认关闭；开启时只复制配置的 DSH 凭证文件（默认 `.credentials.yaml`）。
 - `prepare` 自动计算 worker 数量；`run-batch` 退出后不会自动停止 worker，需要时运行 `playground:stop`。
-- 批次必须按 `prepare → bootstrap → run-batch → collect` 串行执行。提交前运行 `vp run ci`。
+- 批次必须按 `prepare → bootstrap → run-batch → collect` 串行执行。分析完成后执行 review、redact 和 status-table；发布门禁见 [../docs/architecture.md](../docs/architecture.md)。

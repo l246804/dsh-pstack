@@ -254,7 +254,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 |---|---|
 | `0.2.2` | `0.15.36` |
 
-表格维护规则见[发布边界](./docs/release.md)。更早的 DSH 基线移到[兼容历史](./docs/compatibility-history.zh.md)。
+更早的 DSH 基线移到[兼容历史](./docs/compatibility-history.zh.md)。
 
 ## 🔗 友情链接
 

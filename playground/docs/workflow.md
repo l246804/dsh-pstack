@@ -85,12 +85,8 @@ vp run playground:status-table -- --check
 vp run playground:compare -- --environment <environment> --all
 ```
 
-## 发版
-
-更新 `README.md`、`README.zh.md` 和 `docs/architecture.md`，运行 `vp run compatibility:check` 和 `vp run ci`。agent 停在 release-ready；`vp run release` 由用户执行，边界见 [../../docs/release.md](../../docs/release.md)。
-
 ## 完成标准
 
 - 当前 variant/environment 的 manifest、record 和截图完整。
 - 分析、review `--check` 和 redaction `--apply` 完成。
-- 状态表和对比检查通过，`vp run ci` 通过。compare 发现旧 `scenarioHash` 时先按当前场景重跑并更新快照。
+- 状态表和对比检查通过。compare 发现旧 `scenarioHash` 时，先确认这是上游变化引起的分析重跑，再按当前场景更新快照。

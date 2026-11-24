@@ -52,17 +52,17 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，每会话读取�
 | `grok-*`、`gpt-*` 或其他非 Claude slug | 选最接近的已公布路由，或省略路由让子代理继承父路由；说明选择了哪种。 |
 | `auto` 或 `inherit-parent` | 省略路由；子代理继承父路由。 |
 | pstack 角色文件 | `$DSH_HOME/pstack/models.json`。通过 `pstack_roles` 读取；`pstack_subagent` 不解析它。文件缺失时沿用父路由。 |
-| 形如 `<model> <effort>` 的角色值 | 使用 `pstack_roles` 报告的结构化路由值。不要把 `provider/model` 拼成字符串或再拆开。 |
+| 形如 `<model> <effort>` 的角色值 | 使用 setup-pstack 段描述的结构化 route 对象；不要把 `provider/model` 拼成字符串或再拆开。 |
 
 覆盖子代理路由时，如果目标模型不支持父级当前 effort，同时传入 `reasoning_effort`。省略会继承父级 effort，并可能在子代理启动前失败。
 
 ## setup-pstack
 
-`setup-pstack` 写调用方用来选择路由的角色文件。先用 `pstack_models` 发现当前可用的 `provider`、`model` 和 `effort` 路由，不要根据 Cursor slug 猜测。
+`setup-pstack` 写调用方用来选择路由的角色文件。先用 `pstack_models` 发现当前可用的 `provider`、`model` 和 `effort` 路由，不要根据 Cursor slug 猜测。DSH 不读该角色文件；它存在时通过 `pstack_roles` 读取。
 
-- Detect：写入 `pstack_models` 找到的每条真实路由；都检测不到时请用户粘贴路由。
+- Detect：把 `pstack_models` 找到的每条真实路由写成结构化对象 `{ kind: "route", provider, model, effort? }`；都检测不到时请用户粘贴路由。
 - Defaults：映射找到的路由；不可用路由用 `inherit-parent` 或 `auto`。把选定预算映射到最接近的可用 effort，并说明选择。
-- Write：覆盖整个角色文件，保证重跑幂等；缺失角色继承父路由。
+- Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和由 route 对象数组组成的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
 
 ## Paths
 

@@ -24,4 +24,4 @@
 
 - 对应实现和测试位于 `src/`、`src/tests/` 和 `playground/`；具体模块边界见 [../../src/AGENTS.md](../../src/AGENTS.md)。
 - 新增扩展前先确认它不能由 playground 缺口移植直接满足。
-- 扩展改变发布兼容性时，按 [../../docs/release.md](../../docs/release.md) 更新兼容表分组和 README。
+- 扩展改变发布兼容性时，更新兼容表分组和 README。

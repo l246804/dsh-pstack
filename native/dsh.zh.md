@@ -37,15 +37,15 @@ pstack 技能使用 Cursor 名称。在 DSH 中，每个会话读一次本文件
 | A `grok-*`, `gpt-*`, or other non-Claude slug | 选最接近的已公布路由。没有匹配时省略 `provider` 和 `model`，让子代理继承父级路由，并说明这一点。 |
 | `auto` or `inherit-parent` | 省略 `provider`、`model` 和 `reasoning_effort`；子代理继承父级路由。 |
 | The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | 基础 DSH 没有 `.mdc` rules 目录，也从不加载它。pstack 角色文件是 `$DSH_HOME/pstack/models.json`；基础 DSH 不读它，所以它存在时在委派前自行读取。 |
-| A role value `<model> <effort>`, such as `opus high` | 写成 `<provider>/<model> <effort>`，并拆成 `provider`、`model` 和 `reasoning_effort`。 |
+| A role value `<model> <effort>`, such as `opus high` | 使用 setup-pstack 段描述的结构化 route 对象；不要把 `provider/model` 拼成字符串或再拆开。 |
 
 ## setup-pstack
 
-DSH 没有 rules 目录，从不把 `.mdc` 文件当作会话规则读取。pstack 角色文件是 `$DSH_HOME/pstack/models.json`；基础 DSH 不读它，所以它存在时在委派前自行读取。`AGENTS.md` 兼容链提供会话指令，但不能替代该角色文件。按它的步骤做这些替换：
+`setup-pstack` 写调用方用来选择路由的角色文件。先用 `list_subagent_models` 发现当前可用的 `provider`、`model` 和 `effort` 路由，不要根据 Cursor slug 猜测。基础 DSH 不读该角色文件；它存在时自行读取。
 
-- 检测。使用 `list_subagent_models`，把每条可用路由写成 `<provider>/<model> <effort>`。检测不到任何路由时，请用户粘贴路由；绝不写入未确认的路由。
-- 默认值。可用的 slug 映射到路由；不可用的 slug 写成 `inherit-parent`。
-- 写入。写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选 `budget` 和由路由对象数组组成的 `roles` 对象。覆盖整个文件；缺少某个角色时它继承父路由。
+- Detect：把 `list_subagent_models` 找到的每条真实路由写成结构化对象 `{ kind: "route", provider, model, effort? }`；都检测不到时请用户粘贴路由，绝不写入未确认的路由。
+- Defaults：映射找到的路由；不可用路由用 `inherit-parent` 或 `auto`。把选定预算映射到最接近的可用 effort，并说明选择。
+- Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和由 route 对象数组组成的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
 
 ## 路径
 

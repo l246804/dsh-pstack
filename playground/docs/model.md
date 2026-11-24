@@ -13,7 +13,7 @@
 
 一次记录的身份轴由 `RunRecord` 和 `RunEnvironment` 定义，类型见 `runner/types.ts`。记录会保存实际 DSH 版本、pstack 版本、environment、scenario hash、config hash 和实际模型路由；这些字段是对比和复现的依据。
 
-`upstreamRevision` 和 `pstackVersion` 是来源信息，不能替代实际运行记录。对比逻辑见 `scripts/compare.ts`。
+`upstreamRevision`、`pstackVersion` 和 `adaptedVersion` 是来源信息，不能替代实际运行记录。`adaptedVersion` 只记录采集时的插件版本，不参与比较或发布门禁。对比逻辑见 `scripts/compare.ts`。
 
 ## 证据布局
 

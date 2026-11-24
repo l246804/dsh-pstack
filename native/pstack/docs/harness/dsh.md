@@ -37,15 +37,15 @@ Use only tools visible in the current session. If a mapped tool or optional capa
 | A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route. If none matches, omit `provider` and `model` so the child inherits the parent route, and say so. |
 | `auto` or `inherit-parent` | Omit `provider`, `model`, and `reasoning_effort`; the child inherits the parent route. |
 | The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | Base DSH has no `.mdc` rules directory and never loads one. The pstack role file is `$DSH_HOME/pstack/models.json`; base DSH does not read it, so read it yourself before delegation when it exists. |
-| A role value `<model> <effort>`, such as `opus high` | Write it as `<provider>/<model> <effort>` and split it into `provider`, `model`, and `reasoning_effort`. |
+| A role value `<model> <effort>`, such as `opus high` | Use the structured route object described under setup-pstack; never join or split a `provider/model` string. |
 
 ## setup-pstack
 
-DSH has no rules directory and never reads `.mdc` files as session rules. The pstack role file is `$DSH_HOME/pstack/models.json`; base DSH does not read it, so read it yourself before delegation when it exists. The `AGENTS.md`-compatible chain supplies session instructions but does not replace the role file. Follow its steps with these changes:
+`setup-pstack` writes the role file the calling agent uses to choose a route. Use `list_subagent_models` to discover the live `provider`, `model`, and `effort` routes; do not infer them from Cursor slugs. Base DSH does not read the role file; read it yourself when it exists.
 
-- Detect. Use `list_subagent_models` and write each served route as `<provider>/<model> <effort>`. If nothing is detectable, ask the user to paste the routes; never write an unconfirmed one.
-- Defaults. Map a served slug to its route; an unserved slug becomes `inherit-parent`.
-- Write. Write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object of route-object arrays. Overwrite the whole file; a missing role inherits the parent route.
+- Detect: write each real route found by `list_subagent_models` as a structured `{ kind: "route", provider, model, effort? }` object. If none is detectable, ask the user to paste the routes; never write an unconfirmed one.
+- Defaults: map each found route; use `inherit-parent` or `auto` for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
+- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object of route-object arrays. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
 
 ## Paths
 

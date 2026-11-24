@@ -254,7 +254,7 @@ Choose a release by its declared DSH range. Each range has its own table of rele
 |---|---|
 | `0.2.2` | `0.15.36` |
 
-See [the release boundary](./docs/release.md) for how the compatibility table is maintained. Older DSH baselines move to [compatibility history](./docs/compatibility-history.md).
+Older DSH baselines move to [compatibility history](./docs/compatibility-history.md).
 
 ## 🔗 Friendly links
 

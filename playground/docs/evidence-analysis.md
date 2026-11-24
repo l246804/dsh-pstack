@@ -4,12 +4,12 @@
 
 ## 输入
 
-- `playground/evidence/runs/<variant>-<environment>/manifest.json`：当前快照范围和批次信息。
+- `playground/evidence/runs/<variant>-<environment>/manifest.json`：快照范围和批次信息。
 - 快照下每个场景的 `record.json` 和 `screenshot.png`。
 - `native/gaps.json`：native 判断缺口；adapted 判断缺口是否闭合。
 - `playground/scenarios/`：prompt、assertions、rubric 和 UI 观察点。
 - native 对照 `native/dsh.md`；adapted 对照 `src/dsh.md`。
-- 场景声明了 `variants: ["native"]` 时，adapted 快照没有对应 record 是声明范围，不是缺失或 blocked。
+- 场景声明 `variants: ["native"]` 时，adapted 快照没有对应 record 是声明范围，不是缺失或 blocked。
 
 完整 session 只保存在本地 worker。需要时按 record 的 `session.sessionId` 定位，不复制到快照。
 
@@ -37,7 +37,7 @@
 3. `dsh.md` 审查：按当前 variant 的实际实现和章节判断 `够用`、`缺失`、`误导`、`不适用`；判定只针对当前 variant，不与其他 variant 的组织方式比较。
 4. 问题与建议：按根因去重，每条带 capability id、证据、建议和需要用户确认的事项。
 
-问题条目和 `dsh.md` 表格的字段以本文件的结构为准；`review.json` 由 `playground:review` 校验。不要为同一根因按场景重复建条目。
+`review.json` 的字段和校验见 `runner/evidence/review-snapshot.ts`；本文件只定义分析步骤，不复制记录结构。
 
 ## Review
 

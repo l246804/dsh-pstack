@@ -1,11 +1,11 @@
 # 证据脱敏
 
-本文件说明 record 的机械脱敏、分析会话检查和提交门。完整 session 不进入快照，只留在本地 worker。
+本文件说明 record 的分析会话检查和提交门。完整 session 不进入快照，只留在本地 worker。脱敏规则、敏感类别和残留检查由 `runner/evidence/redaction.ts` 实现，本文件不复制规则列表。
 
 ## 流程
 
 1. `run-scenario` 生成 record 和本地 `record.source.json`；`collect` 从 worker evidence 读取 record，`record.source.json` 只用于定位截图。
-2. 独立分析会话按本文件生成 `record.safe.json`。
+2. 独立分析会话生成 `record.safe.json` 并检查 record 内容。
 3. 检查候选文件：
 
 ```sh
@@ -19,13 +19,6 @@ vp run playground:redact -- --variant <variant> --environment <environment> --ap
 ```
 
 `--apply` 会用 safe record 替换 `record.json`。
-
-## 脱敏范围
-
-- 清除 API key、GitHub token、Bearer token、云密钥、私钥和 token URL 参数。
-- 宿主侧路径和编码后的 session key 替换为明确占位符；容器路径 `/dsh/...` 不是宿主秘密。
-- `session.sessionFile`、`session.workspacePath`、artifact 路径使用脱敏占位符或证据文件名。
-- 不删除证据字段；只替换敏感文本，保留 RunRecord 结构和语义。
 
 ## 分析会话
 
