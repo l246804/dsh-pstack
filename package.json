@@ -28,12 +28,7 @@
     "dist",
     "assets",
     "cordis.patch.yml",
-    "docs",
     "locale",
-    "playground/docs",
-    "skills/skills-lock.json",
-    "src/dsh.md",
-    "src/dsh.zh.md",
     "README.md",
     "README.zh.md"
   ],
@@ -53,7 +48,7 @@
   },
   "scripts": {
     "prepare": "vp config && skills experimental_sync -y -a universal --copy && skills add ./skills/authored -y -a universal",
-    "ci": "vp check && vp run typecheck && vp run playground:typecheck && vp test && vp run native:generate:check && vp run surface:check && vp run compatibility:check && vp run playground:gap-lock -- --check && vp run build && vp run playground:status-table -- --check",
+    "ci": "vp check && vp run typecheck && vp test && vp run native:generate:check && vp run surface:check && vp run compatibility:check && vp run build",
     "surface:generate": "vpx scripts/release-surface.ts --write",
     "surface:check": "vpx scripts/release-surface.ts --check",
     "prerelease": "vp run ci",

@@ -15,8 +15,8 @@ if ! git ls-files --error-unmatch "$NOTES" >/dev/null 2>&1; then
   echo "error: $NOTES is not tracked. Commit it before releasing so the tag includes it." >&2
   exit 1
 fi
-if ! git diff --quiet -- "$NOTES"; then
-  echo "error: $NOTES has uncommitted changes. Commit it before releasing." >&2
+if ! git diff --quiet HEAD -- "$NOTES"; then
+  echo "error: $NOTES has uncommitted or staged changes. Commit it before releasing." >&2
   exit 1
 fi
 
