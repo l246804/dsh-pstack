@@ -1,9 +1,9 @@
 # 决策：pstack 全局文件收敛到 $DSH_HOME/pstack/
 
-Status: proposed
+Status: accepted
 Date: 2026-11-23
 Scope: src/index.ts, src/lib/dsh-home.ts, src/pstack/**, src/roles/**, src/poteto/**, src/poteto-toggle.ts, src/compat/**, src/role-service.ts, src/role-catalog.ts, src/tests/**, playground/runner/worker/home.ts, README.md, README.zh.md, docs/architecture.md, docs/glossary.md, src/dsh.md, src/dsh.zh.md, docs/decisions/**
-Implemented-by: -
+Implemented-by: PR #48
 Review: 2026-11-23
 
 ## 背景

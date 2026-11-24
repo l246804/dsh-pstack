@@ -1,9 +1,9 @@
 # 决策：测试按包归属，runner 按领域组织
 
-Status: proposed
+Status: accepted
 Date: 2026-11-19
 Scope: tests/**, src/**, playground/**, vite.config.ts, tsconfig.json, docs/architecture.md, docs/decisions/**
-Implemented-by: -
+Implemented-by: PR #43
 Review: 2026-11-23
 
 ## 背景
