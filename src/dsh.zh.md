@@ -12,14 +12,14 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，每会话读取�
 | --- | --- |
 | `pstack_subagent` | 一次调用启动一个子代理，完成时通过通知返回。它不是后台 job；不要用 `job_output` 等它。 |
 | `pstack_interrupt` | 按 `list_agents` 的名称或 Session id 中断一个 pstack 子代理的当前回合。内置 preset 禁用了原生 `interrupt_agent`，所以这是中断入口。 |
-| `pstack_models` | 列出当前可用的 `provider`、`model` 和 `reasoning_effort` 路由。列出的路由不代表一定可用；以实际调用为准。 |
-| `pstack_roles` | 报告每个角色的已配置路由、可用 `efforts` 和默认档位。给 `pstack_subagent` 选模型时使用这些路由值。 |
+| `pstack_models` | 列出当前可用的 `provider`、`model` 和 `reasoning_effort` 路由，用于 setup 或校验路由。它不读取角色文件，不能回答某个角色用哪个模型；那要用 `pstack_roles`。列出的路由不代表一定可用；以实际调用为准。 |
+| `pstack_roles` | 报告每个角色的已配置路由、可用 `efforts` 和默认档位。被问到某个角色用哪个模型时先用它；给 `pstack_subagent` 选模型时使用这些路由值。 |
 
 ## Tools
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `pstack_subagent` 一次调用启动一个子代理；在同一消息里按子代理数多次调用，传 `description` 和 `prompt`。覆盖路由时使用 `pstack_models` 里的值：把 `provider` 标题的 id 传给 `provider`，把列出的 model id 传给 `model`，可选传 `reasoning_effort`；全部省略则继承父路由。 |
+| `Task` | `pstack_subagent` 一次调用启动一个子代理；在同一消息里按子代理数多次调用，传 `description` 和 `prompt`。角色路由先从 `pstack_roles` 读取：把它的 `provider` 传给 `provider`，`model` 传给 `model`，可选传 `reasoning_effort`；全部省略则继承父路由。 |
 | `AskQuestion` | `ask_user_question` 接收一批带选项和自由输入的问题。只有活跃的根代理有人工回答者；被委派的子代理把问题留在结果里。工具不可用时用纯文本提问。 |
 | Open a todolist | `todo_write` 替换整个列表，没有 `skipped` 状态。跳过的步骤保持可见，在 `content` 中写 `skip: <reason> - <step>`，状态设为 `completed`。 |
 | Run another pstack skill (`/name` 或 "the **name** skill") | 会话技能目录里的技能用原生 `skill`。带 `disable-model-invocation: true` 的随包技能对 `skill` 隐藏，所以读取 `<pstack>/skills/<name>/SKILL.md` 并遵循。用户 `/name` 手势直接注入；内置帮助技能是 `poteto-help`。 |
@@ -52,7 +52,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，每会话读取�
 | `grok-*`、`gpt-*` 或其他非 Claude slug | 选最接近的已公布路由，或省略路由让子代理继承父路由；说明选择了哪种。 |
 | `auto` 或 `inherit-parent` | 省略路由；子代理继承父路由。 |
 | pstack 角色文件 | `$DSH_HOME/pstack/models.json`。通过 `pstack_roles` 读取；`pstack_subagent` 不解析它。文件缺失时沿用父路由。 |
-| 形如 `<model> <effort>` 的角色值 | 使用 `pstack_roles` 或 `pstack_models` 报告的结构化路由值；不要把 `provider/model` 拼成字符串或再拆开。 |
+| 形如 `<model> <effort>` 的角色值 | 使用 `pstack_roles` 报告的结构化路由值。不要把 `provider/model` 拼成字符串或再拆开。 |
 
 覆盖子代理路由时，如果目标模型不支持父级当前 effort，同时传入 `reasoning_effort`。省略会继承父级 effort，并可能在子代理启动前失败。
 

@@ -12,14 +12,14 @@ The package registers its own model-facing tools. The Tools block below maps Cur
 | --- | --- |
 | `pstack_subagent` | Start one subagent per call and report completion by notice. It is not a background job; do not wait for it with `job_output`. |
 | `pstack_interrupt` | Stop one pstack child's current turn by the name from `list_agents` or its Session id. Built-in presets disable native `interrupt_agent`, so this is the interruption path. |
-| `pstack_models` | List the live `provider`, `model`, and `reasoning_effort` routes. A listed route is not proof of availability; confirm with an actual call. |
-| `pstack_roles` | Report each role's configured routes, served `efforts`, and defaults. Use those route values when selecting a model for `pstack_subagent`. |
+| `pstack_models` | List the live `provider`, `model`, and `reasoning_effort` routes for setup or route verification. It does not read the role file, so it cannot say which model a role uses; use `pstack_roles` for that. A listed route is not proof of availability; confirm with an actual call. |
+| `pstack_roles` | Report each role's configured routes, served `efforts`, and defaults. Use it first when asked which model a role uses, and use those route values when selecting a model for `pstack_subagent`. |
 
 ## Tools
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `pstack_subagent` starts one child per call; call it once per child in one message with `description` and `prompt`. Route overrides use the values from `pstack_models`: pass the `provider` heading id as `provider`, the listed model id as `model`, and an optional `reasoning_effort`; omit them to inherit the parent route. |
+| `Task` | `pstack_subagent` starts one child per call; call it once per child in one message with `description` and `prompt`. Read a role's route from `pstack_roles` first; pass its `provider` as `provider`, its `model` as `model`, and an optional `reasoning_effort`, or omit them to inherit the parent route. |
 | `AskQuestion` | `ask_user_question` accepts a batch of questions with options and free input. Only a live root agent has a human answerer; a delegated child keeps questions in its result. Use plain text when the tool is absent. |
 | Open a todolist | `todo_write` replaces the whole list and has no `skipped` status. Keep a skipped step visible in `content` as `skip: <reason> - <step>` and mark it `completed`. |
 | Run another pstack skill (`/name` or "the **name** skill") | Use native `skill` for catalog skills. A bundled skill with `disable-model-invocation: true` is hidden from `skill`, so read `<pstack>/skills/<name>/SKILL.md` and follow it. A user `/name` gesture injects it directly; built-in help is `poteto-help`. |
@@ -52,7 +52,7 @@ When the session enables Agent Teams, `pstack_subagent` starts a teammate. Creat
 | A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route, or omit the route and let the child inherit the parent route; say which you did. |
 | `auto` or `inherit-parent` | Omit the route; the child inherits the parent route. |
 | The pstack role file | `$DSH_HOME/pstack/models.json`. Read it through `pstack_roles`; `pstack_subagent` does not parse it. A missing file leaves the parent route in effect. |
-| A role value such as `<model> <effort>` | Use the structured route values reported by `pstack_roles` or `pstack_models`; do not join or split a `provider/model` string. |
+| A role value such as `<model> <effort>` | Use the structured route values reported by `pstack_roles`. Do not join or split a `provider/model` string. |
 
 When overriding a child route, pass a `reasoning_effort` when the target model does not serve the parent's current effort. Omitting it inherits the parent effort and can fail before the child starts.
 
