@@ -17,13 +17,15 @@ export const PSTACK_DIRNAME = "pstack";
 export const MODELS_FILENAME = "models.json";
 export const SETTINGS_FILENAME = "settings.json";
 export const REPAIR_FILENAME = "repair.json";
+export const PATHS_FILENAME = "paths.json";
 
-/** The four absolute paths that make up one pstack home. */
+/** The absolute paths that make up one pstack home. */
 export interface PstackHomePaths {
   readonly root: string;
   readonly models: string;
   readonly settings: string;
   readonly repair: string;
+  readonly paths: string;
 }
 
 /** Resolve the pstack home paths for one DSH home. */
@@ -34,5 +36,6 @@ export function pstackHomePaths(dshHome: string = resolveDshHome()): PstackHomeP
     models: join(root, MODELS_FILENAME),
     settings: join(root, SETTINGS_FILENAME),
     repair: join(root, REPAIR_FILENAME),
+    paths: join(root, PATHS_FILENAME),
   };
 }

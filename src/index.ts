@@ -9,6 +9,8 @@ import { Service } from "@deepseek-ai/cordis";
 import type { Context } from "@deepseek-ai/cordis";
 
 import { migratePstackHome } from "./compat/migrate-pstack-home.ts";
+import { pstackHomePaths } from "./pstack/home.ts";
+import { writePstackPathsIndex } from "./pstack/paths-index.ts";
 
 export const name = "pstack";
 
@@ -22,6 +24,9 @@ export class PstackHomeService extends Service {
 
   protected [Service.init](): void {
     migratePstackHome();
+    try {
+      writePstackPathsIndex(pstackHomePaths().paths);
+    } catch {}
   }
 }
 
