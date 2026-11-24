@@ -12,7 +12,7 @@ The package registers its own model-facing tools. The Tools block below maps Cur
 | --- | --- |
 | `pstack_subagent` | Start one subagent per call and report completion by notice. It is not a background job; do not wait for it with `job_output`. |
 | `pstack_interrupt` | Stop one pstack child's current turn by the name from `list_agents` or its Session id. Built-in presets disable native `interrupt_agent`, so this is the interruption path. |
-| `pstack_models` | List the live `provider`, `model`, and `reasoning_effort` routes for setup or route verification. It does not read the role file, so it cannot say which model a role uses; use `pstack_roles` for that. A listed route is not proof of availability; confirm with an actual call. |
+| `pstack_models` | List the live `provider`, `model`, and `reasoning_effort` routes for setup or route verification. Use it only during setup; it does not read the role file and cannot tell which model a role uses. Use `pstack_roles` for every role-to-model lookup. A listed route is not proof of availability; confirm with an actual call. |
 | `pstack_roles` | Report each role's configured routes, served `efforts`, and defaults. Use it first when asked which model a role uses, and use those route values when selecting a model for `pstack_subagent`. |
 
 ## Tools
@@ -48,7 +48,7 @@ When the session enables Agent Teams, `pstack_subagent` starts a teammate. Creat
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]` | Use `pstack_roles` to read the role's `provider`, `model`, `reasoningEffort`, and served `efforts`; pass those values to `pstack_subagent`. Use `pstack_models` for setup or route verification. Drop `-fast`; DSH has no speed parameter. |
+| `claude-<family>-<version>-<effort>[-fast]` | Use `pstack_roles` to read the role's `provider`, `model`, `reasoningEffort`, and served `efforts`; pass those values to `pstack_subagent`. Drop `-fast`; DSH has no speed parameter. |
 | A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route, or omit the route and let the child inherit the parent route; say which you did. |
 | `auto` or `inherit-parent` | Omit the route; the child inherits the parent route. |
 | The pstack role file | `$DSH_HOME/pstack/models.json`. Read it through `pstack_roles`; `pstack_subagent` does not parse it. A missing file leaves the parent route in effect. |
