@@ -29,17 +29,27 @@ function moveLegacyIfDestinationMissing(legacyPath: string, currentPath: string)
   }
 }
 
+/** Log a skipped legacy file without blocking startup. */
+function warnMigration(source: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`[pstack] legacy ${source} was not migrated: ${message}`);
+}
+
 /** Converge `$DSH_HOME` on the current pstack layout in one best-effort startup pass. */
 export function migratePstackHome(dshHome: string = resolveDshHome()): void {
   const paths = pstackHomePaths(dshHome);
 
   try {
     migrateModels(dshHome, paths);
-  } catch {}
+  } catch (error) {
+    warnMigration("role file", error);
+  }
 
   try {
     moveLegacyIfDestinationMissing(join(dshHome, LEGACY_SETTINGS_FILENAME), paths.settings);
-  } catch {}
+  } catch (error) {
+    warnMigration("settings file", error);
+  }
 }
 
 function migrateModels(dshHome: string, paths: PstackHomePaths): void {
@@ -52,7 +62,10 @@ function migrateModels(dshHome: string, paths: PstackHomePaths): void {
         currentVersion: ROLE_FILE_VERSION,
         serialize: serializeRoleDocument,
       });
-      if (result.status === "unreadable") return;
+      if (result.status === "unreadable") {
+        warnMigration(legacyModels, result.reason);
+        return;
+      }
       moveLegacyIfDestinationMissing(legacyModels, paths.models);
     } else if (existsSync(legacyMdc)) {
       migrateMdcToJson(legacyMdc, paths.models, {
@@ -63,9 +76,10 @@ function migrateModels(dshHome: string, paths: PstackHomePaths): void {
   }
 
   if (existsSync(paths.models)) {
-    upgradeRoleFile(paths.models, {
+    const result = upgradeRoleFile(paths.models, {
       currentVersion: ROLE_FILE_VERSION,
       serialize: serializeRoleDocument,
     });
+    if (result.status === "unreadable") warnMigration(paths.models, result.reason);
   }
 }
