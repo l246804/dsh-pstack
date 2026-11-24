@@ -188,7 +188,6 @@ export class PotetoModeService extends TypertRemoteService {
     });
   }
 
-  /** Whether the poteto system-prompt sections apply to this Agent. A subagent uses its own preset. */
   private promptAppliesTo(agent: Agent): boolean {
     return potetoPromptApplies({
       enabled: this.isEnabledFor(agent),
