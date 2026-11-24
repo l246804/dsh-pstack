@@ -69,6 +69,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，每会话读取�
 | Cursor | DeepSeek Harness |
 | --- | --- |
 | `.cursor/skills/`, `~/.cursor/skills/` | 项目技能位于 `.dsh/skills/` 或 `.agents/skills/`；用户技能位于 `$DSH_HOME/skills/` 或 `~/.agents/skills/`。随包 pstack 技能位于 `<pstack>/skills/`，通过读取 `SKILL.md` 加载。 |
+| `../<name>/SKILL.md`, `playbooks/<file>`, `references/<file>`, `../../docs/...` | 每会话读取一次 `$DSH_HOME/pstack/paths.json`。用其中的绝对 `<pstack>` 根和技能目录定位这些链接。不要相对当前技能目录解析。 |
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | 在 `SKILL.md` 旁解析包资源；插件 manifest 是 `package.json` 的 `dsh` 段。 |
 | `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md` 兼容链。DSH 不读取 `.mdc`；pstack 角色文件由调用方读取，`pstack_subagent` 不解析它。 |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | 包内存在该文件时使用 `<pstack>/<path>`。读取本地副本，需要链接时给用户公开 URL。 |

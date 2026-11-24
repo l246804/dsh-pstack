@@ -62,7 +62,11 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 ## Pstack home（pstack 目录）
 
-`$DSH_HOME/pstack/`，保存 pstack 的用户级配置和运行时数据：`models.json`、`settings.json` 和 `repair.json`。`src/index.ts` 的 `PstackHomeService` 在服务初始化时调用 `src/compat/migrate-pstack-home.ts` 一次，把根目录旧的 `pstack-models.json`、`pstack-models.mdc` 和 `pstack-settings.json` 迁入该目录；旧 `pstack-repair.json` 不迁移。运行时读取只读当前文件，不触发迁移。
+`$DSH_HOME/pstack/`，保存 pstack 的用户级配置和运行时数据：`models.json`、`settings.json`、`repair.json` 和 `paths.json`。`src/index.ts` 的 `PstackHomeService` 在服务初始化时调用 `src/compat/migrate-pstack-home.ts` 一次，把根目录旧的 `pstack-models.json`、`pstack-models.mdc` 和 `pstack-settings.json` 迁入该目录；旧 `pstack-repair.json` 不迁移。运行时读取只读当前文件，不触发迁移。
+
+## Path index（路径索引）
+
+`$DSH_HOME/pstack/paths.json`，插件启动时由 `src/pstack/paths-index.ts` 从三个随包技能根（pstack、vendored、authored）生成，记录包内绝对根路径和每个技能的绝对目录。DSH 适配层每会话读取它，用其中的绝对 `<pstack>` 根和技能目录定位兄弟技能、playbook、references 和 docs 链接，不再相对当前技能目录推算。
 
 ## Repair queue（修复队列）
 

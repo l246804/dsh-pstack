@@ -69,6 +69,7 @@ When overriding a child route, pass a `reasoning_effort` when the target model d
 | Cursor | DeepSeek Harness |
 | --- | --- |
 | `.cursor/skills/`, `~/.cursor/skills/` | Project skills live in `.dsh/skills/` or `.agents/skills/`; user skills live in `$DSH_HOME/skills/` or `~/.agents/skills/`. Packaged pstack skills live under `<pstack>/skills/` and load by reading their `SKILL.md`. |
+| `../<name>/SKILL.md`, `playbooks/<file>`, `references/<file>`, `../../docs/...` | Read `$DSH_HOME/pstack/paths.json` once per session. Use its absolute `<pstack>` root and skill directories for these links. Do not resolve them against the current skill directory. |
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | Resolve package resources beside their `SKILL.md`; a plugin manifest is the `dsh` section of its `package.json`. |
 | `.cursor/rules/*.mdc`, always-applied rules | The `AGENTS.md`-compatible chain. DSH never reads `.mdc`; the calling agent reads the pstack role file, and `pstack_subagent` does not parse it. |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | `<pstack>/<path>` when the package ships it. Read the local copy and give the user the public URL when needed. |

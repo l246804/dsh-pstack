@@ -32,6 +32,7 @@ playground 真实会话验证
 - 上游 pstack 内容经生成器进入 `native/pstack/`，构建时复制到 `dist/pstack/` 并把适配答案盖章为 `src/dsh.md`；vendored 和 authored 技能分别复制到 `dist/skills/` 下。
 - 角色配置保存在 `$DSH_HOME/pstack/models.json`。该文件由本插件读取和编辑，不是 DSH 自动加载的规则文件；`src/index.ts` 的 `PstackHomeService` 在服务初始化时调用 `src/compat/migrate-pstack-home.ts`，把根目录旧的 `pstack-models.json` 或 `pstack-models.mdc` 一次性迁入 `$DSH_HOME/pstack/`，此后读取只读当前文件。
 - 会话级 Poteto 工作流开关的全局默认保存在 `$DSH_HOME/pstack/settings.json` 的 `potetoDefault`，与角色文件分开维护；根目录旧的 `pstack-settings.json` 同样在服务初始化时迁入。
+- 包路径索引保存在 `$DSH_HOME/pstack/paths.json`。`PstackHomeService` 在启动迁移后扫描三个随包技能根（`pstack`、vendored、authored）并原子写入该文件，记录包内绝对根路径与各技能目录；DSH 适配层每会话读取它来解析兄弟技能、playbook、references 和 docs 链接，写入失败不影响插件启动。
 
 ## 模块与入口
 
@@ -42,6 +43,7 @@ playground 真实会话验证
 | 角色清单 | `src/roles/role-manifest.ts`、`src/role-catalog.ts` | 定义角色 key 与 shape；实现只读的 `pstack_roles`，按角色报告配置好的 provider/model/effort 路由，并附实时目录中该路由的可用 efforts 与默认档位。 |
 | 子代理委派 | `src/subagent.ts` | 实现 `pstack_subagent` 薄包装：一次调用只启动一个子代理，`description` 和 `prompt` 必填，支持可选 `agent_preset`、`name`、`cwd`、`maxDepth`；`provider`/`model`/`reasoning_effort` 转成 `agentOptions`，省略则继承父路由；做能力校验与路由预检后调用 `ctx.subagents.startActivation`，返回原生 `{kind:"activation", name}`。同一模块还注册 `pstack_interrupt`，用于按名称或会话 id 中断 pstack 子代理；列出与续聊改用原生 `list_agents`、`send_message`。 |
 | 角色文件 | `src/index.ts`、`src/pstack/home.ts`、`src/compat/migrate-pstack-home.ts`、`src/roles/role-store.ts`、`src/roles/route.ts`、`src/roles/budget.ts`、`src/roles/role-editor.ts`、`src/compat/` | `src/index.ts` 的 `PstackHomeService` 在服务初始化时调用 `src/compat/migrate-pstack-home.ts` 的 `migratePstackHome` 一次；`src/pstack/home.ts` 定义 `$DSH_HOME/pstack/` 布局与当前文件名。迁移把根目录旧 `pstack-models.json` 移入并升级，`pstack-models.mdc` 经 `compat/mdc-to-json.ts` 转成当前 JSON 并删除旧文件，`version: 1` 经 `compat/version-1-to-2.ts` 重写成版本 2 对象，当前版本则清理已退役角色与预算标签。`role-store.ts` 读写 `$DSH_HOME/pstack/models.json` 这份 typed JSON 文档，版本 2，每个角色保存结构化 Route 对象数组；读取为纯读，不再触发迁移。所有旧格式常量、迁移脚本和兼容类型都在 `compat/`，清理时删除该目录和 `src/index.ts` 的 `PstackHomeService.init` 迁移调用即可。按预算把目标推理档位映射到具体模型并原子保存。 |
+| 路径索引 | `src/lib/paths.ts`、`src/pstack/paths-index.ts` | `paths.ts` 从打包入口 URL 推导包内各资源的绝对路径（包根、`dist/pstack`、docs 与三个技能根），导出 `PSTACK_PACKAGE_PATHS` 供其他模块定位资源。`paths-index.ts` 扫描三个随包技能根生成 `$DSH_HOME/pstack/paths.json`，内容为版本号、绝对根路径和技能名到目录的映射；写入采用两空格 JSON、幂等跳过未变化文件，并由 `src/index.ts` 的 `PstackHomeService.init` 在迁移后调用、失败不阻塞启动。 |
 | 角色 Remote 边界 | `src/roles/role-wire.ts`、`src/roles/role-remote.ts`、`src/role-service.ts` | 定义并严格校验传输结构；共享 Typert 描述符；在 Host 暴露状态、目录、保存和预算应用方法。 |
 | Preset 与工作流开关 | `src/preset.ts`、`src/presets/preset-copy.ts`、`src/poteto-toggle.ts`、`src/poteto/remote.ts`、`src/poteto/projection.ts`、`src/poteto/preset-gate.ts`、`src/poteto/settings.ts`、`src/poteto/storage.ts`、`src/readonly.ts` | 注册本地化 preset；实现会话级 Poteto 工作流开关并向系统提示注入常驻 `poteto-mode` 内容；持久化开关的全局默认；按会话所在的 Agent preset 判定能否启用（极简模式不启用）；为只读子代理设置沙箱策略。 |
 | Client 入口与对话框 | `src/client/index.ts`、`src/client/pages/PstackConfigDialog.tsx`、`src/client/pages/GeneralSettingsPage.tsx` | 挂载 Remote 描述符、注册 locale 和插件详情动作；管理配置对话框、页签、未保存草稿和通用默认开关。 |
