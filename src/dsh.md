@@ -42,7 +42,11 @@ The package registers its own model-facing tools. The Tools block below maps Cur
 
 ## Agent Teams
 
-When the session enables Agent Teams, `pstack_subagent` starts a teammate. Create the shared task first, start the child with a `name`, then reassign the task to that returned name and include the task id in the child prompt. Use the Team board for durable work with an owner, dependencies, write scopes, or handoff; keep private or one-shot exploration as ordinary `pstack_subagent` delegation. After each Team dispatch, bind the task owner and re-read the task before every update. Only the task owner completes it; reassign it to the Lead before the Lead finishes it. `pstack_roles` reports model routes, not Team members.
+When the session enables Agent Teams, every `pstack_subagent` child is a teammate, and the shared task board is optional.
+
+Use the board when the work is shared or durable: two or more children feed one deliverable, steps must run in order, another member takes over, or the Lead tracks the task after the child returns. A single child whose result the Lead consumes once stays off the board.
+
+On the board path, create the task first, start the child with a `name`, reassign the task to that name, and put the task id in the child prompt. Re-read the task before every update. Only the owner completes it. Reassign it to the Lead before the Lead finishes it. `pstack_roles` reports model routes, not Team members.
 
 ## Models
 

@@ -42,7 +42,11 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，每会话读取�
 
 ## Agent Teams
 
-会话启用 Agent Teams 时，`pstack_subagent` 启动的是 teammate。先创建共享任务，再用 `name` 启动子代理，最后把任务 reassign 给返回的名称，并把任务 id 写进子代理 prompt。Team 任务板用于需要负责人、依赖关系、写入范围或交接的持久工作；私有或一次性探索仍使用普通 `pstack_subagent` 委派。每次 Team 派发后绑定任务 owner，并在每次更新前重读任务。只有任务 owner 完成任务；Lead 代为收尾前先把任务 reassign 给 Lead。`pstack_roles` 报告的是模型路由，不是 Team 成员。
+会话启用 Agent Teams 时，每个 `pstack_subagent` child 都是 teammate，共享任务板是可选的。
+
+共享或耐久工作时用板：多个 child 汇入同一交付物、步骤有顺序、另一个成员接手，或 Lead 在 child 返回后还要追踪任务。单个 child 且 Lead 只消费一次结果时不建任务。
+
+用板时，先创建任务，再用 `name` 启动 child，把任务 reassign 给这个名称，并把任务 id 写进 child prompt。每次更新前重读任务。只有 owner 完成任务。Lead 代为收尾前先把任务 reassign 给 Lead。`pstack_roles` 报告的是模型路由，不是 Team 成员。
 
 ## Models
 
