@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  potetoPromptApplies,
   potetoSupportsPreset,
   resolvePotetoEnabled,
   shouldSeedPotetoDefault,
@@ -66,5 +67,20 @@ describe("shouldSeedPotetoDefault", () => {
 
   it("does not seed under the Minimal preset", () => {
     expect(shouldSeedPotetoDefault({ agentPreset: "minimal", selected: undefined })).toBe(false);
+  });
+});
+
+describe("potetoPromptApplies", () => {
+  it("applies to the root session when its switch is on", () => {
+    expect(potetoPromptApplies({ enabled: true, origin: undefined })).toBe(true);
+  });
+
+  it("does not follow a subagent even when the session is enabled", () => {
+    expect(potetoPromptApplies({ enabled: true, origin: "subagent" })).toBe(false);
+  });
+
+  it("stays off when the switch is off, for any origin", () => {
+    expect(potetoPromptApplies({ enabled: false, origin: undefined })).toBe(false);
+    expect(potetoPromptApplies({ enabled: false, origin: "subagent" })).toBe(false);
   });
 });

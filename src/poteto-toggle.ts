@@ -16,6 +16,7 @@ import type {} from "@deepseek-ai/dsh-system-prompt";
 import type {} from "@deepseek-ai/dsh-typert-registry";
 
 import {
+  potetoPromptApplies,
   potetoSupportsPreset,
   resolvePotetoEnabled,
   shouldSeedPotetoDefault,
@@ -123,7 +124,7 @@ export class PotetoModeService extends TypertRemoteService {
           order: CONTRACT_SECTION_ORDER,
           interpolate: false,
           text: ({ agent }) =>
-            agent !== undefined && this.isEnabledFor(agent) ? CONTRACT_TEXT : "",
+            agent !== undefined && this.promptAppliesTo(agent) ? CONTRACT_TEXT : "",
         }),
       "pstack.poteto-toggle.contract()",
     );
@@ -135,7 +136,7 @@ export class PotetoModeService extends TypertRemoteService {
           order: SECTION_ORDER,
           interpolate: false,
           text: ({ agent }) =>
-            agent !== undefined && this.isEnabledFor(agent) ? this.sectionText : "",
+            agent !== undefined && this.promptAppliesTo(agent) ? this.sectionText : "",
         }),
       "pstack.poteto-toggle.section()",
     );
@@ -184,6 +185,13 @@ export class PotetoModeService extends TypertRemoteService {
       agentPreset: this.presetOf(agent),
       selected: readPotetoMode(this.modeTable, agent.session.id),
       byDefault: this.defaultEnabled,
+    });
+  }
+
+  private promptAppliesTo(agent: Agent): boolean {
+    return potetoPromptApplies({
+      enabled: this.isEnabledFor(agent),
+      origin: agent.session.header.origin,
     });
   }
 
