@@ -31,8 +31,12 @@ function document(heading: string, intro: string, groups: string[], tail = ""): 
   return `${parts.join("\n")}\n`;
 }
 
-function enReadme(): string {
-  return document(
+function badge(version: string): string {
+  return `<a href="https://github.com/cursor/plugins/tree/main/pstack"><img src="https://img.shields.io/badge/pstack-${version}-d97706?style=flat-square" alt="pstack ${version}" /></a>`;
+}
+
+function enReadme(badgeVersion = "0.15.36"): string {
+  return `${badge(badgeVersion)}\n\n${document(
     "## 📦 Compatibility",
     "Intro.",
     [
@@ -41,11 +45,11 @@ function enReadme(): string {
       group(">=0.2.0", [["0.1.0", "0.15.29"]]),
     ],
     "See tail.",
-  );
+  )}`;
 }
 
-function zhReadme(): string {
-  return document(
+function zhReadme(badgeVersion = "0.15.36"): string {
+  return `${badge(badgeVersion)}\n\n${document(
     "## 📦 兼容性",
     "说明。",
     [
@@ -54,7 +58,7 @@ function zhReadme(): string {
       group(">=0.2.0", [["0.1.0", "0.15.29"]], ZH_HEADER),
     ],
     "见尾部。",
-  );
+  )}`;
 }
 
 function writeJson(path: string, value: unknown): void {
@@ -108,10 +112,39 @@ describe("release compatibility metadata", () => {
 
   it("treats an unreleased DSH range as pending", () => {
     prepare();
-    expect(verifyCompatibility(meta("0.4.0", ">=0.2.2-rc.2", "0.15.43"), ROOT)).toEqual({
+    expect(verifyCompatibility(meta("0.4.0", ">=0.2.2-rc.2", "0.15.36"), ROOT)).toEqual({
       pending: true,
       releases: [],
     });
+  });
+
+  it("writes the lock pstack version into both README badges", () => {
+    prepare();
+    syncCompatibility(meta("0.4.0", ">=0.2.2-rc.2", "0.15.48"), true, ROOT);
+    for (const file of ["README.md", "README.zh.md"]) {
+      const text = read(file);
+      expect(text, `${file} should carry the new badge version`).toContain(
+        "badge/pstack-0.15.48-d97706",
+      );
+      expect(text).toContain('alt="pstack 0.15.48"');
+      expect(text).not.toContain("pstack-0.15.36-d97706");
+    }
+  });
+
+  it("rejects a README badge that lags the lock", () => {
+    prepare();
+    writeFileSync(join(ROOT, "README.zh.md"), zhReadme("0.15.43"));
+    expect(() => verifyCompatibility(meta("0.4.0"), ROOT)).toThrow(
+      "README.zh.md pstack badge says 0.15.43, but the lock pins 0.15.36",
+    );
+  });
+
+  it("rejects a README without the pstack badge", () => {
+    prepare();
+    writeFileSync(join(ROOT, "README.md"), enReadme().replace(badge("0.15.36"), ""));
+    expect(() => verifyCompatibility(meta("0.4.0"), ROOT)).toThrow(
+      "README.md pstack badge is missing or inconsistent",
+    );
   });
 
   it("appends a new DSH group and moves the oldest range into history", () => {

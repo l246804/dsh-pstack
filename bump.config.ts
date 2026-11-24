@@ -8,7 +8,7 @@ import {
   syncCompatibility,
 } from "./scripts/release-compatibility.ts";
 
-/** Update the bilingual compatibility tables after the version bump and before the release commit. */
+/** Sync the bilingual compatibility tables and pstack badges after the bump and before the release commit. */
 export default defineConfig({
   files: ["package.json"],
   execute: (operation) => {

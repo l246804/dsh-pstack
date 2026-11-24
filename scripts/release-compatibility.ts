@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Keep the grouped bilingual compatibility tables in step with package.json before a release commit.
+// Keep the grouped bilingual compatibility tables and the pstack badges in step with package.json
+// and native/upstream.lock.json before a release commit.
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,6 +14,8 @@ const README_KEEP = 3;
 const VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/;
 const GROUP_HEADING = /^\*\*DSH (.+)\*\*$/;
 const TABLE_SEPARATOR = "|---|---|";
+const BADGE_SRC = /badge\/pstack-([^"-]+)-d97706/;
+const BADGE_ALT = /alt="pstack ([^"]+)"/;
 
 interface ReleaseMetadata {
   version: string;
@@ -250,6 +253,25 @@ function readSection(spec: SectionSpec, root: string) {
   return { text, start, end, parsed: parseSection(section) };
 }
 
+/** The pstack version the README badge claims; both occurrences must agree. */
+function badgeVersion(text: string, file: string): string {
+  const source = BADGE_SRC.exec(text)?.[1];
+  const alt = BADGE_ALT.exec(text)?.[1];
+  if (source === undefined || alt === undefined || source !== alt) {
+    throw new Error(
+      `${file} pstack badge is missing or inconsistent; expected a pstack-<version>-d97706 badge with matching alt text`,
+    );
+  }
+  return source;
+}
+
+function badgeText(text: string, version: string, file: string): string {
+  badgeVersion(text, file);
+  return text
+    .replace(BADGE_SRC, () => `badge/pstack-${version}-d97706`)
+    .replace(BADGE_ALT, () => `alt="pstack ${version}"`);
+}
+
 export function syncCompatibility(metadata = releaseMetadata(), write = true, root = ROOT) {
   const perLanguage: Group[][] = [];
   const writes: Array<{ file: string; text: string }> = [];
@@ -294,7 +316,11 @@ export function syncCompatibility(metadata = releaseMetadata(), write = true, ro
     );
     writes.push({
       file: language.readme.file,
-      text: `${readme.text.slice(0, readme.start)}${readmeSection}${readme.text.slice(readme.end)}`,
+      text: badgeText(
+        `${readme.text.slice(0, readme.start)}${readmeSection}${readme.text.slice(readme.end)}`,
+        metadata.pstackVersion,
+        language.readme.file,
+      ),
     });
     writes.push({
       file: language.history.file,
@@ -315,7 +341,14 @@ export function syncCompatibility(metadata = releaseMetadata(), write = true, ro
 export function verifyCompatibility(metadata = releaseMetadata(), root = ROOT) {
   const perLanguage: Group[][] = [];
   for (const language of LANGUAGES) {
-    const readmeGroups = readSection(language.readme, root).parsed.groups;
+    const readme = readSection(language.readme, root);
+    const claimed = badgeVersion(readme.text, language.readme.file);
+    if (claimed !== metadata.pstackVersion) {
+      throw new Error(
+        `${language.readme.file} pstack badge says ${claimed}, but the lock pins ${metadata.pstackVersion}; run vpx scripts/release-compatibility.ts`,
+      );
+    }
+    const readmeGroups = readme.parsed.groups;
     const historyGroups = readSection(language.history, root).parsed.groups;
     const all = [...readmeGroups, ...historyGroups];
     if (readmeGroups.length !== Math.min(README_KEEP, all.length)) {
@@ -342,13 +375,13 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const result = verifyCompatibility(metadata);
     console.log(
       result.pending
-        ? `No compatibility group for DSH ${metadata.dshRange} yet; it will be added on release.`
-        : `Compatibility tables current for ${result.releases.join("、")}.`,
+        ? `No compatibility group for DSH ${metadata.dshRange} yet; it will be added on release. Pstack badge current at ${metadata.pstackVersion}.`
+        : `Compatibility tables and pstack badge current for ${result.releases.join("、")}.`,
     );
   } else {
     const result = syncCompatibility(metadata);
     console.log(
-      `${result.addedRow ? "Added" : "Updated"} compatibility group for DSH ${metadata.dshRange}: ${result.releases.join("、")}.`,
+      `${result.addedRow ? "Added" : "Updated"} compatibility group for DSH ${metadata.dshRange}: ${result.releases.join("、")}. Pstack badge synced to ${metadata.pstackVersion}.`,
     );
   }
 }
