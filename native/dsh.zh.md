@@ -1,12 +1,12 @@
-# DSH 中的 pstack
+# DeepSeek Harness 中的 pstack
 
-pstack 技能使用 Cursor 名称。在 DSH 中，每个会话读一次本文件，然后用下面的表格映射技能中的每个 Cursor 名称。`<pstack>` 指包含 `skills/` 和 `docs/` 的文件夹。
+pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表格映射技能中的每个 Cursor 名称。`<pstack>` 指包含 `skills/` 和 `docs/` 的文件夹。
 
-只使用当前会话里实际可见的工具。若映射到的工具或可选能力不可用，按对应行的回退处理。不要因为某个名称出现在本文件里就假设可选插件已启用。
+只使用当前会话里实际可见的工具，即使某个名称出现在本文件里。映射到的工具或可选能力不可用时，按对应行的回退处理。步骤需要 Cursor-only 能力时，写一行 `Skipped in DeepSeek Harness: <step>. <reason>.`，然后继续。后续步骤需要被跳过步骤的产物时，留占位符并在这行里点名。
 
 ## 工具
 
-| Cursor | DSH |
+| Cursor | DeepSeek Harness |
 | --- | --- |
 | `Task` | `subagent` 启动一个全新子代理并立即返回它的名称；`subagent_fork` 改为让子代理继承当前对话。把任务写进 `prompt`，把标签写进 `description`，把目录写进 `cwd`；没有原生参数的 Cursor 字段见“子代理字段”。 |
 | `AskQuestion` | `ask_user_question` 接收一组 `questions`，每项含选项和自由输入。`selected` 为空且没有 `custom` 表示用户跳过，超时是 `pending`，不是跳过。子代理不能提问，所以它把问题留在结果里；工具不存在时用纯文本提问。 |
@@ -16,7 +16,7 @@ pstack 技能使用 Cursor 名称。在 DSH 中，每个会话读一次本文件
 
 ## 子代理字段
 
-| Cursor | DSH |
+| Cursor | DeepSeek Harness |
 | --- | --- |
 | `subagent_type: generalPurpose` | 没有这个字段；省略它。子代理就是普通的 `subagent`，任务写进 `prompt`。 |
 | `poteto-agent`, `comment-sicko` | 没有原生预设。读取 `<pstack>/agents/<name>.md` 并作为 `prompt` 传入，或自己写出角色说明。 |
@@ -31,37 +31,39 @@ pstack 技能使用 Cursor 名称。在 DSH 中，每个会话读一次本文件
 
 ## 模型
 
-| Cursor | DSH |
+| Cursor | DeepSeek Harness |
 | --- | --- |
 | `claude-<family>-<version>-<effort>[-fast]`, such as `claude-opus-5-5-xhigh` | 拆成 `provider`、`model` 和 `reasoning_effort`，并去掉 `-fast`；只有委派工具启用模型选择时才有这些参数。工具提供 `list_subagent_models` 时用发现到的 id；不提供时省略它们，子代理继承父级路由。 |
 | A `grok-*`, `gpt-*`, or other non-Claude slug | 选最接近的已公布路由。没有匹配时省略 `provider` 和 `model`，让子代理继承父级路由，并说明这一点。 |
 | `auto` or `inherit-parent` | 省略 `provider`、`model` 和 `reasoning_effort`；子代理继承父级路由。 |
-| The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | 基础 DSH 没有 `.mdc` rules 目录，也从不加载它。pstack 角色文件是 `$DSH_HOME/pstack/models.json`；基础 DSH 不读它，所以它存在时在委派前自行读取。 |
+| The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | 基础 DeepSeek Harness 没有 `.mdc` rules 目录，也从不加载它。pstack 角色文件是 `$DSH_HOME/pstack/models.json`；基础 DeepSeek Harness 不读它，所以它存在时在委派前自行读取。 |
 | A role value `<model> <effort>`, such as `opus high` | 使用 setup-pstack 段描述的结构化 route 对象；不要把 `provider/model` 拼成字符串或再拆开。 |
 
 ## setup-pstack
 
-`setup-pstack` 写调用方用来选择路由的角色文件。先用 `list_subagent_models` 发现当前可用的 `provider`、`model` 和 `effort` 路由，不要根据 Cursor slug 猜测。基础 DSH 不读该角色文件；它存在时自行读取。
+`setup-pstack` 写调用方用来选择路由的角色文件。先用 `list_subagent_models` 发现当前可用的 `provider`、`model` 和 `effort` 路由，不要根据 Cursor slug 猜测。
 
 - Detect：把 `list_subagent_models` 找到的每条真实路由写成结构化对象 `{ kind: "route", provider, model, effort? }`；都检测不到时请用户粘贴路由，绝不写入未确认的路由。
 - Defaults：映射找到的路由；不可用路由用 `inherit-parent` 或 `auto`。把选定预算映射到最接近的可用 effort，并说明选择。
 - Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和由 route 对象数组组成的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
 
+完成标准：文件能按 version 2 解析，每个角色都映射到 route 或 `inherit-parent`/`auto`，重跑产生相同文件。
+
 ## 路径
 
-| Cursor | DSH |
+| Cursor | DeepSeek Harness |
 | --- | --- |
 | `.cursor/skills/`, `~/.cursor/skills/` | 项目技能放在 `.dsh/skills/` 或 `.agents/skills/`；用户技能放在 `$DSH_HOME/skills/` 或 `$DSH_AGENTS_HOME/skills/`，后者默认 `~/.agents`。 |
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | profile 是 `$DSH_HOME/profiles/<name>/`，包含 `cordis.patch.yml`；插件 manifest 是 `package.json` 的 `dsh` 段。 |
-| `.cursor/rules/*.mdc`, always-applied rules | 通用规则使用 `AGENTS.md` 链；DSH 从不读取 `.mdc`。项目 `AGENTS.md`/`AGENTS.local.md`（接受 `CLAUDE.md`）加 `$DSH_HOME/AGENTS.md`。模型里的 pstack 角色文件不由 DSH 加载；它存在时再读取。 |
+| `.cursor/rules/*.mdc`, always-applied rules | 通用规则使用 `AGENTS.md` 链；DeepSeek Harness 从不读取 `.mdc`。项目 `AGENTS.md`/`AGENTS.local.md`（接受 `CLAUDE.md`）加 `$DSH_HOME/AGENTS.md`。 |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | 文件存在时用 `<pstack>/<path>`。读本地副本，不要抓取；需要时把 URL 给用户。 |
 | Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session>.jsonl`，每个会话一个追加式日志。可选 session search 增加模型可见的搜索工具。 |
 
 ## Cursor-only features
 
-DSH 没有 Cursor Automations、Bugbot、Cursor 云代理或内置 PR 工具。步骤需要它们时，在回复里写一行 `Skipped in DSH: <step>. <reason>.`，然后继续下一步。不要停止、提问或重试。后续步骤需要被跳过步骤的产物时，例如 URL 或 key，留占位符并在这行里点名。
+表格列出每个 Cursor-only 能力及其处理方式。跳过的步骤不算通过。不要停止、提问或重试。
 
-| Cursor | DSH |
+| Cursor | DeepSeek Harness |
 | --- | --- |
 | Cursor Automations: routines, `update_state` routine calls, `api2.cursor.sh/automations` webhooks, routine wakes, and `SendToUser` secret requests | 用跳过行。 |
 | Bugbot | 把 PR 评论当作普通 review thread，使用步骤给的 `gh` 命令；没有 check 或评论时跳过启动或等待 Bugbot。 |
