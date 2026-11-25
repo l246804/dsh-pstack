@@ -278,6 +278,19 @@ Setup, the pull request check, commit and localization rules, and the merge requ
 
 This project is a community port, not an official Cursor or DeepSeek release.
 
+## ☕ Sponsorship
+
+If this project saves you time, you can buy me a coffee.
+
+<details>
+<summary>Payment codes</summary>
+
+| WeChat | Alipay |
+| :---: | :---: |
+| <a href="./assets/sponsor-wechat.png"><img src="./assets/sponsor-wechat.png" width="150" alt="WeChat reward code" /></a> | <a href="./assets/sponsor-alipay.png"><img src="./assets/sponsor-alipay.png" width="150" alt="Alipay payment code" /></a> |
+
+</details>
+
 ## 📄 License
 
 Original dsh-pstack code and documentation use the [MIT license](./LICENSE) © [leiwang](https://github.com/l246804). Bundled upstream projects and vendored skills use their upstream licenses. See [Credits](#-credits).

@@ -278,6 +278,19 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 本项目是社区移植，不是 Cursor 或 DeepSeek 官方发行。
 
+## ☕ 赞助
+
+如果这个项目为你节省了时间，欢迎请我喝杯咖啡。
+
+<details>
+<summary>赞助码</summary>
+
+| 微信 | 支付宝 |
+| :---: | :---: |
+| <a href="./assets/sponsor-wechat.png"><img src="./assets/sponsor-wechat.png" width="150" alt="微信赞赏码" /></a> | <a href="./assets/sponsor-alipay.png"><img src="./assets/sponsor-alipay.png" width="150" alt="支付宝收款码" /></a> |
+
+</details>
+
 ## 📄 许可证
 
 本仓原创代码与文档采用 [MIT License](./LICENSE) © [leiwang](https://github.com/l246804)。上游项目及 vendored 技能按各自的许可证使用。详见[鸣谢](#-鸣谢)。
