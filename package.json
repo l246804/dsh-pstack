@@ -113,6 +113,7 @@
     "@deepseek-ai/dsh-llm": "catalog:runtime",
     "@deepseek-ai/dsh-sandbox-policy": "catalog:runtime",
     "@deepseek-ai/dsh-skill": "catalog:runtime",
+    "@deepseek-ai/dsh-tools": "catalog:runtime",
     "@deepseek-ai/dsh-typert-protocol": "catalog:runtime"
   },
   "icon": "./assets/logo.png",

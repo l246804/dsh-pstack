@@ -63,6 +63,7 @@ catalogs:
     "@deepseek-ai/dsh-llm": 0.2.3-alpha.2
     "@deepseek-ai/dsh-sandbox-policy": 0.2.3-alpha.2
     "@deepseek-ai/dsh-skill": 0.2.3-alpha.2
+    "@deepseek-ai/dsh-tools": 0.2.3-alpha.2
     "@deepseek-ai/dsh-typert-protocol": 0.2.3-alpha.2
     "@deepseek-ai/schemastery": ~3.20.0-alpha.1
     "zod": 4.6.6
