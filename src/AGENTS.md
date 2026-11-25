@@ -6,7 +6,7 @@
 
 - `dsh.md` 与 `dsh.zh.md` 是随包适配答案的唯一手写来源，构建时盖章进 `dist/pstack/docs/harness/dsh.md`；编写规则见 [../docs/dsh-adapter.md](../docs/dsh-adapter.md)。
 - `surface.json` 是公开工具清单，由 `vpx scripts/release-surface.ts --write` 从工具工厂导出，不手改。
-- `docs/extensions.md` 登记非缺口的本地扩展；`docs/regressions.md` 登记跨移植回归。
+- `docs/extensions.md` 登记非缺口的本地扩展；`docs/regressions.md` 登记跨移植回归；`docs/dsh-tool-adapters.md` 定义包装 DSH 原生工具的共同契约与升级核查方式。
 
 ## 实现依据
 

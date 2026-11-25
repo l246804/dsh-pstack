@@ -37,6 +37,7 @@ release. Add a tool name to select part of the graph. For example, run
 - 修改模块前阅读 `docs/architecture.md`；模块边界或入口变化时同步更新。
 - 为概念命名时阅读 `docs/glossary.md`；引入新概念时补充术语。
 - 开始任何仓库任务前，阅读 `docs/decisions/AGENTS.md`，按其中的查找规则阅读与任务相关的记录。
+- 升级 DSH 基线时按 `docs/dsh-baseline-bump.md` 执行，装配审查是其中一步，不能只看版本声明。
 
 ## 目录文档
 
