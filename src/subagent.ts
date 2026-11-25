@@ -108,7 +108,7 @@ export function normalizeConfig(value: unknown): PstackSubagentConfig {
 }
 
 function stringArg(value: unknown): string | null {
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
 /** Read the model-facing arguments. The runtime validates their types. */
