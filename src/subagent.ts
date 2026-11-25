@@ -1,11 +1,13 @@
 /**
  * `pstack_subagent`: a thin pstack wrapper over `ctx.subagents.startActivation`.
  *
- * The native subagent tool only offers child model selection when its
- * `modelSelection` option is on, and turning that on forces a default child
- * model. This tool keeps route override without that option, and adds the
- * `agent` preset selector and a `maxDepth` cap. Everything else mirrors the
- * native subagent contract.
+ * The native `subagent` tool enforces the Host `subagent-model-selection`
+ * setting on every call, and the shipped composition leaves that setting off,
+ * so an unconfigured session can delegate only to the parent route. pstack
+ * roles need a different route per role, so this tool writes the route into the
+ * activation's `agentOptions` and owns its own caller contract. It also adds
+ * the `agent_preset` selector and a `maxDepth` cap. Everything else mirrors the
+ * native delegation contract, including the activation result shape.
  */
 
 import type { Agent, AgentOptions } from "@deepseek-ai/dsh-agent";
@@ -56,7 +58,6 @@ export interface DelegationArgs {
   readonly provider: string | null;
   readonly model: string | null;
   readonly reasoningEffort: string | null;
-  readonly cwd: string | null;
   readonly maxDepth: number | null;
 }
 
@@ -69,7 +70,6 @@ export interface DelegationPlan {
   readonly name?: string;
   readonly agentOptions?: AgentOptions;
   readonly agentPreset?: string;
-  readonly cwd?: string;
   readonly maxDepth?: number;
 }
 
@@ -161,7 +161,6 @@ export function parseDelegationArgs(raw: unknown): DelegationArgs {
     provider,
     model,
     reasoningEffort,
-    cwd: stringArg(record["cwd"]),
     maxDepth: typeof maxDepth === "number" ? maxDepth : null,
   };
 }
@@ -193,7 +192,6 @@ export function planDelegation(
     ...(agentOptions === undefined ? {} : { agentOptions }),
     ...(agentPreset === undefined ? {} : { agentPreset }),
     ...(args.name === null ? {} : { name: args.name }),
-    ...(args.cwd === null ? {} : { cwd: args.cwd }),
     ...(maxDepth === undefined ? {} : { maxDepth }),
   };
 }
@@ -221,7 +219,6 @@ export async function startChild(
     parent,
     ...(plan.agentPreset === undefined ? {} : { agentPreset: plan.agentPreset }),
     ...(plan.name === undefined ? {} : { name: plan.name }),
-    ...(plan.cwd === undefined ? {} : { cwd: plan.cwd }),
     ...(plan.agentOptions === undefined ? {} : { agentOptions: plan.agentOptions }),
     ...(plan.maxDepth === undefined ? {} : { maxDepth: plan.maxDepth }),
   });
@@ -296,11 +293,6 @@ export function createPstackSubagentTool(
           type: ["string", "null"],
           description:
             "Optional advertised reasoning-effort token; requires `provider` and `model`; omit to keep the route's default effort.",
-        },
-        cwd: {
-          type: ["string", "null"],
-          description:
-            "Optional initial child working directory; omit to inherit the session directory.",
         },
         maxDepth: {
           type: ["integer", "null"],
@@ -398,7 +390,7 @@ const TOOL_DESCRIPTION = [
   "",
   "`agent_preset` picks a DSH agent preset: `poteto-agent` mounts the pstack implementation delegate and receives the absolute path of the poteto-mode instructions; `comment-sicko` mounts the comment reviewer; `readonly` mounts a read-only research preset with the sandbox policy set to read-only; `general` joins the parent preset.",
   "",
-  "Omit `cwd` to inherit the session directory. Omit `maxDepth` to use the configured row and Host delegation cap.",
+  "Omit `maxDepth` to use the configured row and Host delegation cap.",
   "",
   "Returns the started subagent name. Results arrive as a completion notice; do not poll.",
 ].join("\n");

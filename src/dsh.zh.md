@@ -32,7 +32,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 | `readonly: true` | `agent_preset: "readonly"` 给子代理只读沙箱。需要写入时用 `general`。 |
 | `readonly: false` | `agent_preset: "general"`。 |
 | `environment: "cloud"` | 没有云代理。可用时用 `enter_worktree` 在本地工作树中工作；否则按规则跳过。 |
-| `environment: "local"` | 省略 `cwd`；子代理在会话目录启动。 |
+| `environment: "local"` | 没有这个参数；子代理在会话目录启动。 |
 | `cloud_base_branch: <b>` | 把 `<b>` 作为 `enter_worktree.from` 传入；否则让子代理先 checkout `<b>`。 |
 | `run_in_background: true` | 省略；子代理由 Plugin tools 托管。 |
 | `resume` | 用原生 `send_message`，按 `list_agents` 报告的名称或 Session id 续聊 pstack 子代理。只有永久停止时才新建 `pstack_subagent`。 |

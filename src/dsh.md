@@ -32,7 +32,7 @@ Use only tools visible in the current session, even when a name appears here. Wh
 | `readonly: true` | `agent_preset: "readonly"` gives the child a read-only sandbox. Use `general` when the child must write. |
 | `readonly: false` | `agent_preset: "general"`. |
 | `environment: "cloud"` | No cloud agents. Use `enter_worktree` when available to work in a local worktree; otherwise skip with the line. |
-| `environment: "local"` | Omit `cwd`; the child starts in the session directory. |
+| `environment: "local"` | No such argument; a child starts in the session directory. |
 | `cloud_base_branch: <b>` | Pass `<b>` as `enter_worktree.from`; otherwise tell the child to check out `<b>`. |
 | `run_in_background: true` | Omit; the child is managed (Plugin tools). |
 | `resume` | Use native `send_message`, addressing the pstack child by the name `list_agents` reports or by its Session id. Start a new `pstack_subagent` only when it stopped permanently. |
