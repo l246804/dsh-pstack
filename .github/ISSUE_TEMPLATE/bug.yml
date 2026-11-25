@@ -1,0 +1,54 @@
+name: Bug report（缺陷报告）
+description: Something does not work as documented（与文档不符的行为）
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One problem per issue. Write what you saw and how to reproduce it.
+        一个 issue 只写一个问题，写清现象和复现步骤。
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened（发生了什么）
+      description: The observed behavior, in one or two sentences. 一两句话描述实际行为。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected（期望什么）
+      description: The behavior you expected instead. 你原本期望的行为。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce（怎么复现）
+      description: The command, session, or UI path. 命令、会话或界面路径。
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DSH version（DSH 版本）
+      placeholder: 0.2.2-rc.2
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: dsh-pstack version（插件版本）
+      placeholder: 0.5.2
+    validations:
+      required: true
+  - type: checkboxes
+    id: before-file
+    attributes:
+      label: Before you file（提交前确认）
+      options:
+        - label: I searched the existing issues and this is not a duplicate.（已搜索现有 issue，不是重复）
+          required: true

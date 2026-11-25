@@ -1,0 +1,37 @@
+name: Change request（改动与功能请求）
+description: A problem to discuss, not a finished design（先讨论问题，不写成品设计）
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem and the smallest change that would address it. Do not write acceptance criteria, a task list, or a design document. Those come after the problem is agreed on.
+        描述问题和最小的改动。不要写验收清单、任务分解或设计方案，方案在问题确认之后再谈。
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem（问题）
+      description: What is hard today, and who hits it. 现在哪里难用，谁会遇到。
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change（建议的改动）
+      description: The smallest change that addresses the problem. 能解决问题的最小改动。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered（考虑过的替代方案）
+      description: Optional. Say what you rejected and why. 可选，说清否掉了什么、为什么。
+    validations:
+      required: false
+  - type: textarea
+    id: not-covered
+    attributes:
+      label: What this does not cover（不在范围内）
+      description: Optional. Keep the request bounded. 可选，把请求限定住。
+    validations:
+      required: false
