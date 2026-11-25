@@ -1,9 +1,9 @@
 # 决策：模型偶发行为只降低概率，不做运行时兜底
 
-Status: proposed
+Status: accepted
 Date: 2026-11-25
 Scope: .github/ISSUE_TEMPLATE/**, README.md, README.zh.md, docs/glossary.md, src/dsh.md, src/dsh.zh.md, src/pstack/**, src/lib/paths.ts, docs/decisions/**
-Implemented-by: -
+Implemented-by: PR #58
 Review: 2026-11-25
 
 ## 背景
