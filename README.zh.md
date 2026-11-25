@@ -260,6 +260,10 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 - [LinuxDo - 新的理想型社区](https://linux.do/)
 
+## 🤝 参与贡献
+
+环境、`pnpm run ci` 门禁、提交与本地化规则、评审要求见 [CONTRIBUTING.zh.md](./CONTRIBUTING.zh.md)。报告问题时请附 DSH 版本、dsh-pstack 版本，以及出问题的命令或会话。
+
 ## 💛 鸣谢
 
 - [pstack](https://github.com/cursor/plugins/tree/main/pstack)，由 Lauren Tan 与 Cursor 团队设计并开源，是本项目的工作流基础。

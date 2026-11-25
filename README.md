@@ -260,6 +260,10 @@ Older DSH baselines move to [compatibility history](./docs/compatibility-history
 
 - [LinuxDo - 新的理想型社区](https://linux.do/)
 
+## 🤝 Contributing
+
+Setup, the `pnpm run ci` gate, commit and localization rules, and the review requirement are in [CONTRIBUTING.md](./CONTRIBUTING.md). Bug reports are most useful with the DSH version, the dsh-pstack version, and the command or session that failed.
+
 ## 💛 Credits
 
 - [pstack](https://github.com/cursor/plugins/tree/main/pstack), designed and open-sourced by Lauren Tan and the Cursor team. It is the foundation of this port.
