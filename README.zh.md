@@ -194,7 +194,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 ## 🧪 移植如何验证
 
-移植由真实 DeepSeek Harness Web 会话验证，不靠与上游比对文本。完整流程见 [playground/docs/workflow.md](./playground/docs/workflow.md)。
+移植由真实 DeepSeek Harness Web 会话验证，不靠与上游比对文本。完整流程见 [playground/docs/run.md](./playground/docs/run.md)。
 
 - **native 基准。** `native/` 钉定上游 pstack 并生成 `native/pstack`；`native/dsh.md` 把每个 Cursor 名称映射到 DSH 替代项，并写清替代项不可用时的 fallback。生成器把该文档插入生成树，上游文案保持原样。
 - **场景驱动。** 覆盖来自 `native/gaps.json` 与 `playground/scenarios/` 下的场景文件；缺口清单记录 DSH 标准运行时缺少的能力，场景负责验证这些缺口。

@@ -194,7 +194,7 @@ Steps that depend on a disabled plugin report skipped or blocked, never passed. 
 
 ## 🧪 Port verification
 
-Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/workflow.md](./playground/docs/workflow.md) documents the full procedure.
+Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/run.md](./playground/docs/run.md) documents the full procedure.
 
 - **Native baseline.** `native/` pins the upstream pstack and generates `native/pstack`; `native/dsh.md` maps each Cursor name to its DSH replacement and states the fallback when the replacement is unavailable. The generator inserts that document into the generated tree, so the upstream wording stays intact.
 - **Capability-driven runs.** Coverage comes from `native/gaps.json` and the scenario files under `playground/scenarios/`; the gap list records what the DSH standard runtime lacks, and the scenarios verify those gaps.

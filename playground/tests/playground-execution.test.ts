@@ -29,11 +29,9 @@ import {
   verdictFor,
 } from "../runner/evidence/evidence.ts";
 import {
-  adaptedVersion,
   WORKERS_ROOT,
   WORKSPACE_ROOT,
   isolatedRootDirectory,
-  publicConfigHash,
   REPOSITORY_ROOT,
 } from "../runner/worker/run-metadata.ts";
 import { setRuntimeSettings } from "../runner/config/runtime.ts";
@@ -88,36 +86,6 @@ const testScenario: BehaviorScenario = {
 function record(variant: "native" | "adapted", environmentId: string): RunRecord {
   const scenario = testScenario;
   const target = { provider: "provider-a", model: "model-a", effort: "low" };
-  const config = {
-    testModel: target,
-    runtime: {
-      scenarioTimeoutMs: 600000,
-      turnTimeoutMs: 180000,
-      subagentTimeoutMs: 600000,
-      networkMode: "host" as const,
-      workerPortBase: 8080,
-      workerCapacity: {
-        coreHeadroom: 2,
-        memoryFraction: 0.7,
-        memoryPerWorkerGB: 1,
-      },
-      workspaceRoot: "playground/.workspace",
-      workersDir: "playground/.workers",
-      dockerBin: "docker",
-      dshBin: "dsh",
-      vpxBin: "vpx",
-      pnpmBin: "pnpm",
-    },
-    providers: {
-      "provider-a": {
-        kind: "pi-ai" as const,
-        apiKey: "secret-value",
-        apiKeyEnv: "PROVIDER_A_KEY",
-        reasoning: "low",
-        models: [{ id: "model-a", reasoningEfforts: { low: "low" } }],
-      },
-    },
-  };
   const matrix = {
     id: environmentId,
     description: "测试环境",
@@ -131,10 +99,8 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
       worker: 0,
       dshVersion: "test-dsh",
       pstackVersion: "test-pstack",
-      adaptedVersion: variant === "native" ? null : "test-adapted",
       matrix,
       upstreamRevision: "test-upstream",
-      configHash: publicConfigHash(config, matrix),
     },
     target,
     session: {
@@ -777,17 +743,6 @@ describe("variant isolation of worker evidence", () => {
     expect(adapted.root.endsWith(join("adapted", "base", "w0"))).toBe(true);
     expect(native.variant).toBe("native");
     expect(adapted.variant).toBe("adapted");
-  });
-
-  it("reads adapted version from the stock web profile, not a legacy profile name", () => {
-    const home = join(temporary, "profile-home");
-    mkdirSync(join(home, "profiles/web/node_modules/dsh-pstack"), { recursive: true });
-    writeFileSync(
-      join(home, "profiles/web/node_modules/dsh-pstack/package.json"),
-      '{"version":"1.2.3"}',
-    );
-    expect(adaptedVersion({ home }, "adapted")).toBe("1.2.3");
-    expect(adaptedVersion({ home }, "native")).toBeNull();
   });
 
   it("resets only one variant and leaves the other variant's evidence on disk", () => {

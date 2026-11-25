@@ -164,16 +164,8 @@ export default defineConfig({
         command: "vpx playground/scripts/review.ts",
         cache: false,
       },
-      "playground:status-table": {
-        command: "vpx playground/scripts/status-table.ts",
-        cache: false,
-      },
       "playground:gap-lock": {
         command: "vpx playground/scripts/gap-lock.ts",
-        cache: false,
-      },
-      "playground:compare": {
-        command: "vpx playground/scripts/compare.ts",
         cache: false,
       },
       "playground:browser": {

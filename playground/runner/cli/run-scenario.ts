@@ -118,7 +118,7 @@ async function main(): Promise<void> {
     record = {
       scenarioId,
       variant,
-      environment: createEnvironment({ worker, matrix, config, variant, paths }),
+      environment: createEnvironment({ worker, matrix }),
       target: outcome.digest.route,
       session,
       artifacts: {

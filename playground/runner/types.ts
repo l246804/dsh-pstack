@@ -161,10 +161,8 @@ export interface RunEnvironment {
   dshVersion: string;
   /** The released pstack version pinned in native/upstream.lock.json at capture time. */
   pstackVersion: string;
-  adaptedVersion: string | null;
   matrix: EnvironmentMatrix;
   upstreamRevision: string;
-  configHash: string;
 }
 
 export type ToolCallStatus = "pending" | "ok" | "error";
