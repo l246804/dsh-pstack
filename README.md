@@ -113,6 +113,7 @@ Use pstack skills to start workflows directly from a Session.
 | Task | Commands |
 |---|---|
 | Help | `/poteto-help` |
+| Shape the request | `/reframe`, `/sharpen` |
 | Plan and build | `/poteto-mode`, `/architect`, `/arena`, `/swarm` |
 | Understand and investigate | `/how`, `/why`, `/teach` |
 | Verify | `/create-verification-skill`, `/statechart` |

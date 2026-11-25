@@ -113,6 +113,7 @@
 | 工作流 | 命令 |
 |---|---|
 | 帮助 | `/poteto-help` |
+| 明确需求 | `/reframe`、`/sharpen` |
 | 规划与实现 | `/poteto-mode`、`/architect`、`/arena`、`/swarm` |
 | 理解与调查 | `/how`、`/why`、`/teach` |
 | 验证 | `/create-verification-skill`、`/statechart` |
