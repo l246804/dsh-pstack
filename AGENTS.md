@@ -56,6 +56,14 @@ release. Add a tool name to select part of the graph. For example, run
 
 - 破坏性变更提交使用 Conventional Commits 的 `type!:` 形式，例如 `feat!: ...`；不要使用 `!feat:`。
 
+## Issues
+
+- 一个 issue 只写一个问题，写观察到的行为、证据和影响，不预设实现。
+- 方案在问题确认之后再谈，不写验收清单、任务分解或设计。
+- 带上能复现的环境：版本、模型、命令或会话。
+- 行为偶发时附重试结果和出现频率，让问题可判定。
+- 正文按 `.github/ISSUE_TEMPLATE/` 里的模板写；`gh issue create` 不过模板、不打标签，需要时手动加。
+
 ## Local scratch
 
 - 本地验证的临时文件写入仓库 `.tmp/`；后续步骤要读取的文件放在可持续访问的工作区。
