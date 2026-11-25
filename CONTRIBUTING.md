@@ -37,7 +37,7 @@ This runs `vp check`, the type check, the test suites, the native, surface, and 
 
 ## Review
 
-Every pull request needs the `ci` check to pass and one maintainer approval before merge. Expect a question about the alternative you rejected when a change picks one design over another; that is what the records under `docs/decisions/` are for.
+Every pull request needs the `ci` check to pass and one maintainer approval before merge. When a change picks one design over another, expect a question about the alternative you rejected. That is what the records under `docs/decisions/` are for.
 
 ## Licensing
 
