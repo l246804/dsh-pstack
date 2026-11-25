@@ -18,7 +18,7 @@ pstack 的全局文件此前平铺在 `$DSH_HOME` 根目录，包括 `pstack-mod
 - 旧 `pstack-repair.json` 不迁移，也不读取。
 - `readRoleConfiguration` 改为纯读，不再触发迁移。`pstack_roles` 声明为并发安全。
 - 所有旧格式文件名常量、迁移脚本和兼容类型都放在 `src/compat/`。后续清理时删除该目录和 `src/index.ts` 的唯一一处调用。
-- 后续 Issue #36 的 `paths.json` 使用同一目录。
+- Issue #36 的运行时路径索引未采用，`$DSH_HOME/pstack/` 不预留 `paths.json`；见 [2026-11-25-model-variance-not-a-defect.md](./2026-11-25-model-variance-not-a-defect.md)。
 
 ## 替代方案
 
@@ -37,5 +37,5 @@ pstack 的全局文件此前平铺在 `$DSH_HOME` 根目录，包括 `pstack-mod
 - 迁移失败按 best-effort 忽略，不阻止服务启动；角色文件缺失时设置页保持可保存状态，用户重新配置角色即可恢复。
 - `pstack_roles` 变为并发安全，角色文件读取不再写盘。
 - 旧 `pstack-repair.json` 保持原样，不再被读取。
-- Issue #36 可以直接使用 `$DSH_HOME/pstack/paths.json`。
+- Issue #36 的运行时路径索引未采用，见 [2026-11-25-model-variance-not-a-defect.md](./2026-11-25-model-variance-not-a-defect.md)。
 - 相关记录：[2026-11-16-structured-role-routes.md](./2026-11-16-structured-role-routes.md) 记录角色文件 schema；本记录改变其迁移执行时机，并把路径和目录决策统一到这里。

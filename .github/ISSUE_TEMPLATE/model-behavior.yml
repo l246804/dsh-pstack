@@ -1,0 +1,57 @@
+name: Model behavior report（模型行为报告）
+description: Model choice variance, not a deterministic defect（模型偶发行为，不是确定的缺陷）
+labels: ["model-behavior"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report measurable behavior with the retry result and the frequency. Do not propose a fix here.
+        只报告可测量的行为，附上重试结果和出现频率。不要在这里写修复方案。
+  - type: textarea
+    id: task
+    attributes:
+      label: Task or prompt（你让模型做什么）
+      description: The request that triggered the behavior. 触发这次行为的请求。
+    validations:
+      required: true
+  - type: textarea
+    id: did
+    attributes:
+      label: What the model did（模型实际做了什么）
+      description: Name the wrong tool, path, or file. 写清错的工具、路径或文件。
+    validations:
+      required: true
+  - type: dropdown
+    id: retry
+    attributes:
+      label: Does a retry fix it（重试是否恢复）
+      options:
+        - Retry succeeds（重试就成功）
+        - Retry sometimes succeeds（重试有时成功）
+        - Retry also fails（重试也失败）
+        - Not tried（没试过）
+    validations:
+      required: true
+  - type: input
+    id: frequency
+    attributes:
+      label: Frequency（出现频率）
+      description: Runs that showed it, out of runs tried. 试了几次、出现几次。
+      placeholder: 2 of 5 runs（5 次里 2 次）
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment（环境）
+      description: DSH version, dsh-pstack version, model, and preset. DSH 版本、插件版本、模型和预设。
+      placeholder: DSH 0.2.2-rc.2 / dsh-pstack 0.5.2 / model x / preset y
+    validations:
+      required: true
+  - type: textarea
+    id: wording
+    attributes:
+      label: Related wording（相关措辞）
+      description: Optional. The doc sentence or tool description you think influenced the choice. 可选，你认为影响了这次选择的文档句子或工具描述。
+    validations:
+      required: false

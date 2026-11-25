@@ -229,6 +229,10 @@ These limits remain even with every optional plugin that can run alongside pstac
 
    Native DSH renders images and SVG inline. A Mermaid diagram returns as text, and audio or video shows as a file card. That is expected degradation, not a broken skill. For the full experience, install an optional plugin that enhances native rendering.
 
+3. **The model sometimes picks the wrong tool or path**
+
+   Model choice is probabilistic. The adapter wording and tool boundaries reduce how often it happens and how long recovery takes, but they cannot remove it. A retry usually resolves it. When it repeats, file a model behavior report with the retry result and the frequency.
+
 </details>
 
 ## 📦 Compatibility
