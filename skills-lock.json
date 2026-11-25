@@ -5,8 +5,8 @@
       "source": "agent-browser",
       "sourceType": "node_modules",
       "skillPath": "skills/agent-browser/SKILL.md",
-      "version": "0.41.0",
-      "computedHash": "dd491d53824ad9286ec950aee667098446332429a6d41fe28b4ba11f1959264c"
+      "version": "0.41.2",
+      "computedHash": "60a9cbe5af176150582c019e16e5d3703a41bb02d88438e881349876120d7944"
     },
     "decision-audit": {
       "source": "./skills/authored",
@@ -22,14 +22,6 @@
       "source": "./skills/authored",
       "sourceType": "local",
       "computedHash": "0fb8981ec6d6a9584c6e316f21442208c023703ee24636b19b9f6db81497a2de"
-    },
-    "retro": {
-      "source": "mattpocock/skills",
-      "ref": "59db609eb1e18aaf59b63284d0e52255aff0c63c",
-      "sourceType": "github",
-      "skillPath": "skills/engineering/retro/SKILL.md",
-      "computedHash": "b8d55851a2909e26c2dbb2e8563719c87b3b700559f604e4df344f8c27e21047",
-      "via": "."
     },
     "setup-project-docs": {
       "source": "./skills/authored",
