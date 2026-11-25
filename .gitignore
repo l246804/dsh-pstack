@@ -12,3 +12,4 @@ native/upstream/
 
 # Any local override file in the repository.
 *.local
+.vitest/

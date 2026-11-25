@@ -22,8 +22,8 @@ catalogs:
   cli:
     bumpp: ^12.3.0
     typescript: ^7.0.2
-    vite: npm:@voidzero-dev/vite-plus-core@1.5.0
-    vite-plus: 1.5.0
+    vite: npm:@voidzero-dev/vite-plus-core@8.3.8001
+    vite-plus: 1.8.0
   types:
     "@types/node": ^24.1.0
     "@deepseek-ai/dsh-agent": 0.2.2-rc.2
@@ -75,10 +75,17 @@ catalogs:
     js-yaml: ^5.5.0
 
 overrides:
-  vite@*: "catalog:cli"
-
-peerDependencyRules:
-  allowAny:
-    - vite
-  allowedVersions:
-    vite: "*"
+  vite@*: catalog:cli
+trustPolicyExclude:
+  - tsrs@7.1.0-beta.tsrs4
+minimumReleaseAgeExclude:
+  - "@voidzero-dev/vite-plus-core@8.3.8001"
+  - "@voidzero-dev/vite-plus-darwin-arm64@1.8.0"
+  - "@voidzero-dev/vite-plus-darwin-x64@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-gnu@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-arm64-musl@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-x64-gnu@1.8.0"
+  - "@voidzero-dev/vite-plus-linux-x64-musl@1.8.0"
+  - "@voidzero-dev/vite-plus-win32-arm64-msvc@1.8.0"
+  - "@voidzero-dev/vite-plus-win32-x64-msvc@1.8.0"
+  - vite-plus@1.8.0
