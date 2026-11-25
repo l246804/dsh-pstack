@@ -122,13 +122,13 @@
     },
     "runtime": {
       "name": "node",
-      "version": "24.22.1",
+      "version": "24.22.3",
       "onFail": "download"
     }
   },
   "engines": {
     "dsh": ">=0.2.2-rc.2",
-    "node": ">=24.21.1"
+    "node": ">=24.22.3"
   },
   "dsh": {
     "manifestVersion": 1,
