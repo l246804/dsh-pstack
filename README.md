@@ -46,7 +46,7 @@
 The [runtime mapping](./src/dsh.md) maps each Cursor feature to DeepSeek Harness. Real DSH Web sessions test the port, and [Port verification](#-port-verification) explains how.
 
 > [!IMPORTANT]
-> Requires DSH `>=0.2.2-rc.2` and Node.js `>=24.21.1`. See each script's help for the runtime it needs.
+> Requires DSH `>=0.2.2-rc.2` and Node.js `>=24.22.3`. See each script's help for the runtime it needs.
 
 <a id="quick-start"></a>
 
