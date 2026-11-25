@@ -7,6 +7,7 @@ Playground 用真实 DSH Web 会话验证 native 运行时与当前适配实现�
 | 触发 | 文档 |
 | --- | --- |
 | 准备环境、改配置、跑批次、脱敏提交 | [docs/run.md](./docs/run.md) |
+| 新增或修改场景、gap 或 regression | [docs/scenarios.md](./docs/scenarios.md) |
 | 理解 variant、environment、运行身份或证据布局 | [docs/records.md](./docs/records.md) |
 | 分析记录、写 findings、判定或 review | [docs/judge.md](./docs/judge.md) |
 

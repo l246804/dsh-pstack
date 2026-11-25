@@ -1,6 +1,6 @@
 # 怎么跑
 
-本文件说明 playground 的前置、配置、场景契约、worker、批次与命令。记录结构见 [records.md](./records.md)，判定见 [judge.md](./judge.md)。
+本文件说明 playground 的前置、配置、worker、批次、命令与脱敏。场景契约见 [scenarios.md](./scenarios.md)，记录结构见 [records.md](./records.md)，判定见 [judge.md](./judge.md)。
 
 ## 前置
 
@@ -18,40 +18,6 @@
 `copyCredentials` 默认关闭；开启时只复制配置的 DSH 凭证文件。
 
 完成标准：`config.ts` 能加载并解析，`testModel` 与 `roleModels` 路由有效。
-
-## 场景契约
-
-场景在 `playground/scenarios/`，一个文件一份 probe，默认导出 `BehaviorScenario`。字段定义和断言类型见 `runner/types.ts`；默认 variants/environments 见 `runner/scenario/defaults.ts`。
-
-### 来源
-
-- gap 场景：来自 `native/gaps.json` 中状态为 `confirmed` 的缺口，必须声明 `kind: "gap"` 和对应的 `gap` id。
-- regression 场景：记录已验证、需要持续防回归的行为，必须声明 `kind: "regression"`，不写 `gap`，也不依赖 `gaps.json`。
-
-两类场景共用同一个目录和执行器。不要为了增加回归场景而新增缺口，也不要把 regression 场景写进 gap-lock。
-
-### 约束
-
-- `variants` 可显式声明。默认是 native 和 adapted；gap 场景至少覆盖 native。若 adapted 预期只是客户端降级，可声明 `variants: ["native"]`，不要求 adapted 记录。
-- `id` 稳定且唯一；同一 probe 在 native/adapted 使用同一 id。
-- gap 场景的 `capability` 必须等于 `gap`；regression 不声明 `gap`。
-- 一个场景只覆盖一个行为分支，不写工具名、包名、实现路径或 variant 专属期望。
-- 场景 prompt 和 rubric 不绑定具体 provider、模型名、外部 URL 或宿主路径；需要资源时使用 workspace fixture。
-- `turns` 描述用户可观察目标；`workspace` 只放必要 fixture，不引用宿主路径。
-- `assertions` 只做机械事实，必须能在目标行为缺失时失败；`turn-completed` 只能作为基础项，不能是唯一断言。
-- `rubric` 描述用户可观察的合格边界；`uiObservations` 只在需要真实呈现时使用；`answers` 只用于自动回答 ask_user_question。
-
-### Gap 守卫
-
-- 每个 confirmed 缺口至少有一个 gap 场景。
-- gap 场景必须覆盖 native；adapted 是否覆盖由 `variants` 声明决定。
-- gap 场景引用的缺口必须存在且仍为 confirmed；缺口被推翻或排除时，删除场景或改成 regression。
-- 缺口描述变化后先重读场景；确认场景仍成立后运行 `vp run playground:gap-lock -- --write`。
-- regression 场景不参与 gap 计数，也不进入 gap-lock。
-
-守卫由 `vp run playground:gap-lock` 提供。
-
-完成标准：`vp run playground:gap-lock -- --check` 通过。
 
 ## Worker
 
