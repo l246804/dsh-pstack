@@ -67,3 +67,7 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 ## Repair queue（修复队列）
 
 `$DSH_HOME/pstack/repair.json` 保存等待下次启动处理的 Session id。用户在配置弹窗的修复页确认后追加写入；DSH 启动时读取、逐个修复并删除该文件。它是一次性迁移队列，不是 Session 日志，也不是 storageDomain sidecar。旧的根目录 `$DSH_HOME/pstack-repair.json` 不参与启动迁移，保持原样。
+
+## Model variance（模型偶发）
+
+同一提示、同一环境下，模型偶发选错工具、路径或对象，重试可以恢复的现象。它不是代码缺陷，验收看重复运行的命中率，不看单次失败。适配只降低发生率和恢复回合，不承诺消除；报告这类问题时附上重试结果和出现频率。
