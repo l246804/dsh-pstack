@@ -8,7 +8,7 @@ Use only tools visible in the current session, even when a name appears here. Wh
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `subagent` starts a fresh child and returns its name at once; `subagent_fork` seeds the child with the conversation instead. Put the task in `prompt`, the label in `description`, and the directory in `cwd`; Subagent fields covers the Cursor fields with no native argument. |
+| `Task` | `subagent` starts a fresh child and returns its name at once; `subagent_fork` seeds the child with the conversation instead. Put the task in `prompt` and the label in `description`; a child starts in the caller's workspace directory, and Subagent fields covers the Cursor fields with no native argument. |
 | `AskQuestion` | `ask_user_question` takes a `questions` array of options and free input. An empty `selected` with no `custom` means the user skipped, and a timeout is `pending`, not skipped. A live child cannot ask, so it keeps the question in its result; ask in plain text when the tool is absent. |
 | Open a todolist | `todo_write` replaces the whole list and has no `skipped` status. Keep a skipped step visible as `skip: <reason> - <step>` and mark it `completed`. |
 | Run another pstack skill (`/name` or "the **name** skill") | `skill` loads a catalog skill by exact name. A skill with `disable-model-invocation: true` is hidden from `skill`, so `read` `<pstack>/skills/<name>/SKILL.md`; a user `/name` gesture injects the skill directly, so do not call `skill` again. |
@@ -22,9 +22,9 @@ Use only tools visible in the current session, even when a name appears here. Wh
 | `poteto-agent`, `comment-sicko` | No native presets. Read `<pstack>/agents/<name>.md` and pass it as `prompt`, or write the role yourself. |
 | `readonly: true` | No sandbox argument. Put "do not edit files" in `prompt`, rely on the session permission mode, and check `git status` afterward. |
 | `readonly: false` | Omit; a child under the session permission mode can write. |
-| `environment: "cloud"` | No cloud agents. When a worktree tool such as `create_worktree` is available, pass its checkout as `cwd`; otherwise skip with the line. |
-| `environment: "local"` | Omit `cwd`; the child inherits the session directory. |
-| `cloud_base_branch: <b>` | No such field. Pass `<b>` as `create_worktree.from`; otherwise tell the child to check out `<b>` first. |
+| `environment: "cloud"` | No cloud agents. When a worktree tool such as `enter_worktree` is available, enter a worktree and work there; otherwise skip with the line. |
+| `environment: "local"` | No such argument; a child starts in the caller's workspace directory. |
+| `cloud_base_branch: <b>` | No such field. Pass `<b>` as `enter_worktree.from`; otherwise tell the child to check out `<b>` first. |
 | `run_in_background: true` | Omit. `subagent` returns its name immediately and notifies on completion; there is no background flag. |
 | `resume` | `send_message` continues the child by `agent`, its name from `list_agents` or its Session id; a running child takes the message at its next step and an idle one resumes. `interrupt_agent` takes the same `agent`, but built-in presets disable it, so treat interruption as unavailable there. Spawn a new `subagent` only when it stopped permanently. |
 | `file_attachments` | No such field. List the real paths in `prompt`; the child reads them with `read`. |
@@ -57,7 +57,7 @@ Done when the file parses as version 2, every role maps to a route or to `inheri
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | A profile is `$DSH_HOME/profiles/<name>/`, holding `cordis.patch.yml`; a plugin manifest is the `dsh` section of its `package.json`. |
 | `.cursor/rules/*.mdc`, always-applied rules | General rules use the `AGENTS.md` chain; DeepSeek Harness never reads `.mdc`. Project `AGENTS.md`/`AGENTS.local.md` (`CLAUDE.md` accepted) plus `$DSH_HOME/AGENTS.md`. |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | `<pstack>/<path>` when the file exists. Read the local copy and never fetch it; give the user the URL when needed. |
-| Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session>.jsonl`, one append-only log per session. Optional session search adds model-facing search tools. |
+| Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session-id>/`, one log per session. Optional session search adds model-facing search tools. |
 
 ## Cursor-only features
 

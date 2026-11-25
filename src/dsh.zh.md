@@ -31,9 +31,9 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 | `poteto-agent`, `comment-sicko` | `agent_preset: "poteto-agent"` 或 `agent_preset: "comment-sicko"`。它们是 agent preset，不是 `subagent_type` 值。 |
 | `readonly: true` | `agent_preset: "readonly"` 给子代理只读沙箱。需要写入时用 `general`。 |
 | `readonly: false` | `agent_preset: "general"`。 |
-| `environment: "cloud"` | 没有云代理。可用时用 `create_worktree`，把 checkout 作为 `cwd`；否则按规则跳过。 |
-| `environment: "local"` | 省略 `cwd`；子代理继承会话目录。 |
-| `cloud_base_branch: <b>` | 把 `<b>` 作为 `create_worktree.from` 传入；否则让子代理先 checkout `<b>`。 |
+| `environment: "cloud"` | 没有云代理。可用时用 `enter_worktree` 在本地工作树中工作；否则按规则跳过。 |
+| `environment: "local"` | 省略 `cwd`；子代理在会话目录启动。 |
+| `cloud_base_branch: <b>` | 把 `<b>` 作为 `enter_worktree.from` 传入；否则让子代理先 checkout `<b>`。 |
 | `run_in_background: true` | 省略；子代理由 Plugin tools 托管。 |
 | `resume` | 用原生 `send_message`，按 `list_agents` 报告的名称或 Session id 续聊 pstack 子代理。只有永久停止时才新建 `pstack_subagent`。 |
 | `file_attachments` | 在 `prompt` 中列出真实路径，子代理用 `read` 读取。 |
@@ -76,7 +76,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | 在 `SKILL.md` 旁解析包资源；插件 manifest 是 `package.json` 的 `dsh` 段。 |
 | `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md` 兼容链。DeepSeek Harness 不读取 `.mdc`。 |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | 包内存在该文件时使用 `<pstack>/<path>`。读取本地副本，需要链接时给用户公开 URL。 |
-| Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session>.jsonl`。可选 session search 增加面向模型的搜索工具。 |
+| Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session-id>/`。可选 session search 增加面向模型的搜索工具。 |
 
 ## Local replacements
 
