@@ -22,16 +22,15 @@
 - 提交快照在 `playground/evidence/runs/<variant>-<environment>/`。
 - 每个场景的 `record.json` 和截图位于快照的 `scenarios/` 下；具体目录构造见 `runner/evidence/review-snapshot.ts`。
 - `manifest.json` 记录当前快照的范围和批次；不要手工维护它的场景列表。
-- session、`record.source.json` 和 `record.safe.json` 只留在本地，不进入快照；脱敏与提交流程见 [run.md](./run.md#证据脱敏)。
+- session、`record.source.json` 和 `record.safe.json` 留在本地，不进入快照；脱敏与提交流程见 [run.md](./run.md#证据脱敏)。
 
 ## 不变量
 
 - native 和 adapted 使用同一 scenario 定义和同一 environment；场景声明只跑一个 variant 时，只要求该 variant 的记录。
 - 生成物必须能由记录重建；快照范围由 manifest 和实际目录共同决定。
-- 合并视图只读，不把一侧结论写进另一侧的分析结果。
 
 ## 完成标准
 
 - `manifest.json` 的 `scenarioIds` 与快照实际场景一致。
 - 同一场景的 native/adapted record 使用相同 scenario 定义和 environment；只声明单 variant 的场景只要求该 variant 的记录。
-- 快照里的环境字段能说明该记录由哪个 DSH 版本、哪个上游版本产出。
+- 每条 record 的 `environment.dshVersion` 与 `pstackVersion` 都非空。

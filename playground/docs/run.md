@@ -17,6 +17,8 @@
 
 `copyCredentials` 默认关闭；开启时只复制配置的 DSH 凭证文件。
 
+完成标准：`config.ts` 能加载并解析，`testModel` 与 `roleModels` 路由有效。
+
 ## 场景契约
 
 场景在 `playground/scenarios/`，一个文件一份 probe，默认导出 `BehaviorScenario`。字段定义和断言类型见 `runner/types.ts`；默认 variants/environments 见 `runner/scenario/defaults.ts`。
@@ -49,6 +51,8 @@
 
 守卫由 `vp run playground:gap-lock` 提供。
 
+完成标准：`vp run playground:gap-lock -- --check` 通过。
+
 ## Worker
 
 worker 是独立 Docker 容器。仓库根、`playground/scenarios`、宿主 home、Docker socket 和宿主 browser profile 不进入容器。挂载、隔离参数和路径以 `runner/container/spec.ts` 为准。
@@ -58,6 +62,8 @@ worker 是独立 Docker 容器。仓库根、`playground/scenarios`、宿主 hom
 - `open` / `close` / `reset`：预览、停止预览和重建 preview worker。
 - `stop`：停止所有匹配的 worker；`stop-task` 写入当前场景的停止请求，由 `run-scenario` 在轮询点处理。
 - `run-batch` 退出不会自动停止 worker；需要时运行 `playground:stop`。
+
+完成标准：`prepare` 后 worker 的模型配置与当前 `config.ts` 一致；`bootstrap --all` 通过并生成环境级 readiness 标记。
 
 ## 阶段
 
@@ -73,13 +79,14 @@ worker 是独立 Docker 容器。仓库根、`playground/scenarios`、宿主 hom
 
 批次必须按 `prepare → bootstrap → run-batch → collect` 串行执行。
 
+完成标准：当前 variant/environment 的 manifest、record 和截图完整。
+
 ## 批次
 
 - `--full`：按场景声明的 variants/environments 选择全部适用场景，成功后更新整个当前快照。
 - `--scenarios a,b`：只替换本次跑到的场景，其他场景沿用当前快照。
 - `--only-failed`：从已审核快照选择 native gap / adapted not-verified 场景。
 - `batchId` 在启动时生成，写入 `current-batch.json` 和 `manifest.json`；同一单元只允许一个批次写快照。
-- `run-batch` 退出不会自动停止 worker；需要时运行 `playground:stop`。
 
 ## 命令
 
@@ -135,7 +142,7 @@ vp run playground:session-tail -- --variant <variant> --environment <environment
 
 ## 证据脱敏
 
-完整 session 不进入快照，只留在本地 worker。脱敏规则、敏感类别和残留检查由 `runner/evidence/redaction.ts` 实现，本文件不复制规则列表。
+哪些文件留在本地、哪些可以提交，见 [records.md](./records.md#证据布局)。脱敏规则、敏感类别和残留检查由 `runner/evidence/redaction.ts` 实现，本文件不复制规则列表。
 
 1. `run-scenario` 生成 record 和本地 `record.source.json`；`collect` 从 worker evidence 读取 record，`record.source.json` 只用于定位截图。
 2. 独立分析会话生成 `record.safe.json` 并检查 record 内容。
@@ -157,13 +164,8 @@ vp run playground:redact -- --variant <variant> --environment <environment> --ap
 
 提交门：`evidence/runs/**/session.jsonl.zstd`、`record.source.json`、`record.safe.json` 永不提交；只有 `redact --apply` 成功后的 `record.json` 和人工确认的截图进入提交。
 
-## 完成标准
+完成标准：`playground:redact` 检查没有残留 secret 或 host-path 类别。
 
-- `vp run playground:doctor` 通过。
-- `config.ts` 能被加载并解析，`testModel` 与 `roleModels` 路由有效。
-- `prepare` 后 worker 的模型配置与当前 `config.ts` 一致。
-- `bootstrap --all` 通过并生成环境级 readiness 标记。
-- 当前 variant/environment 的 manifest、record 和截图完整。
-- `vp run playground:gap-lock -- --check` 通过。
-- `playground:redact` 检查没有残留 secret 或 host-path 类别。
-- 手动运行 `vp run typecheck`、`vp run playground:typecheck` 和 `vp test` 通过。
+## 收尾检查
+
+一轮改动落地前，手动运行 `vp run typecheck`、`vp run playground:typecheck` 和 `vp test`。

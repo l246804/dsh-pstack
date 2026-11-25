@@ -15,6 +15,8 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vite-plus/test";
 
+import { ToolArgsError } from "@deepseek-ai/dsh-tools";
+
 import { normalizeConfig, parseDelegationArgs } from "../subagent.ts";
 
 const DELEGATION = "@deepseek-ai/dsh-tool-subagent";
@@ -76,6 +78,17 @@ const DIVERGENCES: readonly Divergence[] = [
         /maxDepth/,
       );
       expect(normalizeConfig({ provider: "spawn", maxDepth: 2 }).maxDepth).toBe(2);
+    },
+  },
+  {
+    topic: "argument errors",
+    native: "throws ToolArgsError, which the runtime renders as a correctable argument error",
+    ours: "throws a plain Error, which the runtime renders as a tool failure",
+    reason:
+      "Temporary. ToolArgsError is a runtime value from dsh-tools, and that package is a type-only dependency here; aligning the channel means reclassifying the dependency, which is a separate decision. Delete this row once it lands.",
+    check: () => {
+      expect(() => parseDelegationArgs({ prompt: "p" })).toThrow(/description is required/);
+      expect(() => parseDelegationArgs({ prompt: "p" })).not.toThrow(ToolArgsError);
     },
   },
 ];
