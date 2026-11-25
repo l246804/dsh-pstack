@@ -10,7 +10,7 @@ dsh-pstack ports the pstack workflows to DeepSeek Harness. This file covers what
 
 ## Setup
 
-Install the dependencies with `pnpm install`. The `engines` field in `package.json` and the CI workflow pin the Node and pnpm versions this repository builds with. The first install needs network access because `prepare` syncs the vendored skills.
+Install the dependencies with `pnpm install`. The `engines` field in `package.json` and the CI workflow pin the Node and pnpm versions this repository builds with. The first install needs network access because it syncs the vendored skills.
 
 ## Check your change
 

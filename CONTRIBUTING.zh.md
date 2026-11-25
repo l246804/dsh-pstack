@@ -10,7 +10,7 @@ dsh-pstack 把 pstack 工作流移植到 DeepSeek Harness。这份文件说明�
 
 ## 环境
 
-用 `pnpm install` 安装依赖。Node 和 pnpm 的版本由 `package.json` 的 `engines` 字段与 CI 工作流钉定。第一次安装需要网络，因为 `prepare` 会同步内置技能。
+用 `pnpm install` 安装依赖。Node 和 pnpm 的版本由 `package.json` 的 `engines` 字段与 CI 工作流钉定。第一次安装需要网络，因为它会同步内置技能。
 
 ## 提交前自检
 
