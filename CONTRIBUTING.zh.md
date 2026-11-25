@@ -1,6 +1,6 @@
 # 参与 dsh-pstack
 
-dsh-pstack 是把 pstack 工作流移植到 DeepSeek Harness 的项目。改动通常是三类：文档、`src/` 下的插件代码、`playground/` 下的验证工作。这份文件说明一个改动在维护者合并之前要满足什么。
+dsh-pstack 把 pstack 工作流移植到 DeepSeek Harness。这份文件说明一个改动在维护者合并之前要满足什么。
 
 ## 动手之前
 
@@ -10,13 +10,7 @@ dsh-pstack 是把 pstack 工作流移植到 DeepSeek Harness 的项目。改动�
 
 ## 环境
 
-Node 24.21.1 或更新，pnpm 12.15.0。
-
-```sh
-pnpm install
-```
-
-`prepare` 还会执行 `vp config` 并同步内置技能，所以第一次安装需要网络。
+用 `pnpm install` 安装依赖。Node 和 pnpm 的版本由 `package.json` 的 `engines` 字段与 CI 工作流钉定。第一次安装需要网络，因为它会同步内置技能。
 
 ## 提交前自检
 
@@ -24,20 +18,19 @@ pnpm install
 pnpm run ci
 ```
 
-这条命令执行 `vp check`、类型检查、测试、native 与 surface 与兼容性检查，以及构建。发布工作流跑的是同一条命令，本地通过说明 PR 检查会跑同样的步骤。
+这条命令就是 PR 检查跑的命令。本地通过，PR 检查也会通过。
 
 ## 提交 PR
 
 - 一个 PR 只做一件事。文档修正和行为变更分开提。
 - 提交信息使用 Conventional Commits。破坏性变更使用 `type!:` 形式，例如 `feat!: ...`。
-- 文档分语言维护。改 `README.md` 通常要同时改 `README.zh.md`，`src/dsh.md` 与 `src/dsh.zh.md` 成对。
-- 不要改 `changes/`。发布说明由维护者按两个标签之间的提交生成。
-- 不要改版本号，不要打标签。发布只由维护者执行。
+- 文档按语言分发。改 `README.md` 要同时改 `README.zh.md`。
+- 不要修改自动生成的发布说明，不要改版本号，不要打标签。发布只由维护者执行。
 - 写清你怎么验证的。测试通过、复现过的问题、真实界面的截图都算，「本地能跑」不算。
 
 ## 评审
 
-每个 PR 需要 `ci` 检查通过，并得到一位维护者批准后才能合并。当一个改动选择了某种设计而不是另一种时，会被问到你否掉的替代方案是什么，这正是 `docs/decisions/` 下记录存在的理由。
+PR 的检查通过后由维护者合并。当一个改动选择了某种设计而不是另一种时，会被问到你否掉的替代方案是什么，这正是 `docs/decisions/` 下记录存在的理由。
 
 ## 授权
 

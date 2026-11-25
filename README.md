@@ -262,7 +262,7 @@ Older DSH baselines move to [compatibility history](./docs/compatibility-history
 
 ## 🤝 Contributing
 
-Setup, the `pnpm run ci` gate, commit and localization rules, and the review requirement are in [CONTRIBUTING.md](./CONTRIBUTING.md). Bug reports are most useful with the DSH version, the dsh-pstack version, and the command or session that failed.
+Setup, the pull request check, commit and localization rules, and the merge requirement are in [CONTRIBUTING.md](./CONTRIBUTING.md). Bug reports are most useful with the DSH version, the dsh-pstack version, and the command or session that failed.
 
 ## 💛 Credits
 
