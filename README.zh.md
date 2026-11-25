@@ -262,7 +262,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 ## 🤝 参与贡献
 
-环境、`pnpm run ci` 门禁、提交与本地化规则、评审要求见 [CONTRIBUTING.zh.md](./CONTRIBUTING.zh.md)。报告问题时请附 DSH 版本、dsh-pstack 版本，以及出问题的命令或会话。
+环境、PR 检查、提交与本地化规则、合并要求见 [CONTRIBUTING.zh.md](./CONTRIBUTING.zh.md)。报告问题时请附 DSH 版本、dsh-pstack 版本，以及出问题的命令或会话。
 
 ## 💛 鸣谢
 
