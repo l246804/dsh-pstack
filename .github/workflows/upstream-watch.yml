@@ -1,0 +1,75 @@
+name: Upstream watch
+
+# Reports pinned upstream sources that have moved past the revision recorded in
+# this repository, and opens one issue per drifted source. It stays quiet while
+# that issue is open, so a source that keeps moving does not file a new issue
+# every day.
+#
+# The body uses a fixed shape rather than the issue forms under
+# .github/ISSUE_TEMPLATE/. Those forms are a web-UI contract for people filing
+# changes; an automated notice that mirrored them would drift every time a field
+# or label moved. Keeping this body independent means template edits cannot
+# break the automation.
+
+on:
+  schedule:
+    # 01:00 UTC is 09:00 in Asia/Shanghai.
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compare upstream pins
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/upstream-watch.sh | tee /tmp/stale
+
+      - name: Open an issue per stale source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if grep -qx 'all upstream pins are current' /tmp/stale; then
+            echo "nothing stale"
+            exit 0
+          fi
+
+          gh issue list --state open --limit 200 --json number,title > /tmp/open.json
+
+          while IFS='|' read -r name pinned latest url; do
+            [ -n "$name" ] || continue
+            title="[upstream] $name 越过 pin"
+            existing="$(jq -r --arg t "$title" '.[] | select(.title == $t) | .number' /tmp/open.json | head -1)"
+            if [ -n "$existing" ]; then
+              echo "issue #$existing already tracks $name"
+              continue
+            fi
+
+            {
+              echo "### 现状"
+              echo
+              echo "\`$name\` 的固定版本已经落后于上游。"
+              echo
+              echo "- 本仓固定：\`$pinned\`"
+              echo "- 上游当前：\`$latest\`"
+              echo "- 来源：$url"
+              echo
+              echo "### 需要决定"
+              echo
+              echo "先看上游改了什么，再判断这次改动是否需要重新适配；无论是否需要，固定版本都要重新对齐。本 issue 只记录上游已经前进这个事实，不预设处理方式。"
+              echo
+              echo "### 不在范围内"
+              echo
+              echo "不判断改动的影响面，也不给出处理步骤。"
+            } > /tmp/issue-body.md
+
+            gh issue create --title "$title" --body-file /tmp/issue-body.md
+          done < /tmp/stale
