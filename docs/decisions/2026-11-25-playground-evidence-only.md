@@ -1,9 +1,9 @@
 # 决策：playground 只保留证据与判定
 
-Status: proposed
+Status: accepted
 Date: 2026-11-25
 Scope: playground/**, vite.config.ts, docs/decisions/**
-Implemented-by: -
+Implemented-by: PR #59
 Review: 2026-11-25
 
 ## 背景

@@ -1,9 +1,9 @@
 # 决策：poteto 模式只 deny 被本插件替代的委派工具
 
-Status: proposed
+Status: accepted
 Date: 2026-11-25
 Scope: src/poteto-toggle.ts, src/subagent.ts, src/dsh.md, src/dsh.zh.md, src/tests/**, docs/decisions/**
-Implemented-by: -
+Implemented-by: commit:311115f6b1040c06930dc164d80a4b24d08e1b43
 Review: 2026-11-25
 
 ## 背景
