@@ -9,13 +9,13 @@
 - gap 场景：来自 `native/gaps.json` 中状态为 `confirmed` 的缺口，必须声明 `kind: "gap"` 和对应的 `gap` id。
 - regression 场景：记录已验证、需要持续防回归的行为，必须声明 `kind: "regression"`，不写 `gap`，也不依赖 `gaps.json`。
 
-两类场景共用同一个目录和执行器。回归场景要新立一个缺口时，先确认它确实是标准模式的缺口，再按缺口流程确认，不直接写进清单。
+两类场景共用同一个目录和执行器。回归不等于缺口：工具测试层面的回归直接写成 regression 场景，不需要先立一个缺口；也不要为了安置回归场景去新增缺口。
 
 ## 约束
 
 - `variants` 可显式声明。默认是 native 和 adapted；gap 场景至少覆盖 native。若 adapted 预期只是客户端降级，可声明 `variants: ["native"]`，不再要求 adapted 记录。
 - `id` 稳定且唯一；同一 probe 在 native/adapted 使用同一 id。
-- gap 场景的 `capability` 必须等于 `gap`。
+- gap 场景的 `capability` 必须等于 `gap`；regression 场景不声明 `gap`。
 - 一个场景只覆盖一个行为分支，不写工具名、包名、实现路径或 variant 专属期望。
 - 场景 prompt 和 rubric 用通用表述描述目标；provider、模型名、外部 URL 和宿主路径从 workspace fixture 取。
 - `turns` 描述用户可观察目标；`workspace` 只放必要 fixture，指向 workspace 内的相对路径。
