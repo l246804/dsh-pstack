@@ -45,12 +45,14 @@ worker 是独立 Docker 容器。仓库根、`playground/scenarios`、宿主 hom
 
 批次必须按 `prepare → bootstrap → run-batch → collect` 串行执行。
 
+新记录先等待语义审核，`run-batch` 会把待审核结果计入失败并返回非零。批次结束后核对日志与记录，记录齐全时继续 `collect`，再按 [judge.md](./judge.md) 审核；缺失记录或执行错误另行处理。
+
 完成标准：当前 variant/environment 的 manifest、record 和截图完整。
 
 ## 批次
 
-- `--full`：按场景声明的 variants/environments 选择全部适用场景，成功后更新整个当前快照。
-- `--scenarios a,b`：只替换本次跑到的场景，其他场景沿用当前快照。
+- `--full`：按场景声明的 variants/environments 选择全部适用场景，随后由 `collect` 整体更新当前快照。
+- `--scenarios a,b`：选择本次运行的场景，随后由 `collect` 替换这些场景，其余沿用当前快照。
 - `--only-failed`：从已审核快照选择 native gap / adapted not-verified 场景。
 - `batchId` 在启动时生成，写入 `current-batch.json` 和 `manifest.json`；同一单元只允许一个批次写快照。
 

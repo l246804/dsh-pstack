@@ -22,7 +22,7 @@
 - 提交快照在 `playground/evidence/runs/<variant>-<environment>/`。
 - 每个场景的 `record.json` 和截图位于快照的 `scenarios/` 下；具体目录构造见 `runner/evidence/review-snapshot.ts`。
 - `manifest.json` 记录当前快照的范围和批次；不要手工维护它的场景列表。
-- session、`record.source.json` 和 `record.safe.json` 留在本地，不进入快照；脱敏与提交流程见 [run.md](./run.md#证据脱敏)。
+- session 与 `record.source.json` 留在 worker 本地；`record.safe.json` 在快照中与待替换的 `record.json` 同目录，应用后删除。这些文件均不提交，脱敏流程见 [run.md](./run.md#证据脱敏)。
 
 ## 不变量
 
