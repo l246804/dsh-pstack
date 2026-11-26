@@ -1,9 +1,9 @@
 # 决策：子代理路由授权由插件自己的委派工具承担
 
-Status: proposed
+Status: accepted
 Date: 2026-11-25
 Scope: src/subagent.ts, src/surface.json, src/dsh.md, src/dsh.zh.md, src/tests/**, docs/decisions/**
-Implemented-by: -
+Implemented-by: commit:66e7cd2a7bac47e09a36ad3216631c987530be54
 Review: 2026-11-25
 
 ## 背景
