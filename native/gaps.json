@@ -29,7 +29,7 @@
         "pstack/docs/guide/01-setup.md",
         "pstack/docs/guide/04-design.md"
       ],
-      "evidence": "dsh.md Models 行只断言参数机制。运行时核验（分层）：dsh-web-app/presets/{standard,cordis,ptc}.patch.yml 对 tool-subagent 设 modelSelection/modelDiscovery: true，dsh-tool-subagent/src/index.ts L246-260 据此在工具 schema 展开 provider/model/reasoning_effort；但同一文件 L74 注明 \"the tool remains model-visible so runtime policy owns rejection\"，dsh-tool-subagent/src/model-selection-settings.ts L1 \"Host-owned opt-in setting\"、L25 \"the shipped composition defaults it off\"（enabled 默认 false、allowedModels 默认 []），未记录策略时 dsh-tool-subagent/src/model-selection.ts L142-148 将显式选择限制为父级路由并报错，list-models.ts 同样只列父级路由。结果可达性核验：模型路由属宿主所有，内建工具、客户端能力、agent 自行构建的手段（bash/web）都无法在未授权会话内让委派子代理跑在其他路由上。角色文件本身是普通文件可读（setup-pstack 答案行已覆盖位置与格式），但按行传参撞同一授权门。上游依据示例：poteto-mode/SKILL.md L90 \"an explicit model per role, Project workers included\"；show-me-your-work L69 \"spawn a subagent on another vendor's model than the one that did the work\"。",
+      "evidence": "dsh.md Models 行只断言参数机制。运行时核验（分层）：dsh-web-app/presets/{standard,cordis,ptc}.patch.yml 对 tool-subagent 设 modelSelection/modelDiscovery: true，dsh-tool-subagent/src/index.ts 据此在工具 schema 展开 provider/model/reasoning_effort；授权门在 Host 设置 subagent-model-selection-settings：model-selection-settings.ts 自述 \"Host-owned opt-in setting\"，enabled 默认 false、allowedModels 默认 []（\"the shipped composition defaults it off\"），每次委派经 allowedRoutes() 读实时设置，未开启时 model-selection.ts 的 assertAllowedModelSelection 把显式选择限制为父级路由并报错，list-models.ts 同样只列父级路由。结果可达性核验：模型路由属宿主所有。设置关闭时，模型侧能换路由的入口有两处，都不构成缺口可达。一是 Host 设置页：dsh-web-app/cordis.patch.yml 挂 subagent-model-selection-settings 与 ui-settings-subagent（Plugins → Subagent），由用户在 run 之外开启一次，agent 侧没有开关它的入口。二是 standard、cordis、ptc 三份预设里的 workflow：dsh-workflow-ptc/src/host.ts 的 startChild 把脚本传入的 provider/model 直接写进 agentOptions 调 startActivation，全程不校验 allowedRoutes，确实能给 child 换路由。但 workflow 不是本缺口的动作。上游 pstack 派发子代理只走 Task 一种形态，一次一个子代理，没有脚本编排的概念；workflow 的交付单位是模型写的一段脚本返回 JSON，它的 ChildStartRequest 只有 prompt/schema/provider/model，不接受 agent_preset，带不了角色人格。把 workflow 计为可达，等于拿「另一个工具存在」替代「本工作流要求的同一个动作」，这与 deny 清单只收被替代动作用的是同一条判据。因此本缺口仍成立：按角色逐次委派并指定路由，标准模式下没有对应动作。角色文件本身是普通文件可读（setup-pstack 答案行已覆盖位置与格式），但按行传参撞同一授权门。上游依据示例：poteto-mode/SKILL.md L90 \"an explicit model per role, Project workers included\"；show-me-your-work L69 \"spawn a subagent on another vendor's model than the one that did the work\"。",
       "status": "confirmed"
     },
     {
@@ -40,7 +40,7 @@
         "dsh-evidence.md",
         "pstack/skills/poteto-mode/playbooks/pause-safely.md"
       ],
-      "evidence": "dsh-evidence.md resume 行：内置 preset 把 `tool-subagent-control` 的 `config.interrupt` 设为 `false`，模型拿不到 `interrupt_agent`。运行时核验：`dsh-web-app/presets/standard.patch.yml` 的 delegation 组对 `tool-subagent-control` 同样写明 `interrupt: false`，服务层中断 API 不对模型暴露。结果可达性核验：子代理运行于宿主进程内，内建工具与 agent 自行构建的手段都无法定向停止某一个子代理。上游依据：pause-safely.md L5 \"Start nothing new, and cancel any nested subagents.\"",
+      "evidence": "dsh-evidence.md resume 行：内置 preset 把 `tool-subagent-control` 的 `config.interrupt` 设为 `false`，模型拿不到 `interrupt_agent`。运行时核验：`dsh-tool-subagent-control` 的 `Config.interrupt` 默认 `true`，`dsh-base/cordis.patch.yml` 与 `dsh-web-app/presets/{standard,cordis,ptc}.patch.yml` 都显式设为 `false`；关闭时工具不注册，服务层 `ctx.subagents.interrupt` 仍在，`interrupt` 不是可实时修改的设置项，也没有设置页。结果可达性核验：子代理运行于宿主进程内，内建工具与 agent 自行构建的手段都无法定向停止某一个子代理；客户端对可续聊子代理提供人工 Stop（`dsh-client-ui-subagent`），那是人在用，不是模型在 pause 流程里可调用的。上游依据：pause-safely.md L5 \"Start nothing new, and cancel any nested subagents.\"",
       "status": "confirmed"
     },
     {
@@ -56,7 +56,7 @@
         "pstack/docs/guide/04-design.md",
         "pstack/docs/guide/05-build-and-clean.md"
       ],
-      "evidence": "dsh-evidence.md readonly 行：`tool-subagent` 无 sandbox 参数，写入限制由会话级 `dsh-sandbox-policy` 与 `permission-presets` 决定；dsh.md readonly 行只给出提示词约束 + 会话权限 + 事后 `git status` 的近似路径。运行时核验：standard preset 的 `tool-subagent` 配置无沙箱字段；`dsh-base/cordis.patch.yml` 的 permission-presets 仅会话级 `read-only`/`workspace-write`/`danger-full-access` 三档；`dsh-tool-subagent/src/preset-selection.ts` 的 `agent_preset` 参数仅在部署配置显式给出 `allowedAgentPresets` 白名单时开放，standard 预设未配置，传入即报 \"agent_preset selection is disabled\"，子代理只能继承父级预设。结果可达性核验：会话级模式无法在同一个会话内混合可写主线程与只读子代理；提示词纪律不产生结构性围栏，也无法阻止子代理驱动应用产生的不可回滚副作用。上游依据示例：maintain-verification-skill L31 \"One read-only subagent per feature file... Children never drive the app and never edit files\"；comment-sicko L30 \"I never write application code.\"、L32 \"Report only.\"。",
+      "evidence": "dsh-evidence.md readonly 行：`tool-subagent` 无 sandbox 参数，写入限制由会话级 `dsh-sandbox-policy` 与 `permission-presets` 决定；dsh.md readonly 行只给出提示词约束 + 会话权限 + 事后 `git status` 的近似路径。运行时核验：standard preset 的 `tool-subagent` 配置无沙箱字段；`dsh-base/cordis.patch.yml` 的 permission-presets 仅会话级 `read-only`/`workspace-write`/`danger-full-access` 三档；`dsh-tool-subagent/src/preset-selection.ts` 的 `agent_preset` 参数仅在部署配置显式给出 `allowedAgentPresets` 白名单时开放，standard 预设未配置，传入即报 \"agent_preset selection is disabled for this tool instance\"，子代理只能继承父级预设；`dsh-subagent/src/child-agent.ts` 的 `captureDelegatedPolicyOverrides` 只捕获父会话显式给出的 sandbox 覆盖，并把子代理 approval 钉成 `never`，结构上无法把子代理收紧到比父会话更严。结果可达性核验：会话级模式无法在同一个会话内混合可写主线程与只读子代理；提示词纪律不产生结构性围栏，也无法阻止子代理驱动应用产生的不可回滚副作用。上游依据示例：maintain-verification-skill L31 \"One read-only subagent per feature file... Children never drive the app and never edit files\"；comment-sicko L30 \"I never write application code.\"、L32 \"Report only.\"。",
       "status": "confirmed"
     },
     {
@@ -72,7 +72,7 @@
         "pstack/skills/poteto-help/references/prompting.md",
         "pstack/skills/poteto-help/references/recipes.md"
       ],
-      "evidence": "DSH Web 客户端运行时核验：dsh-client-ui-attachment 的消息附件呈现只有 MessageImage/图片画廊，没有 video 元素；README FAQ 明确写 Native DSH renders images and SVG inline，audio or video shows as a file card。上游依据：ketchup/SKILL.md:43 \"Embed screenshots and videos inline when the change is visible, not only as links.\"；ketchup-video/SKILL.md:9 的回复是 \"the embedded video\"，第 27 行要求渲染 mp4 后再嵌入，第 29 行要求在嵌入前检查成片。",
+      "evidence": "DSH Web 客户端运行时核验：dsh-client-ui-attachment 的消息附件呈现只有 MessageImage/图片画廊，没有 video 元素；README FAQ 明确写 Native DSH renders images and SVG inline，audio or video shows as a file card；运行时侧 `dsh-client-ui-sidebar-documentpreview` 把 mp4/mov/avi/mkv/webm 等视频扩展名列入不可预览的二进制，`dsh-tool-present` 只登记可打开的文件路径，两者都不是播放器。上游依据：ketchup/SKILL.md:43 \"Embed screenshots and videos inline when the change is visible, not only as links.\"；ketchup-video/SKILL.md:9 的回复是 \"the embedded video\"，第 27 行要求渲染 mp4 后再嵌入，第 29 行要求在嵌入前检查成片。",
       "status": "confirmed"
     }
   ],

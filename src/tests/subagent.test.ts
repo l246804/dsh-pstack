@@ -23,7 +23,6 @@ function args(overrides: Partial<DelegationArgs> = {}): DelegationArgs {
     provider: null,
     model: null,
     reasoningEffort: null,
-    cwd: null,
     maxDepth: null,
     ...overrides,
   };
@@ -82,7 +81,6 @@ describe("parseDelegationArgs", () => {
         provider: "cpa",
         model: "m",
         reasoning_effort: "high",
-        cwd: "/work",
         maxDepth: 2,
       }),
     ).toEqual({
@@ -93,7 +91,6 @@ describe("parseDelegationArgs", () => {
       provider: "cpa",
       model: "m",
       reasoningEffort: "high",
-      cwd: "/work",
       maxDepth: 2,
     });
   });
@@ -197,7 +194,6 @@ describe("startChild", () => {
       planDelegation(
         args({
           name: "scout",
-          cwd: "sub/dir",
           provider: "cpa",
           model: "m",
           reasoningEffort: "high",
@@ -212,7 +208,6 @@ describe("startChild", () => {
       provider: "spawn",
       delivery: "parent",
       name: "scout",
-      cwd: "sub/dir",
       agentOptions: { provider: "cpa", model: "m", reasoningEffort: "high" },
     });
     expect(record).toEqual({ kind: "activation", name: "agent-1" });

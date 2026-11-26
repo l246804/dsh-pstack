@@ -89,6 +89,8 @@
     "@deepseek-ai/dsh-storage-domain": "catalog:types",
     "@deepseek-ai/dsh-subagent": "catalog:types",
     "@deepseek-ai/dsh-system-prompt": "catalog:types",
+    "@deepseek-ai/dsh-tool-subagent": "catalog:types",
+    "@deepseek-ai/dsh-tool-subagent-control": "catalog:types",
     "@deepseek-ai/dsh-tools": "catalog:types",
     "@deepseek-ai/dsh-typert-protocol": "catalog:runtime",
     "@deepseek-ai/dsh-typert-registry": "catalog:types",
@@ -111,6 +113,7 @@
     "@deepseek-ai/dsh-llm": "catalog:runtime",
     "@deepseek-ai/dsh-sandbox-policy": "catalog:runtime",
     "@deepseek-ai/dsh-skill": "catalog:runtime",
+    "@deepseek-ai/dsh-tools": "catalog:runtime",
     "@deepseek-ai/dsh-typert-protocol": "catalog:runtime"
   },
   "icon": "./assets/logo.png",
@@ -127,7 +130,7 @@
     }
   },
   "engines": {
-    "dsh": ">=0.2.2-rc.2",
+    "dsh": ">=0.2.3-alpha.2",
     "node": ">=24.22.3"
   },
   "dsh": {

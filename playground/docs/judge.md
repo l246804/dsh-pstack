@@ -1,6 +1,6 @@
-# 证据分析
+# 怎么判定
 
-本文件说明 `collect` 后的独立分析会话：输入、隔离、判定、输出和 review。脱敏见 [evidence-redaction.md](./evidence-redaction.md)，批次见 [workflow.md](./workflow.md)。
+本文件说明 `collect` 后的独立分析会话：输入、隔离、判定、输出和 review。怎么跑见 [run.md](./run.md)，记录结构见 [records.md](./records.md)。
 
 ## 输入
 
@@ -11,7 +11,7 @@
 - native 对照 `native/dsh.md`；adapted 对照 `src/dsh.md`。
 - 场景声明 `variants: ["native"]` 时，adapted 快照没有对应 record 是声明范围，不是缺失或 blocked。
 
-完整 session 只保存在本地 worker。需要时按 record 的 `session.sessionId` 定位，不复制到快照。
+完整 session 的位置与提交边界见 [records.md](./records.md#证据布局)。需要时按 record 的 `session.sessionId` 定位。
 
 ## 隔离
 
@@ -21,8 +21,8 @@
 
 ## 判定
 
-1. 区分“能力不存在”和“模型没有完成任务”：能力确实缺失才记为 `gap`；能力存在但模型未完成或质量不足，记为 `inconclusive` 或待用户判断。
-2. 机械断言是下限，rubric 是语义边界；两者都满足才算通过。没有看到失败不能推断通过。
+1. 区分「能力不存在」和「模型没有完成任务」：能力确实缺失才记为 `gap`；能力存在但模型未完成或质量不足，记为 `inconclusive` 或待用户判断。
+2. 机械断言是下限，rubric 是语义边界；两者都满足才算通过。
 3. 性能、质量和精确数量不是默认门槛；有操作或测量但未达目标时，优先 `inconclusive` 或待用户判断。
 4. 非文本产物必须看到实际呈现；源码、路径、文件卡片和 assistant 文本不能替代渲染、播放或 UI 观察。
 5. 证据不足时留给用户判断，不把模型表现当成 DSH 能力结论。
@@ -48,7 +48,7 @@ vp run playground:review -- --variant <variant> --environment <environment> --ap
 vp run playground:review -- --variant <variant> --environment <environment> --check
 ```
 
-`--apply` 是 pending 变成 verified / not-verified 的唯一路径；`--check` 必须没有 pending，且 record 与 review 内容一致。随后按 [evidence-redaction.md](./evidence-redaction.md) 生成 `record.safe.json` 并运行 `playground:redact --apply`。
+`--apply` 是 pending 变成 verified / not-verified 的唯一路径；`--check` 必须没有 pending，且 record 与 review 内容一致。判定完成后按 [run.md](./run.md#证据脱敏) 生成 `record.safe.json` 并运行 `playground:redact --apply`。
 
 ## 完成标准
 

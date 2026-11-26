@@ -1,13 +1,11 @@
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { PlaygroundConfig, RunEnvironment, Variant } from "../types.ts";
+import type { RunEnvironment } from "../types.ts";
 import { runtimeSettings } from "../config/runtime.ts";
 import { environments } from "../scenario/environments.ts";
-import { stableStringify } from "../shared/stable-json.ts";
 
 export const REPOSITORY_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 export const PLAYGROUND_DIRECTORY = join(REPOSITORY_ROOT, "playground");
@@ -49,58 +47,12 @@ export function environmentMatrix(id: string): RunEnvironment["matrix"] {
   };
 }
 
-export function publicConfigHash(
-  config: PlaygroundConfig,
-  matrix: RunEnvironment["matrix"],
-): string {
-  const publicConfig = {
-    testModel: config.testModel,
-    providers: Object.fromEntries(
-      Object.entries(config.providers).map(([provider, entry]) => [
-        provider,
-        entry.kind === "pi-ai"
-          ? {
-              kind: entry.kind,
-              api: entry.api,
-              baseURL: entry.baseURL,
-              reasoning: entry.reasoning,
-              models: entry.models,
-            }
-          : entry.kind === "deepseek-api-key"
-            ? {
-                kind: entry.kind,
-                apiKeyEnv: entry.apiKeyEnv,
-                models: entry.models,
-              }
-            : { kind: entry.kind, modelOverrides: entry.modelOverrides },
-      ]),
-    ),
-    roleModels: config.roleModels ?? null,
-    environment: matrix,
-  };
-  return createHash("sha256").update(stableStringify(publicConfig)).digest("hex");
-}
-
-function versionFromPackage(file: string): string {
-  if (!existsSync(file)) throw new Error(`cannot read installed package version: ${file}`);
-  const version = (JSON.parse(readFileSync(file, "utf8")) as { version?: string }).version;
-  if (!version) throw new Error(`installed package has no version: ${file}`);
-  return version;
-}
-
 export function dshVersion(): string {
   const result = spawnSync(runtimeSettings().dshBin, ["--version"], { encoding: "utf8" });
   if (result.status !== 0 || result.stdout.trim() === "") {
     throw new Error("cannot read the actual dsh version; prepare is blocked");
   }
   return result.stdout.trim();
-}
-
-export function adaptedVersion(paths: { home: string }, variant: Variant): string | null {
-  if (variant === "native") return null;
-  return versionFromPackage(
-    join(paths.home, `profiles/${PROFILE_NAME}/node_modules/dsh-pstack/package.json`),
-  );
 }
 
 /**
@@ -131,17 +83,12 @@ export function upstreamRevision(): string {
 export function createEnvironment(input: {
   worker: number;
   matrix: RunEnvironment["matrix"];
-  config: PlaygroundConfig;
-  variant: Variant;
-  paths: { home: string };
 }): RunEnvironment {
   return {
     worker: input.worker,
     dshVersion: dshVersion(),
     pstackVersion: pstackVersion(),
-    adaptedVersion: adaptedVersion(input.paths, input.variant),
     matrix: input.matrix,
     upstreamRevision: upstreamRevision(),
-    configHash: publicConfigHash(input.config, input.matrix),
   };
 }

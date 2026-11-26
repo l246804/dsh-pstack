@@ -70,10 +70,6 @@
             "type": ["string", "null"],
             "description": "Optional advertised reasoning-effort token; requires `provider` and `model`; omit to keep the route's default effort."
           },
-          "cwd": {
-            "type": ["string", "null"],
-            "description": "Optional initial child working directory; omit to inherit the session directory."
-          },
           "maxDepth": {
             "type": ["integer", "null"],
             "minimum": 1,

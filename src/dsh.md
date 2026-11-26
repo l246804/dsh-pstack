@@ -31,9 +31,9 @@ Use only tools visible in the current session, even when a name appears here. Wh
 | `poteto-agent`, `comment-sicko` | `agent_preset: "poteto-agent"` or `agent_preset: "comment-sicko"`. These are agent presets, not `subagent_type` values. |
 | `readonly: true` | `agent_preset: "readonly"` gives the child a read-only sandbox. Use `general` when the child must write. |
 | `readonly: false` | `agent_preset: "general"`. |
-| `environment: "cloud"` | No cloud agents. Use `create_worktree` when available and pass its checkout as `cwd`; otherwise skip with the line. |
-| `environment: "local"` | Omit `cwd`; the child inherits the session directory. |
-| `cloud_base_branch: <b>` | Pass `<b>` as `create_worktree.from`; otherwise tell the child to check out `<b>`. |
+| `environment: "cloud"` | No cloud agents. Use `enter_worktree` when available to work in a local worktree; otherwise skip with the line. |
+| `environment: "local"` | No such argument; a child starts in the session directory. |
+| `cloud_base_branch: <b>` | Pass `<b>` as `enter_worktree.from`; otherwise tell the child to check out `<b>`. |
 | `run_in_background: true` | Omit; the child is managed (Plugin tools). |
 | `resume` | Use native `send_message`, addressing the pstack child by the name `list_agents` reports or by its Session id. Start a new `pstack_subagent` only when it stopped permanently. |
 | `file_attachments` | List the real paths in `prompt`; the child reads them with `read`. |
@@ -76,7 +76,7 @@ Done when the file parses as version 2, every role maps to a route or to `inheri
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | Resolve package resources beside their `SKILL.md`; a plugin manifest is the `dsh` section of its `package.json`. |
 | `.cursor/rules/*.mdc`, always-applied rules | The `AGENTS.md`-compatible chain. DeepSeek Harness never reads `.mdc`. |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | `<pstack>/<path>` when the package ships it. Read the local copy and give the user the public URL when needed. |
-| Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session>.jsonl`. Optional session search adds model-facing search tools. |
+| Transcripts in `~/.cursor/projects/<slug>/agent-transcripts/` | `$DSH_HOME/sessions/<workspace-key>/<session-id>/`. Optional session search adds model-facing search tools. |
 
 ## Local replacements
 

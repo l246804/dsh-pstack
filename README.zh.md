@@ -11,7 +11,7 @@
 
   <p>
     <a href="https://npmx.dev/package/dsh-pstack"><img src="https://img.shields.io/npm/v/dsh-pstack?style=flat-square&colorA=080f12&colorB=1fa669" alt="npm version" /></a>
-    <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/dsh-%3E%3D0.2.2--rc.2-1f6feb?style=flat-square" alt="dsh >=0.2.2-rc.2" /></a>
+    <a href="https://github.com/deepseek-ai/deepseek-harness"><img src="https://img.shields.io/badge/dsh-%3E%3D0.2.3--alpha.2-1f6feb?style=flat-square" alt="dsh >=0.2.3-alpha.2" /></a>
     <a href="https://github.com/cursor/plugins/tree/main/pstack"><img src="https://img.shields.io/badge/pstack-0.15.43-d97706?style=flat-square" alt="pstack 0.15.43" /></a>
     <a href="https://github.com/l246804/dsh-pstack/blob/main/LICENSE"><img src="https://img.shields.io/github/license/l246804/dsh-pstack?style=flat-square&colorA=080f12&colorB=1fa669" alt="license" /></a>
     <a href="https://dshopen.org/plugins/dsh-pstack/"><img src="https://img.shields.io/endpoint?url=https%3A%2F%2Fdshopen.org%2Fbadge%2Fdsh-pstack.json%3Flang%3Dzh&style=flat-square" alt="开放插件市场" /></a>
@@ -46,7 +46,7 @@
 [运行时映射](./src/dsh.zh.md)给出每项 Cursor 能力到 DeepSeek Harness 的对应关系。移植由真实 DSH Web 会话验证，不靠比对文本，具体做法见[移植如何验证](#-移植如何验证)。
 
 > [!IMPORTANT]
-> 要求 DSH `>=0.2.2-rc.2`、Node.js `>=24.22.3`。部分脚本需要额外运行时，见对应脚本自身的帮助信息。
+> 要求 DSH `>=0.2.3-alpha.2`、Node.js `>=24.22.3`。部分脚本需要额外运行时，见对应脚本自身的帮助信息。
 
 <a id="quick-start"></a>
 
@@ -194,7 +194,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 ## 🧪 移植如何验证
 
-移植由真实 DeepSeek Harness Web 会话验证，不靠与上游比对文本。完整流程见 [playground/docs/workflow.md](./playground/docs/workflow.md)。
+移植由真实 DeepSeek Harness Web 会话验证，不靠与上游比对文本。完整流程见 [playground/docs/run.md](./playground/docs/run.md)。
 
 - **native 基准。** `native/` 钉定上游 pstack 并生成 `native/pstack`；`native/dsh.md` 把每个 Cursor 名称映射到 DSH 替代项，并写清替代项不可用时的 fallback。生成器把该文档插入生成树，上游文案保持原样。
 - **场景驱动。** 覆盖来自 `native/gaps.json` 与 `playground/scenarios/` 下的场景文件；缺口清单记录 DSH 标准运行时缺少的能力，场景负责验证这些缺口。
