@@ -13,14 +13,9 @@ import type { LlmRuntime } from "@deepseek-ai/dsh-llm";
 
 import { collectCatalogue } from "../models.ts";
 import { describeError } from "../lib/errors.ts";
-import {
-  isBudgetRowBlocked,
-  planBudget,
-  parseBudgetApplyRequest,
-  type BudgetApplyRequest,
-} from "./budget.ts";
+import { isBudgetRowBlocked, planBudget, type BudgetApplyRequest } from "./budget.ts";
 import { ROLE_MANIFEST, findRole } from "./role-manifest.ts";
-import { validateRoleRouteShape, validateRouteParts, type Route } from "./route.ts";
+import { validateRoleRouteShape, type Route } from "./route.ts";
 import {
   emptyRoleDocument,
   parseRoleConfiguration,
@@ -34,7 +29,6 @@ import {
   type RoleFileDocument,
 } from "./role-store.ts";
 import {
-  parseSaveRoleRequest,
   type BudgetApplyResult,
   type RoleFileSnapshot,
   type RoleView,
@@ -99,22 +93,9 @@ export function validateSaveRequest(
     return { ok: false, reason: shapeIssue };
   }
   if (request.routes.length === 0) return { ok: true, key: spec.key, routes: [] };
-  const routes: Route[] = [];
-  for (const [index, route] of request.routes.entries()) {
-    if (route.kind === "inherit") {
-      routes.push({ kind: "inherit", alias: route.alias });
-      continue;
-    }
-    const provider = route.provider.trim();
-    const model = route.model.trim();
-    if (provider === "" || model === "") {
-      return { ok: false, reason: `route ${index + 1} needs both a provider and a model` };
-    }
-    const effort = route.effort?.trim();
-    const routeIssue = validateRouteParts(provider, model, effort);
-    if (routeIssue !== undefined) {
-      return { ok: false, reason: `route ${index + 1} ${routeIssue}` };
-    }
+  for (const route of request.routes) {
+    if (route.kind === "inherit") continue;
+    const { provider, model, effort } = route;
     const providerEntry = catalogue.providers.find((entry) => entry.provider === provider);
     if (providerEntry === undefined) {
       return {
@@ -141,20 +122,14 @@ export function validateSaveRequest(
         reason: `model ${JSON.stringify(`${provider}/${model}`)} failed discovery: ${modelEntry.error}`,
       };
     }
-    if (effort !== undefined && effort !== "" && !modelEntry.efforts.includes(effort)) {
+    if (effort !== undefined && !modelEntry.efforts.includes(effort)) {
       return {
         ok: false,
         reason: `model ${JSON.stringify(`${provider}/${model}`)} does not advertise effort ${JSON.stringify(effort)}`,
       };
     }
-    routes.push({
-      kind: "route",
-      provider,
-      model,
-      ...(effort === undefined || effort === "" ? {} : { effort }),
-    });
   }
-  return { ok: true, key: spec.key, routes };
+  return { ok: true, key: spec.key, routes: request.routes };
 }
 
 /** Save one role and return the reloaded snapshot. */
@@ -165,21 +140,14 @@ export async function saveRoleConfiguration(
   signal: AbortSignal,
 ): Promise<SaveRoleResult> {
   signal.throwIfAborted();
-  let parsed: SaveRoleRequest;
-  try {
-    parsed = parseSaveRoleRequest(request);
-  } catch (error) {
-    return { ok: false, reason: describeError(error) };
-  }
-
   const initial = readRoleConfiguration(path);
   if (initial.status === "unreadable") {
     return { ok: false, reason: `the role file is unreadable: ${initial.reason}` };
   }
 
   let validation: ReturnType<typeof validateSaveRequest>;
-  if (parsed.routes.length === 0 || parsed.routes.every((route) => route.kind === "inherit")) {
-    validation = validateSaveRequest(parsed, EMPTY_CATALOGUE);
+  if (request.routes.length === 0 || request.routes.every((route) => route.kind === "inherit")) {
+    validation = validateSaveRequest(request, EMPTY_CATALOGUE);
   } else {
     let catalogue: Awaited<ReturnType<typeof collectCatalogue>>;
     try {
@@ -192,7 +160,7 @@ export async function saveRoleConfiguration(
       };
     }
     signal.throwIfAborted();
-    validation = validateSaveRequest(parsed, catalogue);
+    validation = validateSaveRequest(request, catalogue);
   }
   if (!validation.ok) return validation;
   const key = validation.key;
@@ -212,15 +180,14 @@ export async function saveRoleConfiguration(
   if (current.status === "loaded") {
     try {
       text = readFileSync(path, "utf8");
-      document = parseRoleDocument(text);
+      document = parseRoleDocument(text, key);
     } catch (error) {
       return { ok: false, reason: `the role file could not be edited: ${describeError(error)}` };
     }
   }
 
   const roles = { ...document.roles };
-  if (nextRoutes.length === 0) delete roles[key];
-  else roles[key] = [...nextRoutes];
+  if (nextRoutes.length > 0) roles[key] = [...nextRoutes];
   const updated: RoleFileDocument = {
     version: ROLE_FILE_VERSION,
     ...(document.budget === undefined ? {} : { budget: document.budget }),
@@ -247,13 +214,6 @@ export async function saveBudgetConfiguration(
   signal: AbortSignal,
 ): Promise<BudgetApplyResult> {
   signal.throwIfAborted();
-  let parsed: BudgetApplyRequest;
-  try {
-    parsed = parseBudgetApplyRequest(request);
-  } catch (error) {
-    return { ok: false, reason: describeError(error) };
-  }
-
   const initial = readRoleConfiguration(path);
   if (initial.status === "unreadable") {
     return { ok: false, reason: `the role file is unreadable: ${initial.reason}` };
@@ -291,13 +251,12 @@ export async function saveBudgetConfiguration(
       const entry = current.status === "loaded" ? current.roles.get(spec.key) : undefined;
       return {
         key: spec.key,
-        shape: spec.shape,
         configured: entry !== undefined,
         routes: entry?.routes ?? [{ kind: "inherit" as const, alias: "inherit-parent" as const }],
         hasIssues: (entry?.issues.length ?? 0) > 0,
       };
     });
-    const plan = planBudget(inputs, catalogue, parsed);
+    const plan = planBudget(inputs, catalogue, request);
     const blocked = plan.rows.filter(isBudgetRowBlocked);
     if (blocked.length > 0) {
       return {
@@ -310,8 +269,10 @@ export async function saveBudgetConfiguration(
     for (const row of plan.rows) {
       if (row.status === "skipped") continue;
       if (routeSignature(row.routes) === routeSignature(row.previous)) continue;
-      if (row.routes.length === 0) delete roles[row.key];
-      else roles[row.key] = [...row.routes];
+      for (const key of Object.keys(roles)) {
+        if (findRole(key)?.key === row.key) delete roles[key];
+      }
+      if (row.routes.length > 0) roles[row.key] = [...row.routes];
     }
     const updated: RoleFileDocument = { version: ROLE_FILE_VERSION, budget: plan.budget, roles };
     const next = serializeRoleDocument(updated);

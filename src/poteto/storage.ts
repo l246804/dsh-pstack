@@ -16,7 +16,7 @@ export interface PotetoModeTable {
 }
 
 const potetoModesTable: DomainTableSpec<string, PotetoModeRecord> = {
-  valueSchema: z.object({ enabled: z.boolean() }).strict() as z.ZodType<PotetoModeRecord>,
+  valueSchema: z.object({ enabled: z.boolean() }).strict() satisfies z.ZodType<PotetoModeRecord>,
 };
 
 /** Storage-domain declaration for the sidecar state. */

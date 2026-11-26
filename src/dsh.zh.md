@@ -56,17 +56,17 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 | pstack 角色文件 | `$DSH_HOME/pstack/models.json`。通过 `pstack_roles` 读取；`pstack_subagent` 不解析它。文件缺失时沿用父路由。 |
 | 形如 `<model> <effort>` 的角色值 | 使用 setup-pstack 段描述的结构化 route 对象；不要把 `provider/model` 拼成字符串或再拆开。 |
 
-覆盖子代理路由时，如果目标模型不支持父级当前 effort，同时传入 `reasoning_effort`。省略会继承父级 effort，并可能在子代理启动前失败。
+子代理换路由时，省略 `reasoning_effort` 使用目标模型默认档位；沿用父路由时，省略则保留父级 effort。
 
 ## setup-pstack
 
 `setup-pstack` 写调用方用来选择路由的角色文件。用 `pstack_models`（Plugin tools）发现路由，不要根据 Cursor slug 猜测。
 
 - Detect：把 `pstack_models` 找到的每条真实路由写成结构化对象 `{ kind: "route", provider, model, effort? }`；都检测不到时请用户粘贴路由。
-- Defaults：映射找到的路由；不可用路由用 `inherit-parent` 或 `auto`。把选定预算映射到最接近的可用 effort，并说明选择。
+- Defaults：映射找到的路由；不可用路由用 `{ kind: "inherit", alias: "inherit-parent" }`（或 alias `"auto"`）。把选定预算映射到最接近的可用 effort，并说明选择。
 - Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和由 route 对象数组组成的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
 
-完成标准：文件能按 version 2 解析，每个角色都映射到 route 或 `inherit-parent`/`auto`，重跑产生相同文件。
+完成标准：文件能按 version 2 解析，每个角色都使用 route 或 inherit 对象，重跑产生相同文件。
 
 ## Paths
 

@@ -30,7 +30,7 @@ playground 真实会话验证
 - Host 端注册技能、模型目录、角色目录和子代理工具，并提供角色配置与工作流开关 Remote 服务、Agent preset。
 - Client 端在插件详情页注入配置入口，通过 Remote 服务管理角色配置，并通过可选的插件管理接口管理关联插件。
 - 上游 pstack 内容经生成器进入 `native/pstack/`，构建时复制到 `dist/pstack/` 并把适配答案盖章为 `src/dsh.md`；vendored 和 authored 技能分别复制到 `dist/skills/` 下。
-- 角色配置保存在 `$DSH_HOME/pstack/models.json`。该文件由本插件读取和编辑，不是 DSH 自动加载的规则文件；`src/index.ts` 的 `PstackHomeService` 在服务初始化时调用 `src/compat/migrate-pstack-home.ts`，把根目录旧的 `pstack-models.json` 或 `pstack-models.mdc` 一次性迁入 `$DSH_HOME/pstack/`，此后读取只读当前文件。
+- 角色配置保存在 `$DSH_HOME/pstack/models.json`，由本插件读取和编辑；旧文件在服务初始化时迁移，后续读取只访问当前文件。迁移入口与兼容格式见下方角色文件模块。
 - 会话级 Poteto 工作流开关的全局默认保存在 `$DSH_HOME/pstack/settings.json` 的 `potetoDefault`，与角色文件分开维护；根目录旧的 `pstack-settings.json` 同样在服务初始化时迁入。
 
 ## 模块与入口

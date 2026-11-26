@@ -2,7 +2,7 @@
 
 Status: accepted
 Date: 2026-11-13
-Scope: playground/runner/cli/collect.ts, playground/runner/evidence/review-snapshot.ts, playground/runner/cli/run-batch.ts, playground/runner/cli/run-scenario.ts, playground/AGENTS.md, playground/docs/workflow.md, playground/docs/evidence-analysis.md, playground/evidence/runs/**
+Scope: playground/runner/cli/collect.ts, playground/runner/evidence/review-snapshot.ts, playground/runner/cli/run-batch.ts, playground/runner/cli/run-scenario.ts, playground/AGENTS.md, playground/docs/run.md, playground/docs/records.md, playground/docs/judge.md, playground/evidence/runs/**
 Implemented-by: commit:ef01e56
 Review: 2026-11-23
 
@@ -17,7 +17,7 @@ Review: 2026-11-23
 - `collect` 只更新当前快照，不生成 summary、runtime-review、approval 或 history。
 - `run-batch` 在批次开始时生成 `batchId`、mode 和 scope，并写入 `.workers` 的当前批次元数据；增量批次只替换本次跑到的场景。
 - 全量批次整体更新快照；增量批次只替换选中场景，未覆盖场景保留。
-- 逐条证据分析由独立会话按 [evidence-analysis.md](../../playground/docs/evidence-analysis.md) 写入 `playground/evidence/findings/<variant>.md` 和每个场景的 `review.json`，并按根因去重。
+- 逐条证据分析由独立会话按 [judge.md](../../playground/docs/judge.md) 写入 `playground/evidence/findings/<variant>.md` 和每个场景的 `review.json`，并按根因去重。
 - `reports/`、review sidecar 和 history 不再写入工作区；需要历史查看 Git 提交。
 
 ## 替代方案

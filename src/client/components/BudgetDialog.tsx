@@ -91,7 +91,6 @@ export function BudgetDialog(props: BudgetDialogProps): ReactElement | null {
         plan: planBudget(
           snapshot.roles.map((role) => ({
             key: role.key,
-            shape: role.shape,
             configured: role.configured,
             routes: role.routes,
             hasIssues: role.issues.length > 0,

@@ -11,7 +11,7 @@
     "decision-audit": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "8b3851322d0bb81a2e589974f395360b7d64214eff203076b3b8fb48485adbe3"
+      "computedHash": "85533384149ecc297197087948fb498c321c6a82955e4e82b9395cdd4f8ad16d"
     },
     "decision-write": {
       "source": "./skills/authored",
@@ -26,7 +26,7 @@
     "setup-project-docs": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "2bf1457e280e38b45700be541e5b7c776ea6738438202e20acf59201d6231c8c"
+      "computedHash": "fdd4a32c547e7192d654d6800e5976a9116ced1ca294e29a43095875b801f968"
     },
     "writing-for-agents": {
       "source": "mattpocock/skills",

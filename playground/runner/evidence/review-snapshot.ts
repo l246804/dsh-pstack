@@ -406,7 +406,13 @@ export function writeReviewSnapshot(
       );
     }
   }
-  const manifestRecords = batch?.mode === "full" ? scoped : current;
+  const retained =
+    batch?.mode === "full"
+      ? []
+      : listSnapshotRecords(variant, environment, reviewsDirectory)
+          .filter(({ scenarioId }) => !scopedIds.has(scenarioId))
+          .map(({ record }) => record);
+  const manifestRecords = [...retained, ...scoped];
   const manifestIds = new Set(manifestRecords.map((record) => record.scenarioId));
   const dshVersions = new Set(manifestRecords.map((record) => record.environment.dshVersion));
   const pstackVersions = new Set(manifestRecords.map((record) => record.environment.pstackVersion));

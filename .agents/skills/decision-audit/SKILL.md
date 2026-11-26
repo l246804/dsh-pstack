@@ -71,14 +71,14 @@ For a landed PR or ancestral commit, list its paths with `gh pr view N --json fi
 
 Before reporting a commit as lost, read [Recover a rewritten commit](references/recover-commit.md) and attempt patch-identity recovery while its object remains available.
 
-**D — Overdue review.** In `full` mode only, report each record whose `Review` date is before the current date. Collect matching changes since the decision date:
+**D — Overdue review.** In `full` mode only, use the repository's review-date convention. A last-reviewed date is context, not a deadline; report overdue reviews only when the convention supplies a due date or review interval. An undefined convention leaves this check unverified. For each overdue record, collect matching changes since the decision date:
 
 ```bash
 date +%F
 git log --since=<Date> --format=%H <base> --
 ```
 
-List each commit's paths and filter them with the shared matcher before counting it; the record's `Scope` value is matcher input, not a Git pathspec. Include the matched-commit count and latest subject when present. An overdue date is the finding even when there are no matching changes; suggest human review and a new `Review` date.
+List each commit's paths and filter them with the shared matcher before counting it; the record's `Scope` value is matcher input, not a Git pathspec. Include the matched-commit count and latest subject when present. A missed deadline is a finding even when there are no matching changes; suggest human review and update the date according to the convention.
 
 **E — Superseded record.** For each current `superseded` record, report when `Superseded-by` is missing, does not resolve to a record in `<dir>`, or carries no ` — <reason>` text. Suggest adding the replacing record path and a one-line reason.
 

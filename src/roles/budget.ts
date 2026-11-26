@@ -1,7 +1,6 @@
 /** Budget planning and wire parsing for global reasoning targets. */
 
 import type { CatalogueResult, ModelEntry } from "../models/catalogue.ts";
-import type { RoleShape } from "./role-manifest.ts";
 import type { Route } from "./route.ts";
 import { WireTypeError } from "../lib/wire-error.ts";
 
@@ -52,7 +51,6 @@ export interface BudgetApplyRequest {
 
 export interface BudgetRoleInput {
   readonly key: string;
-  readonly shape: RoleShape;
   readonly configured: boolean;
   readonly routes: readonly Route[];
   /** The role line carries parse issues; the plan must not rewrite it. */
@@ -142,7 +140,7 @@ export function parseBudgetApplyRequest(value: unknown): BudgetApplyRequest {
   }
   return {
     tier: record["tier"] as BudgetTier,
-    scope: record["scope"] as BudgetScope,
+    scope: record["scope"],
     ...(defaultModel === undefined ? {} : { defaultModel }),
   };
 }

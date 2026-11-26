@@ -20,7 +20,7 @@
 
   <table>
     <tr>
-      <td align="center"><strong>58</strong><br /><sub>pstack 技能</sub></td>
+      <td align="center"><strong>59</strong><br /><sub>pstack 技能</sub></td>
       <td align="center"><strong>22</strong><br /><sub>playbook</sub></td>
       <td align="center"><strong>4</strong><br /><sub>插件工具</sub></td>
       <td align="center"><strong>3</strong><br /><sub>智能体预设</sub></td>

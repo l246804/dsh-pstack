@@ -44,9 +44,7 @@ export type SaveRoleResult =
   | { readonly ok: true; readonly snapshot: RoleFileSnapshot }
   | { readonly ok: false; readonly reason: string };
 
-export type BudgetApplyResult =
-  | { readonly ok: true; readonly snapshot: RoleFileSnapshot }
-  | { readonly ok: false; readonly reason: string };
+export type BudgetApplyResult = SaveRoleResult;
 
 function parseRouteView(value: unknown, path: string): RouteView {
   const parsed = parseRouteEntry(value);
@@ -134,8 +132,8 @@ export function parseRoleFileSnapshot(value: unknown): RoleFileSnapshot {
   return {
     path: record["path"],
     status,
-    ...(typeof reason === "string" ? { reason } : {}),
-    ...(typeof budget === "string" ? { budget } : {}),
+    ...(reason === undefined ? {} : { reason }),
+    ...(budget === undefined ? {} : { budget }),
     roles: record["roles"].map((role, index) => parseRoleView(role, index)),
     issues: record["issues"].map((issue, index) =>
       parseRoleFileIssue(issue, `snapshot.issues[${index}]`),

@@ -6,6 +6,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+for arg in "$@"; do
+  case "$arg" in
+    -h|--help|-v|--version) exec bumpp "$@" ;;
+  esac
+done
+
 NOTES="changes/RELEASE.md"
 if [ ! -f "$NOTES" ]; then
   echo "error: $NOTES not found. Author this release's notes first (see changes/AGENTS.md)." >&2

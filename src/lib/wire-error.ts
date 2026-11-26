@@ -25,5 +25,5 @@ export function optionalString(
   if (value !== undefined && typeof value !== "string") {
     throw new WireTypeError(`${path}.${key}`, "a string when present");
   }
-  return value as string | undefined;
+  return value;
 }

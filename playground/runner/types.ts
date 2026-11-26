@@ -92,11 +92,6 @@ export interface PlaygroundConfig {
   credentialsFile?: string;
 }
 
-export type AllowedRoute = TestTarget & {
-  efforts: string[];
-  apiKey: string;
-};
-
 export type Assertion =
   | { kind: "turn-completed" }
   | { kind: "skill-loaded"; skill: string }

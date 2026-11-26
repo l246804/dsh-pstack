@@ -2,9 +2,10 @@
  * `pstack_roles`: a read-only discovery query over the role manifest.
  *
  * It reports each role, its shape, and the routes configured in the role file as
- * structured `{ provider, model, reasoningEffort? }` values a caller can pass straight to
- * `pstack_subagent`. When the live catalogue is available it also reports each route's
- * served `efforts` and `defaultEffort`, so a caller can change the effort without guessing.
+ * structured `{ provider, model, reasoningEffort? }` values. Pass `reasoningEffort`
+ * as `reasoning_effort` to `pstack_subagent`. When the live catalogue is available
+ * it also reports each route's served `efforts` and `defaultEffort`, so a caller
+ * can change the effort without guessing.
  */
 
 import type { Context } from "@deepseek-ai/cordis";
@@ -26,7 +27,7 @@ export const inject = ["tools", "llm", "pstackHome"];
 
 export const TOOL_NAME = "pstack_roles";
 
-/** One configured route, structured for direct reuse by `pstack_subagent`. */
+/** One configured route; `reasoningEffort` maps to the delegation tool's `reasoning_effort`. */
 export interface RoleRoute {
   readonly provider?: string;
   readonly model?: string;
@@ -82,7 +83,7 @@ export function annotateRoleCapabilities(
 /** Render the discovery records for the model. */
 export function renderRoleCapabilities(roles: readonly RoleCapability[]): string {
   return [
-    "pstack roles. Each role lists its configured routes as provider, model, and optional reasoningEffort, plus the model's served efforts and default when known; pass provider, model, and reasoningEffort to `pstack_subagent`. Omit provider and model to inherit the parent route.",
+    "pstack roles. Each role lists its configured routes as provider, model, and optional reasoningEffort, plus the model's served efforts and default when known. Pass provider and model to `pstack_subagent`, and map reasoningEffort to its reasoning_effort argument. Omit provider and model to inherit the parent route.",
     "",
     ...roles.map((role) => {
       const routes = role.routes.length
@@ -135,7 +136,7 @@ const OUTPUT_SCHEMA: JsonSchemaNode = {
 const TOOL_DESCRIPTION = [
   "List every pstack role with its shape and configured routes as structured provider, model, and reasoningEffort values, plus each route's served efforts and default effort.",
   "",
-  "Read-only. Use it for every role-to-model lookup and to pick the provider, model, and reasoningEffort to pass to `pstack_subagent`. To change the effort, use a value from the route's `efforts` instead of guessing.",
+  "Read-only. Use it for every role-to-model lookup. Pass provider and model to `pstack_subagent`, and map reasoningEffort to its reasoning_effort argument. To change the effort, use a value from the route's `efforts` instead of guessing.",
   "",
   "A role with no configured route inherits the parent route when provider and model are omitted.",
 ].join("\n");

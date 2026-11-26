@@ -38,7 +38,7 @@ const repairQueueSchema = z
     createdAt: z.number(),
     sessionIds: z.array(z.string().min(1)),
   })
-  .strict() as z.ZodType<RepairQueue>;
+  .strict() satisfies z.ZodType<RepairQueue>;
 
 /** One stored Session resolved from the persistence service. */
 export interface StoredSessionRef {

@@ -17,7 +17,7 @@
 // Rules:
 // - Without --version or --latest the script reads native/upstream.lock.json and
 //   restores native/upstream/ at the pinned commit; when the tree is already at
-//   the pinned version it does nothing and touches no network. With no lock on
+//   the pinned commit it does nothing and touches no network. With no lock on
 //   disk it bootstraps exactly like --latest.
 // - --latest resolves the version from <path>/plugin.json on the remote main
 //   branch and pins that version's bump commit. Main may carry a version the
@@ -42,6 +42,7 @@ const NATIVE = join(ROOT, "native");
 // Scratch lives inside the repo (gitignored): platform temp areas can silently
 // deny reading cloned git objects back, which breaks the resolution steps.
 const SCRATCH = join(ROOT, ".tmp", "fetch-upstream");
+const RESTORED_PIN = join(SCRATCH, "restored-pin");
 const DEFAULT_SOURCE = "https://github.com/cursor/plugins.git";
 
 interface LockOnDisk {
@@ -96,9 +97,15 @@ function git(gitArgs: string[], cwd: string): string {
   return result.stdout;
 }
 
-// Restore fast path: the tree already carries the pinned version. No git, no network.
+// The receipt distinguishes same-version pins after a branch switch or --commit update.
 const pinnedTreeManifest = join(NATIVE, "upstream", "plugin.json");
-if (restoreFromLock && commitOverride && existsSync(pinnedTreeManifest)) {
+if (
+  restoreFromLock &&
+  commitOverride &&
+  existsSync(pinnedTreeManifest) &&
+  existsSync(RESTORED_PIN) &&
+  readFileSync(RESTORED_PIN, "utf8") === `${commitOverride}\n${path}\n`
+) {
   const present = JSON.parse(readFileSync(pinnedTreeManifest, "utf8")).version;
   if (present === version) {
     console.log(`native/upstream already carries ${version}; nothing to fetch.`);
@@ -193,6 +200,7 @@ try {
   if (expected !== version) {
     throw new Error(`commit ${bump} carries version ${expected}, not ${version}`);
   }
+  rmSync(RESTORED_PIN, { force: true });
   rmSync(target, { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
   const stripComponents = path.split("/").length;
@@ -225,6 +233,7 @@ const lock = {
   source: remoteUrl(work, source),
 };
 writeFileSync(LOCK_FILE, `${JSON.stringify(lock, null, 2)}\n`);
+writeFileSync(RESTORED_PIN, `${lock.commit}\n${lock.path}\n`);
 
 console.log(`pinned ${path}@${version} at ${lock.commit.slice(0, 10)} -> native/upstream/`);
 if (followUps.length > 0) {

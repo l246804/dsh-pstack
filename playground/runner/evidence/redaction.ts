@@ -58,13 +58,6 @@ export function sanitizeRecord(record: RunRecord): RunRecord {
   if (copy.session) {
     copy.session.sessionFile = EVIDENCE_FILES.session;
     copy.session.workspacePath = "<WORKSPACE>";
-    for (const call of copy.session.toolCalls) {
-      call.argsSummary = sanitizeText(call.argsSummary);
-      if (call.errorText) call.errorText = sanitizeText(call.errorText);
-    }
-    copy.session.assistantText = sanitizeText(copy.session.assistantText);
-    copy.session.userText = sanitizeText(copy.session.userText);
-    copy.session.userTexts = copy.session.userTexts.map(sanitizeText);
   }
   copy.artifacts.recordFile = EVIDENCE_FILES.record;
   if (copy.artifacts.screenshotFile) copy.artifacts.screenshotFile = EVIDENCE_FILES.screenshot;

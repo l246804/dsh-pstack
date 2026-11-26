@@ -71,6 +71,11 @@ describe("native gap enumeration", () => {
     expect(unknown).toEqual([]);
   });
 
+  it("references every gap from at least one enumerated file", () => {
+    const referenced = new Set(document.files.flatMap((file) => file.gaps));
+    expect([...gapIds].filter((id) => !referenced.has(id))).toEqual([]);
+  });
+
   it("cites every gap source from the enumerated tree or the answer documents", () => {
     const dangling = document.gaps.flatMap((gap) =>
       (gap.sources ?? [])
@@ -163,12 +168,6 @@ describe("playground configuration", () => {
     expect(() => loadProviderPlan(parseConfig(config(provider, model, effort)))).toThrow(
       /testModel/,
     );
-  });
-
-  it("uses the existing bare model ids in the provider allowlist", () => {
-    expect(
-      loadProviderPlan(parseConfig(config())).routes.some((route) => route.model === "model-a"),
-    ).toBe(true);
   });
 
   it("accepts role model routes that resolve against the provider allowlist", () => {

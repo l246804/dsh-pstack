@@ -41,11 +41,16 @@ function workerPaths(): WorkerPaths {
 }
 
 const plan: ProviderPlan = {
-  routes: [],
-  providers: {},
-  apiKeyEnv: "TEST_PROVIDER_KEY",
-  apiKey: "secret-value",
-  main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
+  providers: {
+    "provider-a": {
+      kind: "pi-ai",
+      apiKeyEnv: "TEST_PROVIDER_KEY",
+      apiKey: "secret-value",
+      reasoning: "low",
+      models: [{ id: "model-a" }],
+    },
+  },
+  main: { provider: "provider-a", model: "model-a", effort: "low" },
 };
 
 describe("worker pstack seeding", () => {

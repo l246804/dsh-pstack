@@ -25,7 +25,7 @@ The pull request check runs this command, so run it before you push.
 - Keep one concern per pull request. A documentation fix and a behavior change are two pull requests.
 - Commit messages follow Conventional Commits. A breaking change uses the `type!:` form, for example `feat!: ...`.
 - Documentation has several localized versions. When you change a document, update every localized version of that document in the same pull request.
-- Do not edit generated release notes, bump the version, or create a tag. Releases are maintainer-only.
+- Release notes are authored in an agent session under `changes/AGENTS.md`. Releases, version bumps, and tags are maintainer-only.
 - Describe how you verified the change. A test run, a reproduced failure, or a screenshot of the real UI all count. "Works locally" does not.
 
 ## Review

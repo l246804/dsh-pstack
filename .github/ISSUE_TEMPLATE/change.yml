@@ -5,8 +5,8 @@ body:
   - type: markdown
     attributes:
       value: |
-        Describe the problem and the smallest change that would address it. Do not write acceptance criteria, a task list, or a design document. Those come after the problem is agreed on.
-        描述问题和最小的改动。不要写验收清单、任务分解或设计方案，方案在问题确认之后再谈。
+        Describe the observed problem, evidence, and impact. Discuss solutions after the problem is agreed on.
+        描述观察到的问题、证据和影响，方案在问题确认之后再谈。
   - type: textarea
     id: problem
     attributes:
@@ -15,19 +15,19 @@ body:
     validations:
       required: true
   - type: textarea
-    id: proposal
+    id: context
     attributes:
-      label: Proposed change（建议的改动）
-      description: The smallest change that addresses the problem. 能解决问题的最小改动。
+      label: Evidence and context（证据与环境）
+      description: Include versions, the command or session, and reproducible observations. 附版本、命令或会话，以及可复查的现象。
     validations:
       required: true
   - type: textarea
-    id: alternatives
+    id: impact
     attributes:
-      label: Alternatives considered（考虑过的替代方案）
-      description: Optional. Say what you rejected and why. 可选，说清否掉了什么、为什么。
+      label: Impact（影响）
+      description: Who is affected, and what is blocked or harder to do. 谁受影响，什么操作受阻或变得困难。
     validations:
-      required: false
+      required: true
   - type: textarea
     id: not-covered
     attributes:

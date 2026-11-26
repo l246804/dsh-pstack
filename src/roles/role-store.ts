@@ -89,12 +89,13 @@ function readRoleDocumentShape(text: string): {
   };
 }
 
-/** Parse the JSON document shape used for editing. Throws on an invalid shape. */
-export function parseRoleDocument(text: string): RoleFileDocument {
+/** Parse an editable document, omitting the logical role a save will replace. */
+export function parseRoleDocument(text: string, replacingRole?: string): RoleFileDocument {
   const { budget, rawRoles } = readRoleDocumentShape(text);
   const roles: Record<string, readonly Route[]> = {};
   for (const [key, value] of Object.entries(rawRoles)) {
     if (isRetiredRoleKey(key)) continue;
+    if (replacingRole !== undefined && findRole(key)?.key === replacingRole) continue;
     if (!Array.isArray(value)) {
       throw new Error(`role ${JSON.stringify(key)} routes must be an array of route entries`);
     }

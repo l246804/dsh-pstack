@@ -1,10 +1,4 @@
-import type {
-  AllowedRoute,
-  PlaygroundConfig,
-  ProviderConfig,
-  ProviderModel,
-  TestTarget,
-} from "../types.ts";
+import type { PlaygroundConfig, ProviderConfig, ProviderModel, TestTarget } from "../types.ts";
 
 export const DEEPSEEK_OFFICIAL_ROUTE = "deepseek-official";
 export const DEEPSEEK_ACCOUNT_ROUTE = "deepseek-account";
@@ -25,12 +19,8 @@ export const DEEPSEEK_BUILTIN_MODELS: ProviderModel[] = [
 ];
 
 export interface ProviderPlan {
-  routes: AllowedRoute[];
   providers: Record<string, ProviderConfig>;
-  /** The main route's credential environment, when the route uses one. */
-  apiKeyEnv?: string;
-  apiKey?: string;
-  main: TestTarget & { name: string };
+  main: TestTarget;
 }
 
 export function providerRouteName(name: string, provider: ProviderConfig): string {
@@ -50,14 +40,6 @@ function modelsFor(provider: ProviderConfig): ProviderModel[] | undefined {
   return undefined;
 }
 
-function apiKeyEnvFor(provider: ProviderConfig): string | undefined {
-  if (provider.kind === "pi-ai") return provider.apiKeyEnv;
-  if (provider.kind === "deepseek-api-key") {
-    return provider.apiKeyEnv;
-  }
-  return undefined;
-}
-
 export function providerSecrets(config: PlaygroundConfig): string[] {
   return Object.values(config.providers).flatMap((provider) =>
     provider.kind === "deepseek-account" ? [] : [provider.apiKey],
@@ -65,7 +47,6 @@ export function providerSecrets(config: PlaygroundConfig): string[] {
 }
 
 export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
-  const routes: AllowedRoute[] = [];
   const modelsByProvider = new Map<string, Map<string, string[]>>();
 
   for (const [name, provider] of Object.entries(config.providers)) {
@@ -94,13 +75,6 @@ export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
     for (const model of models) {
       const efforts = modelEfforts(model);
       byId.set(model.id, efforts);
-      routes.push({
-        provider: providerRouteName(name, provider),
-        model: model.id,
-        effort: "",
-        efforts,
-        apiKey: provider.kind === "deepseek-account" ? "" : provider.apiKey,
-      });
     }
     modelsByProvider.set(name, byId);
   }
@@ -127,20 +101,11 @@ export function loadProviderPlan(config: PlaygroundConfig): ProviderPlan {
   }
 
   const mainProvider = config.providers[config.testModel.provider]!;
-  const models = modelsFor(mainProvider);
-  const modelName =
-    models?.find((model) => model.id === config.testModel.model)?.name ?? config.testModel.model;
   return {
-    routes,
     providers: config.providers,
-    ...(apiKeyEnvFor(mainProvider) === undefined
-      ? {}
-      : { apiKeyEnv: apiKeyEnvFor(mainProvider) as string }),
-    ...(mainProvider.kind === "deepseek-account" ? {} : { apiKey: mainProvider.apiKey }),
     main: {
       ...config.testModel,
       provider: providerRouteName(config.testModel.provider, mainProvider),
-      name: modelName,
     },
   };
 }
