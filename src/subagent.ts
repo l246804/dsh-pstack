@@ -1,17 +1,20 @@
 /**
  * `pstack_subagent`: a thin pstack wrapper over `ctx.subagents.startActivation`.
  *
- * The native subagent tool only offers child model selection when its
- * `modelSelection` option is on, and turning that on forces a default child
- * model. This tool keeps route override without that option, and adds the
- * `agent` preset selector and a `maxDepth` cap. Everything else mirrors the
- * native subagent contract.
+ * The native `subagent` tool enforces the Host `subagent-model-selection`
+ * setting on every call, and the shipped composition leaves that setting off,
+ * so an unconfigured session can delegate only to the parent route. pstack
+ * roles need a different route per role, so this tool writes the route into the
+ * activation's `agentOptions` and owns its own caller contract. It also adds
+ * the `agent_preset` selector and a `maxDepth` cap. Everything else mirrors the
+ * native delegation contract, including the activation result shape.
  */
 
 import type { Agent, AgentOptions } from "@deepseek-ai/dsh-agent";
 import type { Context } from "@deepseek-ai/cordis";
 import type { LlmRuntime, ReasoningEffortId } from "@deepseek-ai/dsh-llm";
 import type { SubagentCapabilities, SubagentRuntime } from "@deepseek-ai/dsh-subagent";
+import { ToolArgsError } from "@deepseek-ai/dsh-tools";
 import type { JsonSchemaNode, ToolDefinition, ToolRunContext } from "@deepseek-ai/dsh-tools";
 
 import { POTETO_MODE_SKILL_PATH } from "./lib/paths.ts";
@@ -56,7 +59,6 @@ export interface DelegationArgs {
   readonly provider: string | null;
   readonly model: string | null;
   readonly reasoningEffort: string | null;
-  readonly cwd: string | null;
   readonly maxDepth: number | null;
 }
 
@@ -69,7 +71,6 @@ export interface DelegationPlan {
   readonly name?: string;
   readonly agentOptions?: AgentOptions;
   readonly agentPreset?: string;
-  readonly cwd?: string;
   readonly maxDepth?: number;
 }
 
@@ -108,16 +109,16 @@ export function normalizeConfig(value: unknown): PstackSubagentConfig {
 }
 
 function stringArg(value: unknown): string | null {
-  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+  return typeof value === "string" && value.trim() !== "" ? value : null;
 }
 
 /** Read the model-facing arguments. The runtime validates their types. */
 export function parseDelegationArgs(raw: unknown): DelegationArgs {
   const record = (raw ?? {}) as Record<string, unknown>;
   const prompt = stringArg(record["prompt"]);
-  if (prompt === null) throw new Error("prompt is required");
+  if (prompt === null) throw new ToolArgsError(["prompt is required"]);
   const description = stringArg(record["description"]);
-  if (description === null) throw new Error("description is required");
+  if (description === null) throw new ToolArgsError(["description is required"]);
   const agentValue = record["agent_preset"];
   let agent: AgentKind = "general";
   if (agentValue !== undefined && agentValue !== null) {
@@ -126,7 +127,7 @@ export function parseDelegationArgs(raw: unknown): DelegationArgs {
       !(AGENT_KINDS as readonly string[]).includes(agentValue)
     ) {
       const shown = typeof agentValue === "string" ? agentValue : JSON.stringify(agentValue);
-      throw new Error(`unknown agent preset "${shown}"`);
+      throw new ToolArgsError([`unknown agent preset "${shown}"`]);
     }
     agent = agentValue as AgentKind;
   }
@@ -136,22 +137,22 @@ export function parseDelegationArgs(raw: unknown): DelegationArgs {
     maxDepth !== null &&
     (typeof maxDepth !== "number" || !Number.isSafeInteger(maxDepth) || maxDepth < 1)
   ) {
-    throw new Error("maxDepth must be a positive safe integer");
+    throw new ToolArgsError(["maxDepth must be a positive safe integer"]);
   }
   const name = stringArg(record["name"]);
   if (name !== null && (!/^[a-z][a-z0-9-]{0,31}$/.test(name) || name === "lead")) {
-    throw new Error(
+    throw new ToolArgsError([
       'name must be 1-32 lower-case letters, digits, or hyphens starting with a letter, and not "lead"',
-    );
+    ]);
   }
   const provider = stringArg(record["provider"]);
   const model = stringArg(record["model"]);
   const reasoningEffort = stringArg(record["reasoning_effort"]);
   if ((provider === null) !== (model === null)) {
-    throw new Error("provider and model must be provided together, or both omitted");
+    throw new ToolArgsError(["provider and model must be provided together, or both omitted"]);
   }
   if (reasoningEffort !== null && (provider === null || model === null)) {
-    throw new Error("reasoning_effort requires provider and model");
+    throw new ToolArgsError(["reasoning_effort requires provider and model"]);
   }
   return {
     description,
@@ -161,7 +162,6 @@ export function parseDelegationArgs(raw: unknown): DelegationArgs {
     provider,
     model,
     reasoningEffort,
-    cwd: stringArg(record["cwd"]),
     maxDepth: typeof maxDepth === "number" ? maxDepth : null,
   };
 }
@@ -193,7 +193,6 @@ export function planDelegation(
     ...(agentOptions === undefined ? {} : { agentOptions }),
     ...(agentPreset === undefined ? {} : { agentPreset }),
     ...(args.name === null ? {} : { name: args.name }),
-    ...(args.cwd === null ? {} : { cwd: args.cwd }),
     ...(maxDepth === undefined ? {} : { maxDepth }),
   };
 }
@@ -221,7 +220,6 @@ export async function startChild(
     parent,
     ...(plan.agentPreset === undefined ? {} : { agentPreset: plan.agentPreset }),
     ...(plan.name === undefined ? {} : { name: plan.name }),
-    ...(plan.cwd === undefined ? {} : { cwd: plan.cwd }),
     ...(plan.agentOptions === undefined ? {} : { agentOptions: plan.agentOptions }),
     ...(plan.maxDepth === undefined ? {} : { maxDepth: plan.maxDepth }),
   });
@@ -297,11 +295,6 @@ export function createPstackSubagentTool(
           description:
             "Optional advertised reasoning-effort token; requires `provider` and `model`; omit to keep the route's default effort.",
         },
-        cwd: {
-          type: ["string", "null"],
-          description:
-            "Optional initial child working directory; omit to inherit the session directory.",
-        },
         maxDepth: {
           type: ["integer", "null"],
           minimum: 1,
@@ -370,19 +363,19 @@ function renderInterrupt(result: InterruptResult): string {
 }
 
 /** Reject unknown or non-string control-tool arguments before touching the runtime. */
-function parseControlArgs(raw: unknown, keys: readonly string[]): Record<string, string> {
+export function parseControlArgs(raw: unknown, keys: readonly string[]): Record<string, string> {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error("arguments must be an object");
+    throw new ToolArgsError(["arguments must be an object"]);
   }
   const record = raw as Record<string, unknown>;
   for (const key of Object.keys(record)) {
-    if (!keys.includes(key)) throw new Error(`unknown argument "${key}"`);
+    if (!keys.includes(key)) throw new ToolArgsError([`unknown argument "${key}"`]);
   }
   const parsed: Record<string, string> = {};
   for (const key of keys) {
     const value = record[key];
     if (typeof value !== "string" || value.trim() === "") {
-      throw new Error(`${key} must be a non-empty string`);
+      throw new ToolArgsError([`${key} must be a non-empty string`]);
     }
     parsed[key] = value.trim();
   }
@@ -398,7 +391,7 @@ const TOOL_DESCRIPTION = [
   "",
   "`agent_preset` picks a DSH agent preset: `poteto-agent` mounts the pstack implementation delegate and receives the absolute path of the poteto-mode instructions; `comment-sicko` mounts the comment reviewer; `readonly` mounts a read-only research preset with the sandbox policy set to read-only; `general` joins the parent preset.",
   "",
-  "Omit `cwd` to inherit the session directory. Omit `maxDepth` to use the configured row and Host delegation cap.",
+  "Omit `maxDepth` to use the configured row and Host delegation cap.",
   "",
   "Returns the started subagent name. Results arrive as a completion notice; do not poll.",
 ].join("\n");

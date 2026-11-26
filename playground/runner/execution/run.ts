@@ -665,7 +665,6 @@ export function blockedRecord(input: {
   /** The attempt start stamp shared with the record and source filenames. */
   capturedAt: string;
 }): RunRecord {
-  const config = input.config;
   const matrix = environmentMatrix(input.paths.environmentId);
   const sessionFile = input.sessionFile;
   const session = sessionFile
@@ -687,9 +686,6 @@ export function blockedRecord(input: {
     environment: createEnvironment({
       worker: input.paths.index,
       matrix,
-      config,
-      variant: input.variant,
-      paths: input.paths,
     }),
     target: null,
     session,

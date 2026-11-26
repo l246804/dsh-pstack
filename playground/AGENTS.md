@@ -6,13 +6,10 @@ Playground 用真实 DSH Web 会话验证 native 运行时与当前适配实现�
 
 | 触发 | 文档 |
 | --- | --- |
-| 改配置、provider、凭证或浏览器 | [docs/config.md](./docs/config.md) |
-| 理解 variant、environment、运行身份或证据布局 | [docs/model.md](./docs/model.md) |
-| 新增或修改场景、gap 或 regression | [docs/scenario-rules.md](./docs/scenario-rules.md) |
-| 上游 pstack 或 DSH 更新后的分析 | [docs/workflow.md](./docs/workflow.md) |
-| 改容器、prepare、bootstrap、预览或停止 | [docs/worker.md](./docs/worker.md) |
-| 分析记录、写 findings 或 review | [docs/evidence-analysis.md](./docs/evidence-analysis.md) |
-| 脱敏或提交证据 | [docs/evidence-redaction.md](./docs/evidence-redaction.md) |
+| 准备环境、改配置、跑批次、脱敏提交 | [docs/run.md](./docs/run.md) |
+| 新增或修改场景、gap 或 regression | [docs/scenarios.md](./docs/scenarios.md) |
+| 理解 variant、environment、运行身份或证据布局 | [docs/records.md](./docs/records.md) |
+| 分析记录、写 findings、判定或 review | [docs/judge.md](./docs/judge.md) |
 
 ## 事实源
 
@@ -27,6 +24,5 @@ Playground 用真实 DSH Web 会话验证 native 运行时与当前适配实现�
 - 运行维度是 variant × environment。`native` 只使用 DSH 标准运行时；`adapted` 使用当前适配实现。
 - worker 是独立 Docker 容器，只挂载固定 `/dsh` 路径。仓库根、`playground/scenarios`、宿主 home、Docker socket 和宿主的 browser profile 都不进入容器。
 - `playground/config.ts` 是唯一用户配置源；字段和默认值从示例与类型读取，不在文档中复制。
-- `copyCredentials` 默认关闭；开启时只复制配置的 DSH 凭证文件（默认 `.credentials.yaml`）。
-- `prepare` 自动计算 worker 数量；`run-batch` 退出后不会自动停止 worker，需要时运行 `playground:stop`。
-- 批次必须按 `prepare → bootstrap → run-batch → collect` 串行执行。分析完成后执行 review、redact 和 status-table；发布门禁见 [../docs/architecture.md](../docs/architecture.md)。
+- playground 不作为发布门禁，发布检查见 [../docs/architecture.md](../docs/architecture.md)。
+- 跑批次、改配置、脱敏提交的操作顺序见 [docs/run.md](./docs/run.md)。

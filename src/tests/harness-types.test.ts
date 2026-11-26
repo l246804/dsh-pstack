@@ -37,6 +37,7 @@ describe("Harness contract ownership", () => {
       "@deepseek-ai/cordis",
       "@deepseek-ai/cordis-plugin-loader",
       "@deepseek-ai/dsh-sandbox-policy",
+      "@deepseek-ai/dsh-tools",
       "@deepseek-ai/dsh-typert-protocol",
     ]) {
       expect(manifest.peerDependencies?.[name]).toBe("catalog:runtime");
