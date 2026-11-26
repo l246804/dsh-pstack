@@ -17,7 +17,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { ToolArgsError } from "@deepseek-ai/dsh-tools";
 
-import { normalizeConfig, parseDelegationArgs } from "../subagent.ts";
+import { normalizeConfig, parseControlArgs, parseDelegationArgs } from "../subagent.ts";
 const DELEGATION = "@deepseek-ai/dsh-tool-subagent";
 const CONTROL = "@deepseek-ai/dsh-tool-subagent-control";
 
@@ -141,5 +141,8 @@ describe("declared tool divergences", () => {
     expect(() => parseDelegationArgs({ description: "d", prompt: "p", model: "m" })).toThrow(
       ToolArgsError,
     );
+    expect(() => parseControlArgs({}, ["agent"])).toThrow(ToolArgsError);
+    expect(() => parseControlArgs({ agent: "" }, ["agent"])).toThrow(ToolArgsError);
+    expect(() => parseControlArgs({ nope: "x" }, ["agent"])).toThrow(ToolArgsError);
   });
 });

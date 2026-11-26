@@ -363,19 +363,19 @@ function renderInterrupt(result: InterruptResult): string {
 }
 
 /** Reject unknown or non-string control-tool arguments before touching the runtime. */
-function parseControlArgs(raw: unknown, keys: readonly string[]): Record<string, string> {
+export function parseControlArgs(raw: unknown, keys: readonly string[]): Record<string, string> {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error("arguments must be an object");
+    throw new ToolArgsError(["arguments must be an object"]);
   }
   const record = raw as Record<string, unknown>;
   for (const key of Object.keys(record)) {
-    if (!keys.includes(key)) throw new Error(`unknown argument "${key}"`);
+    if (!keys.includes(key)) throw new ToolArgsError([`unknown argument "${key}"`]);
   }
   const parsed: Record<string, string> = {};
   for (const key of keys) {
     const value = record[key];
     if (typeof value !== "string" || value.trim() === "") {
-      throw new Error(`${key} must be a non-empty string`);
+      throw new ToolArgsError([`${key} must be a non-empty string`]);
     }
     parsed[key] = value.trim();
   }
