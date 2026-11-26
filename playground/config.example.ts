@@ -15,6 +15,8 @@ export default {
 
   // Providers become the worker's $DSH_HOME/cordis.patch.yml model rows.
   // fromHost extracts selected provider/model/effort subsets from the host profile.
+  // DeepSeek API-key route:
+  // fromHost({ "deepseek-official": { models: [{ id: "deepseek-flash" }], reasoning: "high" } }).
   // DeepSeek account: fromHost({ "deepseek-account": { account: true } }) with copyCredentials: true.
   providers: fromHost(
     {

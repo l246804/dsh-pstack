@@ -75,8 +75,9 @@ function providerRows(
         id: "llm-deepseek",
         name: "@deepseek-ai/dsh-llm-deepseek-api-key",
         config: {
-          ...(provider.apiKeyEnv === undefined ? {} : { apiKeyEnv: provider.apiKeyEnv }),
-          models: provider.models,
+          apiKeyEnv: provider.apiKeyEnv,
+          ...(provider.reasoning === undefined ? {} : { reasoningEffort: provider.reasoning }),
+          ...(provider.models === undefined ? {} : { models: provider.models }),
         },
       });
     }
@@ -84,8 +85,12 @@ function providerRows(
       rows.push({
         id: "llm-deepseek-account",
         name: "@deepseek-ai/dsh-llm-deepseek-account",
-        config:
-          provider.modelOverrides === undefined ? {} : { modelOverrides: provider.modelOverrides },
+        config: {
+          ...(provider.reasoning === undefined ? {} : { reasoningEffort: provider.reasoning }),
+          ...(provider.modelOverrides === undefined
+            ? {}
+            : { modelOverrides: provider.modelOverrides }),
+        },
       });
     }
   }
