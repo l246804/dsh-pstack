@@ -11,10 +11,8 @@ function record(): RunRecord {
       worker: 0,
       dshVersion: "test",
       pstackVersion: "test-pstack",
-      adaptedVersion: null,
       matrix: { id: "base", description: "测试环境", kind: "base", enabledPluginPackages: [] },
       upstreamRevision: "upstream",
-      configHash: "config",
     },
     target: null,
     session: {

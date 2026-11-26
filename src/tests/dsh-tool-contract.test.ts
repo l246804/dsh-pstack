@@ -15,8 +15,9 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vite-plus/test";
 
-import { normalizeConfig, parseDelegationArgs } from "../subagent.ts";
+import { ToolArgsError } from "@deepseek-ai/dsh-tools";
 
+import { normalizeConfig, parseControlArgs, parseDelegationArgs } from "../subagent.ts";
 const DELEGATION = "@deepseek-ai/dsh-tool-subagent";
 const CONTROL = "@deepseek-ai/dsh-tool-subagent-control";
 
@@ -131,5 +132,17 @@ describe("declared tool divergences", () => {
     // what the child receives.
     const args = parseDelegationArgs({ prompt: "  keep leading spaces", description: "probe" });
     expect(args.prompt).toBe("  keep leading spaces");
+  });
+
+  it("reports a bad argument on the runtime's argument channel", () => {
+    // The runtime renders ToolArgsError as a correctable mistake and a plain
+    // Error as a tool failure, so the two send the model down different paths.
+    expect(() => parseDelegationArgs({ prompt: "p" })).toThrow(ToolArgsError);
+    expect(() => parseDelegationArgs({ description: "d", prompt: "p", model: "m" })).toThrow(
+      ToolArgsError,
+    );
+    expect(() => parseControlArgs({}, ["agent"])).toThrow(ToolArgsError);
+    expect(() => parseControlArgs({ agent: "" }, ["agent"])).toThrow(ToolArgsError);
+    expect(() => parseControlArgs({ nope: "x" }, ["agent"])).toThrow(ToolArgsError);
   });
 });

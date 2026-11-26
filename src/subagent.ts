@@ -14,6 +14,7 @@ import type { Agent, AgentOptions } from "@deepseek-ai/dsh-agent";
 import type { Context } from "@deepseek-ai/cordis";
 import type { LlmRuntime, ReasoningEffortId } from "@deepseek-ai/dsh-llm";
 import type { SubagentCapabilities, SubagentRuntime } from "@deepseek-ai/dsh-subagent";
+import { ToolArgsError } from "@deepseek-ai/dsh-tools";
 import type { JsonSchemaNode, ToolDefinition, ToolRunContext } from "@deepseek-ai/dsh-tools";
 
 import { POTETO_MODE_SKILL_PATH } from "./lib/paths.ts";
@@ -115,9 +116,9 @@ function stringArg(value: unknown): string | null {
 export function parseDelegationArgs(raw: unknown): DelegationArgs {
   const record = (raw ?? {}) as Record<string, unknown>;
   const prompt = stringArg(record["prompt"]);
-  if (prompt === null) throw new Error("prompt is required");
+  if (prompt === null) throw new ToolArgsError(["prompt is required"]);
   const description = stringArg(record["description"]);
-  if (description === null) throw new Error("description is required");
+  if (description === null) throw new ToolArgsError(["description is required"]);
   const agentValue = record["agent_preset"];
   let agent: AgentKind = "general";
   if (agentValue !== undefined && agentValue !== null) {
@@ -126,7 +127,7 @@ export function parseDelegationArgs(raw: unknown): DelegationArgs {
       !(AGENT_KINDS as readonly string[]).includes(agentValue)
     ) {
       const shown = typeof agentValue === "string" ? agentValue : JSON.stringify(agentValue);
-      throw new Error(`unknown agent preset "${shown}"`);
+      throw new ToolArgsError([`unknown agent preset "${shown}"`]);
     }
     agent = agentValue as AgentKind;
   }
@@ -136,22 +137,22 @@ export function parseDelegationArgs(raw: unknown): DelegationArgs {
     maxDepth !== null &&
     (typeof maxDepth !== "number" || !Number.isSafeInteger(maxDepth) || maxDepth < 1)
   ) {
-    throw new Error("maxDepth must be a positive safe integer");
+    throw new ToolArgsError(["maxDepth must be a positive safe integer"]);
   }
   const name = stringArg(record["name"]);
   if (name !== null && (!/^[a-z][a-z0-9-]{0,31}$/.test(name) || name === "lead")) {
-    throw new Error(
+    throw new ToolArgsError([
       'name must be 1-32 lower-case letters, digits, or hyphens starting with a letter, and not "lead"',
-    );
+    ]);
   }
   const provider = stringArg(record["provider"]);
   const model = stringArg(record["model"]);
   const reasoningEffort = stringArg(record["reasoning_effort"]);
   if ((provider === null) !== (model === null)) {
-    throw new Error("provider and model must be provided together, or both omitted");
+    throw new ToolArgsError(["provider and model must be provided together, or both omitted"]);
   }
   if (reasoningEffort !== null && (provider === null || model === null)) {
-    throw new Error("reasoning_effort requires provider and model");
+    throw new ToolArgsError(["reasoning_effort requires provider and model"]);
   }
   return {
     description,
@@ -362,19 +363,19 @@ function renderInterrupt(result: InterruptResult): string {
 }
 
 /** Reject unknown or non-string control-tool arguments before touching the runtime. */
-function parseControlArgs(raw: unknown, keys: readonly string[]): Record<string, string> {
+export function parseControlArgs(raw: unknown, keys: readonly string[]): Record<string, string> {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    throw new Error("arguments must be an object");
+    throw new ToolArgsError(["arguments must be an object"]);
   }
   const record = raw as Record<string, unknown>;
   for (const key of Object.keys(record)) {
-    if (!keys.includes(key)) throw new Error(`unknown argument "${key}"`);
+    if (!keys.includes(key)) throw new ToolArgsError([`unknown argument "${key}"`]);
   }
   const parsed: Record<string, string> = {};
   for (const key of keys) {
     const value = record[key];
     if (typeof value !== "string" || value.trim() === "") {
-      throw new Error(`${key} must be a non-empty string`);
+      throw new ToolArgsError([`${key} must be a non-empty string`]);
     }
     parsed[key] = value.trim();
   }

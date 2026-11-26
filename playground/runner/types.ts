@@ -161,10 +161,8 @@ export interface RunEnvironment {
   dshVersion: string;
   /** The released pstack version pinned in native/upstream.lock.json at capture time. */
   pstackVersion: string;
-  adaptedVersion: string | null;
   matrix: EnvironmentMatrix;
   upstreamRevision: string;
-  configHash: string;
 }
 
 export type ToolCallStatus = "pending" | "ok" | "error";
@@ -254,7 +252,7 @@ export type Verdict =
 
 export interface RunRecord {
   scenarioId: string;
-  /** Stable hash of the scenario content captured, a run identity axis for compare. */
+  /** Stable hash of the scenario content captured with this record. */
   scenarioHash?: string;
   variant: Variant;
   environment: RunEnvironment;
