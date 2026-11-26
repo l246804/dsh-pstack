@@ -1,12 +1,12 @@
 name: Change request（改动与功能请求）
-description: A problem to discuss, not a finished design（先讨论问题，不写成品设计）
+description: Describe a problem or improvement（描述问题或改进诉求）
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Describe the observed problem, evidence, and impact. Discuss solutions after the problem is agreed on.
-        描述观察到的问题、证据和影响，方案在问题确认之后再谈。
+        Describe the problem, evidence, and impact. Brief improvement suggestions are welcome.
+        描述问题、证据和影响，也欢迎简要提出改进建议。
   - type: textarea
     id: problem
     attributes:
@@ -28,6 +28,13 @@ body:
       description: Who is affected, and what is blocked or harder to do. 谁受影响，什么操作受阻或变得困难。
     validations:
       required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested improvement（改进建议）
+      description: Optional. Briefly describe a useful improvement and why; distinguish assumptions from verified facts. 可选，简述改进方向和依据，区分推测与已验证事实。
+    validations:
+      required: false
   - type: textarea
     id: not-covered
     attributes:
