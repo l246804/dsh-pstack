@@ -64,9 +64,9 @@ When the child route changes, omitting `reasoning_effort` uses the target model'
 
 - Detect: write each real route found by `pstack_models` as a structured `{ kind: "route", provider, model, effort? }` object. If none is detectable, ask the user to paste the routes.
 - Defaults: map each found route; use `{ kind: "inherit", alias: "inherit-parent" }` (or alias `"auto"`) for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
-- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object of route-object arrays. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
+- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object whose arrays contain route or inherit objects. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
 
-Done when the file parses as version 2, every role has route or inherit objects, and a rerun produces the same file.
+Done when the file parses as version 2, every configured role has route or inherit objects, and a rerun produces the same file.
 
 ## Paths
 

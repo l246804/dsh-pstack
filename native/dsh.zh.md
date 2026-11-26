@@ -45,9 +45,9 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 
 - Detect：把 `list_subagent_models` 找到的每条真实路由写成结构化对象 `{ kind: "route", provider, model, effort? }`；都检测不到时请用户粘贴路由，绝不写入未确认的路由。
 - Defaults：映射找到的路由；不可用路由用 `{ kind: "inherit", alias: "inherit-parent" }`（或 alias `"auto"`）。把选定预算映射到最接近的可用 effort，并说明选择。
-- Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和由 route 对象数组组成的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
+- Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和各角色数组包含 route 或 inherit 对象的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
 
-完成标准：文件能按 version 2 解析，每个角色都使用 route 或 inherit 对象，重跑产生相同文件。
+完成标准：文件能按 version 2 解析，每个已配置角色都使用 route 或 inherit 对象，重跑产生相同文件。
 
 ## 路径
 
