@@ -26,12 +26,25 @@ if ! git diff --quiet HEAD -- "$NOTES"; then
   exit 1
 fi
 
+before_head="$(git rev-parse HEAD)"
 bumpp "$@"
 
-rm -f "$NOTES"
-if git diff --quiet -- changes; then
+release_head="$(git rev-parse HEAD)"
+release_tag="v$(node -p 'require("./package.json").version')"
+if [ "$release_head" = "$before_head" ] ||
+   [ "$(git rev-parse --verify --quiet "$release_tag^{commit}")" != "$release_head" ]; then
+  echo "No new release commit tagged $release_tag; keeping $NOTES."
   exit 0
 fi
-git add -A changes
-git commit --no-verify -m "chore(release): remove released changes notes" -- changes
-git push
+# Only follow a push that bumpp actually performed; --no-push and config overrides stay local.
+pushed_head="$(git rev-parse --verify --quiet '@{upstream}' || true)"
+
+rm -f "$NOTES"
+if git diff --quiet -- "$NOTES"; then
+  exit 0
+fi
+git add -- "$NOTES"
+git commit --no-verify -m "chore(release): remove released changes notes" -- "$NOTES"
+if [ "$pushed_head" = "$release_head" ]; then
+  git push
+fi
