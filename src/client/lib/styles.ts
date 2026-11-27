@@ -523,6 +523,11 @@ const CSS = `
   border-color: var(--dsw-alias-state-business-primary);
   outline: none;
 }
+.pstack-select:focus-visible {
+  outline: var(--dsw-focus-ring-width) solid
+    var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary));
+  outline-offset: 2px;
+}
 .pstack-select:disabled {
   cursor: default;
   opacity: 0.6;
