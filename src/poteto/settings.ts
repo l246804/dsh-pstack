@@ -5,14 +5,13 @@ import { readFileSync } from "node:fs";
 import { writeFileAtomically } from "../lib/atomic-write.ts";
 import { pstackHomePaths } from "../pstack/home.ts";
 
-/** The whole settings document, versioned for forward-compatible reads. */
+/** The whole settings document. */
 export interface PstackSettings {
-  readonly version: number;
   readonly potetoDefault: boolean;
 }
 
 /** Defaults used when the file is missing or corrupt. */
-export const EMPTY_SETTINGS: PstackSettings = { version: 1, potetoDefault: false };
+export const EMPTY_SETTINGS: PstackSettings = { potetoDefault: false };
 
 /** Absolute path of the settings file for one DSH home. */
 export function settingsFilePath(dshHome?: string): string {
@@ -34,10 +33,7 @@ export function readSettings(path: string = settingsFilePath()): PstackSettings 
   }
   try {
     const parsed = JSON.parse(text) as Record<string, unknown>;
-    return {
-      version: typeof parsed["version"] === "number" ? parsed["version"] : 1,
-      potetoDefault: parsed["potetoDefault"] === true,
-    };
+    return { potetoDefault: parsed["potetoDefault"] === true };
   } catch {
     return EMPTY_SETTINGS;
   }

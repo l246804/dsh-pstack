@@ -78,7 +78,6 @@ const TERMS: { key: string; re: RegExp }[] = [
   },
 ];
 const ROUTE_KEY = "Run another pstack skill";
-const ACTIVE_TERMS = TERMS;
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -122,7 +121,7 @@ function classify(skill: string): SkillClass {
   const terms = new Set<string>();
   for (const path of walk(dir).filter((path) => path.endsWith(".md"))) {
     const text = readFileSync(path, "utf8");
-    for (const term of ACTIVE_TERMS) if (term.re.test(text)) terms.add(term.key);
+    for (const term of TERMS) if (term.re.test(text)) terms.add(term.key);
     if (text.split("\n").some(namesBareSkill)) terms.add(ROUTE_KEY);
   }
   const text = readFileSync(join(dir, "SKILL.md"), "utf8");

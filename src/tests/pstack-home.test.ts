@@ -54,7 +54,6 @@ describe("migratePstackHome", () => {
     expect(existsSync(pstackHomePaths(home).models)).toBe(true);
     expect(existsSync(pstackHomePaths(home).settings)).toBe(true);
     expect(readSettings(pstackHomePaths(home).settings)).toEqual({
-      version: 1,
       potetoDefault: true,
     });
     expect(existsSync(join(home, "pstack-models.json"))).toBe(false);

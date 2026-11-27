@@ -1,15 +1,11 @@
 import { pathToFileURL } from "node:url";
 
 import { isVariant } from "../types.ts";
+import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { collectReviewSnapshot, REVIEWS_DIRECTORY } from "../evidence/review-snapshot.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 async function main(): Promise<void> {
   await readPlaygroundConfig(CONFIG_FILE);
@@ -24,13 +20,8 @@ async function main(): Promise<void> {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try {
-    main().catch((error: unknown) => {
-      console.error(`[collect] ERROR: ${error instanceof Error ? error.message : String(error)}`);
-      process.exitCode = 1;
-    });
-  } catch (error) {
+  main().catch((error: unknown) => {
     console.error(`[collect] ERROR: ${error instanceof Error ? error.message : String(error)}`);
     process.exitCode = 1;
-  }
+  });
 }

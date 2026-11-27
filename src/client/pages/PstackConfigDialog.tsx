@@ -19,7 +19,7 @@ import type { PstackTranslations } from "../locales/index.ts";
 
 export interface PstackConfigDialogProps {
   readonly roleApi: RoleSettingsApi;
-  readonly pluginApi: PluginManagerApi | undefined;
+  readonly pluginApi: PluginManagerApi;
   readonly potetoApi: PotetoSettingsApi;
   readonly maintenanceApi: MaintenanceSettingsApi;
   readonly translations: PstackTranslations;
@@ -166,7 +166,7 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
 /** Create the action component registered into `plugins.detail.actions`. */
 export function createPstackConfigAction(
   roleApi: RoleSettingsApi,
-  pluginApi: PluginManagerApi | undefined,
+  pluginApi: PluginManagerApi,
   potetoApi: PotetoSettingsApi,
   maintenanceApi: MaintenanceSettingsApi,
   translations: PstackTranslations,

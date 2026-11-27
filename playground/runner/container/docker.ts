@@ -78,6 +78,8 @@ export class DockerSandbox {
     let tail = "";
     while (Date.now() < deadline) {
       tail = logs(spec.name);
+      // The container's DSH web entry prints its URL on this line. The port is
+      // parsed separately, so a log-format change fails here with the raw tail.
       const found = tail.match(/dsh web:\s*(http:\/\/\S+)/)?.[1];
       if (found) {
         const url = new URL(found);

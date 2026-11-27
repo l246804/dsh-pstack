@@ -178,7 +178,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 ## 🔌 可选 DSH 插件
 
-安装 dsh-pstack 时无需一并安装这些插件，按需启用即可。
+安装 dsh-pstack 时无需一并安装这些插件，按需启用即可。插件对话框的**推荐插件**页是权威清单；本表是它的镜像。
 
 | 使用场景 | 插件 | 提供的能力与边界 |
 |---|---|---|
@@ -198,7 +198,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 
 - **native 基准。** `native/` 钉定上游 pstack 并生成 `native/pstack`；`native/dsh.md` 把每个 Cursor 名称映射到 DSH 替代项，并写清替代项不可用时的 fallback。生成器把该文档插入生成树，上游文案保持原样。
 - **场景驱动。** 覆盖来自 `native/gaps.json` 与 `playground/scenarios/` 下的场景文件；缺口清单记录 DSH 标准运行时缺少的能力，场景负责验证这些缺口。
-- **语义审核。** 技能能加载，只证明它可被触达。每个场景单独记录 `supported`、`gap` 或 `inconclusive` 结论，并附审核者与理由。adapted 运行记录 `verified`、`not-verified` 或 `inconclusive`；预期冲突回归复现启动冲突时记录 `blocked`。
+- **语义审核。** 技能能加载，只证明它可被触达。每个场景单独记录语义审核结论（`supported`、`gap` 或 `inconclusive`），并附审核者与理由。adapted 运行记录 `verified`、`not-verified` 或 `inconclusive`；预期冲突回归复现启动冲突时记录 `blocked`。
 - **adapted 复验。** 审核结论驱动 [src/dsh.zh.md](./src/dsh.zh.md)。用 `vp run build` 重建适配包，再重跑同一批场景，确认映射后的行为。
 - **环境矩阵。** 能力探针默认在 `base` 运行。`render` 是渲染对照环境。`agent-team` 是开启团队协作的环境，用于验证开启智能体团队协作后的 pstack 委派。
 

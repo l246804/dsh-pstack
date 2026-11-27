@@ -4,21 +4,12 @@
  * MaintenanceSettingsPage.tsx when the migration window closes.
  */
 
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { dirname } from "node:path";
-import { randomUUID } from "node:crypto";
+import { copyFileSync, existsSync, readFileSync, rmSync } from "node:fs";
 import { constants, zstdCompressSync, zstdDecompressSync } from "node:zlib";
 import { z } from "zod";
 
 import { writeFileAtomically } from "../lib/atomic-write.ts";
+import { describeError } from "../lib/errors.ts";
 import { pstackHomePaths } from "../pstack/home.ts";
 import type {
   LegacySessionInfo,
@@ -62,6 +53,8 @@ interface ParsedLog {
 }
 
 const ZSTD_MAGIC = 0xfd2fb528;
+const ZSTD_SKIPPABLE_MAGIC_MIN = 0x184d2a50;
+const ZSTD_SKIPPABLE_MAGIC_MAX = 0x184d2a5f;
 
 interface ZstdFrameRange {
   readonly start: number;
@@ -81,7 +74,15 @@ function scanZstdFrames(buffer: Buffer): ZstdFrameScan {
   while (offset < buffer.length) {
     const start = offset;
     if (buffer.length - offset < 4) return { frames, tornStart: start };
-    if (buffer.readUInt32LE(offset) !== ZSTD_MAGIC) {
+    const magic = buffer.readUInt32LE(offset);
+    if (magic >= ZSTD_SKIPPABLE_MAGIC_MIN && magic <= ZSTD_SKIPPABLE_MAGIC_MAX) {
+      if (buffer.length - offset < 8) return { frames, tornStart: start };
+      const end = offset + 8 + buffer.readUInt32LE(offset + 4);
+      if (end > buffer.length) return { frames, tornStart: start };
+      offset = end;
+      continue;
+    }
+    if (magic !== ZSTD_MAGIC) {
       throw new Error(`corrupt Zstandard session log: invalid frame magic at byte ${offset}`);
     }
     offset += 4;
@@ -188,22 +189,6 @@ function lastTitle(events: readonly StoredEvent[]): string | undefined {
   return title;
 }
 
-function writeBufferAtomically(path: string, bytes: Buffer): void {
-  mkdirSync(dirname(path), { recursive: true });
-  const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
-  try {
-    writeFileSync(temporary, bytes);
-    renameSync(temporary, path);
-  } catch (error) {
-    try {
-      rmSync(temporary, { force: true });
-    } catch {
-      // Preserve the original failure.
-    }
-    throw error;
-  }
-}
-
 function encodeLog(path: string, headerLine: string, eventLines: readonly string[]): Buffer {
   const eventText = eventLines.length === 0 ? "" : `${eventLines.join("\n")}\n`;
   if (!path.endsWith(".zstd")) return Buffer.from(`${headerLine}\n${eventText}`, "utf8");
@@ -289,7 +274,7 @@ export function scanLegacySessions(sources: readonly StoredSessionRef[]): Mainte
     } catch (error) {
       failures.push({
         sessionId: source.sessionId,
-        message: error instanceof Error ? error.message : String(error),
+        message: describeError(error),
       });
     }
   }
@@ -326,7 +311,7 @@ export async function repairLegacySession(
     const repaired = parsed.events.map((event) =>
       isLegacyEvent(event) ? { ...event, ignorable: true } : event,
     );
-    writeBufferAtomically(
+    writeFileAtomically(
       source.logPath,
       encodeLog(
         source.logPath,
@@ -394,7 +379,7 @@ export async function executeRepairQueue(
           // Keep the original repair failure; the backup remains on disk.
         }
       }
-      failed.push({ sessionId, message: error instanceof Error ? error.message : String(error) });
+      failed.push({ sessionId, message: describeError(error) });
     }
   }
   return { repaired, failed };
@@ -407,7 +392,7 @@ export async function restoreLegacySession(
   result: LegacyRepairResult,
 ): Promise<void> {
   if (result.backupPath !== undefined && existsSync(result.backupPath)) {
-    writeBufferAtomically(source.logPath, readFileSync(result.backupPath));
+    writeFileAtomically(source.logPath, readFileSync(result.backupPath));
   }
   await restoreSidecar(table, source.sessionId, result.previousRecord);
 }

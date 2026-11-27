@@ -52,9 +52,9 @@ Apply A, B, B′, and D only to non-`superseded` records; apply C and E as speci
 | Status | Anchor result | Finding |
 |---|---|---|
 | `proposed` | verified | Should be `accepted` |
-| `accepted` | `-` or missing | Landing lacks verified evidence |
+| `accepted` | pending | Landing lacks verified evidence |
 
-For `proposed`, `-` is pending. For either `proposed` or `accepted`, a pending anchor is not a finding; report the record as pending. An unverified anchor belongs in `Unverified`, outside B and C.
+For `proposed`, a pending anchor is normal; report the record as pending. An `accepted` record with a pending anchor is a status-pair finding. An unverified anchor belongs in `Unverified`, outside B and C.
 
 **B′ — Dead scope.** For each `accepted` record with no `Scope` glob matching an existing file, report its path and glob-check evidence. Ask whether the decision is obsolete or its scope is wrong.
 

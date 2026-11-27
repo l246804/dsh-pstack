@@ -7,7 +7,7 @@
 - `variant`：`native` 使用 DSH 标准运行时，不加载被测插件；`adapted` 加载当前插件和适配配置。
 - `environment`：环境列表与能力由 `runner/scenario/environments.ts` 维护；`base` 是默认对照。
 - 同一场景在成对运行时保持相同的 prompt、workspace 和断言；variant 专属判断属于分析规则，不写进场景。场景可以声明只跑某一个 variant，缺失的 variant 不是可比较记录。
-- 场景和环境的默认值见 `runner/scenario/defaults.ts`；解析和适用性判断见 `runner/scenario/registry.ts`。
+- 场景和环境的默认值见 `runner/scenario/defaults.ts`；注册见 `runner/scenario/registry.ts`，适用性判断见 `runner/scenario/scenarios.ts`。
 
 ## 运行身份
 

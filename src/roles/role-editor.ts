@@ -15,7 +15,7 @@ import { collectCatalogue } from "../models.ts";
 import { describeError } from "../lib/errors.ts";
 import { isBudgetRowBlocked, planBudget, type BudgetApplyRequest } from "./budget.ts";
 import { ROLE_MANIFEST, findRole } from "./role-manifest.ts";
-import { validateRoleRouteShape, type Route } from "./route.ts";
+import { routesEqual, validateRoleRouteShape, type Route } from "./route.ts";
 import {
   emptyRoleDocument,
   parseRoleConfiguration,
@@ -132,6 +132,39 @@ export function validateSaveRequest(
   return { ok: true, key: spec.key, routes: request.routes };
 }
 
+/** A parsed editable document plus the bytes it came from. */
+type EditableRoleFile =
+  | {
+      readonly ok: true;
+      readonly current: RoleConfiguration;
+      readonly text: string;
+      readonly document: RoleFileDocument;
+    }
+  | { readonly ok: false; readonly result: SaveRoleResult };
+
+/** Read and parse the editable view, reporting the same refusals as a save. */
+function readEditableRoleFile(path: string, replacingRole?: string): EditableRoleFile {
+  const current = readRoleConfiguration(path);
+  if (current.status === "unreadable") {
+    return {
+      ok: false,
+      result: { ok: false, reason: `the role file is unreadable: ${current.reason}` },
+    };
+  }
+  if (current.status === "missing") {
+    return { ok: true, current, text: "", document: emptyRoleDocument() };
+  }
+  try {
+    const text = readFileSync(path, "utf8");
+    return { ok: true, current, text, document: parseRoleDocument(text, replacingRole) };
+  } catch (error) {
+    return {
+      ok: false,
+      result: { ok: false, reason: `the role file could not be edited: ${describeError(error)}` },
+    };
+  }
+}
+
 /** Save one role and return the reloaded snapshot. */
 export async function saveRoleConfiguration(
   path: string,
@@ -167,24 +200,13 @@ export async function saveRoleConfiguration(
   const nextRoutes = validation.routes;
 
   // Re-read after the catalogue await so a concurrent writer is not clobbered.
-  const current = readRoleConfiguration(path);
-  if (current.status === "unreadable") {
-    return { ok: false, reason: `the role file is unreadable: ${current.reason}` };
-  }
+  const editable = readEditableRoleFile(path, key);
+  if (!editable.ok) return editable.result;
+  const current = editable.current;
   if (current.status === "missing" && nextRoutes.length === 0) {
     return { ok: true, snapshot: snapshotFromConfiguration(current) };
   }
-
-  let text = "";
-  let document = emptyRoleDocument();
-  if (current.status === "loaded") {
-    try {
-      text = readFileSync(path, "utf8");
-      document = parseRoleDocument(text, key);
-    } catch (error) {
-      return { ok: false, reason: `the role file could not be edited: ${describeError(error)}` };
-    }
-  }
+  const { text, document } = editable;
 
   const roles = { ...document.roles };
   if (nextRoutes.length > 0) roles[key] = [...nextRoutes];
@@ -231,20 +253,10 @@ export async function saveBudgetConfiguration(
   }
   signal.throwIfAborted();
 
-  const current = readRoleConfiguration(path);
-  if (current.status === "unreadable") {
-    return { ok: false, reason: `the role file is unreadable: ${current.reason}` };
-  }
-  let text = "";
-  let document = emptyRoleDocument();
-  if (current.status === "loaded") {
-    try {
-      text = readFileSync(path, "utf8");
-      document = parseRoleDocument(text);
-    } catch (error) {
-      return { ok: false, reason: `the role file could not be edited: ${describeError(error)}` };
-    }
-  }
+  const editable = readEditableRoleFile(path);
+  if (!editable.ok) return editable.result;
+  const current = editable.current;
+  const { text, document } = editable;
 
   try {
     const inputs = ROLE_MANIFEST.map((spec) => {
@@ -268,7 +280,7 @@ export async function saveBudgetConfiguration(
     const roles = { ...document.roles };
     for (const row of plan.rows) {
       if (row.status === "skipped") continue;
-      if (routeSignature(row.routes) === routeSignature(row.previous)) continue;
+      if (routesEqual(row.routes, row.previous)) continue;
       for (const key of Object.keys(roles)) {
         if (findRole(key)?.key === row.key) delete roles[key];
       }
@@ -284,8 +296,4 @@ export async function saveBudgetConfiguration(
   } catch (error) {
     return { ok: false, reason: describeError(error) };
   }
-}
-
-function routeSignature(routes: readonly Route[]): string {
-  return JSON.stringify(routes);
 }

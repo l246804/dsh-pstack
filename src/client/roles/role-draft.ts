@@ -1,5 +1,6 @@
 /** Draft algebra for the role settings page. */
 
+import { routesEqual } from "../../roles/route.ts";
 import type { RoleView, RouteView } from "../../roles/role-wire.ts";
 
 export interface RoleDraft {
@@ -36,12 +37,8 @@ export function draftOf(role: RoleView): RoleDraft {
 
 export function isDirty(draft: RoleDraft, role: RoleView): boolean {
   if (draft.cleared) return role.configured;
-  if (!role.configured && signature(draft.routes) === signature(inheritedRoutes())) return false;
-  return signature(draft.routes) !== signature(draft.baseline);
-}
-
-export function signature(routes: readonly RouteView[]): string {
-  return JSON.stringify(routes);
+  if (!role.configured && routesEqual(draft.routes, inheritedRoutes())) return false;
+  return !routesEqual(draft.routes, draft.baseline);
 }
 
 export function isClearDraft(draft: RoleDraft, role: RoleView | undefined): boolean {

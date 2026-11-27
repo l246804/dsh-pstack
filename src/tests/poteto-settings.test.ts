@@ -41,9 +41,9 @@ describe("pstack settings file", () => {
 
   it("round-trips a written value and leaves no temp file behind", () => {
     inTempFile((path, dir) => {
-      writeSettings({ version: 1, potetoDefault: true }, path);
-      expect(readSettings(path)).toEqual({ version: 1, potetoDefault: true });
-      expect(readFileSync(path, "utf8")).toBe('{\n  "version": 1,\n  "potetoDefault": true\n}\n');
+      writeSettings({ potetoDefault: true }, path);
+      expect(readSettings(path)).toEqual({ potetoDefault: true });
+      expect(readFileSync(path, "utf8")).toBe('{\n  "potetoDefault": true\n}\n');
       expect(readdirSync(dir)).toEqual(["settings.json"]);
     });
   });

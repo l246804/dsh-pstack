@@ -1,18 +1,12 @@
 import { spawn } from "node:child_process";
-import {
-  appendFileSync,
-  existsSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { isVariant } from "../types.ts";
+import { argValue } from "../shared/args.ts";
 import type { Variant, RunRecord, Verdict } from "../types.ts";
 import { latestRecords } from "../evidence/evidence.ts";
+import { readRunRecords } from "../evidence/review-snapshot.ts";
 import { computeWorkers } from "../worker/capacity.ts";
 import {
   environmentMatrix,
@@ -40,11 +34,6 @@ import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../worker/worker.ts";
 import { runtimeSettings } from "../config/runtime.ts";
 
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
-
 function parseList(value: string): string[] {
   return [
     ...new Set(
@@ -56,27 +45,8 @@ function parseList(value: string): string[] {
   ];
 }
 
-function readRecords(directory: string): RunRecord[] {
-  if (!existsSync(directory)) return [];
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const file = join(directory, entry.name);
-    if (entry.isDirectory()) return readRecords(file);
-    if (!entry.name.endsWith(".json")) return [];
-    try {
-      const record = JSON.parse(readFileSync(file, "utf8")) as RunRecord;
-      return typeof record.scenarioId === "string" && typeof record.variant === "string"
-        ? [record]
-        : [];
-    } catch (error) {
-      throw new Error(
-        `invalid RunRecord JSON in ${file}: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  });
-}
-
 function allRecords(): RunRecord[] {
-  return readRecords(REVIEWS_DIRECTORY);
+  return readRunRecords(REVIEWS_DIRECTORY);
 }
 
 function selectedScenarios(variant: Variant, environmentId: string): string[] {
@@ -286,7 +256,7 @@ async function main(): Promise<void> {
             logFile,
             `\n===== ${scenarioId} ${variant} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
           );
-          const records = readRecords(
+          const records = readRunRecords(
             join(workersDirectory(), variant, matrix.id, `w${worker}/evidence`),
           );
           const record = records.find(

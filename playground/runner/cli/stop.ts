@@ -1,4 +1,5 @@
 import { createBrowserSession } from "../browser/session.ts";
+import { argValue } from "../shared/args.ts";
 import { stopWeb } from "../container/index.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { clearBootstrapReady, listWorkers } from "../worker/worker.ts";
@@ -7,11 +8,6 @@ import type { Variant } from "../types.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 
 await readPlaygroundConfig(CONFIG_FILE);
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 const environment = argValue("--environment");
 if (environment) environmentMatrix(environment);

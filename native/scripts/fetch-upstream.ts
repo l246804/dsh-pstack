@@ -126,9 +126,10 @@ if (!existsSync(source) || !statSync(source).isDirectory()) {
 }
 
 const manifest = `${path}/plugin.json`;
-function versionAt(atWork: string, sha: string): string {
+function versionAt(atWork: string, sha: string): string | undefined {
   const text = git(["show", `${sha}:${manifest}`], atWork);
-  return JSON.parse(text).version;
+  const version = (JSON.parse(text) as { version?: unknown }).version;
+  return typeof version === "string" ? version : undefined;
 }
 
 if (latest) {

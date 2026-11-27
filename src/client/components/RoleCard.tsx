@@ -211,13 +211,16 @@ function RouteRow(props: {
     route.kind === "route" && route.effort !== undefined && !efforts.includes(route.effort)
       ? [route.effort, ...efforts]
       : efforts;
-  const fields =
+  const layout =
     route.kind === "route"
-      ? "minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 0.7fr)"
-      : "minmax(0, 1fr)";
-  const columns = canRemove ? `${fields} 32px` : fields;
+      ? canRemove
+        ? "route-actions"
+        : "route"
+      : canRemove
+        ? "inherit-actions"
+        : "inherit";
   return (
-    <div className="pstack-route-row" style={{ gridTemplateColumns: columns }}>
+    <div className="pstack-route-row" data-layout={layout}>
       <label className="pstack-field">
         <span className="pstack-field-label">{t("provider")}</span>
         <select

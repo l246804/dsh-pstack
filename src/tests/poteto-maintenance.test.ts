@@ -80,6 +80,19 @@ describe("poteto legacy session maintenance", () => {
     expect(repairQueuePath("/home/user/.dsh")).toBe("/home/user/.dsh/pstack/repair.json");
   });
 
+  it("skips Zstandard skippable frames when decoding a log", () => {
+    const payload = Buffer.from('header\n{"type":"session/title"}\n', "utf8");
+    const skippable = Buffer.alloc(11);
+    skippable.writeUInt32LE(0x184d2a50, 0);
+    skippable.writeUInt32LE(3, 4);
+    skippable.write("abc", 8);
+    const frame = zstdCompressSync(payload, CHECKSUM);
+
+    expect(decodeZstdFrames(Buffer.concat([skippable, frame])).toString("utf8")).toBe(
+      payload.toString("utf8"),
+    );
+  });
+
   it("finds sessions with the retired event and reports the last selection", async () => {
     await withTempDir(async (dir) => {
       const logPath = writeLegacyLog(dir);

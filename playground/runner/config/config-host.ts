@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { load as yamlLoad } from "js-yaml";
+import { z } from "zod";
 
 import type { DeepSeekModel, ProviderConfig, ProviderModel } from "../types.ts";
 
@@ -21,10 +22,10 @@ export type HostProviderSelection =
     }
   | { account: true };
 
-interface HostPatchRow {
-  id?: string;
-  config?: Record<string, unknown>;
-}
+const hostPatchRows = z.array(
+  z.object({ id: z.string().optional(), config: z.record(z.string(), z.unknown()).optional() }),
+);
+type HostPatchRow = z.infer<typeof hostPatchRows>[number];
 
 const DEFAULT_HOST_PATCH = join(homedir(), ".dsh/profiles/web/cordis.patch.yml");
 
@@ -32,7 +33,15 @@ function rows(file: string): HostPatchRow[] {
   if (!existsSync(file)) {
     throw new Error(`host patch not found at ${file}; pass file to fromHost`);
   }
-  return (yamlLoad(readFileSync(file, "utf8")) as HostPatchRow[]) ?? [];
+  const parsed = yamlLoad(readFileSync(file, "utf8"));
+  if (parsed === undefined || parsed === null) return [];
+  if (!Array.isArray(parsed)) {
+    throw new Error(`host patch must be a YAML list: ${file}`);
+  }
+  const result = hostPatchRows.safeParse(parsed);
+  if (!result.success)
+    throw new Error(`host patch has an invalid row: ${file}: ${result.error.message}`);
+  return result.data;
 }
 
 function selectModel(model: ProviderModel, efforts: string[]): ProviderModel | null {

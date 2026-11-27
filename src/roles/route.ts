@@ -95,3 +95,23 @@ export function validateRoleRouteShape(
   }
   return undefined;
 }
+
+/** Whether two route lists are structurally equal. */
+export function routesEqual(left: readonly Route[], right: readonly Route[]): boolean {
+  return (
+    left.length === right.length && left.every((route, index) => routeEqual(route, right[index]!))
+  );
+}
+
+function routeEqual(left: Route, right: Route): boolean {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === "inherit") {
+    return right.kind === "inherit" && left.alias === right.alias;
+  }
+  return (
+    right.kind === "route" &&
+    left.provider === right.provider &&
+    left.model === right.model &&
+    left.effort === right.effort
+  );
+}

@@ -1,11 +1,7 @@
 /** Remote descriptors for the Host maintenance scan and repair queue. */
 
 import { z } from "zod";
-import type {
-  InvocationDescriptor,
-  RemoteResult,
-  TypertRemoteInfo,
-} from "@deepseek-ai/dsh-typert-protocol";
+import type { RemoteResult, TypertRemoteInfo } from "@deepseek-ai/dsh-typert-protocol";
 
 import { REMOTE_PACKAGE, codec, directMethod, parameter } from "../lib/typert-method.ts";
 import { POTETO_SERVICE } from "./remote.ts";
@@ -76,10 +72,10 @@ export interface PstackPotetoMaintenanceNamespace {
 /** Mountable maintenance contribution, kept separate from the switch methods. */
 export const pstackPotetoMaintenanceRemote: TypertRemoteInfo = {
   package: REMOTE_PACKAGE,
-  descriptors: [scanMethod, queueMethod, consumeMethod] as InvocationDescriptor[],
+  descriptors: [scanMethod, queueMethod, consumeMethod],
   methods: {
     [`${POTETO_SERVICE}/scanLegacySessions`]: scanMethod,
     [`${POTETO_SERVICE}/queueLegacyRepair`]: queueMethod,
     [`${POTETO_SERVICE}/consumeLegacyRepairResult`]: consumeMethod,
-  } as TypertRemoteInfo["methods"],
+  },
 };

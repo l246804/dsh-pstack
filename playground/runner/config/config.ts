@@ -39,8 +39,10 @@ function number(value: unknown, label: string): number | undefined {
 }
 
 function credentialReference(name: string, file: string): string | undefined {
-  const store = yamlLoad(readFileSync(file, "utf8")) as { refs?: Record<string, unknown> };
-  const reference = store.refs?.[name];
+  const store = object(yamlLoad(readFileSync(file, "utf8")), `credential store ${file}`);
+  const refs =
+    store.refs === undefined ? {} : object(store.refs, `credential store refs in ${file}`);
+  const reference = refs[name];
   if (typeof reference === "string") return reference;
   if (reference && typeof reference === "object") {
     const secret = (reference as { secret?: unknown }).secret;

@@ -20,7 +20,8 @@ import {
   type TestTarget,
   type Variant,
 } from "../types.ts";
-import { isRunRecord, latestRecords, recordFileName } from "./evidence.ts";
+import { latestRecords, recordFileName } from "./evidence.ts";
+import { parseRunRecord } from "./run-record.ts";
 import { EVIDENCE_DIRECTORIES, EVIDENCE_FILES } from "./evidence-files.ts";
 import { sanitizeRecord } from "./redaction.ts";
 import { PLAYGROUND_DIRECTORY, workersDirectory } from "../worker/run-metadata.ts";
@@ -46,14 +47,11 @@ export function reviewSnapshotDirectory(
   return join(root, `${variant}-${environment}`);
 }
 
-export type ReviewReviewer = { kind: "human"; name: string } | { kind: "model"; route: TestTarget };
+/** One reviewed result: the non-pending `SemanticReview` variant. */
+export type ReviewEntry = Extract<SemanticReview, { status: SemanticReviewStatus }>;
 
-/** One scenario's reviewed result, matching the non-pending `SemanticReview` variant. */
-export interface ReviewEntry {
-  status: SemanticReviewStatus;
-  reason: string;
-  reviewer: ReviewReviewer;
-}
+/** The reviewer carried by a reviewed result. */
+export type ReviewReviewer = ReviewEntry["reviewer"];
 
 export type ReviewEntries = Record<string, ReviewEntry>;
 
@@ -210,8 +208,7 @@ export function listSnapshotRecords(
         `invalid RunRecord JSON in ${file}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-    if (!isRunRecord(parsed)) throw new Error(`not a RunRecord: ${file}`);
-    return { scenarioId, file, record: parsed };
+    return { scenarioId, file, record: parseRunRecord(parsed, file) };
   });
 }
 
@@ -266,17 +263,15 @@ export function batchLockFile(variant: Variant, environment: string): string {
 export function acquireBatchLock(metadata: BatchMetadata): () => void {
   const file = batchLockFile(metadata.variant, metadata.environment);
   mkdirSync(dirname(file), { recursive: true });
+  const lock = `${JSON.stringify({ batchId: metadata.batchId, pid: process.pid, startedAt: metadata.startedAt })}\n`;
   try {
-    writeFileSync(
-      file,
-      `${JSON.stringify({ batchId: metadata.batchId, pid: process.pid, startedAt: metadata.startedAt })}\n`,
-      { flag: "wx" },
-    );
+    writeFileSync(file, lock, { flag: "wx" });
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-      throw new Error(`another batch holds ${file}; stop it before starting ${metadata.batchId}`);
-    }
-    throw error;
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    // A pid check followed by unlink can delete a lock another contender just acquired.
+    throw new Error(
+      `another batch holds ${file}; stop it before starting ${metadata.batchId}; remove a stale lock only after all batches have stopped`,
+    );
   }
   let released = false;
   return () => {
@@ -301,20 +296,28 @@ export function batchRecordProblems(batch: BatchMetadata, records: readonly RunR
     .sort();
 }
 
-function readRecords(directory: string): RunRecord[] {
+/** Read canonical and timestamped evidence records, skipping worker state and sidecars. */
+export function readRunRecords(directory: string): RunRecord[] {
   if (!existsSync(directory)) return [];
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = join(directory, entry.name);
-    if (entry.isDirectory()) return readRecords(file);
-    if (!entry.name.endsWith(".json")) return [];
+    if (entry.isDirectory()) return readRunRecords(file);
+    if (entry.name.endsWith(EVIDENCE_FILES.sourceSuffix)) return [];
+    if (
+      entry.name !== EVIDENCE_FILES.record &&
+      entry.name !== EVIDENCE_FILES.safe &&
+      !/-(?:native|adapted)-.+-\d{4}-\d{2}-\d{2}T.*\.json$/.test(entry.name)
+    )
+      return [];
+    let parsed: unknown;
     try {
-      const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
-      return isRunRecord(parsed) ? [parsed] : [];
+      parsed = JSON.parse(readFileSync(file, "utf8"));
     } catch (error) {
       throw new Error(
         `invalid RunRecord JSON in ${file}: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
+    return [parseRunRecord(parsed, file)];
   });
 }
 
@@ -468,8 +471,15 @@ export function writeReviewSnapshot(
     };
     mkdirSync(temporary, { recursive: true });
     writeJsonAtomically(join(temporary, "manifest.json"), manifest);
-    rmSync(snapshot, { recursive: true, force: true });
-    renameSync(temporary, snapshot);
+    const backup = `${snapshot}.bak-${process.pid}-${Date.now()}`;
+    if (existsSync(snapshot)) renameSync(snapshot, backup);
+    try {
+      renameSync(temporary, snapshot);
+    } catch (error) {
+      if (existsSync(backup)) renameSync(backup, snapshot);
+      throw error;
+    }
+    if (existsSync(backup)) rmSync(backup, { recursive: true, force: true });
     return manifest;
   } catch (error) {
     rmSync(temporary, { recursive: true, force: true });
@@ -485,6 +495,6 @@ export function collectReviewSnapshot(
     variant,
     environment,
     readBatchMetadata(variant, environment),
-    readRecords(workersDirectory()),
+    readRunRecords(workersDirectory()),
   );
 }

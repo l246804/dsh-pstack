@@ -20,16 +20,16 @@ const SURFACE_PATH = join(ROOT, "src", "surface.json");
 /** A value the factories never dereference; they read only their tool schema. */
 const STUB = undefined as never;
 
-export interface SurfaceTool {
+interface SurfaceTool {
   readonly name: string;
   readonly parameters: Record<string, unknown>;
 }
 
-export interface Surface {
+interface Surface {
   readonly tools: readonly SurfaceTool[];
 }
 
-export function buildSurface(): Surface {
+function buildSurface(): Surface {
   const definitions: ToolDefinition[] = [
     createPstackSubagentTool(STUB),
     createPstackInterruptTool(STUB),
@@ -76,7 +76,7 @@ function diffSummary(text: string, surface: Surface): string {
   return lines.length === 0 ? "surface content differs only in formatting." : lines.join("\n");
 }
 
-export async function main(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
+async function main(argv: readonly string[] = process.argv.slice(2)): Promise<number> {
   const surface = buildSurface();
   const text = await renderSurface(surface);
   if (argv.includes("--check")) {

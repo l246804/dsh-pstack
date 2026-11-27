@@ -34,9 +34,13 @@ export default defineConfig({
         },
       },
       copy: [
-        // The shipped tree is the native baseline tree; the build task then stamps the
-        // plugin-aware adapter over the baseline answer (pack copy targets must not nest).
-        { from: "native/pstack", to: "dist", rename: "pstack" },
+        // Copy entries run concurrently; only the adapter writes this harness file.
+        {
+          from: ["native/pstack/**/*", "!native/pstack/docs/harness/dsh.md"],
+          to: "dist",
+          flatten: false,
+        },
+        { from: "src/dsh.md", to: "dist/pstack/docs/harness" },
         { from: "skills/.agents/skills", to: "dist/skills", rename: "vendored" },
         { from: "skills/authored", to: "dist/skills", rename: "authored" },
       ],
@@ -74,7 +78,7 @@ export default defineConfig({
     tasks: {
       // Repository level: build, static checks, release consistency.
       build: {
-        command: "vp pack && cp src/dsh.md dist/pstack/docs/harness/dsh.md",
+        command: "vp pack",
         dependsOn: ["native:generate"],
       },
       typecheck: {

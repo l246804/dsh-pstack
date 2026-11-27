@@ -17,7 +17,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `pstack_subagent` 一次调用启动一个子代理；在同一消息里按子代理数多次调用，传 `description` 和 `prompt`。把 `pstack_roles` 给的路由传给 `provider`、`model` 和可选的 `reasoning_effort`；全部省略则继承父路由。 |
+| `Task` | `pstack_subagent` 替代 `Task`；在同一消息里按子代理数多次调用。参数以工具 schema 为准，路由选择见 §Models。 |
 | `AskQuestion` | `ask_user_question` 接收一批带选项和自由输入的问题。只有活跃的根代理有人工回答者；被委派的子代理把问题留在结果里。工具不可用时用纯文本提问。 |
 | Open a todolist | `todo_write` 替换整个列表，没有 `skipped` 状态。跳过的步骤保持可见，在 `content` 中写 `skip: <reason> - <step>`，状态设为 `completed`。 |
 | Run another pstack skill (`/name` 或 "the **name** skill") | 会话技能目录里的技能用原生 `skill`。带 `disable-model-invocation: true` 的随包技能对 `skill` 隐藏，所以读取 `<pstack>/skills/<name>/SKILL.md` 并遵循。用户 `/name` 手势直接注入；内置帮助技能是 `poteto-help`。 |
@@ -50,7 +50,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]` | 去掉 `-fast`；DeepSeek Harness 没有速度参数。从 `pstack_roles` 读取角色的 `provider`、`model` 和 `reasoning_effort`，改 effort 时使用该路由可用的档位。 |
+| `claude-<family>-<version>-<effort>[-fast]` | 去掉 `-fast`；DeepSeek Harness 没有速度参数。从 `pstack_roles` 读取角色的 `provider`、`model` 和 `reasoning_effort`，改 `effort` 时使用该路由可用的档位。 |
 | `grok-*`、`gpt-*` 或其他非 Claude slug | 选最接近的已公布路由，或省略路由让子代理继承父路由；说明选择了哪种。 |
 | `auto` 或 `inherit-parent` | 省略路由；子代理继承父路由。 |
 | pstack 角色文件 | `$DSH_HOME/pstack/models.json`。通过 `pstack_roles` 读取；`pstack_subagent` 不解析它。文件缺失时沿用父路由。 |
@@ -72,7 +72,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `.cursor/skills/`, `~/.cursor/skills/` | 项目技能位于 `.dsh/skills/` 或 `.agents/skills/`；用户技能位于 `$DSH_HOME/skills/` 或 `~/.agents/skills/`。随包 pstack 技能位于 `<pstack>/skills/`，通过读取 `SKILL.md` 加载。 |
+| `.cursor/skills/`, `~/.cursor/skills/` | 项目技能位于 `.dsh/skills/` 或 `.agents/skills/`；用户技能位于 `$DSH_HOME/skills/` 或 `$DSH_AGENTS_HOME/skills/`。随包 pstack 技能位于 `<pstack>/skills/`，通过读取 `SKILL.md` 加载。 |
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | 在 `SKILL.md` 旁解析包资源；插件 manifest 是 `package.json` 的 `dsh` 段。 |
 | `.cursor/rules/*.mdc`, always-applied rules | `AGENTS.md` 兼容链。DeepSeek Harness 不读取 `.mdc`。 |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | 包内存在该文件时使用 `<pstack>/<path>`。读取本地副本，需要链接时给用户公开 URL。 |

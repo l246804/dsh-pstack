@@ -88,7 +88,7 @@ const PLUGIN_GROUPS: readonly PluginGroup[] = [
 const ALL = "__all__";
 
 export function RecommendedPluginsView(props: {
-  api: PluginManagerApi | undefined;
+  api: PluginManagerApi;
   translations: PstackTranslations;
 }): ReactElement {
   const [bundles, setBundles] = useState<readonly BundleInfo[]>([]);
@@ -101,17 +101,12 @@ export function RecommendedPluginsView(props: {
   const common = translations.common;
 
   const load = async (): Promise<void> => {
-    if (api === undefined) {
-      setLoading(false);
-      setError(t("loadFailed", { message: t("managerUnavailable") }));
-      return;
-    }
     setLoading(true);
     setError(undefined);
     try {
       setBundles(await api.listBundles());
     } catch (reason) {
-      setError(t("loadFailed", { message: pluginMessage(reason, t) }));
+      setError(t("loadFailed", { message: messageOf(reason) }));
     } finally {
       setLoading(false);
     }
@@ -138,7 +133,6 @@ export function RecommendedPluginsView(props: {
   }).length;
 
   const toggle = async (bundle: BundleInfo): Promise<void> => {
-    if (api === undefined) return;
     setBusy(bundle.name);
     setMessages((current) => {
       const next = { ...current };
@@ -157,7 +151,7 @@ export function RecommendedPluginsView(props: {
         ...current,
         [bundle.name]: {
           tone: "error",
-          text: t("pluginChangeFailed", { name: bundle.name, reason: pluginMessage(reason, t) }),
+          text: t("pluginChangeFailed", { name: bundle.name, reason: messageOf(reason) }),
         },
       }));
     } finally {
@@ -166,7 +160,6 @@ export function RecommendedPluginsView(props: {
   };
 
   const enableAll = async (): Promise<void> => {
-    if (api === undefined) return;
     const targets = recommended.plugins
       .map((plugin) => byName.get(plugin.name))
       .filter(
@@ -311,11 +304,6 @@ export function RecommendedPluginsView(props: {
       </div>
     </section>
   );
-}
-
-function pluginMessage(reason: unknown, t: PstackTranslations["plugins"]): string {
-  const message = messageOf(reason);
-  return message === "plugin manager is not available yet" ? t("managerUnavailable") : message;
 }
 
 function bundleStatus(

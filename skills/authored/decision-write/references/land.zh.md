@@ -8,10 +8,11 @@
 
 ```bash
 git log --since=<Date> --format='%H %cs %s' <base> --
+git log --until=<Date> --format='%H %cs %s' <base> --
 gh pr list --state merged --search "<记录标题或范围关键词>" --json number,title,mergedAt,files --limit 20
 ```
 
-没有 `Scope` 时，用记录标题或关键词检索提交主题与 PR 标题。从记录的 `Date` 开始；追溯性记录也检查 `Date` 之前最近触及 `Scope` 的提交。`gh` 不可用时只检索提交，并报告已跳过 PR 查找。
+没有 `Scope` 时，用记录标题或关键词检索提交主题与 PR 标题。从记录的 `Date` 开始；追溯性记录也用 `--until` 形式检查 `Date` 之前最近触及 `Scope` 的提交。`gh` 不可用时只检索提交，并报告已跳过 PR 查找。
 
 保留改动路径与 `Scope` 相交、且至少有一个 `<dir>` 之外路径的候选；只含决策记录的改动不是实现。只有一个明确候选时，用它的 `PR #N` 或 `commit:SHA`。多个候选时列出日期、标题、路径并询问选哪个。没有候选时走下面的回退。
 

@@ -5,9 +5,9 @@ import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "./defaults.ts";
 import { stableStringify } from "../shared/stable-json.ts";
 
 /**
- * Stable hash over everything that defines what a probe asks for. Two records are only
- * comparable when their scenario content hash matches, so this is a run-identity axis and
- * never `upstreamRevision`.
+ * Stable hash over everything that defines what a probe asks for. Records carry it so a
+ * reviewer can tell whether a committed record still matches the current scenario; it is a
+ * run-identity axis and never `upstreamRevision`.
  */
 export function scenarioContentHash(scenario: BehaviorScenario): string {
   const payload = {
