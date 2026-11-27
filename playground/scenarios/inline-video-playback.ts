@@ -19,7 +19,8 @@ export default {
       "assets/sample.mp4": "playground/scenarios/fixtures/sample.mp4",
     },
   },
-  assertions: [{ kind: "turn-completed" }, { kind: "assistant-contains", text: "sample.mp4" }],
+  // No text assertion: a refusal names the same path, so the rubric decides.
+  assertions: [{ kind: "turn-completed" }],
   rubric: {
     prompt:
       "回复中出现一个可直接播放的视频播放器并加载 sample.mp4；只显示链接、文件卡片或下载入口不算通过。",
