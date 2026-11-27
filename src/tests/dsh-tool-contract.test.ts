@@ -20,7 +20,7 @@ import { ToolArgsError } from "@deepseek-ai/dsh-tools";
 import {
   AGENT_KINDS,
   normalizeConfig,
-  parseControlArgs,
+  parseInterruptTarget,
   parseDelegationArgs,
 } from "../subagent.ts";
 const DELEGATION = "@deepseek-ai/dsh-tool-subagent";
@@ -186,8 +186,8 @@ describe("declared tool divergences", () => {
     expect(() => parseDelegationArgs({ description: "d", prompt: "p", model: "m" })).toThrow(
       ToolArgsError,
     );
-    expect(() => parseControlArgs({}, ["agent"])).toThrow(ToolArgsError);
-    expect(() => parseControlArgs({ agent: "" }, ["agent"])).toThrow(ToolArgsError);
-    expect(() => parseControlArgs({ nope: "x" }, ["agent"])).toThrow(ToolArgsError);
+    expect(() => parseInterruptTarget({})).toThrow(ToolArgsError);
+    expect(() => parseInterruptTarget({ agent: "" })).toThrow(ToolArgsError);
+    expect(() => parseInterruptTarget({ nope: "x" })).toThrow(ToolArgsError);
   });
 });
