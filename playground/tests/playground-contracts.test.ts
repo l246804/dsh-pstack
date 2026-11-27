@@ -1,9 +1,11 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vite-plus/test";
 
 import { parseConfig } from "../runner/config/config.ts";
+import { fromHost } from "../runner/config/config-host.ts";
 import { loadProviderPlan } from "../runner/config/provider.ts";
 import {
   gapCoverageProblems,
@@ -69,6 +71,11 @@ describe("native gap enumeration", () => {
       file.gaps.filter((id) => !gapIds.has(id)).map((id) => `${file.path}:${id}`),
     );
     expect(unknown).toEqual([]);
+  });
+
+  it("references every gap from at least one enumerated file", () => {
+    const referenced = new Set(document.files.flatMap((file) => file.gaps));
+    expect([...gapIds].filter((id) => !referenced.has(id))).toEqual([]);
   });
 
   it("cites every gap source from the enumerated tree or the answer documents", () => {
@@ -165,12 +172,6 @@ describe("playground configuration", () => {
     );
   });
 
-  it("uses the existing bare model ids in the provider allowlist", () => {
-    expect(
-      loadProviderPlan(parseConfig(config())).routes.some((route) => route.model === "model-a"),
-    ).toBe(true);
-  });
-
   it("accepts role model routes that resolve against the provider allowlist", () => {
     const parsed = parseConfig({
       ...config(),
@@ -196,28 +197,179 @@ describe("playground configuration", () => {
     expect(() => parseConfig({ ...config(), browser: { mode: "cdp" } })).toThrow(/browser\.cdpUrl/);
   });
 
-  it("accepts DeepSeek API-key and account provider kinds", () => {
+  it("accepts DeepSeek API-key and account provider kinds up to the max tier", () => {
     expect(() =>
-      parseConfig({
-        ...config(),
-        testModel: { provider: "deepseek-official", model: "deepseek-flash", effort: "high" },
-        providers: {
-          "deepseek-official": {
-            kind: "deepseek-api-key",
-            apiKey: "secret",
-            apiKeyEnv: "DEEPSEEK_API_KEY",
-            models: [{ id: "deepseek-flash", reasoningEfforts: { high: "high" } }],
+      loadProviderPlan(
+        parseConfig({
+          ...config(),
+          testModel: { provider: "deepseek-official", model: "deepseek-flash", effort: "max" },
+          providers: {
+            "deepseek-official": {
+              kind: "deepseek-api-key",
+              apiKey: "secret",
+              apiKeyEnv: "DEEPSEEK_API_KEY",
+              models: [{ id: "deepseek-flash", inputModalities: ["text", "image"] }],
+            },
           },
-        },
-      }),
+        }),
+      ),
     ).not.toThrow();
     expect(() =>
-      parseConfig({
-        ...config(),
-        testModel: { provider: "deepseek-account", model: "deepseek-flash", effort: "high" },
-        providers: { "deepseek-account": { kind: "deepseek-account", modelOverrides: {} } },
-      }),
+      loadProviderPlan(
+        parseConfig({
+          ...config(),
+          copyCredentials: true,
+          testModel: { provider: "deepseek-account", model: "deepseek-flash", effort: "max" },
+          providers: { "deepseek-account": { kind: "deepseek-account", modelOverrides: {} } },
+        }),
+      ),
     ).not.toThrow();
+  });
+
+  it("rejects a DeepSeek effort outside the four published tiers", () => {
+    expect(() =>
+      loadProviderPlan(
+        parseConfig({
+          ...config(),
+          testModel: { provider: "deepseek-official", model: "deepseek-flash", effort: "medium" },
+          providers: {
+            "deepseek-official": {
+              kind: "deepseek-api-key",
+              apiKey: "secret",
+              apiKeyEnv: "DEEPSEEK_API_KEY",
+              models: [{ id: "deepseek-flash", inputModalities: ["text"] }],
+            },
+          },
+        }),
+      ),
+    ).toThrow(/testModel/);
+  });
+
+  it("rejects DeepSeek catalog entries the runtime would refuse to load", () => {
+    const withModel = (model: Record<string, unknown>): unknown => ({
+      ...config(),
+      testModel: { provider: "deepseek-official", model: "deepseek-flash", effort: "high" },
+      providers: {
+        "deepseek-official": {
+          kind: "deepseek-api-key",
+          apiKey: "secret",
+          apiKeyEnv: "DEEPSEEK_API_KEY",
+          models: [{ id: "deepseek-flash", ...model }],
+        },
+      },
+    });
+    expect(() => parseConfig(withModel({ inputModalities: [] }))).toThrow(/inputModalities/);
+    expect(() => parseConfig(withModel({ inputModalities: ["text", "text"] }))).toThrow(
+      /inputModalities/,
+    );
+    expect(() => parseConfig(withModel({ imageTargetBytes: 1024 }))).toThrow(/text-only/);
+    expect(() =>
+      parseConfig(withModel({ inputModalities: ["image"], imagePixelBudget: -1 })),
+    ).toThrow(/imagePixelBudget/);
+    expect(() =>
+      parseConfig(withModel({ inputModalities: ["text", "image"], imageTargetBytes: 1.5 })),
+    ).toThrow(/imageTargetBytes/);
+  });
+});
+
+function tempPatch(content: unknown): { dir: string; file: string } {
+  const dir = mkdtempSync(join(tmpdir(), "dsh-host-"));
+  const file = join(dir, "cordis.patch.yml");
+  writeFileSync(file, `${JSON.stringify(content, null, 2)}\n`);
+  return { dir, file };
+}
+
+describe("fromHost DeepSeek routes", () => {
+  it("builds both DeepSeek providers from an empty host patch", () => {
+    const { dir, file } = tempPatch([]);
+    try {
+      const providers = fromHost(
+        {
+          "deepseek-official": { models: [{ id: "deepseek-flash" }], reasoning: "high" },
+          "deepseek-account": { account: true },
+        },
+        { file },
+      );
+      expect(providers["deepseek-official"]).toEqual({
+        kind: "deepseek-api-key",
+        apiKey: "${DEEPSEEK_API_KEY}",
+        apiKeyEnv: "DEEPSEEK_API_KEY",
+        reasoning: "high",
+      });
+      expect(providers["deepseek-account"]).toEqual({ kind: "deepseek-account" });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("filters custom DeepSeek models by id and keeps inputModalities", () => {
+    const { dir, file } = tempPatch([
+      {
+        id: "llm-deepseek",
+        config: {
+          apiKeyEnv: "MY_DEEPSEEK_KEY",
+          reasoningEffort: "max",
+          models: [
+            {
+              id: "deepseek-flash",
+              name: "Flash",
+              contextWindow: 1048576,
+              inputModalities: ["text", "image"],
+            },
+            { id: "custom-model", inputModalities: ["text"] },
+          ],
+        },
+      },
+    ]);
+    try {
+      const providers = fromHost(
+        { "deepseek-official": { models: [{ id: "deepseek-flash" }] } },
+        { file },
+      );
+      expect(providers["deepseek-official"]).toEqual({
+        kind: "deepseek-api-key",
+        apiKey: "${MY_DEEPSEEK_KEY}",
+        apiKeyEnv: "MY_DEEPSEEK_KEY",
+        reasoning: "max",
+        models: [
+          {
+            id: "deepseek-flash",
+            name: "Flash",
+            contextWindow: 1048576,
+            inputModalities: ["text", "image"],
+          },
+        ],
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects an account row that still configures models", () => {
+    const { dir, file } = tempPatch([
+      { id: "llm-deepseek-account", config: { models: [{ id: "deepseek-flash" }] } },
+    ]);
+    try {
+      expect(() => fromHost({ "deepseek-account": { account: true } }, { file })).toThrow(
+        /modelOverrides/,
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects per-model efforts, which a DeepSeek route does not read", () => {
+    const { dir, file } = tempPatch([]);
+    try {
+      expect(() =>
+        fromHost(
+          { "deepseek-official": { models: [{ id: "deepseek-flash", efforts: ["low"] }] } },
+          { file },
+        ),
+      ).toThrow(/provider-level reasoning/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

@@ -23,10 +23,10 @@
 1. `vp run native:fetch` 按现有 lock 恢复 `upstream/`；没有 lock 时按 main 当前版本钉定。
 2. `vp run native:fetch:latest` 把钉定移到 main 当前版本；`vp run native:fetch -- --version <x.y.z>` 钉定指定版本，加 `--commit <sha>` 钉定指定提交。
 3. `vp run native:generate` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
-4. 需要时更新根 README 的「常用命令」：对照 `pstack/skills/` 新增、改名或退役的用户入口，只有常用入口变化才改。它不是全量清单，不要求每次 bump 都动。
-5. `upstream.lock.json`、`pstack/` 与 `gaps.json` 同波提交；`upstream/` 不入库。
+4. 对照本次上游差异与生成后的 `pstack/`，复核根 README 及其他依赖该基线的本仓文档，按各自职责与统计口径更新受影响的内容，并同步各本地化版本。兼容表与 pstack 徽标记录已发布事实，由发版流程维护，见 [项目架构](../docs/architecture.md)。
+5. `upstream.lock.json`、`pstack/`、`gaps.json` 与需同步的本仓文档同波提交；`upstream/` 不入库。
 
-完成标准：`vp run native:generate:check` 绿，提交只含本节的产物。
+完成标准：`vp run native:generate:check` 绿，文档中对当前基线的描述与实际产物一致，改动限于升级及其必要同步。
 
 ## 如何维护 dsh.md
 

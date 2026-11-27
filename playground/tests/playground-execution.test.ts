@@ -45,6 +45,7 @@ import { activeSubagentCount } from "../runner/execution/run.ts";
 import {
   acquireBatchLock,
   batchRecordProblems,
+  listSnapshotRecords,
   writeReviewSnapshot,
   type BatchMetadata,
 } from "../runner/evidence/review-snapshot.ts";
@@ -241,6 +242,77 @@ describe("execution contracts", () => {
       }).not.toThrow();
     } finally {
       release();
+      setRuntimeSettings(defaultRuntimeSettings);
+    }
+  });
+
+  it("keeps the incremental manifest aligned with retained snapshot records after a worker reset", () => {
+    const reviews = join(temporary, "incremental-reviews");
+    const workers = join(temporary, "incremental-workers");
+    setRuntimeSettings({ ...defaultRuntimeSettings, workersDir: workers });
+    const paths = workerPaths(0, "base", "native");
+    const source = (scenarioId: string, batchId: string): RunRecord => {
+      const entry = { ...record("native", "base"), scenarioId, batchId };
+      const stamp = entry.capturedAt.replace(/[:.]/g, "-");
+      const file = join(paths.evidenceDir, recordFileName(scenarioId, "native", "base", stamp));
+      mkdirSync(paths.evidenceDir, { recursive: true });
+      writeFileSync(`${file}.png`, "png");
+      writeFileSync(
+        file.replace(/\.json$/, ".source.json"),
+        JSON.stringify({ screenshotFile: `${file}.png` }),
+      );
+      return entry;
+    };
+    const batch: BatchMetadata = {
+      batchId: "full",
+      variant: "native",
+      environment: "base",
+      mode: "full",
+      scope: ["a", "b"],
+      startedAt: "2026-11-24T00:00:00.000Z",
+    };
+    try {
+      writeReviewSnapshot(
+        "native",
+        "base",
+        batch,
+        [source("a", "full"), source("b", "full")],
+        reviews,
+      );
+      rmSync(paths.root, { recursive: true, force: true });
+      const incremental: BatchMetadata = {
+        ...batch,
+        batchId: "incremental",
+        mode: "incremental",
+        scope: ["a"],
+      };
+      const updated = source("a", "incremental");
+      const manifest = writeReviewSnapshot("native", "base", incremental, [updated], reviews);
+      const saved = listSnapshotRecords("native", "base", reviews);
+      expect(manifest.scenarioIds).toEqual(saved.map(({ scenarioId }) => scenarioId));
+      expect(manifest.scenarioIds).toEqual(["a", "b"]);
+      expect(manifest.scenarios.find(({ id }) => id === "b")?.batchId).toBe("full");
+
+      const differentRuntime = {
+        ...updated,
+        environment: { ...updated.environment, dshVersion: "new-dsh" },
+      };
+      expect(() =>
+        writeReviewSnapshot("native", "base", incremental, [differentRuntime], reviews),
+      ).toThrow("snapshot mixes DSH/pstack versions");
+
+      const full = writeReviewSnapshot(
+        "native",
+        "base",
+        { ...incremental, mode: "full" },
+        [updated],
+        reviews,
+      );
+      expect(full.scenarioIds).toEqual(["a"]);
+      expect(
+        listSnapshotRecords("native", "base", reviews).map(({ scenarioId }) => scenarioId),
+      ).toEqual(["a"]);
+    } finally {
       setRuntimeSettings(defaultRuntimeSettings);
     }
   });
@@ -626,11 +698,8 @@ function tempWorkerPaths(index: number): WorkerPaths {
 }
 
 const isolationPlan: ProviderPlan = {
-  routes: [],
   providers: {},
-  apiKeyEnv: "TEST_PROVIDER_KEY",
-  apiKey: "test-key-value",
-  main: { provider: "provider-a", model: "model-a", effort: "low", name: "model-a" },
+  main: { provider: "provider-a", model: "model-a", effort: "low" },
 };
 
 function writeFakeNativeTree(root: string): void {

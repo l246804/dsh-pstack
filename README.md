@@ -20,7 +20,7 @@
 
   <table>
     <tr>
-      <td align="center"><strong>58</strong><br /><sub>pstack skills</sub></td>
+      <td align="center"><strong>59</strong><br /><sub>pstack skills</sub></td>
       <td align="center"><strong>22</strong><br /><sub>playbooks</sub></td>
       <td align="center"><strong>4</strong><br /><sub>plugin tools</sub></td>
       <td align="center"><strong>3</strong><br /><sub>agent presets</sub></td>

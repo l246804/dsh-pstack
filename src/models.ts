@@ -172,7 +172,7 @@ export function createPstackModelsTool(llm: LlmRuntime): ToolDefinition {
       if (provider !== undefined && typeof provider !== "string") {
         throw new Error("provider must be a string when present");
       }
-      return collectCatalogue(llm, provider as string | undefined, exec.signal);
+      return collectCatalogue(llm, provider, exec.signal);
     },
   };
 }

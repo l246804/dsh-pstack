@@ -111,6 +111,6 @@ export function parseCatalogueResult(value: unknown): CatalogueResult {
       };
     }),
     truncated: record["truncated"],
-    ...(typeof providerFilter === "string" ? { providerFilter } : {}),
+    ...(providerFilter === undefined ? {} : { providerFilter }),
   };
 }

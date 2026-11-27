@@ -9,7 +9,7 @@ Use only tools visible in the current session, even when a name appears here. Wh
 | Cursor | DeepSeek Harness |
 | --- | --- |
 | `Task` | `subagent` starts a fresh child and returns its name at once; `subagent_fork` seeds the child with the conversation instead. Put the task in `prompt` and the label in `description`; a child starts in the caller's workspace directory, and Subagent fields covers the Cursor fields with no native argument. |
-| `AskQuestion` | `ask_user_question` takes a `questions` array of options and free input. An empty `selected` with no `custom` means the user skipped, and a timeout is `pending`, not skipped. A live child cannot ask, so it keeps the question in its result; ask in plain text when the tool is absent. |
+| `AskQuestion` | `ask_user_question` asks the user; a live child keeps questions in its result for the parent to ask. Use plain text when the tool is absent. |
 | Open a todolist | `todo_write` replaces the whole list and has no `skipped` status. Keep a skipped step visible as `skip: <reason> - <step>` and mark it `completed`. |
 | Run another pstack skill (`/name` or "the **name** skill") | `skill` loads a catalog skill by exact name. A skill with `disable-model-invocation: true` is hidden from `skill`, so `read` `<pstack>/skills/<name>/SKILL.md`; a user `/name` gesture injects the skill directly, so do not call `skill` again. |
 | `Grep`, `Glob` | `grep` and `glob` are native tools; call them directly, with ripgrep syntax for `grep`. Use `bash` with `rg` only when the session has neither. |
@@ -44,16 +44,16 @@ Use only tools visible in the current session, even when a name appears here. Wh
 `setup-pstack` writes the role file the calling agent uses to choose a route. Use `list_subagent_models` to discover the live `provider`, `model`, and `effort` routes; do not infer them from Cursor slugs.
 
 - Detect: write each real route found by `list_subagent_models` as a structured `{ kind: "route", provider, model, effort? }` object. If none is detectable, ask the user to paste the routes; never write an unconfirmed one.
-- Defaults: map each found route; use `inherit-parent` or `auto` for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
-- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object of route-object arrays. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
+- Defaults: map each found route; use `{ kind: "inherit", alias: "inherit-parent" }` (or alias `"auto"`) for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
+- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object whose arrays contain route or inherit objects. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
 
-Done when the file parses as version 2, every role maps to a route or to `inherit-parent`/`auto`, and a rerun produces the same file.
+Done when the file parses as version 2, every configured role has route or inherit objects, and a rerun produces the same file.
 
 ## Paths
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `.cursor/skills/`, `~/.cursor/skills/` | Project skills live in `.dsh/skills/` or `.agents/skills/`; user skills live in `$DSH_HOME/skills/` or `$DSH_AGENTS_HOME/skills/`, which defaults to `~/.agents`. |
+| `.cursor/skills/`, `~/.cursor/skills/` | Project skills live in `.dsh/skills/` or `.agents/skills/`; user skills live in `$DSH_HOME/skills/` or `$DSH_AGENTS_HOME/skills/`. |
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | A profile is `$DSH_HOME/profiles/<name>/`, holding `cordis.patch.yml`; a plugin manifest is the `dsh` section of its `package.json`. |
 | `.cursor/rules/*.mdc`, always-applied rules | General rules use the `AGENTS.md` chain; DeepSeek Harness never reads `.mdc`. Project `AGENTS.md`/`AGENTS.local.md` (`CLAUDE.md` accepted) plus `$DSH_HOME/AGENTS.md`. |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | `<pstack>/<path>` when the file exists. Read the local copy and never fetch it; give the user the URL when needed. |

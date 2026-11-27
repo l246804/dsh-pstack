@@ -56,7 +56,7 @@ Create or update exactly the approved paths, editing existing files in place. Ke
 - Before starting any repository task, read `docs/decisions/AGENTS.md` and follow its search rules to read the records relevant to the task.
 ```
 
-This block contains only document pointers. Include each pointer only for a document retained in the approved plan. Translate the pointer text into the root document's language and adapt its target to the actual path. Replace an existing `## Project docs` block with these pointers; preserve the rest of root `AGENTS.md`. Leave decision status meanings and record-selection rules in the decision directory's `AGENTS.md`.
+This block contains only document pointers. Add or update the approved pointers in place, using the root document's language and actual paths. Preserve existing valid pointers outside the approved changes, including project-specific documents. Remove a pointer only when its removal was approved. Leave decision status meanings and record-selection rules in the decision directory's `AGENTS.md`.
 
 ## 5. Verify and report
 

@@ -4,12 +4,6 @@ name: Upstream watch
 # this repository, and opens one issue per drifted source. It stays quiet while
 # that issue is open, so a source that keeps moving does not file a new issue
 # every day.
-#
-# The body uses a fixed shape rather than the issue forms under
-# .github/ISSUE_TEMPLATE/. Those forms are a web-UI contract for people filing
-# changes; an automated notice that mirrored them would drift every time a field
-# or label moved. Keeping this body independent means template edits cannot
-# break the automation.
 
 on:
   schedule:
@@ -28,6 +22,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Compare upstream pins
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/upstream-watch.sh | tee /tmp/stale
@@ -54,22 +49,24 @@ jobs:
             fi
 
             {
-              echo "### 现状"
+              echo "### Problem（问题）"
               echo
               echo "\`$name\` 的固定版本已经落后于上游。"
+              echo
+              echo "### Evidence and context（证据与环境）"
               echo
               echo "- 本仓固定：\`$pinned\`"
               echo "- 上游当前：\`$latest\`"
               echo "- 来源：$url"
               echo
-              echo "### 需要决定"
+              echo "### Impact（影响）"
               echo
-              echo "先看上游改了什么，再判断这次改动是否需要重新适配；无论是否需要，固定版本都要重新对齐。本 issue 只记录上游已经前进这个事实，不预设处理方式。"
+              echo "当前适配是否受影响尚未评估，需要先确认上游差异，再决定是否升级。"
               echo
-              echo "### 不在范围内"
+              echo "### What this does not cover（不在范围内）"
               echo
               echo "不判断改动的影响面，也不给出处理步骤。"
             } > /tmp/issue-body.md
 
-            gh issue create --title "$title" --body-file /tmp/issue-body.md
+            gh issue create --title "$title" --label enhancement --body-file /tmp/issue-body.md
           done < /tmp/stale

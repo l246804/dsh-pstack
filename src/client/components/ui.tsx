@@ -3,13 +3,13 @@
 import type { ButtonHTMLAttributes, ReactElement, ReactNode } from "react";
 import {
   Button as PrimitiveButton,
-  SegmentedTabs as PrimitiveSegmentedTabs,
   StateDot,
   Switch as PrimitiveSwitch,
   Tag,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 
 export { PrimitiveButton as Button, PrimitiveSwitch as Switch };
+export { SegmentedTabs } from "@deepseek-ai/dsh-client-ui-primitives";
 
 export interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   readonly label: string;
@@ -72,31 +72,6 @@ export function Status(props: {
 
 export function Spinner({ size = 14 }: { readonly size?: number }): ReactElement {
   return <StateDot state="ongoing" size={size} />;
-}
-
-export interface SegmentItem<T extends string> {
-  readonly value: T;
-  readonly label: string;
-  readonly id: string;
-  readonly panelId: string;
-}
-
-export interface SegmentedTabsProps<T extends string> {
-  readonly items: readonly [SegmentItem<T>, ...SegmentItem<T>[]];
-  readonly value: T;
-  readonly onChange: (value: T) => void;
-  readonly label: string;
-}
-
-export function SegmentedTabs<T extends string>(props: SegmentedTabsProps<T>): ReactElement {
-  return (
-    <PrimitiveSegmentedTabs
-      items={props.items}
-      value={props.value}
-      onChange={props.onChange}
-      label={props.label}
-    />
-  ) as ReactElement;
 }
 
 export function cx(...values: readonly (string | undefined | false)[]): string {

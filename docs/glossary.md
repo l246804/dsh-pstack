@@ -10,10 +10,10 @@ pstack 工作流中的委派职责，由 `src/roles/role-manifest.ts` 的精确 
 
 一次子代理调用的模型选择，表示为以下两类之一：
 
-- `route`：结构化对象 `{ "kind": "route", "provider", "model", "effort"? }`，`provider` 和 `model` 都可含 `/`，`effort` 取该模型公布的档位；委派时把 `provider`、`model`、`effort` 分别传给 `pstack_subagent`，不要拼成 `provider/model` 字符串。
+- `route`：结构化对象 `{ "kind": "route", "provider", "model", "effort"? }`，`provider` 和 `model` 都可含 `/`，`effort` 取该模型公布的档位；委派时分别传给 `pstack_subagent` 的 `provider`、`model`、`reasoning_effort`，不要拼成 `provider/model` 字符串。
 - `inherit`：不向子代理传递模型覆盖，沿用父级路由；文件中的别名为 `inherit-parent` 或 `auto`。
 
-角色文件中的 `routes: []` 是保存协议中的**删除该角色行**操作，不是一个继承路由。删除后角色处于未配置状态，委派时同样继承父级。
+保存请求中的 `routes: []` 表示**删除该角色行**，不是一个继承路由。删除后角色处于未配置状态，委派时同样继承父级。
 
 ## Role shape
 
@@ -24,7 +24,7 @@ Role 的路由基数由 `shape` 描述：
 
 ## Budget（推理预算）
 
-`budget` 是角色文件中的全局推理目标，存为 JSON 的 `budget` 字段，值形如 `<tier> (<target>)`，如 `large (xhigh)`。三档为 `large`、`medium`、`small`，分别以 `xhigh`、`high`、`medium` 为目标 effort，没有档位高于 `xhigh`；旧文件里的 `unlimited` 读取时迁移为 `large`。它是一次批量应用操作的记录，不直接参与委派；真正生效的是每个角色的具体模型和路由 effort。应用预算时按模型实际公布的 efforts 做精确匹配、向下回退或标记需要手动选择；自定义 efforts 或没有 effort 的模型保持原值并提示。
+角色文件中一次批量应用推理目标的记录，不直接参与委派；真正生效的是各角色的具体路由。档位和 effort 映射以 `src/roles/budget.ts` 为准。应用时按模型实际公布的 efforts 匹配、向下回退或提示手动选择；自定义 efforts 或没有 effort 的模型保持原值。旧 `unlimited` 值兼容规范化为 `large`，落盘迁移见[角色文件模块](./architecture.md#模块与入口)。
 
 ## Agent preset（Agent 预设）
 
@@ -62,11 +62,11 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 ## Pstack home（pstack 目录）
 
-`$DSH_HOME/pstack/`，保存 pstack 的用户级配置和运行时数据：`models.json`、`settings.json` 和 `repair.json`。`src/index.ts` 的 `PstackHomeService` 在服务初始化时调用 `src/compat/migrate-pstack-home.ts` 一次，把根目录旧的 `pstack-models.json`、`pstack-models.mdc` 和 `pstack-settings.json` 迁入该目录；旧 `pstack-repair.json` 不迁移。运行时读取只读当前文件，不触发迁移。
+`$DSH_HOME/pstack/`，保存 pstack 的用户级配置和运行时数据。路径定义以 `src/pstack/home.ts` 为准；启动迁移与读取边界见[架构](./architecture.md#系统边界)。
 
 ## Repair queue（修复队列）
 
-`$DSH_HOME/pstack/repair.json` 保存等待下次启动处理的 Session id。用户在配置弹窗的修复页确认后追加写入；DSH 启动时读取、逐个修复并删除该文件。它是一次性迁移队列，不是 Session 日志，也不是 storageDomain sidecar。旧的根目录 `$DSH_HOME/pstack-repair.json` 不参与启动迁移，保持原样。
+保存等待下次启动修复的 Session id 的一次性队列，不是 Session 日志或 storageDomain sidecar。写入与消费流程见[架构中的维护修复模块](./architecture.md#模块与入口)。
 
 ## Model variance（模型偶发）
 

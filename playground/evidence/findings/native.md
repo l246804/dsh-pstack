@@ -8,7 +8,7 @@ native `base` 的四个场景均为 `gap`；`render` 只运行 `inline-video-pla
 
 ## 范围与判据
 
-- 快照：[base](../runs/native-base/) 覆盖 4 个场景；[render](../runs/native-render/) 只覆盖 `inline-video-playback`，加载可选渲染插件 `dsh-genui`。两份 `inline-video-playback` record 的 `scenarioHash` 仍是旧值，发布前需按当前场景定义重跑并更新快照。
+- 快照：[base](../runs/native-base/) 覆盖 4 个场景；[render](../runs/native-render/) 只覆盖 `inline-video-playback`，加载可选渲染插件 `dsh-genui`。两份 `inline-video-playback` record 的 `scenarioHash` 仍是旧值，结论对应当时场景；验证当前定义时需要重跑，不构成发布门禁。
 - 版本：两个环境均为 DSH `0.2.2-rc.4`、pstack `0.15.43`、上游 revision `2f87c854fe3e2fcda44ca86b46ede35aad3c46b7`。
 - 运行身份：全部记录使用 `magpie / workbuddy/minimax-m3.1-flash / low`，preset 为 `standard`。
 - 判定：机械断言是下限；语义结论来自 rubric、截图和本地 session。记录初始为 `verdict=unobserved`、`semanticReview=pending`，本分析写入 `review.json` 后由 `playground:review --apply` 回写。

@@ -66,7 +66,6 @@ export interface DelegationArgs {
 export interface DelegationPlan {
   readonly backend: string;
   readonly label: string;
-  readonly agent: AgentKind;
   readonly prompt: string;
   readonly name?: string;
   readonly agentOptions?: AgentOptions;
@@ -104,7 +103,7 @@ export function normalizeConfig(value: unknown): PstackSubagentConfig {
   }
   return {
     provider: provider.trim(),
-    ...(maxDepth === undefined ? {} : { maxDepth: maxDepth as number }),
+    ...(maxDepth === undefined ? {} : { maxDepth }),
   };
 }
 
@@ -188,7 +187,6 @@ export function planDelegation(
   return {
     backend: config.provider,
     label: args.description,
-    agent: args.agent,
     prompt,
     ...(agentOptions === undefined ? {} : { agentOptions }),
     ...(agentPreset === undefined ? {} : { agentPreset }),
@@ -293,7 +291,7 @@ export function createPstackSubagentTool(
         reasoning_effort: {
           type: ["string", "null"],
           description:
-            "Optional advertised reasoning-effort token; requires `provider` and `model`; omit to keep the route's default effort.",
+            "Optional advertised reasoning-effort token; requires `provider` and `model`. Omit it to use the target model's default when changing routes, or inherit the parent's current effort when keeping the same route.",
         },
         maxDepth: {
           type: ["integer", "null"],

@@ -20,6 +20,24 @@ export interface ProviderModel {
   reasoningEfforts?: Record<string, string | null>;
 }
 
+/**
+ * One entry of the DSH `dsh-llm-deepseek` model catalog. Mirrors the upstream
+ * shape: modality list is `inputModalities`, and reasoning tiers live on the
+ * provider, not on each model.
+ */
+export interface DeepSeekModel {
+  id: string;
+  name?: string;
+  description?: string;
+  contextWindow?: number;
+  maxTokens?: number;
+  inputModalities?: Array<"text" | "image">;
+  imagePixelBudget?: number | "low";
+  imageTargetBytes?: number;
+  systemPromptUpdate?: "in-history";
+  toolUpdate?: "in-history" | "addition-only";
+}
+
 export type ProviderConfig =
   | {
       kind: "pi-ai";
@@ -34,11 +52,13 @@ export type ProviderConfig =
       kind: "deepseek-api-key";
       apiKey: string;
       apiKeyEnv: string;
-      models: ProviderModel[];
+      models?: DeepSeekModel[];
+      reasoning?: string;
     }
   | {
       kind: "deepseek-account";
       modelOverrides?: Record<string, unknown>;
+      reasoning?: string;
     };
 
 export interface BrowserConfig {
@@ -91,11 +111,6 @@ export interface PlaygroundConfig {
   copyCredentials?: boolean;
   credentialsFile?: string;
 }
-
-export type AllowedRoute = TestTarget & {
-  efforts: string[];
-  apiKey: string;
-};
 
 export type Assertion =
   | { kind: "turn-completed" }

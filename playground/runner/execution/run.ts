@@ -12,10 +12,8 @@ import { dirname, join, resolve } from "node:path";
 import type {
   BehaviorScenario,
   BrowserConfig,
-  PlaygroundConfig,
   RunRecord,
   SessionFacts,
-  TestTarget,
   Variant,
 } from "../types.ts";
 import {
@@ -455,7 +453,6 @@ interface AttemptInput {
   paths: WorkerPaths;
   scenario: BehaviorScenario;
   url: string;
-  expectedTarget: TestTarget;
   screenshotFile: string;
   expectedPreset: string;
   browser?: BrowserConfig;
@@ -655,7 +652,6 @@ export function blockedRecord(input: {
   scenarioId: string;
   variant: Variant;
   paths: WorkerPaths;
-  config: PlaygroundConfig;
   recordFile: string;
   screenshotFile: string;
   sessionFile?: string;

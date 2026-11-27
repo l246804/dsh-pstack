@@ -39,7 +39,6 @@ const catalogue: CatalogueResult = {
 function role(overrides: Partial<BudgetRoleInput>): BudgetRoleInput {
   return {
     key: "bug-fix",
-    shape: "single",
     configured: true,
     routes: [{ kind: "route", provider: "p", model: "full", effort: "low" }],
     ...overrides,
@@ -132,7 +131,6 @@ describe("budget planning", () => {
       [
         role({
           key: "mixed",
-          shape: "list",
           routes: [
             { kind: "route", provider: "p", model: "flat" },
             { kind: "route", provider: "ghost", model: "model" },

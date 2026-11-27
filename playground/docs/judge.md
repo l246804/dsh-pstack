@@ -41,7 +41,7 @@
 
 ## Review
 
-每个场景写 `review.json`，由 `playground:review` 解析。之后执行：
+在当前 variant/environment 的快照根目录写一份 `review.json`，以 scenario id 为键填写每个场景的结论，由 `playground:review` 解析。之后执行：
 
 ```sh
 vp run playground:review -- --variant <variant> --environment <environment> --apply

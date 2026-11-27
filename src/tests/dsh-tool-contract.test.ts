@@ -1,10 +1,10 @@
 /**
- * Guards the facts this repository mirrors from the DSH tools it wraps.
+ * Guards selected facts this repository mirrors from the installed DSH tools.
  *
  * The wrapped tools are reimplemented rather than imported. Their packages
  * export a plugin `apply` and a config schema, not a tool factory, so the type
- * checker cannot see a renamed parameter or a changed default. This test reads
- * the installed packages instead, and fails when a mirrored fact moves.
+ * checker cannot see every model-facing change. These checks cover the facts
+ * asserted below; the remaining upgrade review is manual.
  *
  * The ledgers below are the data half of `src/docs/dsh-tool-adapters.md`. Read
  * that file for what may differ and why; this file holds the current rows.
@@ -17,7 +17,12 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { ToolArgsError } from "@deepseek-ai/dsh-tools";
 
-import { normalizeConfig, parseControlArgs, parseDelegationArgs } from "../subagent.ts";
+import {
+  AGENT_KINDS,
+  normalizeConfig,
+  parseControlArgs,
+  parseDelegationArgs,
+} from "../subagent.ts";
 const DELEGATION = "@deepseek-ai/dsh-tool-subagent";
 const CONTROL = "@deepseek-ai/dsh-tool-subagent-control";
 
@@ -67,9 +72,51 @@ interface Divergence {
 
 const DIVERGENCES: readonly Divergence[] = [
   {
+    topic: "model route authorization",
+    native: "explicit model selection follows the Host subagent-model-selection policy",
+    ours: "provider/model/effort are preflighted and passed directly to the activation",
+    reason:
+      "Role-based workflows need cross-route delegation without a separate global Host setting; see the plugin-owned-delegation-authority decision.",
+    check: () => {
+      // planDelegation and startChild route forwarding are covered in subagent.test.ts.
+      // Whether the Host still leaves authorization to the tool is an upgrade review.
+      expect(
+        parseDelegationArgs({
+          description: "review",
+          prompt: "Review this change",
+          provider: "other-provider",
+          model: "other-model",
+          reasoning_effort: "high",
+        }),
+      ).toMatchObject({
+        provider: "other-provider",
+        model: "other-model",
+        reasoningEffort: "high",
+      });
+    },
+  },
+  {
+    topic: "agent preset selection",
+    native: "agent_preset is exposed only when deployment config supplies a preset allowlist",
+    ours: "the fixed pstack presets are always selectable; general inherits the parent preset",
+    reason:
+      "The bundle owns these child compositions, including the poteto delegate brief and read-only sandbox.",
+    check: () => {
+      for (const preset of AGENT_KINDS) {
+        expect(
+          parseDelegationArgs({ description: "review", prompt: "Review", agent_preset: preset })
+            .agent,
+        ).toBe(preset);
+      }
+      expect(() =>
+        parseDelegationArgs({ description: "review", prompt: "Review", agent_preset: "custom" }),
+      ).toThrow(ToolArgsError);
+    },
+  },
+  {
     topic: "maxDepth",
     native: "accepts a number or 'provider-managed', and omission reads the Host depth setting",
-    ours: "accepts a positive integer or null, and 'provider-managed' is rejected",
+    ours: "accepts a positive integer or null, with a per-call cap bounded by the row and Host limit; 'provider-managed' is rejected",
     reason:
       "pstack rows configure a numeric cap. 'provider-managed' exists for out-of-process providers that own their recursion budget, which this bundle does not target.",
     check: () => {
@@ -95,7 +142,7 @@ describe("mirrored DSH tool facts", () => {
     }
   });
 
-  it("keeps agent preset selection behind a deployment allowlist", () => {
+  it("keeps the native agent preset allowlist declaration", () => {
     const preset = packageFile(DELEGATION, "lib/types/preset-selection.d.ts");
     expect(preset).toContain("allowedAgentPresets?: string[] | undefined");
   });
@@ -106,7 +153,7 @@ describe("mirrored DSH tool facts", () => {
     expect(packageFile(DELEGATION, "src/index.ts")).not.toContain("cwd");
   });
 
-  it("keeps interrupt_agent registered and composed off by default", () => {
+  it("keeps the native interrupt registration and its plugin default", () => {
     expect(packageFile(CONTROL, "lib/types/index.d.ts")).toContain("Defaults to true");
     expect(packageFile(CONTROL, "src/index.ts")).toContain("interrupt_agent");
   });
@@ -121,10 +168,8 @@ describe("declared tool divergences", () => {
     }
   });
 
-  it("holds each declared difference", () => {
-    for (const divergence of DIVERGENCES) {
-      expect(divergence.check, divergence.topic).not.toThrow();
-    }
+  it.each(DIVERGENCES)("holds the $topic difference", ({ check }) => {
+    check();
   });
 
   it("passes the caller's task text through unedited", () => {

@@ -22,8 +22,8 @@ export interface PotetoModeView {
 
 const stateSchema = z
   .object({ enabled: z.boolean().optional() })
-  .strict() as z.ZodType<PotetoProjectionState>;
-const viewSchema = z.object({ enabled: z.boolean() }).strict() as z.ZodType<PotetoModeView>;
+  .strict() satisfies z.ZodType<PotetoProjectionState>;
+const viewSchema = z.object({ enabled: z.boolean() }).strict() satisfies z.ZodType<PotetoModeView>;
 
 /** Reuse the wire value so an unchanged selection publishes nothing. */
 const ENABLED_VIEW: PotetoModeView = { enabled: true };

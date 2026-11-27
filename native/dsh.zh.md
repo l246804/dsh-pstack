@@ -9,7 +9,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 | Cursor | DeepSeek Harness |
 | --- | --- |
 | `Task` | `subagent` 启动一个全新子代理并立即返回它的名称；`subagent_fork` 改为让子代理继承当前对话。把任务写进 `prompt`，把标签写进 `description`；子代理在调用方的工作目录启动，没有原生参数的 Cursor 字段见“子代理字段”。 |
-| `AskQuestion` | `ask_user_question` 接收一组 `questions`，每项含选项和自由输入。`selected` 为空且没有 `custom` 表示用户跳过，超时是 `pending`，不是跳过。子代理不能提问，所以它把问题留在结果里；工具不存在时用纯文本提问。 |
+| `AskQuestion` | `ask_user_question` 向用户提问；子代理把问题留在结果里，由父代理询问。工具不存在时用纯文本提问。 |
 | Open a todolist | `todo_write` 替换整个列表，且没有 `skipped` 状态。把跳过的步骤保留为 `skip: <reason> - <step>` 并把状态标为 `completed`。 |
 | Run another pstack skill (`/name` or "the **name** skill") | `skill` 按精确名称加载目录中的技能。带 `disable-model-invocation: true` 的技能对 `skill` 隐藏，所以用 `read` 读取 `<pstack>/skills/<name>/SKILL.md`；用户 `/name` 手势会直接注入技能，不要再调用 `skill`。 |
 | `Grep`, `Glob` | `grep` 和 `glob` 是原生工具，直接调用，`grep` 使用 ripgrep 语法。只有会话两者都没有时，才用 `bash` 运行 `rg`。 |
@@ -44,16 +44,16 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 `setup-pstack` 写调用方用来选择路由的角色文件。先用 `list_subagent_models` 发现当前可用的 `provider`、`model` 和 `effort` 路由，不要根据 Cursor slug 猜测。
 
 - Detect：把 `list_subagent_models` 找到的每条真实路由写成结构化对象 `{ kind: "route", provider, model, effort? }`；都检测不到时请用户粘贴路由，绝不写入未确认的路由。
-- Defaults：映射找到的路由；不可用路由用 `inherit-parent` 或 `auto`。把选定预算映射到最接近的可用 effort，并说明选择。
-- Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和由 route 对象数组组成的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
+- Defaults：映射找到的路由；不可用路由用 `{ kind: "inherit", alias: "inherit-parent" }`（或 alias `"auto"`）。把选定预算映射到最接近的可用 effort，并说明选择。
+- Write：写 `$DSH_HOME/pstack/models.json`，包含 `version: 2`、可选的 `budget` 和各角色数组包含 route 或 inherit 对象的 `roles`。覆盖整个文件，保证重跑幂等；缺失角色继承父路由。
 
-完成标准：文件能按 version 2 解析，每个角色都映射到 route 或 `inherit-parent`/`auto`，重跑产生相同文件。
+完成标准：文件能按 version 2 解析，每个已配置角色都使用 route 或 inherit 对象，重跑产生相同文件。
 
 ## 路径
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `.cursor/skills/`, `~/.cursor/skills/` | 项目技能放在 `.dsh/skills/` 或 `.agents/skills/`；用户技能放在 `$DSH_HOME/skills/` 或 `$DSH_AGENTS_HOME/skills/`，后者默认 `~/.agents`。 |
+| `.cursor/skills/`, `~/.cursor/skills/` | 项目技能放在 `.dsh/skills/` 或 `.agents/skills/`；用户技能放在 `$DSH_HOME/skills/` 或 `$DSH_AGENTS_HOME/skills/`。 |
 | `~/.cursor/plugins/`, `.cursor-plugin/plugin.json` | profile 是 `$DSH_HOME/profiles/<name>/`，包含 `cordis.patch.yml`；插件 manifest 是 `package.json` 的 `dsh` 段。 |
 | `.cursor/rules/*.mdc`, always-applied rules | 通用规则使用 `AGENTS.md` 链；DeepSeek Harness 从不读取 `.mdc`。项目 `AGENTS.md`/`AGENTS.local.md`（接受 `CLAUDE.md`）加 `$DSH_HOME/AGENTS.md`。 |
 | `https://github.com/cursor/plugins/blob/main/pstack/<path>` | 文件存在时用 `<pstack>/<path>`。读本地副本，不要抓取；需要时把 URL 给用户。 |

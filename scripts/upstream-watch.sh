@@ -65,10 +65,12 @@ while IFS= read -r entry; do
     fi
     while IFS= read -r dir; do
       [ -n "$dir" ] || continue
-      case "$dir" in
-        "$subpath"/*) ;;
-        *) continue ;;
-      esac
+      if [ -n "$subpath" ]; then
+        case "$dir" in
+          "$subpath"/*) ;;
+          *) continue ;;
+        esac
+      fi
       at_pin="$(gh api "repos/$owner/$repo/commits?path=$dir&sha=$pin&per_page=1" --jq '.[0].sha // empty')"
       now="$(gh api "repos/$owner/$repo/commits?path=$dir&per_page=1" --jq '.[0].sha // empty')"
       if [ -n "$at_pin" ] && [ -n "$now" ] && [ "$at_pin" != "$now" ]; then

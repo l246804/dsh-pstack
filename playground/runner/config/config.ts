@@ -5,9 +5,10 @@ import { pathToFileURL } from "node:url";
 import { load as yamlLoad } from "js-yaml";
 
 import { setRuntimeSettings } from "./runtime.ts";
-import { loadProviderPlan } from "./provider.ts";
+import { DEEPSEEK_REASONING_EFFORTS, loadProviderPlan } from "./provider.ts";
 import type {
   BrowserConfig,
+  DeepSeekModel,
   PlaygroundConfig,
   ProviderConfig,
   ProviderModel,
@@ -105,6 +106,85 @@ function model(value: unknown, label: string): ProviderModel {
   };
 }
 
+function deepSeekModel(value: unknown, label: string): DeepSeekModel {
+  const parsed = object(value, label);
+  const inputModalities = parsed.inputModalities;
+  if (
+    inputModalities !== undefined &&
+    (!Array.isArray(inputModalities) ||
+      inputModalities.length === 0 ||
+      inputModalities.some((entry) => entry !== "text" && entry !== "image"))
+  ) {
+    throw new Error(`${label}.inputModalities must be a non-empty array of text/image`);
+  }
+  if (Array.isArray(inputModalities) && new Set(inputModalities).size !== inputModalities.length) {
+    throw new Error(`${label}.inputModalities must not repeat a modality`);
+  }
+  // DSH treats a missing list as text-only, so image limits require a declared image modality.
+  const hasImage = Array.isArray(inputModalities) && inputModalities.includes("image");
+  if (
+    !hasImage &&
+    (parsed.imagePixelBudget !== undefined || parsed.imageTargetBytes !== undefined)
+  ) {
+    throw new Error(`${label} is text-only, so it cannot declare image request limits`);
+  }
+  const imagePixelBudget = parsed.imagePixelBudget;
+  if (
+    imagePixelBudget !== undefined &&
+    imagePixelBudget !== "low" &&
+    (typeof imagePixelBudget !== "number" ||
+      !Number.isSafeInteger(imagePixelBudget) ||
+      imagePixelBudget <= 0)
+  ) {
+    throw new Error(`${label}.imagePixelBudget must be "low" or a positive integer`);
+  }
+  const systemPromptUpdate = parsed.systemPromptUpdate;
+  if (systemPromptUpdate !== undefined && systemPromptUpdate !== "in-history") {
+    throw new Error(`${label}.systemPromptUpdate must be "in-history"`);
+  }
+  const toolUpdate = parsed.toolUpdate;
+  if (toolUpdate !== undefined && toolUpdate !== "in-history" && toolUpdate !== "addition-only") {
+    throw new Error(`${label}.toolUpdate must be "in-history" or "addition-only"`);
+  }
+  const contextWindow = number(parsed.contextWindow, `${label}.contextWindow`);
+  const maxTokens = number(parsed.maxTokens, `${label}.maxTokens`);
+  const imageTargetBytes = number(parsed.imageTargetBytes, `${label}.imageTargetBytes`);
+  if (
+    imageTargetBytes !== undefined &&
+    (!Number.isSafeInteger(imageTargetBytes) || imageTargetBytes <= 0)
+  ) {
+    throw new Error(`${label}.imageTargetBytes must be a positive integer`);
+  }
+  return {
+    id: string(parsed.id, `${label}.id`),
+    ...(parsed.name === undefined ? {} : { name: string(parsed.name, `${label}.name`) }),
+    ...(parsed.description === undefined
+      ? {}
+      : { description: string(parsed.description, `${label}.description`) }),
+    ...(contextWindow === undefined ? {} : { contextWindow }),
+    ...(maxTokens === undefined ? {} : { maxTokens }),
+    ...(inputModalities === undefined ? {} : { inputModalities: [...inputModalities] }),
+    ...(imagePixelBudget === undefined
+      ? {}
+      : { imagePixelBudget: imagePixelBudget as number | "low" }),
+    ...(imageTargetBytes === undefined ? {} : { imageTargetBytes }),
+    ...(systemPromptUpdate === undefined
+      ? {}
+      : { systemPromptUpdate: systemPromptUpdate as "in-history" }),
+    ...(toolUpdate === undefined
+      ? {}
+      : { toolUpdate: toolUpdate as "in-history" | "addition-only" }),
+  };
+}
+
+function deepSeekReasoning(value: unknown, label: string): string {
+  const effort = string(value, label);
+  if (!(DEEPSEEK_REASONING_EFFORTS as readonly string[]).includes(effort)) {
+    throw new Error(`${label} must be one of ${DEEPSEEK_REASONING_EFFORTS.join(", ")}`);
+  }
+  return effort;
+}
+
 function provider(value: unknown, label: string, credentialsFile: string): ProviderConfig {
   const parsed = object(value, label);
   const kind = string(parsed.kind, `${label}.kind`);
@@ -127,14 +207,22 @@ function provider(value: unknown, label: string, credentialsFile: string): Provi
     };
   }
   if (kind === "deepseek-api-key") {
-    if (!Array.isArray(parsed.models) || parsed.models.length === 0) {
+    const models = parsed.models;
+    if (models !== undefined && (!Array.isArray(models) || models.length === 0)) {
       throw new Error(`${label}.models must be a non-empty array`);
     }
     return {
       kind,
       apiKey: parseApiKey(),
       apiKeyEnv: string(parsed.apiKeyEnv, `${label}.apiKeyEnv`),
-      models: parsed.models.map((entry, index) => model(entry, `${label}.models[${index}]`)),
+      ...(models === undefined
+        ? {}
+        : {
+            models: models.map((entry, index) => deepSeekModel(entry, `${label}.models[${index}]`)),
+          }),
+      ...(parsed.reasoning === undefined
+        ? {}
+        : { reasoning: deepSeekReasoning(parsed.reasoning, `${label}.reasoning`) }),
     };
   }
   if (kind === "deepseek-account") {
@@ -143,6 +231,9 @@ function provider(value: unknown, label: string, credentialsFile: string): Provi
       ...(parsed.modelOverrides === undefined
         ? {}
         : { modelOverrides: object(parsed.modelOverrides, `${label}.modelOverrides`) }),
+      ...(parsed.reasoning === undefined
+        ? {}
+        : { reasoning: deepSeekReasoning(parsed.reasoning, `${label}.reasoning`) }),
     };
   }
   throw new Error(`${label}.kind must be pi-ai, deepseek-api-key, or deepseek-account`);

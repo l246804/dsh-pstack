@@ -7,7 +7,7 @@ adapted `base` 的 3 个场景全部为 `verified`，没有 `blocked` 或 `not-v
 ## 范围与判据
 
 - 快照：[adapted-base](../runs/adapted-base/) 覆盖 3 个场景；`inline-video-playback` 声明 `variants: ["native"]`，不在 adapted 运行。
-- 版本：DSH `0.2.2-rc.4`、pstack `0.15.43`、capture-time adapted `0.5.0`、上游 revision `2f87c854fe3e2fcda44ca86b46ede35aad3c46b7`。当前包是 `0.5.2`；三个场景的实现自 0.5.0 未改，但该快照不能证明 0.5.2 构建，发布前需重跑。
+- 版本：DSH `0.2.2-rc.4`、pstack `0.15.43`、capture-time adapted `0.5.0`、上游 revision `2f87c854fe3e2fcda44ca86b46ede35aad3c46b7`。结论仅对应捕获时的实现；后续实现变化由新一轮验证确认，不构成发布门禁。
 - 运行身份：全部记录使用 `magpie / workbuddy/minimax-m3.1-flash / low`，preset 为 `standard`，config hash 为 `7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e`。
 - 判定：机械断言通过后，按 rubric、截图和本地 session 做语义审核；`review.json` 已应用，三个记录均为非 pending。
 

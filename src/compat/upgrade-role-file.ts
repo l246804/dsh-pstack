@@ -129,7 +129,7 @@ function sanitizeCurrentRoleFile(record: Record<string, unknown>):
   }
   const rawBudget = record["budget"];
   if (rawBudget !== undefined && typeof rawBudget !== "string") return undefined;
-  const budget = normalizeBudgetValue(rawBudget as string | undefined);
+  const budget = normalizeBudgetValue(rawBudget);
   if (budget !== rawBudget) changed = true;
   return { changed, ...(budget === undefined ? {} : { budget }), roles };
 }

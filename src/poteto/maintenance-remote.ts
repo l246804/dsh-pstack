@@ -24,16 +24,16 @@ const sessionSchema = z
     enabled: z.boolean(),
     eventCount: z.number().int().nonnegative(),
   })
-  .strict() as z.ZodType<LegacySessionInfo>;
+  .strict() satisfies z.ZodType<LegacySessionInfo>;
 const failureSchema = z
   .object({ sessionId: z.string(), message: z.string() })
-  .strict() as z.ZodType<MaintenanceFailure>;
+  .strict() satisfies z.ZodType<MaintenanceFailure>;
 const scanSchema = z
   .object({ sessions: z.array(sessionSchema), failures: z.array(failureSchema) })
-  .strict() as z.ZodType<MaintenanceScanResult>;
+  .strict() satisfies z.ZodType<MaintenanceScanResult>;
 const outcomeSchema = z
   .object({ repaired: z.number().int().nonnegative(), failed: z.array(failureSchema) })
-  .strict() as z.ZodType<RepairOutcome>;
+  .strict() satisfies z.ZodType<RepairOutcome>;
 const queuedSchema = z.object({ queued: z.number().int().nonnegative() }).strict();
 
 const parseSessionIds = (value: unknown): readonly string[] => {

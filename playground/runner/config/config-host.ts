@@ -3,20 +3,19 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { load as yamlLoad } from "js-yaml";
 
-import type { ProviderConfig, ProviderModel } from "../types.ts";
-import { DEEPSEEK_BUILTIN_MODELS } from "./provider.ts";
+import type { DeepSeekModel, ProviderConfig, ProviderModel } from "../types.ts";
 
 export interface HostModelSelection {
   id: string;
-  /** Effort tiers for this model; default low/high. */
+  /** Pi-ai effort tiers for this model; ignored on DeepSeek routes. */
   efforts?: string[];
 }
 
 export type HostProviderSelection =
   | {
-      models: HostModelSelection[];
-      /** Provider-level reasoning is required. */
-      reasoning: string;
+      models?: HostModelSelection[];
+      /** Provider-level reasoning; required for the pi-ai route. */
+      reasoning?: string;
       /** Optional direct key for the gitignored config.ts; otherwise apiKeyEnv/credentials. */
       apiKey?: string;
     }
@@ -69,10 +68,22 @@ function selectedModels(
   return picked;
 }
 
-function hostProvider(patch: HostPatchRow[], id: string): Record<string, unknown> {
-  const row = patch.find((entry) => entry.id === id);
-  if (!row?.config) throw new Error(`host patch has no ${id} config`);
-  return row.config;
+function selectedDeepSeekModels(
+  models: DeepSeekModel[],
+  wanted: HostModelSelection[],
+  label: string,
+): DeepSeekModel[] {
+  // No selection inherits the host catalog; DSH would otherwise fall back to its default one.
+  if (wanted.length === 0) return models;
+  const ids = new Set(models.map((model) => model.id));
+  for (const entry of wanted) {
+    if (!ids.has(entry.id)) throw new Error(`${label} does not list model ${entry.id}`);
+  }
+  return models.filter((model) => wanted.some((entry) => entry.id === model.id));
+}
+
+function hostProvider(patch: HostPatchRow[], id: string): Record<string, unknown> | undefined {
+  return patch.find((entry) => entry.id === id)?.config;
 }
 
 export interface FromHostOptions {
@@ -95,7 +106,8 @@ export function fromHost(
   const patch = rows(file);
   const env = options.env ?? {};
   const result: Record<string, ProviderConfig> = {};
-  const pi = (hostProvider(patch, "llm-pi-ai").providers ?? {}) as Record<
+  const piRow = hostProvider(patch, "llm-pi-ai");
+  const pi = (piRow?.providers ?? {}) as Record<
     string,
     {
       apiKeyEnv?: string;
@@ -113,6 +125,12 @@ export function fromHost(
       if (!host.models || host.models.length === 0) {
         throw new Error(`host pi-ai provider ${name} has no explicit models`);
       }
+      if (selection.models === undefined || selection.models.length === 0) {
+        throw new Error(`host pi-ai provider ${name} selection has no models`);
+      }
+      if (selection.reasoning === undefined) {
+        throw new Error(`host pi-ai provider ${name} selection has no reasoning`);
+      }
       result[name] = {
         kind: "pi-ai",
         apiKey: selection.apiKey ?? env[host.apiKeyEnv] ?? `\${${host.apiKeyEnv}}`,
@@ -126,17 +144,36 @@ export function fromHost(
     }
     if (name === "deepseek-official") {
       if ("account" in selection) throw new Error("deepseek-official is not an account route");
-      const config = hostProvider(patch, "llm-deepseek");
-      const apiKeyEnv = config.apiKeyEnv;
-      if (typeof apiKeyEnv !== "string" || apiKeyEnv === "") {
-        throw new Error("host DeepSeek API-key route has no apiKeyEnv");
+      for (const entry of selection.models ?? []) {
+        if (entry.efforts !== undefined) {
+          throw new Error(
+            `${name} sets per-model efforts; DeepSeek routes take provider-level reasoning instead`,
+          );
+        }
       }
-      const models = (config.models as ProviderModel[] | undefined) ?? DEEPSEEK_BUILTIN_MODELS;
+      const config = hostProvider(patch, "llm-deepseek") ?? {};
+      const apiKeyEnv =
+        typeof config.apiKeyEnv === "string" && config.apiKeyEnv !== ""
+          ? config.apiKeyEnv
+          : "DEEPSEEK_API_KEY";
+      const hostModels = config.models as DeepSeekModel[] | undefined;
+      const reasoning =
+        selection.reasoning ??
+        (typeof config.reasoningEffort === "string" ? config.reasoningEffort : undefined);
       result[name] = {
         kind: "deepseek-api-key",
         apiKey: selection.apiKey ?? env[apiKeyEnv] ?? `\${${apiKeyEnv}}`,
         apiKeyEnv,
-        models: selectedModels(models, selection.models, "host DeepSeek API-key route"),
+        ...(hostModels === undefined
+          ? {}
+          : {
+              models: selectedDeepSeekModels(
+                hostModels,
+                selection.models ?? [],
+                "host DeepSeek API-key route",
+              ),
+            }),
+        ...(reasoning === undefined ? {} : { reasoning }),
       };
       continue;
     }
@@ -145,11 +182,23 @@ export function fromHost(
         throw new Error("deepseek-account must be selected with { account: true }");
       }
       const config = hostProvider(patch, "llm-deepseek-account");
+      if (config === undefined) {
+        result[name] = { kind: "deepseek-account" };
+        continue;
+      }
+      if ("models" in config && config.models !== undefined) {
+        throw new Error(
+          "host DeepSeek account route still configures models; DSH 0.2.3-alpha.2 no longer accepts account models, use modelOverrides instead",
+        );
+      }
+      const reasoning =
+        typeof config.reasoningEffort === "string" ? config.reasoningEffort : undefined;
       result[name] = {
         kind: "deepseek-account",
         ...(config.modelOverrides === undefined
           ? {}
           : { modelOverrides: config.modelOverrides as Record<string, unknown> }),
+        ...(reasoning === undefined ? {} : { reasoning }),
       };
       continue;
     }

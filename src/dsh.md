@@ -56,17 +56,17 @@ On the board path, create the task first, start the child with a `name`, reassig
 | The pstack role file | `$DSH_HOME/pstack/models.json`. Read it through `pstack_roles`; `pstack_subagent` does not parse it. A missing file leaves the parent route in effect. |
 | A role value such as `<model> <effort>` | Use the structured route object described under setup-pstack; never join or split a `provider/model` string. |
 
-When overriding a child route, pass a `reasoning_effort` when the target model does not serve the parent's current effort. Omitting it inherits the parent effort and can fail before the child starts.
+When the child route changes, omitting `reasoning_effort` uses the target model's default. Keeping the parent route also keeps its effort unless explicitly overridden.
 
 ## setup-pstack
 
 `setup-pstack` writes the role file the calling agent uses to choose a route. Discover the routes with `pstack_models` (Plugin tools); do not infer them from Cursor slugs.
 
 - Detect: write each real route found by `pstack_models` as a structured `{ kind: "route", provider, model, effort? }` object. If none is detectable, ask the user to paste the routes.
-- Defaults: map each found route; use `inherit-parent` or `auto` for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
-- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object of route-object arrays. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
+- Defaults: map each found route; use `{ kind: "inherit", alias: "inherit-parent" }` (or alias `"auto"`) for an unserved route. Apply the selected budget to the closest advertised effort and say what you chose.
+- Write: write `$DSH_HOME/pstack/models.json` with `version: 2`, an optional `budget`, and a `roles` object whose arrays contain route or inherit objects. Overwrite the whole file so a rerun is idempotent; a missing role inherits the parent route.
 
-Done when the file parses as version 2, every role maps to a route or to `inherit-parent`/`auto`, and a rerun produces the same file.
+Done when the file parses as version 2, every configured role has route or inherit objects, and a rerun produces the same file.
 
 ## Paths
 

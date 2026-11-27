@@ -56,7 +56,7 @@ disable-model-invocation: true
 - Before starting any repository task, read `docs/decisions/AGENTS.md` and follow its search rules to read the records relevant to the task.
 ```
 
-此块只写文档指针。只包含获批计划中保留的文档指针，将指针文字翻译为根文档的语言，并按实际路径调整目标。已有 `## Project docs` 块替换为这些指针，根目录 `AGENTS.md` 的其他内容保持不变。决策状态的含义与记录筛选规则留在决策目录的 `AGENTS.md`。
+此块只写文档指针。按根文档的语言与实际路径，就地增加或更新获批指针。保留获批改动之外的既有有效指针，包括项目专用文档；只有获批删除时才移除指针。决策状态的含义与记录筛选规则留在决策目录的 `AGENTS.md`。
 
 ## 5. 验证并报告
 
