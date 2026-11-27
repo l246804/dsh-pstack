@@ -7,6 +7,7 @@
 | 任务 | 文档 |
 | --- | --- |
 | 配置、运行、检查进度或收集截图 | [docs/run.md](./docs/run.md) |
+| Agent 检查客户端交互与截图 | [docs/ui.md](./docs/ui.md) |
 | 新增或调整场景 | [docs/scenarios.md](./docs/scenarios.md) |
 | 分析结果、提出建议、记录审批 | [docs/judge.md](./docs/judge.md) |
 | 查看最近验证结论 | [results/README.md](./results/README.md) |

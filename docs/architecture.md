@@ -14,7 +14,7 @@ native 上游基准与最小适配答案 → generate 生成 native/pstack/
 ```
 
 - `native` 是基准子包：钉定的已发布上游树、native 适配答案和缺口清单。
-- `playground` 以自行维护的场景为验证范围，运行 native/adapted probe；本地保存运行记录，提交逐场景结论与截图。
+- `playground` 以自行维护的场景为验证范围，运行 native/adapted probe；本地保存运行记录，提交逐场景结论与截图。独立的 adapted/ui worker 用于 agent 操作客户端、截图和验证修复，入口见 `playground/docs/ui.md`。
 - `src` 负责随包适配答案与 Host/Client 实现；`cordis.patch.yml` 负责装配。
 - 根 README 同步已有兼容表、技能与能力状态、能力限制和最终适配结果。
 - 发布由用户手动执行；agent 停在 release-ready。

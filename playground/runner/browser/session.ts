@@ -1,6 +1,5 @@
-// Thin wrapper over the agent-browser CLI. Every call in one script must run in the
-// same Node process: the CLI's daemon is a child of the process that first launches
-// it, so it dies when that process exits and the next script cannot reach it.
+// Thin wrapper over the agent-browser CLI. The worker's socket directory and
+// session name keep browser state across commands until explicitly closed.
 
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";

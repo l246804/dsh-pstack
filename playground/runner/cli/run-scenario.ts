@@ -22,6 +22,7 @@ import { readWebUrl } from "../container/index.ts";
 import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";
 import { DEFAULT_ENVIRONMENTS } from "../scenario/defaults.ts";
 import { currentTaskFile, stopRequestFile, workerPaths } from "../worker/worker.ts";
+import { stopWorkerTask } from "../execution/stop-task.ts";
 import {
   attemptScenario,
   blockedRecord,
@@ -116,7 +117,18 @@ async function main(): Promise<void> {
       capturedAt,
     };
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    let reason = existsSync(stopRequestFile(paths))
+      ? "external stop requested"
+      : error instanceof Error
+        ? error.message
+        : String(error);
+    if (existsSync(paths.urlFile)) {
+      try {
+        stopWorkerTask(paths);
+      } catch (stopError) {
+        reason += `; ${stopError instanceof Error ? stopError.message : String(stopError)}`;
+      }
+    }
     const lastSession = latestSessionFile(paths, {
       scenarioId,
       rootOnly: true,

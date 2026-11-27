@@ -30,6 +30,12 @@ export const environments: readonly EnvironmentMatrix[] = [
     enabledPluginPackages: [],
     teamMode: true,
   },
+  {
+    id: "ui",
+    description: "Agent 客户端交互验证专用环境，使用独立的 adapted worker 和浏览器。",
+    kind: "capability",
+    enabledPluginPackages: [],
+  },
 ];
 
 /** Stable index used to give each environment a disjoint host-port block. */

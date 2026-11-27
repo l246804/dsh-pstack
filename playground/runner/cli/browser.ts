@@ -1,6 +1,5 @@
-// Small manual CLI for poking the running playground in one browser process. The
-// agent-browser daemon is bound to the process that started it, so open, act, and
-// capture must happen in a single invocation.
+// Run a sequence of browser steps, navigating to the worker URL first.
+// For interactive commands that retain page state, use playground:ui:browser.
 //
 // Usage:
 //   vpx playground/runner/cli/browser.ts --environment <id> --variant <native|adapted> [--worker <k>] [url] [steps...]

@@ -1,5 +1,5 @@
 import { spawn } from "node:child_process";
-import { appendFileSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { isVariant } from "../types.ts";
@@ -20,7 +20,14 @@ import { listScenarioIds, loadScenario } from "../scenario/scenarios.ts";
 import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "../scenario/defaults.ts";
 import { acquireBatchLock, writeBatchMetadata, type BatchMetadata } from "../worker/batch.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
-import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../worker/worker.ts";
+import {
+  currentTaskFile,
+  stopRequestFile,
+  workerCount,
+  workerPaths,
+  type WorkerPaths,
+} from "../worker/worker.ts";
+import { stopWorkerTask } from "../execution/stop-task.ts";
 import { runtimeSettings } from "../config/runtime.ts";
 
 function parseList(value: string): string[] {
@@ -53,7 +60,7 @@ interface ChildResult {
   output: string;
 }
 
-function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
+function runCase(args: string[], env: NodeJS.ProcessEnv, paths: WorkerPaths): Promise<ChildResult> {
   return new Promise((resolvePromise) => {
     const child = spawn(runtimeSettings().vpxBin, args, {
       cwd: REPOSITORY_ROOT,
@@ -71,6 +78,11 @@ function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
     };
     timer = setTimeout(() => {
       output += "run-scenario exceeded its wall-clock budget";
+      try {
+        stopWorkerTask(paths);
+      } catch (error) {
+        output += `; ${error instanceof Error ? error.message : String(error)}`;
+      }
       if (child.pid !== undefined) {
         try {
           process.kill(-child.pid, "SIGKILL");
@@ -170,7 +182,9 @@ async function main(): Promise<void> {
     writeBatchMetadata(batch);
     await Promise.all(
       Array.from({ length: workers }, async (_, worker) => {
+        const workerPathsForTask = workerPaths(worker, matrix.id, variant);
         while (true) {
+          if (!existsSync(workerPathsForTask.urlFile)) return;
           const scenarioId = pending.shift();
           if (scenarioId === undefined) return;
           updateProgress(file, (current) => {
@@ -178,7 +192,6 @@ async function main(): Promise<void> {
             const perWorker = current.perWorker[`w${worker}`];
             if (perWorker) perWorker.total += 1;
           });
-          const workerPathsForTask = workerPaths(worker, matrix.id, variant);
           const taskFile = currentTaskFile(workerPathsForTask);
           rmSync(stopRequestFile(workerPathsForTask), { force: true });
           writeFileSync(
@@ -196,7 +209,7 @@ async function main(): Promise<void> {
             "--environment",
             matrix.id,
           ];
-          const result = await runCase(args, process.env);
+          const result = await runCase(args, process.env, workerPathsForTask);
           rmSync(taskFile, { force: true });
           rmSync(stopRequestFile(workerPathsForTask), { force: true });
           appendFileSync(
@@ -239,6 +252,12 @@ async function main(): Promise<void> {
     );
     console.log(`[run-batch] log=${logFile}`);
     const finalState = readProgress(file);
+    if (pending.length > 0) {
+      console.error(
+        `[run-batch] workers stopped; ${pending.length} scenario(s) were not run: ${pending.join(", ")}`,
+      );
+      process.exitCode = 1;
+    }
     if ((finalState?.failures.length ?? 0) > 0) {
       console.error(`[run-batch] ${finalState?.failures.length ?? 0} scenario(s) failed`);
       process.exitCode = 1;

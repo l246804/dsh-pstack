@@ -38,9 +38,11 @@ vp run playground:stop-task -- --variant <variant> --environment <environment> -
 vp run playground:stop -- --variant <variant> --environment <environment>
 ```
 
-长批次定期检查进度、最后事件和 `latestAge`。持续重复工具调用、长期无进展或偏离任务时停止对应任务；`stop-task` 写停止请求，由 runner 在轮询时处理。结束后用 `stop` 停止 worker 容器。
+长批次定期检查进度、最后事件和 `latestAge`。持续重复工具调用、长期无进展或偏离任务时执行 `stop-task`：写入停止请求并停止该 worker 容器，使服务端模型调用和子进程一并结束。runner 异常或超时也会停止对应容器；批次不再给已停止的 worker 派发任务，有未运行场景时返回非零。复用前重新 `prepare → bootstrap`。结束后用 `stop` 停止剩余 worker 容器。
 
 手动预览使用 `playground:open`、`playground:close`、`playground:reset`，对应 adapted/preview，不参与批次场景选择。
+
+Agent 客户端交互验证使用独立的 `playground:ui:open`，连续操作与截图见 [ui.md](./ui.md)。
 
 ## 修改后的检查
 
