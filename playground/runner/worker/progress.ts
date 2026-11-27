@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-import type { Variant, Verdict } from "../types.ts";
+import type { Variant, RunStatus } from "../types.ts";
 import { workersDirectory } from "./run-metadata.ts";
 
 export interface ProgressState {
@@ -10,7 +10,7 @@ export interface ProgressState {
   round: number;
   total: number;
   done: number;
-  statuses: Record<Verdict["status"], number>;
+  statuses: Record<RunStatus, number>;
   running: Array<{ worker: number; scenarioId: string }>;
   startedAt: string;
   updatedAt: string;

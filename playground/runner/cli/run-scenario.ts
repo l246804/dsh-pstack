@@ -5,14 +5,11 @@ import { pathToFileURL } from "node:url";
 import { isVariant } from "../types.ts";
 import { argValue } from "../shared/args.ts";
 import type { RunRecord, Variant } from "../types.ts";
-import { analyzeSession } from "../evidence/analysis.ts";
 import {
   assertSafeRecord,
   mechanicalFailures,
-  pendingSemanticReview,
   recordFileName,
   sessionFacts,
-  verdictFor,
 } from "../evidence/evidence.ts";
 import {
   readHomePlan,
@@ -20,19 +17,14 @@ import {
   CONFIG_FILE,
   setDefaultWorkspace,
 } from "../worker/home.ts";
-import { reviewSnapshotDirectory } from "../evidence/review-snapshot.ts";
 import { providerSecrets } from "../config/provider.ts";
 import { readWebUrl } from "../container/index.ts";
-import { EVIDENCE_FILES } from "../evidence/evidence-files.ts";
-import { sanitizeRecord } from "../evidence/redaction.ts";
 import { createEnvironment, environmentMatrix } from "../worker/run-metadata.ts";
-import { scenarioContentHash } from "../scenario/scenario-hash.ts";
 import { DEFAULT_ENVIRONMENTS } from "../scenario/defaults.ts";
 import { currentTaskFile, stopRequestFile, workerPaths } from "../worker/worker.ts";
 import {
   attemptScenario,
   blockedRecord,
-  InfraError,
   latestSessionFile,
   materializeWorkspace,
 } from "../execution/run.ts";
@@ -99,7 +91,6 @@ async function main(): Promise<void> {
       scenarioTimeoutMs: config.runtime.scenarioTimeoutMs,
     });
     const session = sessionFacts(outcome.digest, outcome.file, outcome.answers);
-    session.analysis = analyzeSession(session);
     const failures = mechanicalFailures({
       scenario,
       session,
@@ -109,7 +100,6 @@ async function main(): Promise<void> {
       expectedTarget,
       expectedPreset,
     });
-    const semanticReview = pendingSemanticReview();
     record = {
       scenarioId,
       variant,
@@ -119,15 +109,9 @@ async function main(): Promise<void> {
       artifacts: {
         recordFile,
         screenshotFile,
-        observed: [
-          `skillLoads=${session.skillLoads.join(",") || "none"}`,
-          `toolCalls=${session.toolCalls.length}`,
-          `warnings=${session.analysis.warnings.length}`,
-        ],
       },
-      semanticReview,
       mechanicalFailures: failures,
-      verdict: verdictFor({ variant, failures, semanticReview }),
+      status: failures.length === 0 ? "completed" : "failed",
       batchId,
       capturedAt,
     };
@@ -150,35 +134,15 @@ async function main(): Promise<void> {
       reason,
       capturedAt,
     });
-    if (!(error instanceof InfraError)) {
-      record.artifacts.observed.push("scenario execution did not complete");
-    }
   }
   assertSafeRecord(record, providerSecrets(config));
-  record.scenarioHash = scenarioContentHash(scenario);
-  const sourceFile = recordFile.replace(/\.json$/, EVIDENCE_FILES.sourceSuffix);
-  writeFileSync(
-    sourceFile,
-    `${JSON.stringify(
-      {
-        recordFile,
-        screenshotFile,
-        sessionFile: record.session?.sessionFile ?? null,
-      },
-      null,
-      2,
-    )}\n`,
+  writeFileSync(recordFile, `${JSON.stringify(record, null, 2)}\n`);
+  console.log(`[run-scenario] ${scenarioId} ${variant} ${matrix.id} ${record.status}`);
+  console.log(`[run-scenario] record=${recordFile}`);
+  console.log(
+    "[run-scenario] assess the rubric and record the conclusion in results/<scenario>/result.md",
   );
-  writeFileSync(recordFile, `${JSON.stringify(sanitizeRecord(record), null, 2)}\n`);
-  console.log(`[run-scenario] ${scenarioId} ${variant} ${matrix.id} ${record.verdict.status}`);
-  console.log(`[run-scenario] evidence=${recordFile}`);
-  console.log(`[run-scenario] reviews=${reviewSnapshotDirectory(variant, matrix.id)}`);
-  process.exitCode =
-    record.verdict.status === "verified"
-      ? 0
-      : record.verdict.status === "inconclusive" || record.verdict.status === "blocked"
-        ? 2
-        : 1;
+  process.exitCode = record.status === "completed" ? 0 : record.status === "blocked" ? 2 : 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

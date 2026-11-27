@@ -13,8 +13,6 @@ const slowTask = [
 export default {
   id: "subagent-interrupt",
   kind: "gap",
-  gap: "subagent-interrupt",
-  capability: "subagent-interrupt",
   turns: [
     {
       prompt:

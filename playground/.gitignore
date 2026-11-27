@@ -1,26 +1,17 @@
-# Per-worker runtime: DSH home, browser profile, workspaces, evidence.
+# Local workers contain sessions, run records, browser state and credentials.
 .workspace/
 .workers/
 .workers-*/
-
-# Local config; copy config.example.ts and fill in real values.
+/config.ts
 /config.json
-# Legacy machine-local host provider patch; config.ts carries provider definitions now.
 host.patch.yml
+*.local
 node_modules
 *.log
 .DS_Store
 
-
-
-# Session logs contain host paths and may contain credentials; keep local only.
-evidence/runs/**/session.jsonl.zstd
-
-# Local artifact locator; never committed.
-evidence/runs/**/record.source.json
-
-# Agent redaction candidate; only validated record.json is committed.
-evidence/runs/**/record.safe.json
-
-# Local playground config; copy config.example.ts and fill in real values.
-/config.ts
+# Results contain authored Markdown and selected screenshots only.
+results/**/*.json
+results/**/*.jsonl*
+results/**/*.sqlite*
+results/**/*.db*

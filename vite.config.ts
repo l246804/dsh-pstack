@@ -70,6 +70,7 @@ export default defineConfig({
   test: {
     include: [
       "tests/**/*.test.{ts,tsx,mjs}",
+      "native/tests/**/*.test.{ts,tsx,mjs}",
       "src/tests/**/*.test.{ts,tsx,mjs}",
       "playground/tests/**/*.test.{ts,tsx,mjs}",
     ],
@@ -159,10 +160,6 @@ export default defineConfig({
         command: "vpx playground/runner/cli/stop-task.ts",
         cache: false,
       },
-      "playground:redact": {
-        command: "vpx playground/scripts/redact.ts",
-        cache: false,
-      },
       "playground:run": {
         command: "vpx playground/runner/cli/run-scenario.ts",
         cache: false,
@@ -173,14 +170,6 @@ export default defineConfig({
       },
       "playground:collect": {
         command: "vpx playground/runner/cli/collect.ts",
-        cache: false,
-      },
-      "playground:review": {
-        command: "vpx playground/scripts/review.ts",
-        cache: false,
-      },
-      "playground:gap-lock": {
-        command: "vpx playground/scripts/gap-lock.ts",
         cache: false,
       },
       "playground:browser": {

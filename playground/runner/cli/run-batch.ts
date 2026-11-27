@@ -4,16 +4,10 @@ import { join } from "node:path";
 
 import { isVariant } from "../types.ts";
 import { argValue } from "../shared/args.ts";
-import type { Variant, RunRecord, Verdict } from "../types.ts";
-import { latestRecords } from "../evidence/evidence.ts";
-import { readRunRecords } from "../evidence/review-snapshot.ts";
+import type { Variant } from "../types.ts";
+import { readRunRecords } from "../evidence/run-record.ts";
 import { computeWorkers } from "../worker/capacity.ts";
-import {
-  environmentMatrix,
-  REPOSITORY_ROOT,
-  upstreamRevision,
-  workersDirectory,
-} from "../worker/run-metadata.ts";
+import { environmentMatrix, REPOSITORY_ROOT, workersDirectory } from "../worker/run-metadata.ts";
 import {
   formatTimestamp,
   progressFilePath,
@@ -24,12 +18,7 @@ import {
 } from "../worker/progress.ts";
 import { listScenarioIds, loadScenario } from "../scenario/scenarios.ts";
 import { DEFAULT_ENVIRONMENTS, DEFAULT_VARIANTS } from "../scenario/defaults.ts";
-import {
-  acquireBatchLock,
-  writeBatchMetadata,
-  REVIEWS_DIRECTORY,
-  type BatchMetadata,
-} from "../evidence/review-snapshot.ts";
+import { acquireBatchLock, writeBatchMetadata, type BatchMetadata } from "../worker/batch.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { currentTaskFile, stopRequestFile, workerCount, workerPaths } from "../worker/worker.ts";
 import { runtimeSettings } from "../config/runtime.ts";
@@ -45,41 +34,18 @@ function parseList(value: string): string[] {
   ];
 }
 
-function allRecords(): RunRecord[] {
-  return readRunRecords(REVIEWS_DIRECTORY);
-}
-
 function selectedScenarios(variant: Variant, environmentId: string): string[] {
-  const scenarios = argValue("--scenarios");
-  const failed = process.argv.includes("--only-failed");
+  const ids = argValue("--scenarios");
   const full = process.argv.includes("--full");
-  if (
-    [scenarios, failed ? "failed" : undefined, full ? "full" : undefined].filter(Boolean).length > 1
-  ) {
-    throw new Error("--full, --scenarios and --only-failed are mutually exclusive");
-  }
-  if (full) {
-    return listScenarioIds().filter((id) => {
-      const scenario = loadScenario(id);
-      const variantAllowed = scenario.variants === undefined || scenario.variants.includes(variant);
-      const environments = scenario.environments ?? DEFAULT_ENVIRONMENTS;
-      return variantAllowed && environments.includes(environmentId);
-    });
-  }
-  if (scenarios) return parseList(scenarios);
-  if (failed) {
-    return latestRecords(allRecords())
-      .filter(
-        (record) => record.variant === variant && record.environment.matrix.id === environmentId,
-      )
-      .filter((record) =>
-        variant === "native"
-          ? record.verdict.status === "gap"
-          : record.verdict.status === "not-verified",
-      )
-      .map((record) => record.scenarioId);
-  }
-  throw new Error("run-batch requires --full, --scenarios <ids>, or --only-failed");
+  if (full === (ids !== undefined)) throw new Error("pass --full or --scenarios <ids>");
+  if (ids !== undefined) return parseList(ids);
+  return listScenarioIds().filter((id) => {
+    const scenario = loadScenario(id);
+    return (
+      (scenario.variants ?? DEFAULT_VARIANTS).includes(variant) &&
+      (scenario.environments ?? DEFAULT_ENVIRONMENTS).includes(environmentId)
+    );
+  });
 }
 
 interface ChildResult {
@@ -131,32 +97,15 @@ function runCase(args: string[], env: NodeJS.ProcessEnv): Promise<ChildResult> {
   });
 }
 
-function statuses(): ProgressState["statuses"] {
-  return {
-    observed: 0,
-    gap: 0,
-    blocked: 0,
-    unobserved: 0,
-    verified: 0,
-    "not-verified": 0,
-    inconclusive: 0,
-  };
-}
-
-function statusFor(record: RunRecord | undefined, variant: Variant): Verdict["status"] {
-  if (record) return record.verdict.status;
-  return variant === "native" ? "unobserved" : "inconclusive";
-}
-
 async function main(): Promise<void> {
   await readPlaygroundConfig(CONFIG_FILE);
   if (listScenarioIds().length === 0) {
-    throw new Error("no scenarios are registered; generate probes first");
+    throw new Error("no scenarios are registered; add a scenario first");
   }
   const variant = argValue("--variant") as Variant | undefined;
   if (!isVariant(variant)) {
     throw new Error(
-      "usage: run-batch.ts --variant native|adapted --environment ID [--full|--scenarios a,b|--only-failed] [--round N]",
+      "usage: run-batch.ts --variant native|adapted --environment ID [--full|--scenarios a,b] [--round N]",
     );
   }
   const environmentId = argValue("--environment");
@@ -192,10 +141,8 @@ async function main(): Promise<void> {
     batchId: `${variant}-${matrix.id}-${formatTimestamp().replace(/[-: ]/g, "")}`,
     variant,
     environment: matrix.id,
-    mode: process.argv.includes("--full") ? "full" : "incremental",
     scope: ids,
     startedAt: new Date().toISOString(),
-    upstreamRevision: upstreamRevision(),
   };
   const releaseBatch = acquireBatchLock(batch);
   try {
@@ -205,7 +152,7 @@ async function main(): Promise<void> {
       round,
       total: ids.length,
       done: 0,
-      statuses: statuses(),
+      statuses: { completed: 0, failed: 0, blocked: 0 },
       running: [],
       startedAt: formatTimestamp(),
       updatedAt: formatTimestamp(),
@@ -265,16 +212,11 @@ async function main(): Promise<void> {
               entry.variant === variant &&
               entry.batchId === batch.batchId,
           );
-          const status =
-            record === undefined
-              ? variant === "native"
-                ? "blocked"
-                : "inconclusive"
-              : statusFor(record, variant);
+          const status = record?.status ?? "blocked";
           const failureReason =
             record === undefined
               ? `run-scenario exited ${String(result.code)} without a record`
-              : record.verdict.status;
+              : (record.blockedReason ?? record.mechanicalFailures.join("; "));
           updateProgress(file, (current) => {
             current.running = current.running.filter(
               (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
@@ -283,7 +225,7 @@ async function main(): Promise<void> {
             current.statuses[status] += 1;
             const perWorker = current.perWorker[`w${worker}`];
             if (perWorker) perWorker.done += 1;
-            if (status !== "verified" && status !== "observed") {
+            if (status !== "completed") {
               current.failures.push({
                 scenarioId,
                 worker,

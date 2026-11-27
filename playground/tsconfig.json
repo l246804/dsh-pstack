@@ -15,12 +15,6 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true
   },
-  "include": [
-    "runner/**/*.ts",
-    "scripts/**/*.ts",
-    "tests/**/*.ts",
-    "scenarios/**/*.ts",
-    "config.example.ts"
-  ],
+  "include": ["runner/**/*.ts", "tests/**/*.ts", "scenarios/**/*.ts", "config.example.ts"],
   "exclude": ["node_modules", ".workers", ".workers-*"]
 }

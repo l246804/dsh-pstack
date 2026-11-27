@@ -71,18 +71,6 @@ function readUpstreamLock(): { pstackVersion: string; commit: string } {
   return { pstackVersion: raw.pstackVersion, commit: raw.commit };
 }
 
-/**
- * The released pstack version pinned in native/upstream.lock.json. It is run identity and an
- * invalidation axis, recorded on every RunEnvironment at capture time.
- */
-export function pstackVersion(): string {
-  return readUpstreamLock().pstackVersion;
-}
-
-export function upstreamRevision(): string {
-  return readUpstreamLock().commit;
-}
-
 export function createEnvironment(input: {
   worker: number;
   matrix: RunEnvironment["matrix"];

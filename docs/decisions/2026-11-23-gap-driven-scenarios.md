@@ -1,10 +1,11 @@
 # 决策：以 native gap 驱动 playground 场景
 
-Status: accepted
+Status: superseded
 Date: 2026-11-23
 Scope: native/gaps.json, playground/**, docs/decisions/**
 Implemented-by: PR #43
-Review: 2026-11-23
+Review: 2026-11-27
+Superseded-by: docs/decisions/2026-11-27-playground-scenario-results.md — 场景文件由用户独立维护，不再与 native 缺口状态和指纹绑定
 
 ## 背景
 

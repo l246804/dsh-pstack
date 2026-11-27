@@ -3,8 +3,6 @@ import type { BehaviorScenario } from "../runner/types.ts";
 export default {
   id: "inline-video-playback",
   kind: "gap",
-  gap: "inline-video-playback",
-  capability: "inline-video-playback",
   variants: ["native"],
   environments: ["base", "render"],
   turns: [

@@ -38,11 +38,11 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 由 `native/scripts/generate-pstack.ts` 从钉定的已发布上游树和 `native/dsh.md` 生成的 `native/pstack/` 目录，是全仓唯一生成树；构建时复制到 `dist/pstack/`，并把适配答案盖章为 `src/dsh.md`。
 
-手工变更应落在生成来源、插件源码、测试或技能工作区。发布兼容范围由 `package.json` 的 `engines.dsh` 提供，pstack 版本记在 `native/upstream.lock.json`；能力探针位于 `playground/scenarios/`，场景注册表在 `playground/runner/scenario/`，当前证据快照在 `playground/evidence/runs/`，都不属于本仓工程决策记录目录。
+手工变更应落在生成来源、插件源码、测试或技能工作区。发布兼容范围由 `package.json` 的 `engines.dsh` 提供，pstack 版本记在 `native/upstream.lock.json`；能力探针位于 `playground/scenarios/`，场景注册表在 `playground/runner/scenario/`，逐场景结果与截图在 `playground/results/`，都不属于本仓工程决策记录目录。
 
 ## Playground（验证场）
 
-`playground/` 的真实 DSH Web 会话验证环境。它运行 native/adapted 能力 probe，收集 RunRecord、SessionAnalysis 和评审快照，为基准与产品两侧提供缺口与结论。
+`playground/` 的真实 DSH Web 会话验证环境。它按场景文件运行 native/adapted 能力 probe，提交逐场景结论、建议、审批和截图；执行记录保留本地，为分析提供事实。
 
 ## Native 与 Adapted
 

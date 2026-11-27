@@ -7,12 +7,10 @@ import type {
   Assertion,
   BehaviorScenario,
   RunRecord,
-  SemanticReview,
   SessionFacts,
   TestTarget,
   ToolCallEvidence,
   Variant,
-  Verdict,
 } from "../types.ts";
 
 export interface SessionEvent {
@@ -363,48 +361,6 @@ export function evaluateAssertions(
   return failures;
 }
 
-export function pendingSemanticReview(): SemanticReview {
-  return {
-    status: "pending",
-    reason: "No reviewer has compared the observed effect with the scenario rubric.",
-  };
-}
-
-export function verdictFor(input: {
-  variant: Variant;
-  failures: string[];
-  semanticReview: SemanticReview;
-  blockedReason?: string;
-}): Verdict {
-  if (input.blockedReason) {
-    return input.variant === "native"
-      ? { variant: "native", status: "blocked", reason: input.blockedReason }
-      : { variant: "adapted", status: "inconclusive", reason: input.blockedReason };
-  }
-  if (input.semanticReview.status === "pending" || input.semanticReview.status === "inconclusive") {
-    const reason = input.semanticReview.reason;
-    return input.variant === "native"
-      ? { variant: "native", status: "unobserved", reason }
-      : { variant: "adapted", status: "inconclusive", reason };
-  }
-  if (input.variant === "native") {
-    return input.failures.length > 0 || input.semanticReview.status === "gap"
-      ? {
-          variant: "native",
-          status: "gap",
-          gaps: [...input.failures, input.semanticReview.reason],
-        }
-      : { variant: "native", status: "observed", gaps: [] };
-  }
-  return input.failures.length === 0 && input.semanticReview.status === "supported"
-    ? { variant: "adapted", status: "verified" }
-    : {
-        variant: "adapted",
-        status: "not-verified",
-        failures: [...input.failures, input.semanticReview.reason],
-      };
-}
-
 export function assertSafeRecord(record: RunRecord, apiKeys: string[]): void {
   const serialized = JSON.stringify(record);
   for (const apiKey of apiKeys) {
@@ -464,9 +420,8 @@ export function expectedWorkspace(workspace: string, session: SessionFacts): str
 }
 
 /**
- * Every mechanical check result of one run, independent of the semantic review. The
- * verdict may sit at unobserved/inconclusive while a review is pending, but this list
- * is always written to the record so the pending verdict hides nothing.
+ * Mechanical failures from the actual session, workspace and configured model route.
+ * Semantic conclusions are made separately against the scenario rubric.
  */
 export function mechanicalFailures(input: {
   scenario: BehaviorScenario;

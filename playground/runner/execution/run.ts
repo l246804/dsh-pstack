@@ -25,11 +25,9 @@ import {
 import { isBlankImage } from "../evidence/png.ts";
 import {
   digestSession,
-  pendingSemanticReview,
   readSessionEvents,
   sessionFacts,
   sessionMatchesPrompt,
-  verdictFor,
   type SessionDigest,
   type SessionEvent,
 } from "../evidence/evidence.ts";
@@ -658,7 +656,7 @@ export function blockedRecord(input: {
   sessionId?: string;
   reason: string;
   batchId?: string;
-  /** The attempt start stamp shared with the record and source filenames. */
+  /** The attempt start stamp shared with the record and screenshot filenames. */
   capturedAt: string;
 }): RunRecord {
   const matrix = environmentMatrix(input.paths.environmentId);
@@ -688,16 +686,9 @@ export function blockedRecord(input: {
     artifacts: {
       recordFile: input.recordFile,
       screenshotFile: input.screenshotFile,
-      observed: [],
     },
-    semanticReview: pendingSemanticReview(),
     mechanicalFailures: [],
-    verdict: verdictFor({
-      variant: input.variant,
-      failures: [],
-      semanticReview: pendingSemanticReview(),
-      blockedReason: input.reason,
-    }),
+    status: "blocked",
     blockedReason: input.reason,
     batchId: input.batchId,
     capturedAt: input.capturedAt,

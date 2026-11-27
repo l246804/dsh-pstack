@@ -3,8 +3,6 @@ import type { BehaviorScenario } from "../runner/types.ts";
 export default {
   id: "subagent-model-routing",
   kind: "gap",
-  gap: "subagent-model-routing",
-  capability: "subagent-model-routing",
   turns: [
     {
       prompt:
