@@ -1,7 +1,18 @@
+import { readFileSync } from "node:fs";
+
 import { defineConfig } from "vite-plus";
+
+/** The client bundle registers this sheet as module metadata; the config loader cannot import CSS. */
+const pstackCss = readFileSync(new URL("./src/client/lib/styles.css", import.meta.url), "utf8");
 
 /** DSH provides its own runtime packages; never bundle them. */
 const dshProvided = /^@deepseek-ai\//;
+
+/** Client bundle registration: the module metadata carries the stylesheet the renderer installs. */
+const clientBanner = `window.__ModuleLoader__.load({
+	id: "dsh-pstack",
+	meta: () => ({ stylesheets: { "src/client/lib/styles.css": { text: () => ${JSON.stringify(pstackCss)} } } }),
+	factory: (require) => {`;
 
 export default defineConfig({
   pack: [
@@ -50,7 +61,7 @@ export default defineConfig({
       },
       outputOptions: {
         entryFileNames: "client.js",
-        banner: 'window.__ModuleLoader__.load({ id: "dsh-pstack", factory: (require) => {',
+        banner: clientBanner,
         footer: "return module.exports; } });",
         intro: "var module = { exports: {} }; var exports = module.exports;",
       },

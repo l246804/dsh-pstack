@@ -1,6 +1,6 @@
 /** Session poteto-workflow switch, a direct copy of the Agent Teams menu row. */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { ReactElement } from "react";
 import {
   Button,
@@ -13,7 +13,6 @@ import type {} from "@deepseek-ai/dsh-client-ui-model-selection/client";
 import type {} from "../session-projection-types.ts";
 import { messageOf } from "../lib/message.ts";
 import { usePotetoMode, type PotetoModeInjected } from "../lib/poteto-mode.ts";
-import { ensurePstackStyles } from "../lib/styles.ts";
 import { showToast } from "../lib/toast.ts";
 
 export interface PotetoModeToggleInjected extends PotetoModeInjected {
@@ -35,10 +34,6 @@ export function PotetoModeToggle(
   const { mode, setMode } = usePotetoMode(sessionId, readMode);
   const [pending, setPending] = useState(false);
   const effectiveMode = mode ?? projected?.enabled;
-
-  useEffect(() => {
-    ensurePstackStyles();
-  }, []);
 
   if (effectiveMode === undefined) return null;
 

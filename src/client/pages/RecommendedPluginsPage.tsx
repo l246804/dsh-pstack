@@ -15,13 +15,10 @@ import {
   IconTerminal,
   type IconComponent,
 } from "../components/icons.tsx";
-import { ensurePstackStyles } from "../lib/styles.ts";
 import { messageOf } from "../lib/message.ts";
 import { showToast, type ToastMessage } from "../lib/toast.ts";
 import { Button, IconButton, Spinner, Status, Switch, type StatusTone } from "../components/ui.tsx";
 import type { PstackTranslations, PluginsKey } from "../locales/index.ts";
-
-ensurePstackStyles();
 
 export interface PluginManagerApi {
   listBundles(): Promise<readonly BundleInfo[]>;

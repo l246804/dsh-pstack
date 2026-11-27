@@ -3,12 +3,9 @@
 import { useEffect, useState, type ReactElement } from "react";
 
 import { messageOf } from "../lib/message.ts";
-import { ensurePstackStyles } from "../lib/styles.ts";
 import { IconAlert } from "../components/icons.tsx";
 import { Button, Spinner, Switch } from "../components/ui.tsx";
 import type { PstackTranslations } from "../locales/index.ts";
-
-ensurePstackStyles();
 
 export interface PotetoSettingsApi {
   readDefault(): Promise<boolean>;

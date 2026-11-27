@@ -1,11 +1,9 @@
 /** Status badge shown in the session header while poteto workflow is on. */
 
-import { useEffect } from "react";
 import type { ReactElement } from "react";
 import { IconSparkleRegular, Tag } from "@deepseek-ai/dsh-client-ui-primitives";
 
 import { usePotetoMode, type PotetoModeInjected } from "../lib/poteto-mode.ts";
-import { ensurePstackStyles } from "../lib/styles.ts";
 
 type BadgeProps = PotetoModeInjected & {
   readonly t: (key: "enabledLabel" | "label") => string;
@@ -14,10 +12,6 @@ type BadgeProps = PotetoModeInjected & {
 export function PotetoModeBadge(props: BadgeProps): ReactElement | null {
   const { sessionId, readMode, t } = props;
   const { mode } = usePotetoMode(sessionId, readMode);
-
-  useEffect(() => {
-    ensurePstackStyles();
-  }, []);
 
   if (!mode) return null;
   return (

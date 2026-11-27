@@ -32,12 +32,9 @@ import {
   type DraftMap,
 } from "../roles/role-draft.ts";
 import { routeIsIncomplete, routeIsInvalid } from "../roles/role-selectors.ts";
-import { ensurePstackStyles } from "../lib/styles.ts";
 import { showToast } from "../lib/toast.ts";
 import { Button, IconButton, Spinner, Status, type StatusTone } from "../components/ui.tsx";
 import type { PstackTranslations } from "../locales/index.ts";
-
-ensurePstackStyles();
 
 export interface RoleSettingsApi {
   status(): Promise<RoleFileSnapshot>;
