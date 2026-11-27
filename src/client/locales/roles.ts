@@ -93,7 +93,6 @@ const en = {
   budgetApplying: "Applying…",
   budgetFailed: "Budget apply failed: {reason}",
   budgetDone: "Applied {budget} budget",
-  budgetNoModel: "Select a model",
   budgetErrorProvider: "Provider {provider} is unavailable",
   budgetErrorModel: "Model {model} is unavailable",
 } as const;
@@ -190,7 +189,6 @@ const zh = {
   budgetApplying: "正在应用…",
   budgetFailed: "应用预算失败：{reason}",
   budgetDone: "已应用 {budget} 预算",
-  budgetNoModel: "请选择模型",
   budgetErrorProvider: "提供方 {provider} 不可用",
   budgetErrorModel: "模型 {model} 不可用",
 } as const satisfies Record<keyof typeof en, string>;
