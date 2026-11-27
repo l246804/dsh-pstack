@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  potetoPromptApplies,
+  potetoWorkflowApplies,
   potetoSupportsPreset,
   resolvePotetoEnabled,
   shouldSeedPotetoDefault,
@@ -70,17 +70,17 @@ describe("shouldSeedPotetoDefault", () => {
   });
 });
 
-describe("potetoPromptApplies", () => {
+describe("potetoWorkflowApplies", () => {
   it("applies to the root session when its switch is on", () => {
-    expect(potetoPromptApplies({ enabled: true, origin: undefined })).toBe(true);
+    expect(potetoWorkflowApplies({ enabled: true, origin: undefined })).toBe(true);
   });
 
   it("does not follow a subagent even when the session is enabled", () => {
-    expect(potetoPromptApplies({ enabled: true, origin: "subagent" })).toBe(false);
+    expect(potetoWorkflowApplies({ enabled: true, origin: "subagent" })).toBe(false);
   });
 
   it("stays off when the switch is off, for any origin", () => {
-    expect(potetoPromptApplies({ enabled: false, origin: undefined })).toBe(false);
-    expect(potetoPromptApplies({ enabled: false, origin: "subagent" })).toBe(false);
+    expect(potetoWorkflowApplies({ enabled: false, origin: undefined })).toBe(false);
+    expect(potetoWorkflowApplies({ enabled: false, origin: "subagent" })).toBe(false);
   });
 });
