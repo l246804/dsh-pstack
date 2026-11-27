@@ -4,12 +4,12 @@ import { mkdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { randomUUID } from "node:crypto";
 
-/** Write `text` to `path`, creating the parent directory and replacing atomically. */
-export function writeFileAtomically(path: string, text: string): void {
+/** Write `content` to `path`, creating the parent directory and replacing atomically. */
+export function writeFileAtomically(path: string, content: string | Buffer): void {
   mkdirSync(dirname(path), { recursive: true });
   const temporary = `${path}.${process.pid}.${randomUUID()}.tmp`;
   try {
-    writeFileSync(temporary, text, "utf8");
+    writeFileSync(temporary, content, typeof content === "string" ? "utf8" : undefined);
     renameSync(temporary, path);
   } catch (error) {
     try {

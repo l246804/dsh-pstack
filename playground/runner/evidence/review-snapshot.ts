@@ -46,14 +46,11 @@ export function reviewSnapshotDirectory(
   return join(root, `${variant}-${environment}`);
 }
 
-export type ReviewReviewer = { kind: "human"; name: string } | { kind: "model"; route: TestTarget };
+/** One reviewed result: the non-pending `SemanticReview` variant. */
+export type ReviewEntry = Extract<SemanticReview, { status: SemanticReviewStatus }>;
 
-/** One scenario's reviewed result, matching the non-pending `SemanticReview` variant. */
-export interface ReviewEntry {
-  status: SemanticReviewStatus;
-  reason: string;
-  reviewer: ReviewReviewer;
-}
+/** The reviewer carried by a reviewed result. */
+export type ReviewReviewer = ReviewEntry["reviewer"];
 
 export type ReviewEntries = Record<string, ReviewEntry>;
 
@@ -262,21 +259,39 @@ export function batchLockFile(variant: Variant, environment: string): string {
   return join(workersDirectory(), variant, environment, "batch.lock");
 }
 
+/** Whether a lock's recorded pid still belongs to a running process. */
+function staleBatchLock(file: string): boolean {
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as { pid?: unknown };
+    if (typeof parsed.pid !== "number" || !Number.isSafeInteger(parsed.pid)) return false;
+    try {
+      process.kill(parsed.pid, 0);
+      return false;
+    } catch (error) {
+      return (error as NodeJS.ErrnoException).code === "ESRCH";
+    }
+  } catch {
+    return false;
+  }
+}
+
 /** Acquire the batch lock; returns an idempotent release function. */
 export function acquireBatchLock(metadata: BatchMetadata): () => void {
   const file = batchLockFile(metadata.variant, metadata.environment);
   mkdirSync(dirname(file), { recursive: true });
-  try {
-    writeFileSync(
-      file,
-      `${JSON.stringify({ batchId: metadata.batchId, pid: process.pid, startedAt: metadata.startedAt })}\n`,
-      { flag: "wx" },
-    );
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+  const lock = `${JSON.stringify({ batchId: metadata.batchId, pid: process.pid, startedAt: metadata.startedAt })}\n`;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      writeFileSync(file, lock, { flag: "wx" });
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (attempt === 0 && staleBatchLock(file)) {
+        rmSync(file, { force: true });
+        continue;
+      }
       throw new Error(`another batch holds ${file}; stop it before starting ${metadata.batchId}`);
     }
-    throw error;
   }
   let released = false;
   return () => {
@@ -301,11 +316,12 @@ export function batchRecordProblems(batch: BatchMetadata, records: readonly RunR
     .sort();
 }
 
-function readRecords(directory: string): RunRecord[] {
+/** Read every RunRecord JSON below one directory, ignoring non-record files. */
+export function readRunRecords(directory: string): RunRecord[] {
   if (!existsSync(directory)) return [];
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
     const file = join(directory, entry.name);
-    if (entry.isDirectory()) return readRecords(file);
+    if (entry.isDirectory()) return readRunRecords(file);
     if (!entry.name.endsWith(".json")) return [];
     try {
       const parsed: unknown = JSON.parse(readFileSync(file, "utf8"));
@@ -468,8 +484,15 @@ export function writeReviewSnapshot(
     };
     mkdirSync(temporary, { recursive: true });
     writeJsonAtomically(join(temporary, "manifest.json"), manifest);
-    rmSync(snapshot, { recursive: true, force: true });
-    renameSync(temporary, snapshot);
+    const backup = `${snapshot}.bak-${process.pid}-${Date.now()}`;
+    if (existsSync(snapshot)) renameSync(snapshot, backup);
+    try {
+      renameSync(temporary, snapshot);
+    } catch (error) {
+      if (existsSync(backup)) renameSync(backup, snapshot);
+      throw error;
+    }
+    if (existsSync(backup)) rmSync(backup, { recursive: true, force: true });
     return manifest;
   } catch (error) {
     rmSync(temporary, { recursive: true, force: true });
@@ -485,6 +508,6 @@ export function collectReviewSnapshot(
     variant,
     environment,
     readBatchMetadata(variant, environment),
-    readRecords(workersDirectory()),
+    readRunRecords(workersDirectory()),
   );
 }

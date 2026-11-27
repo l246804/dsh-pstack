@@ -55,40 +55,44 @@ export function dshVersion(): string {
   return result.stdout.trim();
 }
 
+/** Read the released pstack pin recorded in native/upstream.lock.json. */
+function readUpstreamLock(): { pstackVersion: string; commit: string } {
+  if (!existsSync(UPSTREAM_LOCK_FILE)) {
+    throw new Error(`cannot read the upstream pin: ${UPSTREAM_LOCK_FILE}`);
+  }
+  const raw = JSON.parse(readFileSync(UPSTREAM_LOCK_FILE, "utf8")) as {
+    pstackVersion?: string;
+    commit?: string;
+  };
+  if (!raw.pstackVersion) {
+    throw new Error(`upstream pin has no pstackVersion: ${UPSTREAM_LOCK_FILE}`);
+  }
+  if (!raw.commit) throw new Error(`upstream pin has no commit: ${UPSTREAM_LOCK_FILE}`);
+  return { pstackVersion: raw.pstackVersion, commit: raw.commit };
+}
+
 /**
  * The released pstack version pinned in native/upstream.lock.json. It is run identity and an
  * invalidation axis, recorded on every RunEnvironment at capture time.
  */
 export function pstackVersion(): string {
-  if (!existsSync(UPSTREAM_LOCK_FILE)) {
-    throw new Error(`cannot read the upstream pin: ${UPSTREAM_LOCK_FILE}`);
-  }
-  const version = (
-    JSON.parse(readFileSync(UPSTREAM_LOCK_FILE, "utf8")) as { pstackVersion?: string }
-  ).pstackVersion;
-  if (!version) throw new Error(`upstream pin has no pstackVersion: ${UPSTREAM_LOCK_FILE}`);
-  return version;
+  return readUpstreamLock().pstackVersion;
 }
 
 export function upstreamRevision(): string {
-  if (!existsSync(UPSTREAM_LOCK_FILE)) {
-    throw new Error(`cannot read the upstream pin: ${UPSTREAM_LOCK_FILE}`);
-  }
-  const commit = (JSON.parse(readFileSync(UPSTREAM_LOCK_FILE, "utf8")) as { commit?: string })
-    .commit;
-  if (!commit) throw new Error(`upstream pin has no commit: ${UPSTREAM_LOCK_FILE}`);
-  return commit;
+  return readUpstreamLock().commit;
 }
 
 export function createEnvironment(input: {
   worker: number;
   matrix: RunEnvironment["matrix"];
 }): RunEnvironment {
+  const pin = readUpstreamLock();
   return {
     worker: input.worker,
     dshVersion: dshVersion(),
-    pstackVersion: pstackVersion(),
+    pstackVersion: pin.pstackVersion,
     matrix: input.matrix,
-    upstreamRevision: upstreamRevision(),
+    upstreamRevision: pin.commit,
   };
 }

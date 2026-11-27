@@ -4,12 +4,8 @@ import { isRoleKey, ROLE_SHAPES, type RoleShape } from "./role-manifest.ts";
 import { parseRouteEntry, type Route } from "./route.ts";
 import { WireTypeError, optionalString, parseRecord } from "../lib/wire-error.ts";
 
-export type { CatalogueResult } from "../models/catalogue.ts";
-export type { BudgetApplyRequest } from "./budget.ts";
-export { parseBudgetApplyRequest } from "./budget.ts";
 export { parseCatalogueResult } from "../models/catalogue.ts";
 export { WireTypeError } from "../lib/wire-error.ts";
-export type { InheritAlias } from "./role-manifest.ts";
 
 export type RouteView = Route;
 
@@ -153,11 +149,7 @@ function parseSnapshotResult(value: unknown): SaveRoleResult {
 }
 
 /** Parse one role-save result returned by the Host. */
-export function parseSaveRoleResult(value: unknown): SaveRoleResult {
-  return parseSnapshotResult(value);
-}
+export const parseSaveRoleResult = parseSnapshotResult;
 
 /** Parse one budget-apply result returned by the Host. */
-export function parseBudgetApplyResult(value: unknown): BudgetApplyResult {
-  return parseSnapshotResult(value);
-}
+export const parseBudgetApplyResult = parseSnapshotResult;

@@ -23,9 +23,9 @@ export default defineConfig({
         },
       },
       copy: [
-        // The shipped tree is the native baseline tree; the build task then stamps the
-        // plugin-aware adapter over the baseline answer (pack copy targets must not nest).
-        { from: "native/pstack", to: "dist", rename: "pstack" },
+        // The staged tree is the native baseline with the adapter answer stamped
+        // over `docs/harness/dsh.md`; one copy entry avoids the nested-target race.
+        { from: ".tmp/pstack-stage", to: "dist", rename: "pstack" },
         { from: "skills/.agents/skills", to: "dist/skills", rename: "vendored" },
         { from: "skills/authored", to: "dist/skills", rename: "authored" },
       ],
@@ -63,8 +63,13 @@ export default defineConfig({
     tasks: {
       // Repository level: build, static checks, release consistency.
       build: {
-        command: "vp pack && cp src/dsh.md dist/pstack/docs/harness/dsh.md",
+        command: "vp pack",
+        dependsOn: ["stage:pstack"],
+      },
+      "stage:pstack": {
+        command: "vpx scripts/stage-pstack.ts",
         dependsOn: ["native:generate"],
+        cache: false,
       },
       typecheck: {
         command: "tsc --noEmit -p tsconfig.json",

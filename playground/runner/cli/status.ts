@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 
 import { isVariant } from "../types.ts";
+import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { progressFilePath, readProgress } from "../worker/progress.ts";
@@ -9,11 +10,6 @@ import { latestSessionFile } from "../execution/run.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 
 await readPlaygroundConfig(CONFIG_FILE);
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 const variant = argValue("--variant") as Variant | undefined;
 if (!isVariant(variant)) throw new Error("status requires --variant native|adapted");

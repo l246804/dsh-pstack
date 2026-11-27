@@ -2,6 +2,7 @@ import { writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 import { isVariant } from "../runner/types.ts";
+import { argValue } from "../runner/shared/args.ts";
 import type { Variant } from "../runner/types.ts";
 import { verdictFor } from "../runner/evidence/evidence.ts";
 import {
@@ -10,11 +11,6 @@ import {
   toSemanticReview,
 } from "../runner/evidence/review-snapshot.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 export interface ReviewTarget {
   variant: Variant;

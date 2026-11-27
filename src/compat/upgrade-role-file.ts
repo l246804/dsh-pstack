@@ -11,7 +11,7 @@ import { describeError } from "../lib/errors.ts";
 import { normalizeBudgetValue } from "../roles/budget.ts";
 import { isRetiredRoleKey } from "../roles/role-manifest.ts";
 import type { RoleFileDocumentLike } from "../roles/role-store.ts";
-import type { Route } from "../roles/route.ts";
+import { parseRouteEntry, type Route } from "../roles/route.ts";
 import { upgradeVersionOneRoles } from "./version-1-to-2.ts";
 
 /** Options for {@link upgradeRoleFile}. */
@@ -125,7 +125,13 @@ function sanitizeCurrentRoleFile(record: Record<string, unknown>):
       changed = true;
       continue;
     }
-    roles[key] = value as readonly Route[];
+    const routes: Route[] = [];
+    for (const entry of value) {
+      const parsed = parseRouteEntry(entry);
+      if (parsed.route === undefined) return undefined;
+      routes.push(parsed.route);
+    }
+    roles[key] = routes;
   }
   const rawBudget = record["budget"];
   if (rawBudget !== undefined && typeof rawBudget !== "string") return undefined;

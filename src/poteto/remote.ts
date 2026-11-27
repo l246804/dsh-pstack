@@ -1,10 +1,6 @@
 /** Remote metadata for the session-scoped poteto-mode switch. */
 
-import type {
-  InvocationDescriptor,
-  RemoteResult,
-  TypertRemoteInfo,
-} from "@deepseek-ai/dsh-typert-protocol";
+import type { RemoteResult, TypertRemoteInfo } from "@deepseek-ai/dsh-typert-protocol";
 
 import { REMOTE_PACKAGE, codec, directMethod, parameter } from "../lib/typert-method.ts";
 
@@ -99,7 +95,7 @@ export const pstackPotetoRemote: TypertRemoteInfo = {
     setDefaultMethod,
     getAgentTeamDefaultMethod,
     setAgentTeamDefaultMethod,
-  ] as InvocationDescriptor[],
+  ],
   methods: {
     [`${POTETO_SERVICE}/status`]: statusMethod,
     [`${POTETO_SERVICE}/setEnabled`]: setMethod,
@@ -107,5 +103,5 @@ export const pstackPotetoRemote: TypertRemoteInfo = {
     [`${POTETO_SERVICE}/setDefault`]: setDefaultMethod,
     [`${POTETO_SERVICE}/getAgentTeamDefault`]: getAgentTeamDefaultMethod,
     [`${POTETO_SERVICE}/setAgentTeamDefault`]: setAgentTeamDefaultMethod,
-  } as TypertRemoteInfo["methods"],
+  },
 };

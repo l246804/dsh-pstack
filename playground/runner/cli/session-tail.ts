@@ -1,17 +1,13 @@
 import { existsSync } from "node:fs";
 
 import { isVariant } from "../types.ts";
+import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
 import { environmentMatrix } from "../worker/run-metadata.ts";
 import { workerPaths } from "../worker/worker.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import { latestSessionFile } from "../execution/run.ts";
 import { readSessionEvents, type SessionEvent } from "../evidence/evidence.ts";
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 function positiveInteger(value: string | undefined, fallback: number, label: string): number {
   const parsed = value === undefined ? fallback : Number(value);

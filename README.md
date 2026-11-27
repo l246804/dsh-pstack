@@ -178,7 +178,7 @@ These skills extend pstack with authoring, project-maintenance, and evidence-gat
 
 ## 🔌 Optional DSH plugins
 
-Install dsh-pstack without these plugins, then enable only the capabilities you need.
+Install dsh-pstack without these plugins, then enable only the capabilities you need. The plugin dialog's **Recommended plugins** page is the authoritative list; this table mirrors it.
 
 | Use case | Plugin | What it provides and its boundaries |
 |---|---|---|
@@ -198,7 +198,7 @@ Real DeepSeek Harness Web sessions test the port. They do not compare text with 
 
 - **Native baseline.** `native/` pins the upstream pstack and generates `native/pstack`; `native/dsh.md` maps each Cursor name to its DSH replacement and states the fallback when the replacement is unavailable. The generator inserts that document into the generated tree, so the upstream wording stays intact.
 - **Capability-driven runs.** Coverage comes from `native/gaps.json` and the scenario files under `playground/scenarios/`; the gap list records what the DSH standard runtime lacks, and the scenarios verify those gaps.
-- **Semantic review.** A skill that loads only proves it was reachable. Each scenario records a separate verdict (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason. The adapted run records `verified`, `not-verified`, or `inconclusive`; a conflict regression whose expected startup conflict reproduces records `blocked`.
+- **Semantic review.** A skill that loads only proves it was reachable. Each scenario records a separate semantic review (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason. The adapted run records `verified`, `not-verified`, or `inconclusive`; a conflict regression whose expected startup conflict reproduces records `blocked`.
 - **Adapted re-check.** Review findings drive [src/dsh.md](./src/dsh.md). Rebuild the adapted package with `vp run build`, then rerun the same scenarios to confirm the mapped behavior.
 - **Environment matrix.** Capability probes run in `base` by default. `render` is the rendering comparison environment. `agent-team` is the Team-on environment that verifies pstack delegation with Agent Teams enabled.
 

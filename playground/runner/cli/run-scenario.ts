@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { isVariant } from "../types.ts";
+import { argValue } from "../shared/args.ts";
 import type { RunRecord, Variant } from "../types.ts";
 import { analyzeSession } from "../evidence/analysis.ts";
 import {
@@ -35,11 +36,6 @@ import {
   latestSessionFile,
   materializeWorkspace,
 } from "../execution/run.ts";
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 async function main(): Promise<void> {
   const variant = argValue("--variant") as Variant | undefined;

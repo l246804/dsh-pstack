@@ -1,16 +1,12 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 
 import { isVariant } from "../types.ts";
+import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
 import { stopRequestFile, workerPaths } from "../worker/worker.ts";
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 
 await readPlaygroundConfig(CONFIG_FILE);
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 const variant = argValue("--variant") as Variant | undefined;
 if (!isVariant(variant)) throw new Error("stop-task requires --variant native|adapted");

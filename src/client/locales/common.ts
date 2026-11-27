@@ -8,6 +8,7 @@ const en = {
   save: "Save",
   saving: "Saving…",
   saved: "Saved",
+  notAvailable: "Not available yet",
 } as const;
 
 const zh = {
@@ -18,6 +19,7 @@ const zh = {
   save: "保存",
   saving: "保存中…",
   saved: "已保存",
+  notAvailable: "暂不可用",
 } as const satisfies Record<keyof typeof en, string>;
 
 export type CommonKey = keyof typeof en;

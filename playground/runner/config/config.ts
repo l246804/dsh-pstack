@@ -39,7 +39,11 @@ function number(value: unknown, label: string): number | undefined {
 }
 
 function credentialReference(name: string, file: string): string | undefined {
-  const store = yamlLoad(readFileSync(file, "utf8")) as { refs?: Record<string, unknown> };
+  const parsed = yamlLoad(readFileSync(file, "utf8"));
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`credential store must be a YAML mapping: ${file}`);
+  }
+  const store = parsed as { refs?: Record<string, unknown> };
   const reference = store.refs?.[name];
   if (typeof reference === "string") return reference;
   if (reference && typeof reference === "object") {

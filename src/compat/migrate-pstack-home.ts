@@ -7,6 +7,7 @@ import { migrateMdcToJson } from "./mdc-to-json.ts";
 import { upgradeRoleFile } from "./upgrade-role-file.ts";
 import { ROLE_FILE_VERSION, serializeRoleDocument } from "../roles/role-store.ts";
 import { resolveDshHome } from "../lib/dsh-home.ts";
+import { describeError } from "../lib/errors.ts";
 import { pstackHomePaths, type PstackHomePaths } from "../pstack/home.ts";
 
 /** Legacy filenames at the `$DSH_HOME` root. `pstack-repair.json` is never migrated. */
@@ -31,8 +32,7 @@ function moveLegacyIfDestinationMissing(legacyPath: string, currentPath: string)
 
 /** Log a skipped legacy file without blocking startup. */
 function warnMigration(source: string, error: unknown): void {
-  const message = error instanceof Error ? error.message : String(error);
-  console.warn(`[pstack] legacy ${source} was not migrated: ${message}`);
+  console.warn(`[pstack] legacy ${source} was not migrated: ${describeError(error)}`);
 }
 
 /** Converge `$DSH_HOME` on the current pstack layout in one best-effort startup pass. */

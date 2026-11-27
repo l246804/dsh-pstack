@@ -1,6 +1,13 @@
 /** Nested budget modal for the role settings page: preview a plan and apply it to the role file. */
 
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactElement,
+  type RefObject,
+} from "react";
 import { Modal } from "@deepseek-ai/dsh-client-ui-primitives";
 
 import type { CatalogueResult } from "../../models.ts";
@@ -16,7 +23,7 @@ import {
   type BudgetTier,
 } from "../../roles/budget.ts";
 import type { BudgetApplyResult, RoleFileSnapshot } from "../../roles/role-wire.ts";
-import type { Route } from "../../roles/route.ts";
+import { routesEqual, type Route } from "../../roles/route.ts";
 import { messageOf } from "../lib/message.ts";
 import { roleLabel } from "../roles/role-copy.ts";
 import { providerIsUsable, providerIssue, providerLabel } from "../roles/role-selectors.ts";
@@ -35,6 +42,8 @@ export interface BudgetDialogProps {
   readonly onApplied: (snapshot: RoleFileSnapshot) => void;
   readonly onClose: () => void;
   readonly signal?: AbortSignal;
+  /** The control that opened the dialog, focused again when it closes. */
+  readonly triggerRef?: RefObject<HTMLElement | null>;
 }
 
 /** Optional tier labels, keyed by the raw tier; an unknown tier falls back to its name. */
@@ -44,13 +53,22 @@ const TIER_LABEL: Partial<Record<string, RolesKey>> = {
   small: "budgetTierSmall",
 };
 
+function isBudgetScope(value: string): value is "concrete" | "unconfigured" {
+  return value === "concrete" || value === "unconfigured";
+}
+
+function isBudgetTier(value: string): value is BudgetTier {
+  return (BUDGET_TIERS as readonly string[]).includes(value);
+}
+
 function tierLabel(tier: string, t: PstackTranslations["roles"]): string {
   const key = TIER_LABEL[tier];
   return key === undefined ? tier : t(key);
 }
 
 export function BudgetDialog(props: BudgetDialogProps): ReactElement | null {
-  const { snapshot, catalogue, translations, onApply, onApplied, onClose, signal } = props;
+  const { snapshot, catalogue, translations, onApply, onApplied, onClose, signal, triggerRef } =
+    props;
   const t = translations.roles;
   const providers = catalogue.providers;
   const usableProviders = providers.filter(providerIsUsable);
@@ -73,9 +91,9 @@ export function BudgetDialog(props: BudgetDialogProps): ReactElement | null {
 
   useEffect(() => {
     return () => {
-      document.getElementById("pstack-budget-trigger")?.focus();
+      triggerRef?.current?.focus();
     };
-  }, []);
+  }, [triggerRef]);
 
   const request: BudgetApplyRequest = {
     tier,
@@ -116,8 +134,7 @@ export function BudgetDialog(props: BudgetDialogProps): ReactElement | null {
   const blocked = plan.plan?.rows.some(isBudgetRowBlocked) ?? false;
   const routeChanged =
     plan.plan?.rows.some(
-      (row) =>
-        row.status !== "skipped" && JSON.stringify(row.routes) !== JSON.stringify(row.previous),
+      (row) => row.status !== "skipped" && !routesEqual(row.routes, row.previous),
     ) ?? false;
   const budgetChanged =
     plan.plan !== undefined && snapshot.budget !== budgetValueFor(plan.plan.tier);
@@ -157,7 +174,9 @@ export function BudgetDialog(props: BudgetDialogProps): ReactElement | null {
                 className="pstack-select"
                 value={scope}
                 disabled={busy}
-                onChange={(event) => setScope(event.target.value as "concrete" | "unconfigured")}
+                onChange={(event) => {
+                  if (isBudgetScope(event.target.value)) setScope(event.target.value);
+                }}
               >
                 <option value="concrete">{t("budgetScopeConcrete")}</option>
                 <option value="unconfigured">{t("budgetScopeUnconfigured")}</option>
@@ -169,7 +188,9 @@ export function BudgetDialog(props: BudgetDialogProps): ReactElement | null {
                 className="pstack-select"
                 value={tier}
                 disabled={busy}
-                onChange={(event) => setTier(event.target.value as BudgetTier)}
+                onChange={(event) => {
+                  if (isBudgetTier(event.target.value)) setTier(event.target.value);
+                }}
               >
                 {BUDGET_TIERS.map((value) => (
                   <option key={value} value={value}>

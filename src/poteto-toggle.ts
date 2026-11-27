@@ -15,6 +15,7 @@ import type {} from "@deepseek-ai/dsh-tools";
 import type {} from "@deepseek-ai/dsh-system-prompt";
 import type {} from "@deepseek-ai/dsh-typert-registry";
 
+import { describeError } from "./lib/errors.ts";
 import {
   potetoWorkflowApplies,
   potetoSupportsPreset,
@@ -32,7 +33,11 @@ import {
   writeRepairQueue,
   type StoredSessionRef,
 } from "./poteto/maintenance.ts";
-import type { MaintenanceScanResult, RepairOutcome } from "./poteto/maintenance-types.ts";
+import type {
+  MaintenanceFailure,
+  MaintenanceScanResult,
+  RepairOutcome,
+} from "./poteto/maintenance-types.ts";
 import {
   potetoDomainSpec,
   readPotetoMode,
@@ -58,11 +63,7 @@ const AGENT_TEAM_ENTRY = "@deepseek-ai/dsh-agent-team";
 const NATIVE_DELEGATION_TOOLS = ["subagent", "subagent_fork"] as const;
 
 function writeDefaultEnabled(enabled: boolean): void {
-  writeSettings({ version: 1, potetoDefault: enabled });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  writeSettings({ potetoDefault: enabled });
 }
 
 /** Toggle poteto workflow for one Session. */
@@ -70,7 +71,6 @@ export class PotetoModeService extends TypertRemoteService {
   static inject = [
     "agents",
     "skills",
-    "sessions",
     "sessionPersistence",
     "sessionProjections",
     "storageDomain",
@@ -201,7 +201,11 @@ export class PotetoModeService extends TypertRemoteService {
     return registry?.presetForSession(agent.session) ?? agent.session.header.agentPreset;
   }
 
-  /** Read the saved switch for one Session id. */
+  /**
+   * Read the saved switch for one Session id. A non-live Session has no header
+   * to apply the preset gate to, so this reports the stored selection; the
+   * switch and badge only render for live Sessions, which take the gated path.
+   */
   status(sessionId: string): { enabled: boolean } {
     const agent = this.ctx.agents.get(sessionId as SessionId);
     const selected = readPotetoMode(this.modeTable, sessionId);
@@ -212,7 +216,8 @@ export class PotetoModeService extends TypertRemoteService {
 
   /** Scan stored logs for Sessions that still carry the retired poteto/mode event. */
   async scanLegacySessions(): Promise<MaintenanceScanResult> {
-    const sources = (await this.storedSessionRefs()).filter(
+    const stored = await this.storedSessionRefs();
+    const sources = stored.refs.filter(
       (source) => this.ctx.agents.get(source.sessionId as SessionId) === undefined,
     );
     const result = scanLegacySessionRefs(sources);
@@ -224,7 +229,7 @@ export class PotetoModeService extends TypertRemoteService {
     }
     return {
       sessions: result.sessions.filter((session) => !queued.has(session.sessionId)),
-      failures: result.failures,
+      failures: [...stored.failures, ...result.failures],
     };
   }
 
@@ -245,19 +250,29 @@ export class PotetoModeService extends TypertRemoteService {
     return result ?? null;
   }
 
-  private async storedSessionRefs(): Promise<StoredSessionRef[]> {
+  private async storedSessionRefs(): Promise<{
+    refs: StoredSessionRef[];
+    failures: MaintenanceFailure[];
+  }> {
     const snapshots = await this.ctx.sessionPersistence.list();
-    return snapshots.flatMap((snapshot) => {
+    const refs: StoredSessionRef[] = [];
+    const failures: MaintenanceFailure[] = [];
+    for (const snapshot of snapshots) {
       const logPath = snapshot.location?.path;
-      if (logPath === undefined) return [];
-      return [
-        {
+      if (logPath === undefined) {
+        failures.push({
           sessionId: String(snapshot.header.id),
-          workspace: snapshot.header.cwd,
-          logPath,
-        },
-      ];
-    });
+          message: "session has no log path",
+        });
+        continue;
+      }
+      refs.push({
+        sessionId: String(snapshot.header.id),
+        workspace: snapshot.header.cwd,
+        logPath,
+      });
+    }
+    return { refs, failures };
   }
 
   private async processRepairQueue(): Promise<RepairOutcome | undefined> {
@@ -266,19 +281,19 @@ export class PotetoModeService extends TypertRemoteService {
       queue = readRepairQueue();
     } catch (error) {
       clearRepairQueue();
-      return { repaired: 0, failed: [{ sessionId: "", message: messageOf(error) }] };
+      return { repaired: 0, failed: [{ sessionId: "", message: describeError(error) }] };
     }
     if (queue === undefined) return undefined;
 
     const ids = [...new Set(queue.sessionIds)];
     let sources: StoredSessionRef[];
     try {
-      sources = await this.storedSessionRefs();
+      sources = (await this.storedSessionRefs()).refs;
     } catch (error) {
       clearRepairQueue();
       return {
         repaired: 0,
-        failed: ids.map((sessionId) => ({ sessionId, message: messageOf(error) })),
+        failed: ids.map((sessionId) => ({ sessionId, message: describeError(error) })),
       };
     }
 
@@ -304,7 +319,7 @@ export class PotetoModeService extends TypertRemoteService {
     } catch (error) {
       return {
         repaired: outcome.repaired,
-        failed: [...outcome.failed, { sessionId: "", message: messageOf(error) }],
+        failed: [...outcome.failed, { sessionId: "", message: describeError(error) }],
       };
     }
     return outcome;

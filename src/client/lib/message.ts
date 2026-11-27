@@ -1,4 +1,2 @@
-/** Convert an unknown rejection into a display string. */
-export function messageOf(reason: unknown): string {
-  return reason instanceof Error ? reason.message : String(reason);
-}
+/** Client-facing name for the shared unknown-error formatter. */
+export { describeError as messageOf } from "../../lib/errors.ts";

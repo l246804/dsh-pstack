@@ -34,7 +34,7 @@
 - 每个替换项的事实证据对应写进 `dsh-evidence.md`。
 - 修改 `dsh.md` 后同步 `dsh.zh.md`，再 `vp run native:generate`。
 
-完成标准：`vp run native:generate:check` 绿，`dsh.zh.md` 与 `dsh.md` 分节同构。
+完成标准：`vp run native:generate:check` 绿，`dsh.zh.md` 与 `dsh.md` 的 section 数、行数、Cursor 单元格和代码标识符一致。
 
 ## 如何提取缺口
 

@@ -40,6 +40,8 @@ Obtain all three from the change and discussion; ask only about missing items an
 - **Constraint:** the boundary that eliminates an option.
 - **Alternative:** an option actually rejected, or the explicit fact that only one candidate was considered.
 
+This step is complete when the goal, the constraint, and at least one rejected alternative (or the single-candidate fact) are stated.
+
 ## 2. Find related records
 
 Search for distinctive terms from the topic, affected modules, and alternatives:
@@ -81,6 +83,8 @@ Superseded-by: <record path> — <one-line reason>   (only when Status is supers
 
 Write `Background` independently of the chosen solution. For an accepted record, write `Decision` in the present tense. Give every considered alternative its own paragraph and rejection reason; when there was only one candidate, state that fact.
 
+This step is complete when the record has the five header fields, the four sections in order, and a rejection reason for every alternative.
+
 ## 4. Set status and verify the anchor
 
 `Status` and `Implemented-by` are one pair. Select the row supported by evidence and write both fields together:
@@ -118,6 +122,8 @@ git status --porcelain=v1 --untracked-files=all
 ```
 
 Decode `git status` paths, including the destination of a rename. Require each new or updated record to match at least one selected path to a `Scope` glob. When none matches, ask whether to widen the glob or omit the record. Record matched paths for the report.
+
+This step is complete when every selected path is matched or the mismatch is reported to the user.
 
 ## 6. Draft approval gate
 

@@ -5,8 +5,6 @@ import {
   IconBranchOutlineRegular,
   IconCheckCircleOutlineRegular,
   IconCheckOutlineRegular,
-  IconCordisPluginOutlineRegular,
-  IconGlobeOutlineRegular,
   IconInfoOutlineRegular,
   IconPlusOutlineRegular,
   IconRefreshOutlineRegular,
@@ -14,7 +12,6 @@ import {
   IconSearchOutlineRegular,
   IconSettingsOutlineRegular,
   IconTrashOutlineRegular,
-  IconUsersOutlineRegular,
   IconWarningTriangleOutlineRegular,
 } from "@deepseek-ai/dsh-client-ui-primitives";
 
@@ -50,8 +47,6 @@ export {
   IconBranchOutlineRegular as IconGitBranch,
   IconCheckCircleOutlineRegular as IconCheckCircle,
   IconCheckOutlineRegular as IconCheck,
-  IconCordisPluginOutlineRegular as IconPlug,
-  IconGlobeOutlineRegular as IconBrowser,
   IconInfoOutlineRegular as IconInfo,
   IconPlusOutlineRegular as IconPlus,
   IconRefreshOutlineRegular as IconRefresh,
@@ -59,7 +54,6 @@ export {
   IconSearchOutlineRegular as IconSearch,
   IconSettingsOutlineRegular as IconSettings,
   IconTrashOutlineRegular as IconTrash,
-  IconUsersOutlineRegular as IconUsers,
   IconWarningTriangleOutlineRegular as IconAlert,
 };
 

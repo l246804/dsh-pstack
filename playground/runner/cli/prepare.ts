@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { isVariant } from "../types.ts";
+import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
 import { environmentMatrix, workersDirectory } from "../worker/run-metadata.ts";
 import { environmentOffset } from "../scenario/environments.ts";
@@ -35,11 +36,6 @@ import {
   workerPaths,
   type WorkerPaths,
 } from "../worker/worker.ts";
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 function readVariant(paths: WorkerPaths): string {
   return existsSync(paths.variantFile) ? readFileSync(paths.variantFile, "utf8").trim() : "";

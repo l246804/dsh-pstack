@@ -6,11 +6,7 @@
  * import no Node runtime.
  */
 
-import type {
-  InvocationDescriptor,
-  RemoteResult,
-  TypertRemoteInfo,
-} from "@deepseek-ai/dsh-typert-protocol";
+import type { RemoteResult, TypertRemoteInfo } from "@deepseek-ai/dsh-typert-protocol";
 import type { TypertContribution } from "@deepseek-ai/dsh-typert-registry";
 
 import type { CatalogueResult } from "../models.ts";
@@ -82,13 +78,13 @@ export interface PstackRolesNamespace {
 /** Mountable contribution shared by Host registration and Client `$mount`. */
 export const pstackRolesRemote: TypertRemoteInfo = {
   package: REMOTE_PACKAGE,
-  descriptors: [statusMethod, catalogueMethod, saveMethod, budgetMethod] as InvocationDescriptor[],
+  descriptors: [statusMethod, catalogueMethod, saveMethod, budgetMethod],
   methods: {
     [`${ROLES_SERVICE}/status`]: statusMethod,
     [`${ROLES_SERVICE}/catalogue`]: catalogueMethod,
     [`${ROLES_SERVICE}/save`]: saveMethod,
     [`${ROLES_SERVICE}/budget`]: budgetMethod,
-  } as TypertRemoteInfo["methods"],
+  },
 };
 
 /** One Client mount carrying both pstack Remote namespaces. */
@@ -103,7 +99,7 @@ export const pstackClientRemote: TypertRemoteInfo = {
     ...pstackRolesRemote.methods,
     ...pstackPotetoRemote.methods,
     ...pstackPotetoMaintenanceRemote.methods,
-  } as TypertRemoteInfo["methods"],
+  },
 };
 
 /** Register the Host's strict invocation definitions in `ctx.typert.local`. */

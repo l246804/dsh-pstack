@@ -15,7 +15,8 @@ import { pstackClientRemote, type PstackRolesNamespace } from "../roles/role-rem
 import { type PstackPotetoMaintenanceNamespace } from "../poteto/maintenance-remote.ts";
 import { type PstackPotetoModeNamespace } from "../poteto/remote.ts";
 import { createPstackConfigAction } from "./pages/PstackConfigDialog.tsx";
-import { PotetoModeToggle, POTETO_MODE_EVENT } from "./components/PotetoModeToggle.tsx";
+import { PotetoModeToggle } from "./components/PotetoModeToggle.tsx";
+import { POTETO_MODE_EVENT } from "./lib/poteto-mode.ts";
 import { PotetoModeBadge } from "./components/PotetoModeBadge.tsx";
 import { showToast } from "./lib/toast.ts";
 import { NS, catalogs } from "./locales/index.ts";
@@ -36,10 +37,11 @@ export const inject = ["remote", "slots", "locale"];
  */
 export function createPluginManagerApi(
   getPluginManager: () => ClientRemote["pluginManager"] | undefined,
+  managerUnavailable: () => string,
 ): PluginManagerApi {
   const manager = (): ClientRemote["pluginManager"] => {
     const value = getPluginManager();
-    if (value === undefined) throw new Error("plugin manager is not available yet");
+    if (value === undefined) throw new Error(managerUnavailable());
     return value;
   };
   return {
@@ -59,6 +61,8 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   );
   ctx.effect(() => ctx.locale.register(NS.roles, catalogs.roles), "pstack-config.locale.roles");
   ctx.effect(() => ctx.locale.register(NS.poteto, catalogs.poteto), "pstack-config.locale.poteto");
+  const commonT = ctx.locale.bind(NS.common);
+  const pluginsT = ctx.locale.bind(NS.plugins);
 
   // Observe the plugin-manager namespace without gating the role action on it.
   // If it arrives later, the next listBundles call sees it; if it never arrives,
@@ -66,8 +70,14 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   let pluginManager: ClientRemote["pluginManager"] | undefined;
   ctx.inject(["remote.pluginManager"], (scope: Context) => {
     pluginManager = scope.remote.pluginManager;
+    return () => {
+      pluginManager = undefined;
+    };
   });
-  const pluginApi = createPluginManagerApi(() => pluginManager);
+  const pluginApi = createPluginManagerApi(
+    () => pluginManager,
+    () => pluginsT("managerUnavailable"),
+  );
 
   let potetoApi:
     | (PstackPotetoModeNamespace["pstackPotetoMode"] &
@@ -75,22 +85,22 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     | undefined;
   const potetoSettingsApi: PotetoSettingsApi = {
     readDefault: async () => {
-      if (potetoApi === undefined) throw new Error("poteto mode is not available yet");
+      if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
       const result = await potetoApi.getDefault();
       return unwrap(result).enabled;
     },
     writeDefault: async (enabled) => {
-      if (potetoApi === undefined) return "poteto mode is not available yet";
+      if (potetoApi === undefined) return commonT("notAvailable");
       const result = await potetoApi.setDefault(enabled);
       return result.ok ? null : result.error.message;
     },
     readAgentTeamDefault: async () => {
-      if (potetoApi === undefined) throw new Error("agent team is not available yet");
+      if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
       const result = await potetoApi.getAgentTeamDefault();
       return unwrap(result).enabled;
     },
     writeAgentTeamDefault: async (enabled) => {
-      if (potetoApi === undefined) return "agent team is not available yet";
+      if (potetoApi === undefined) return commonT("notAvailable");
       const result = await potetoApi.setAgentTeamDefault(enabled);
       return result.ok ? null : result.error.message;
     },
@@ -98,11 +108,11 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
 
   const maintenanceApi: MaintenanceSettingsApi = {
     scan: async () => {
-      if (potetoApi === undefined) throw new Error("poteto maintenance is not available yet");
+      if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
       return unwrap(await potetoApi.scanLegacySessions());
     },
     queue: async (sessionIds) => {
-      if (potetoApi === undefined) throw new Error("poteto maintenance is not available yet");
+      if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
       return unwrap(await potetoApi.queueLegacyRepair(sessionIds));
     },
   };
@@ -131,7 +141,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const togglePoteto = async (sessionId: string): Promise<void> => {
     const t = ctx.locale.bind(NS.poteto);
     if (potetoApi === undefined) {
-      showToast({ tone: "error", text: t("failed", { message: "not available" }) });
+      showToast({ tone: "error", text: t("failed", { message: commonT("notAvailable") }) });
       return;
     }
     const current = await potetoApi.status(sessionId);
@@ -222,7 +232,9 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       (result) => {
         if (result.ok) showRepairOutcome(result.value);
       },
-      () => undefined,
+      (reason: unknown) => {
+        console.warn("[pstack] could not read the maintenance repair result", reason);
+      },
     );
     return () => {
       potetoApi = undefined;
@@ -234,13 +246,13 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       // Reject instead of synthesizing false: the toggle keeps its projection
       // value when the answer is unavailable, so a late mount or transient
       // failure cannot overwrite a correct "on" with "off".
-      if (potetoApi === undefined) throw new Error("poteto mode is not available yet");
+      if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
       const result = await potetoApi.status(sessionId);
       if (!result.ok) throw result.error;
       return result.value.enabled;
     },
     selectMode: async (enabled: boolean) => {
-      if (potetoApi === undefined) return "poteto mode is not available yet";
+      if (potetoApi === undefined) return commonT("notAvailable");
       const result = await potetoApi.setEnabled(sessionId, enabled);
       return result.ok ? null : result.error.message;
     },

@@ -167,6 +167,13 @@ describe("release compatibility metadata", () => {
     );
   });
 
+  it("refuses to add a new DSH group for an already released version", () => {
+    prepare();
+    expect(() => syncCompatibility(meta("0.3.1", ">=0.2.2-rc.2", "0.15.36"), true, ROOT)).toThrow(
+      "0.3.1 already appears under DSH >=0.2.2-rc.1; bump the package version before adding a new group",
+    );
+  });
+
   it("rejects a README without the pstack badge", () => {
     prepare();
     writeFileSync(join(ROOT, "README.md"), enReadme().replace(badge("0.15.36"), ""));

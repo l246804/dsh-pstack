@@ -52,7 +52,6 @@ Apply A, B, B′, and D only to non-`superseded` records; apply C and E as speci
 | Status | Anchor result | Finding |
 |---|---|---|
 | `proposed` | verified | Should be `accepted` |
-| `accepted` | `-` or missing | Landing lacks verified evidence |
 
 For `proposed`, `-` is pending. For either `proposed` or `accepted`, a pending anchor is not a finding; report the record as pending. An unverified anchor belongs in `Unverified`, outside B and C.
 

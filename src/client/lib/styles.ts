@@ -88,9 +88,6 @@ const CSS = `
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
 }
-.pstack-icon-btn-plain {
-  border-color: transparent;
-}
 .pstack-icon-btn:hover:not(:disabled) {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-primary);
@@ -478,6 +475,18 @@ const CSS = `
   border-radius: var(--dsw-radius-lg);
   background: var(--dsw-alias-bg-module-platform);
 }
+.pstack-route-row[data-layout="route"] {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 0.7fr);
+}
+.pstack-route-row[data-layout="route-actions"] {
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.25fr) minmax(0, 0.7fr) 32px;
+}
+.pstack-route-row[data-layout="inherit"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.pstack-route-row[data-layout="inherit-actions"] {
+  grid-template-columns: minmax(0, 1fr) 32px;
+}
 .pstack-route-actions {
   display: flex;
   align-items: center;
@@ -655,8 +664,8 @@ const CSS = `
   .pstack-plugin-icon {
     display: none;
   }
-  .pstack-route-row {
-    grid-template-columns: minmax(0, 1fr) !important;
+  .pstack-route-row[data-layout] {
+    grid-template-columns: minmax(0, 1fr);
   }
   .pstack-role-foot {
     flex-wrap: wrap;
@@ -882,6 +891,57 @@ const CSS = `
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.pstack-poteto-row {
+  border-radius: var(--dsw-radius-md);
+  min-height: 34px;
+  color: var(--dsw-alias-label-primary);
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 0 8px;
+  font-size: 13px;
+  line-height: 20px;
+  display: flex;
+  position: relative;
+}
+.pstack-poteto-label {
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  display: inline-flex;
+}
+.pstack-poteto-info {
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  color: var(--dsw-alias-label-caption);
+  flex: none;
+  padding: 0;
+  position: relative;
+}
+.pstack-poteto-row .pstack-poteto-switch {
+  position: static;
+}
+.pstack-poteto-row .pstack-poteto-switch:after {
+  content: "";
+  border-radius: var(--dsw-radius-md);
+  position: absolute;
+  inset: 0;
+}
+.pstack-poteto-row:has(.pstack-poteto-switch:focus-visible) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.pstack-poteto-badge-wrap {
+  display: inline-flex;
+}
+.pstack-poteto-badge {
+  gap: 4px;
+}
+@media (hover: hover) {
+  .pstack-poteto-row:has(.pstack-poteto-switch:not(:disabled)):hover {
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
 }
 `;
 

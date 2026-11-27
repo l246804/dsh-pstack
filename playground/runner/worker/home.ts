@@ -197,7 +197,11 @@ export function writeHomePatch(
   // Mirror the provider rows into the profile patch so its model catalog matches the session.
   const profilePatchPath = profilePatchFile(paths);
   if (existsSync(profilePatchPath)) {
-    const existing = (yamlLoad(readFileSync(profilePatchPath, "utf8")) as unknown[]) ?? [];
+    const parsed = yamlLoad(readFileSync(profilePatchPath, "utf8"));
+    if (parsed !== undefined && parsed !== null && !Array.isArray(parsed)) {
+      throw new Error(`profile patch must be a YAML list: ${profilePatchPath}`);
+    }
+    const existing = (parsed as unknown[] | undefined) ?? [];
     const overrides = new Map(patch.map((entry) => [entry.id, entry]));
     const merged = existing.map((entry) => {
       if (typeof entry !== "object" || entry === null) return entry;
@@ -272,6 +276,34 @@ export interface WorkspaceRegistration {
   defaultTitle: string;
 }
 
+interface WorkspaceStoreEntry {
+  path: string;
+  title: string;
+  sessionIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface WorkspaceStore {
+  unit: { name: string; version: number };
+  global: {
+    initialized: boolean;
+    workspaceIds: string[];
+    archivedSessionIds: string[];
+    pinnedSessionIds: string[];
+    defaultWorkspaceId: string;
+  };
+  tables: { workspaces: Record<string, WorkspaceStoreEntry> };
+}
+
+function workspaceStoreFile(paths: WorkerPaths): string {
+  return join(paths.home, "storages/workspace.json");
+}
+
+function readWorkspaceStoreFile(paths: WorkerPaths): WorkspaceStore {
+  return JSON.parse(readFileSync(workspaceStoreFile(paths), "utf8")) as WorkspaceStore;
+}
+
 export function registerWorkspaces(
   paths: WorkerPaths,
   scenarioIds: string[],
@@ -279,11 +311,11 @@ export function registerWorkspaces(
   const ids = [...new Set(scenarioIds)].sort();
   if (ids.length === 0) ids.push("playground");
   mkdirSync(paths.workspaceRoot, { recursive: true });
-  const storeFile = join(paths.home, "storages/workspace.json");
+  const storeFile = workspaceStoreFile(paths);
   mkdirSync(dirname(storeFile), { recursive: true });
   const now = new Date().toISOString();
   const dirs: Record<string, string> = {};
-  const tables: Record<string, unknown> = {};
+  const tables: Record<string, WorkspaceStoreEntry> = {};
   const workspaceIds: string[] = [];
   for (const id of ids) {
     const workspaceId = crypto.randomUUID();
@@ -300,40 +332,31 @@ export function registerWorkspaces(
       updatedAt: now,
     };
   }
-  writeFileSync(
-    storeFile,
-    `${JSON.stringify(
-      {
-        unit: { name: "workspace", version: 2 },
-        global: {
-          initialized: true,
-          workspaceIds,
-          archivedSessionIds: [],
-          pinnedSessionIds: [],
-          defaultWorkspaceId: workspaceIds[0],
-        },
-        tables: { workspaces: tables },
-      },
-      null,
-      2,
-    )}\n`,
-  );
+  const store: WorkspaceStore = {
+    unit: { name: "workspace", version: 2 },
+    global: {
+      initialized: true,
+      workspaceIds,
+      archivedSessionIds: [],
+      pinnedSessionIds: [],
+      defaultWorkspaceId: workspaceIds[0]!,
+    },
+    tables: { workspaces: tables },
+  };
+  writeFileSync(storeFile, `${JSON.stringify(store, null, 2)}\n`);
   return { dirs, defaultId: workspaceIds[0] as string, defaultTitle: ids[0] as string };
 }
 
 export function setDefaultWorkspace(paths: WorkerPaths, scenarioId: string): void {
-  const file = join(paths.home, "storages/workspace.json");
-  const store = JSON.parse(readFileSync(file, "utf8")) as {
-    global: { workspaceIds: string[]; defaultWorkspaceId: string };
-    tables: { workspaces: Record<string, { path: string; title: string }> };
-  };
+  const file = workspaceStoreFile(paths);
+  const store = readWorkspaceStoreFile(paths);
   const entry = Object.entries(store.tables.workspaces).find(
     ([, workspace]) => workspace.title === scenarioId,
   );
   if (entry === undefined) {
     throw new Error(`workspace store has no scenario workspace: ${scenarioId}`);
   }
-  store.global.defaultWorkspaceId = entry[0];
+  store.global.defaultWorkspaceId = entry[0]!;
   writeFileSync(file, `${JSON.stringify(store, null, 2)}\n`);
 }
 
@@ -341,11 +364,7 @@ export function readWorkspaceStore(paths: WorkerPaths): {
   defaultTitle: string;
   workspaces: Array<{ path: string; title: string }>;
 } {
-  const file = join(paths.home, "storages/workspace.json");
-  const store = JSON.parse(readFileSync(file, "utf8")) as {
-    global: { workspaceIds: string[]; defaultWorkspaceId: string };
-    tables: { workspaces: Record<string, { path: string; title: string }> };
-  };
+  const store = readWorkspaceStoreFile(paths);
   const defaultWorkspace = store.tables.workspaces[store.global.defaultWorkspaceId];
   if (defaultWorkspace === undefined) {
     throw new Error("workspace store has no default workspace");

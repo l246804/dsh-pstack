@@ -295,6 +295,16 @@ export function syncCompatibility(metadata = releaseMetadata(), write = true, ro
     const combined = [...readme.parsed.groups, ...history.parsed.groups];
     const index = combined.findIndex((group) => group.dshRange === metadata.dshRange);
     const added = index < 0;
+    if (added) {
+      const duplicate = combined.find((group) =>
+        group.rows.some((row) => row.release === metadata.version),
+      );
+      if (duplicate !== undefined) {
+        throw new Error(
+          `${metadata.version} already appears under DSH ${duplicate.dshRange}; bump the package version before adding a new group`,
+        );
+      }
+    }
     const groups = added
       ? [
           {

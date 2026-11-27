@@ -7,6 +7,7 @@ import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { collapseSidebar, createBrowserSession } from "../browser/session.ts";
+import { argValue } from "../shared/args.ts";
 import { UI_LABELS } from "../worker/runtime.ts";
 import {
   CONFIG_FILE,
@@ -25,11 +26,6 @@ import {
 import type { BrowserConfig, Variant } from "../types.ts";
 
 const { continue: CONTINUE_LABEL, previewNotice: PREVIEW_NOTICE } = UI_LABELS;
-
-function argValue(flag: string): string | undefined {
-  const index = process.argv.indexOf(flag);
-  return index >= 0 ? process.argv[index + 1] : undefined;
-}
 
 function selectWorkers(): WorkerPaths[] {
   const environment = argValue("--environment");

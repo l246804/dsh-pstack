@@ -32,7 +32,12 @@ function rows(file: string): HostPatchRow[] {
   if (!existsSync(file)) {
     throw new Error(`host patch not found at ${file}; pass file to fromHost`);
   }
-  return (yamlLoad(readFileSync(file, "utf8")) as HostPatchRow[]) ?? [];
+  const parsed = yamlLoad(readFileSync(file, "utf8"));
+  if (parsed === undefined || parsed === null) return [];
+  if (!Array.isArray(parsed)) {
+    throw new Error(`host patch must be a YAML list: ${file}`);
+  }
+  return parsed as HostPatchRow[];
 }
 
 function selectModel(model: ProviderModel, efforts: string[]): ProviderModel | null {

@@ -52,7 +52,6 @@ A、B、B′ 和 D 只用于非 `superseded` 记录；C 和 E 按下方说明执
 | Status | 锚点结果 | 发现 |
 |---|---|---|
 | `proposed` | 已核验 | 应改为 `accepted` |
-| `accepted` | `-` 或缺失 | 落地状态缺少已核验证据 |
 
 `proposed` 带 `-` 时归为待落地。`proposed` 或 `accepted` 带待落地锚点都不是发现；将记录归为待落地。带未核验锚点时归入 `Unverified`，不归入 B 或 C。
 

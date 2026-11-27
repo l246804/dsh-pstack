@@ -62,6 +62,7 @@ export function RoleSettingsView(props: {
   const [bulkBusy, setBulkBusy] = useState<"save" | undefined>();
   const [budgetOpen, setBudgetOpen] = useState(false);
   const abortRef = useRef<AbortController | undefined>(undefined);
+  const budgetTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const discard = useDiscardConfirm({
     title: t("discardTitle"),
@@ -98,7 +99,7 @@ export function RoleSettingsView(props: {
       if (snapshot === undefined) setError(message);
       else showToast({ tone: "error", text: message });
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) setLoading(false);
     }
   };
 
@@ -423,7 +424,7 @@ export function RoleSettingsView(props: {
         <Button
           variant="outline"
           size="sm"
-          id="pstack-budget-trigger"
+          ref={budgetTriggerRef}
           disabled={
             !snapshot.canSave ||
             catalogue === undefined ||
@@ -449,6 +450,7 @@ export function RoleSettingsView(props: {
           onApplied={onBudgetApplied}
           onClose={() => setBudgetOpen(false)}
           signal={abortRef.current?.signal}
+          triggerRef={budgetTriggerRef}
         />
       ) : null}
       {snapshot.reason === undefined ? null : (
