@@ -35,5 +35,5 @@ Review: 2026-11-23
 - `native/`、`playground/`、`src/` 的职责和输入输出固定，新增文件先按这三层归档。
 - `native/pstack/` 是唯一生成树，`src/dsh.md` 是唯一产品适配答案；文档和测试均引用当前路径。
 - `playground/evidence/runs/` 保存当前验证快照，历史记录依赖 Git，不再维护 `playground/reviews`。
-- 相关记录：[2026-11-23-gap-driven-scenarios.md](./2026-11-23-gap-driven-scenarios.md) 承接 capability 覆盖原则，[2026-11-23-playground-worker-container-isolation.md](./2026-11-23-playground-worker-container-isolation.md) 承接 worker 读取边界；旧记录中的 `port/`、`playground/harness`、`playground/adapter`、根 `pstack/`、根 `tests/` 下的产品测试和 `port/surface.json` 路径属于历史，当前对应 `src/`、`playground/runner`、`native/`、`src/tests/` 和 `src/surface.json`。
+- 相关记录：[2026-11-23-gap-driven-scenarios.md](./2026-11-23-gap-driven-scenarios.md) 承接 capability 覆盖原则，[2026-11-23-playground-worker-container-isolation.md](./2026-11-23-playground-worker-container-isolation.md) 承接 worker 读取边界；旧记录中的 `port/`、`playground/raw`、`playground/reviews`、根 `pstack/`、根 `tests/` 下的产品测试和 `port/surface.json` 路径属于历史，当前对应 `src/`、`playground/runner`、`native/`、`src/tests/` 和 `src/surface.json`。
 - 本记录已在 PR #43 合并后更新为 `Status: accepted`、`Implemented-by: PR #43`。
