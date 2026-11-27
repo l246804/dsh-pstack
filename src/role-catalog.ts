@@ -2,10 +2,10 @@
  * `pstack_roles`: a read-only discovery query over the role manifest.
  *
  * It reports each role, its shape, and the routes configured in the role file as
- * structured `{ provider, model, reasoningEffort? }` values. Pass `reasoningEffort`
- * as `reasoning_effort` to `pstack_subagent`. When the live catalogue is available
- * it also reports each route's served `efforts` and `defaultEffort`, so a caller
- * can change the effort without guessing.
+ * structured `{ provider, model, reasoning_effort? }` values, named after the
+ * `pstack_subagent` arguments they feed. When the live catalogue is available it
+ * also reports each route's served `efforts` and `defaultEffort`, so a caller can
+ * change the effort without guessing.
  */
 
 import type { Context } from "@deepseek-ai/cordis";
@@ -27,11 +27,11 @@ export const inject = ["tools", "llm", "pstackHome"];
 
 export const TOOL_NAME = "pstack_roles";
 
-/** One configured route; `reasoningEffort` maps to the delegation tool's `reasoning_effort`. */
+/** One configured route. The role file stores `effort`; a route reports the argument name. */
 export interface RoleRoute {
   readonly provider?: string;
   readonly model?: string;
-  readonly reasoningEffort?: string;
+  readonly reasoning_effort?: string;
   /** Served effort tokens for this model, when the live catalogue resolved it. */
   readonly efforts?: readonly string[];
   readonly defaultEffort?: string;
@@ -83,7 +83,7 @@ export function annotateRoleCapabilities(
 /** Render the discovery records for the model. */
 export function renderRoleCapabilities(roles: readonly RoleCapability[]): string {
   return [
-    "pstack roles. Each role lists its configured routes as provider, model, and optional reasoningEffort, plus the model's served efforts and default when known. Pass provider and model to `pstack_subagent`, and map reasoningEffort to its reasoning_effort argument. Omit provider and model to inherit the parent route.",
+    "pstack roles. Each role lists its configured routes as provider, model, and optional reasoning_effort, plus the model's served efforts and default when known. Pass provider, model, and reasoning_effort to `pstack_subagent`. Omit provider and model to inherit the parent route.",
     "",
     ...roles.map((role) => {
       const routes = role.routes.length
@@ -115,7 +115,7 @@ const OUTPUT_SCHEMA: JsonSchemaNode = {
               properties: {
                 provider: { type: "string" },
                 model: { type: "string" },
-                reasoningEffort: { type: "string" },
+                reasoning_effort: { type: "string" },
                 efforts: { type: "array", items: { type: "string" } },
                 defaultEffort: { type: "string" },
                 served: { type: "boolean" },
@@ -134,9 +134,9 @@ const OUTPUT_SCHEMA: JsonSchemaNode = {
 };
 
 const TOOL_DESCRIPTION = [
-  "List every pstack role with its shape and configured routes as structured provider, model, and reasoningEffort values, plus each route's served efforts and default effort.",
+  "List every pstack role with its shape and configured routes as structured provider, model, and reasoning_effort values, plus each route's served efforts and default effort.",
   "",
-  "Read-only. Use it for every role-to-model lookup. Pass provider and model to `pstack_subagent`, and map reasoningEffort to its reasoning_effort argument. To change the effort, use a value from the route's `efforts` instead of guessing.",
+  "Read-only. Use it for every role-to-model lookup. Pass provider, model, and reasoning_effort to `pstack_subagent`. To change the effort, use a value from the route's `efforts` instead of guessing.",
   "",
   "A role with no configured route inherits the parent route when provider and model are omitted.",
 ].join("\n");
@@ -190,7 +190,7 @@ function routeToChoice(route: Route): RoleRoute {
     ? {
         provider: route.provider,
         model: route.model,
-        ...(route.effort === undefined ? {} : { reasoningEffort: route.effort }),
+        ...(route.effort === undefined ? {} : { reasoning_effort: route.effort }),
       }
     : { inherit: true };
 }
@@ -198,7 +198,9 @@ function routeToChoice(route: Route): RoleRoute {
 function renderChoice(route: RoleRoute): string {
   if (route.inherit) return "inherit-parent";
   const parts = [`provider=${route.provider}`, `model=${route.model}`];
-  if (route.reasoningEffort !== undefined) parts.push(`reasoningEffort=${route.reasoningEffort}`);
+  if (route.reasoning_effort !== undefined) {
+    parts.push(`reasoning_effort=${route.reasoning_effort}`);
+  }
   if (route.efforts !== undefined && route.efforts.length > 0) {
     parts.push(`efforts=${route.efforts.join(",")}`);
   }

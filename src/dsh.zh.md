@@ -50,7 +50,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]` | 去掉 `-fast`；DeepSeek Harness 没有速度参数。从 `pstack_roles` 读取角色的 `provider`、`model` 和 `reasoningEffort`，改 effort 时使用该路由可用的档位。 |
+| `claude-<family>-<version>-<effort>[-fast]` | 去掉 `-fast`；DeepSeek Harness 没有速度参数。从 `pstack_roles` 读取角色的 `provider`、`model` 和 `reasoning_effort`，改 effort 时使用该路由可用的档位。 |
 | `grok-*`、`gpt-*` 或其他非 Claude slug | 选最接近的已公布路由，或省略路由让子代理继承父路由；说明选择了哪种。 |
 | `auto` 或 `inherit-parent` | 省略路由；子代理继承父路由。 |
 | pstack 角色文件 | `$DSH_HOME/pstack/models.json`。通过 `pstack_roles` 读取；`pstack_subagent` 不解析它。文件缺失时沿用父路由。 |
