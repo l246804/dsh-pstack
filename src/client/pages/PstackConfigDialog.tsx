@@ -40,7 +40,6 @@ export function PstackConfigDialog(props: PstackConfigDialogProps): ReactElement
   const { request: requestDiscard, dialog: discardDialog } = useDiscardConfirm({
     title: translations.roles("discardTitle"),
     description: translations.roles("confirmDiscardChanges"),
-    acknowledge: translations.roles("discardAcknowledge"),
     cancel: translations.common("cancel"),
     close: translations.common("close"),
     confirm: translations.roles("discardConfirm"),
