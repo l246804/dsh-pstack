@@ -17,7 +17,7 @@ Use only tools visible in the current session, even when a name appears here. Wh
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `pstack_subagent` replaces `Task`; call it once per child in one message. See §Plugin tools for its arguments and route handling. |
+| `Task` | `pstack_subagent` replaces `Task`; call it once per child in one message. Use its tool schema for arguments and §Models for route selection. |
 | `AskQuestion` | `ask_user_question` accepts a batch of questions with options and free input. Only a live root agent has a human answerer; a delegated child keeps questions in its result. Use plain text when the tool is absent. |
 | Open a todolist | `todo_write` replaces the whole list and has no `skipped` status. Keep a skipped step visible in `content` as `skip: <reason> - <step>` and mark it `completed`. |
 | Run another pstack skill (`/name` or "the **name** skill") | Use native `skill` for catalog skills. A bundled skill with `disable-model-invocation: true` is hidden from `skill`, so read `<pstack>/skills/<name>/SKILL.md` and follow it. A user `/name` gesture injects it directly; built-in help is `poteto-help`. |

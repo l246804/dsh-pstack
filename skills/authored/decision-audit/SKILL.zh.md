@@ -52,8 +52,9 @@ A、B、B′ 和 D 只用于非 `superseded` 记录；C 和 E 按下方说明执
 | Status | 锚点结果 | 发现 |
 |---|---|---|
 | `proposed` | 已核验 | 应改为 `accepted` |
+| `accepted` | 待落地 | 缺少已核验的落地证据 |
 
-`proposed` 带 `-` 时归为待落地。`proposed` 或 `accepted` 带待落地锚点都不是发现；将记录归为待落地。带未核验锚点时归入 `Unverified`，不归入 B 或 C。
+`proposed` 带待落地锚点是正常情况，将记录归为待落地。`accepted` 带待落地锚点属于状态成对发现。带未核验锚点时归入 `Unverified`，不归入 B 或 C。
 
 **B′——范围失效。** 对 `Scope` 中所有 glob 都不匹配现存文件的每条 `accepted` 记录，报告路径与 glob 检查证据，并询问是决策已过时还是范围写错。
 

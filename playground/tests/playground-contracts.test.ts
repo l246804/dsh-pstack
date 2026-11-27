@@ -280,6 +280,18 @@ function tempPatch(content: unknown): { dir: string; file: string } {
 }
 
 describe("fromHost DeepSeek routes", () => {
+  it.each([null, "invalid", { id: 42 }, { id: "llm-deepseek", config: [] }])(
+    "reports malformed host patch rows with their file: %j",
+    (row) => {
+      const { dir, file } = tempPatch([row]);
+      try {
+        expect(() => fromHost({}, { file })).toThrow(`host patch has an invalid row: ${file}`);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
   it("builds both DeepSeek providers from an empty host patch", () => {
     const { dir, file } = tempPatch([]);
     try {

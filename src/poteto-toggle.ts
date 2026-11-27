@@ -33,11 +33,7 @@ import {
   writeRepairQueue,
   type StoredSessionRef,
 } from "./poteto/maintenance.ts";
-import type {
-  MaintenanceFailure,
-  MaintenanceScanResult,
-  RepairOutcome,
-} from "./poteto/maintenance-types.ts";
+import type { MaintenanceScanResult, RepairOutcome } from "./poteto/maintenance-types.ts";
 import {
   potetoDomainSpec,
   readPotetoMode,
@@ -217,7 +213,7 @@ export class PotetoModeService extends TypertRemoteService {
   /** Scan stored logs for Sessions that still carry the retired poteto/mode event. */
   async scanLegacySessions(): Promise<MaintenanceScanResult> {
     const stored = await this.storedSessionRefs();
-    const sources = stored.refs.filter(
+    const sources = stored.filter(
       (source) => this.ctx.agents.get(source.sessionId as SessionId) === undefined,
     );
     const result = scanLegacySessionRefs(sources);
@@ -229,7 +225,7 @@ export class PotetoModeService extends TypertRemoteService {
     }
     return {
       sessions: result.sessions.filter((session) => !queued.has(session.sessionId)),
-      failures: [...stored.failures, ...result.failures],
+      failures: result.failures,
     };
   }
 
@@ -250,29 +246,20 @@ export class PotetoModeService extends TypertRemoteService {
     return result ?? null;
   }
 
-  private async storedSessionRefs(): Promise<{
-    refs: StoredSessionRef[];
-    failures: MaintenanceFailure[];
-  }> {
+  private async storedSessionRefs(): Promise<StoredSessionRef[]> {
     const snapshots = await this.ctx.sessionPersistence.list();
     const refs: StoredSessionRef[] = [];
-    const failures: MaintenanceFailure[] = [];
     for (const snapshot of snapshots) {
       const logPath = snapshot.location?.path;
-      if (logPath === undefined) {
-        failures.push({
-          sessionId: String(snapshot.header.id),
-          message: "session has no log path",
-        });
-        continue;
-      }
+      // Pending sessions and non-file backends need not have a legacy log to repair.
+      if (logPath === undefined) continue;
       refs.push({
         sessionId: String(snapshot.header.id),
         workspace: snapshot.header.cwd,
         logPath,
       });
     }
-    return { refs, failures };
+    return refs;
   }
 
   private async processRepairQueue(): Promise<RepairOutcome | undefined> {
@@ -288,7 +275,7 @@ export class PotetoModeService extends TypertRemoteService {
     const ids = [...new Set(queue.sessionIds)];
     let sources: StoredSessionRef[];
     try {
-      sources = (await this.storedSessionRefs()).refs;
+      sources = await this.storedSessionRefs();
     } catch (error) {
       clearRepairQueue();
       return {

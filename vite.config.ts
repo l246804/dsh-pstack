@@ -23,9 +23,13 @@ export default defineConfig({
         },
       },
       copy: [
-        // The staged tree is the native baseline with the adapter answer stamped
-        // over `docs/harness/dsh.md`; one copy entry avoids the nested-target race.
-        { from: ".tmp/pstack-stage", to: "dist", rename: "pstack" },
+        // Copy entries run concurrently; only the adapter writes this harness file.
+        {
+          from: ["native/pstack/**/*", "!native/pstack/docs/harness/dsh.md"],
+          to: "dist",
+          flatten: false,
+        },
+        { from: "src/dsh.md", to: "dist/pstack/docs/harness" },
         { from: "skills/.agents/skills", to: "dist/skills", rename: "vendored" },
         { from: "skills/authored", to: "dist/skills", rename: "authored" },
       ],
@@ -64,12 +68,7 @@ export default defineConfig({
       // Repository level: build, static checks, release consistency.
       build: {
         command: "vp pack",
-        dependsOn: ["stage:pstack"],
-      },
-      "stage:pstack": {
-        command: "vpx scripts/stage-pstack.ts",
         dependsOn: ["native:generate"],
-        cache: false,
       },
       typecheck: {
         command: "tsc --noEmit -p tsconfig.json",

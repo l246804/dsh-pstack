@@ -7,7 +7,7 @@ import { argValue } from "../runner/shared/args.ts";
 import type { Variant } from "../runner/types.ts";
 import { environmentMatrix } from "../runner/worker/run-metadata.ts";
 import { EVIDENCE_FILES } from "../runner/evidence/evidence-files.ts";
-import { isRunRecord } from "../runner/evidence/evidence.ts";
+import { parseRunRecord } from "../runner/evidence/run-record.ts";
 import { residualKinds } from "../runner/evidence/redaction.ts";
 import {
   listSnapshotRecordFiles,
@@ -38,13 +38,9 @@ function main(): void {
     let parsed: unknown;
     try {
       parsed = JSON.parse(readFileSync(candidate, "utf8"));
+      parseRunRecord(parsed, candidate);
     } catch (error) {
       console.error(`[redact] INVALID ${relative(root, candidate)}: ${String(error)}`);
-      errors += 1;
-      continue;
-    }
-    if (!isRunRecord(parsed)) {
-      console.error(`[redact] INVALID ${relative(root, candidate)}: not a RunRecord`);
       errors += 1;
       continue;
     }

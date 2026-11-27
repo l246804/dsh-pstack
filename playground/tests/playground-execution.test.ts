@@ -18,7 +18,6 @@ import {
   digestEvents,
   evaluateAssertions,
   firstUserText,
-  isRunRecord,
   latestRecords,
   mechanicalFailures,
   pendingSemanticReview,
@@ -44,8 +43,10 @@ import {
 import { activeSubagentCount } from "../runner/execution/run.ts";
 import {
   acquireBatchLock,
+  batchLockFile,
   batchRecordProblems,
   listSnapshotRecords,
+  readRunRecords,
   writeReviewSnapshot,
   type BatchMetadata,
 } from "../runner/evidence/review-snapshot.ts";
@@ -143,14 +144,70 @@ describe("execution contracts", () => {
 
   it("skips worker state JSON that sits beside evidence instead of treating it as a RunRecord", () => {
     const valid = record("native", "base");
-    expect(isRunRecord(valid)).toBe(true);
     const workspaceStore = { unit: { name: "workspace", version: 2 }, global: {}, tables: {} };
     const profileManifestFile = {
       name: "dsh-playground-native",
       dsh: { profile: { bundles: ["@deepseek-ai/dsh-base"] } },
     };
-    expect(isRunRecord(workspaceStore)).toBe(false);
-    expect(isRunRecord(profileManifestFile)).toBe(false);
+    const directory = join(temporary, "mixed-evidence");
+    mkdirSync(directory, { recursive: true });
+    writeFileSync(join(directory, "record.json"), JSON.stringify(valid));
+    writeFileSync(join(directory, "workspace.json"), JSON.stringify(workspaceStore));
+    writeFileSync(join(directory, "package.json"), JSON.stringify(profileManifestFile));
+    writeFileSync(join(directory, "probe-native-base-2026-11-27T00-00-00.source.json"), "{}");
+    expect(readRunRecords(directory)).toEqual([valid]);
+  });
+
+  it.each([
+    { verdict: undefined },
+    { mechanicalFailures: [123] },
+    { session: { toolCalls: [null] } },
+    { semanticReview: { status: "supported", reason: "missing reviewer" } },
+    { verdict: { variant: "adapted", status: "verified" } },
+  ])("reports a malformed evidence record at its source: %j", (invalid) => {
+    const directory = join(temporary, "invalid-evidence");
+    mkdirSync(directory, { recursive: true });
+    const file = join(directory, "record.json");
+    writeFileSync(file, JSON.stringify({ ...record("native", "base"), ...invalid }));
+    expect(() => readRunRecords(directory)).toThrow(`invalid RunRecord in ${file}`);
+  });
+
+  it("does not silently discard a malformed timestamped worker record", () => {
+    const directory = join(temporary, "invalid-worker-evidence");
+    mkdirSync(directory, { recursive: true });
+    const file = join(
+      directory,
+      recordFileName("probe", "native", "base", "2026-11-27T00-00-00-000Z"),
+    );
+    writeFileSync(file, "{}");
+    expect(() => readRunRecords(directory)).toThrow(`invalid RunRecord in ${file}`);
+  });
+
+  it("never reclaims an existing lock based on its recorded pid", () => {
+    setRuntimeSettings({
+      ...defaultRuntimeSettings,
+      workersDir: join(temporary, "stale-lock-workers"),
+    });
+    const batch: BatchMetadata = {
+      batchId: "new",
+      variant: "native",
+      environment: "base",
+      mode: "full",
+      scope: [],
+      startedAt: "now",
+    };
+    const file = batchLockFile(batch.variant, batch.environment);
+    mkdirSync(dirname(file), { recursive: true });
+    const stale = JSON.stringify({ batchId: "old", pid: 2147483647 });
+    writeFileSync(file, stale);
+    try {
+      expect(() => acquireBatchLock(batch)).toThrow(
+        /remove a stale lock only after all batches have stopped/,
+      );
+      expect(readFileSync(file, "utf8")).toBe(stale);
+    } finally {
+      setRuntimeSettings(defaultRuntimeSettings);
+    }
   });
 
   it("does not pass an unreviewed semantic effect in either variant", () => {

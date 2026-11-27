@@ -10,6 +10,11 @@ import {
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { dump as yamlDump, load as yamlLoad } from "js-yaml";
+import type {
+  WorkspaceDomainState,
+  WorkspaceId,
+  WorkspaceRecord,
+} from "@deepseek-ai/dsh-workspace";
 
 import type { PlaygroundConfig, ProviderConfig, TestTarget, Variant } from "../types.ts";
 import { readConfig } from "../config/config.ts";
@@ -276,24 +281,10 @@ export interface WorkspaceRegistration {
   defaultTitle: string;
 }
 
-interface WorkspaceStoreEntry {
-  path: string;
-  title: string;
-  sessionIds: string[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface WorkspaceStore {
   unit: { name: string; version: number };
-  global: {
-    initialized: boolean;
-    workspaceIds: string[];
-    archivedSessionIds: string[];
-    pinnedSessionIds: string[];
-    defaultWorkspaceId: string;
-  };
-  tables: { workspaces: Record<string, WorkspaceStoreEntry> };
+  global: WorkspaceDomainState;
+  tables: { workspaces: Record<string, WorkspaceRecord> };
 }
 
 function workspaceStoreFile(paths: WorkerPaths): string {
@@ -315,10 +306,10 @@ export function registerWorkspaces(
   mkdirSync(dirname(storeFile), { recursive: true });
   const now = new Date().toISOString();
   const dirs: Record<string, string> = {};
-  const tables: Record<string, WorkspaceStoreEntry> = {};
-  const workspaceIds: string[] = [];
+  const tables: Record<string, WorkspaceRecord> = {};
+  const workspaceIds: WorkspaceId[] = [];
   for (const id of ids) {
-    const workspaceId = crypto.randomUUID();
+    const workspaceId = crypto.randomUUID() as WorkspaceId;
     const path = join(paths.workspaceRoot, id);
     const containerPath = join(paths.containerWorkspace, id);
     mkdirSync(path, { recursive: true });
@@ -356,7 +347,7 @@ export function setDefaultWorkspace(paths: WorkerPaths, scenarioId: string): voi
   if (entry === undefined) {
     throw new Error(`workspace store has no scenario workspace: ${scenarioId}`);
   }
-  store.global.defaultWorkspaceId = entry[0]!;
+  store.global.defaultWorkspaceId = entry[0] as WorkspaceId;
   writeFileSync(file, `${JSON.stringify(store, null, 2)}\n`);
 }
 
@@ -365,7 +356,8 @@ export function readWorkspaceStore(paths: WorkerPaths): {
   workspaces: Array<{ path: string; title: string }>;
 } {
   const store = readWorkspaceStoreFile(paths);
-  const defaultWorkspace = store.tables.workspaces[store.global.defaultWorkspaceId];
+  const defaultId = store.global.defaultWorkspaceId;
+  const defaultWorkspace = defaultId === undefined ? undefined : store.tables.workspaces[defaultId];
   if (defaultWorkspace === undefined) {
     throw new Error("workspace store has no default workspace");
   }

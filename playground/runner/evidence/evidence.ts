@@ -412,21 +412,6 @@ export function assertSafeRecord(record: RunRecord, apiKeys: string[]): void {
   }
 }
 
-/** Narrow parsed JSON to a RunRecord so worker state files beside evidence are skipped. */
-export function isRunRecord(value: unknown): value is RunRecord {
-  if (value === null || typeof value !== "object") return false;
-  const candidate = value as Partial<RunRecord> & { environment?: { matrix?: { id?: unknown } } };
-  return (
-    typeof candidate.scenarioId === "string" &&
-    (candidate.variant === "native" || candidate.variant === "adapted") &&
-    typeof candidate.environment === "object" &&
-    candidate.environment !== null &&
-    typeof candidate.environment.matrix?.id === "string" &&
-    typeof candidate.capturedAt === "string" &&
-    Array.isArray(candidate.mechanicalFailures)
-  );
-}
-
 export function latestRecords(records: RunRecord[]): RunRecord[] {
   const latest = new Map<string, RunRecord>();
   for (const record of records) {

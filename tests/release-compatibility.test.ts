@@ -167,12 +167,17 @@ describe("release compatibility metadata", () => {
     );
   });
 
-  it("refuses to add a new DSH group for an already released version", () => {
-    prepare();
-    expect(() => syncCompatibility(meta("0.3.1", ">=0.2.2-rc.2", "0.15.36"), true, ROOT)).toThrow(
-      "0.3.1 already appears under DSH >=0.2.2-rc.1; bump the package version before adding a new group",
-    );
-  });
+  it.each([">=0.2.2-rc.2", ">=0.2.1-rc.5"])(
+    "refuses to reuse a released version under DSH %s",
+    (range) => {
+      prepare();
+      const before = read("README.md");
+      expect(() => syncCompatibility(meta("0.3.1", range, "0.15.36"), true, ROOT)).toThrow(
+        "0.3.1 already appears under DSH >=0.2.2-rc.1; bump the package version before changing its DSH group",
+      );
+      expect(read("README.md")).toBe(before);
+    },
+  );
 
   it("rejects a README without the pstack badge", () => {
     prepare();

@@ -17,7 +17,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `Task` | `pstack_subagent` 替代 `Task`；在同一消息里按子代理数多次调用。参数和路由处理见 §Plugin tools。 |
+| `Task` | `pstack_subagent` 替代 `Task`；在同一消息里按子代理数多次调用。参数以工具 schema 为准，路由选择见 §Models。 |
 | `AskQuestion` | `ask_user_question` 接收一批带选项和自由输入的问题。只有活跃的根代理有人工回答者；被委派的子代理把问题留在结果里。工具不可用时用纯文本提问。 |
 | Open a todolist | `todo_write` 替换整个列表，没有 `skipped` 状态。跳过的步骤保持可见，在 `content` 中写 `skip: <reason> - <step>`，状态设为 `completed`。 |
 | Run another pstack skill (`/name` 或 "the **name** skill") | 会话技能目录里的技能用原生 `skill`。带 `disable-model-invocation: true` 的随包技能对 `skill` 隐藏，所以读取 `<pstack>/skills/<name>/SKILL.md` 并遵循。用户 `/name` 手势直接注入；内置帮助技能是 `poteto-help`。 |

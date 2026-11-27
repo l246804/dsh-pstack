@@ -4,6 +4,7 @@
   "description": "Browser-only real-plugin runtime playground for dsh-pstack.",
   "type": "module",
   "devDependencies": {
+    "@deepseek-ai/dsh-workspace": "catalog:types",
     "js-yaml": "catalog:playground"
   }
 }
