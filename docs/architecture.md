@@ -31,7 +31,7 @@ Host 注册工具、技能、preset 和 Remote 服务；Client 通过宿主插�
 | 子代理委派 | `src/subagent.ts` | 校验调用方给定的路由与后端能力，启动一个子代理或中断指定子代理；不读取角色文件。 |
 | 角色配置 | `src/role-service.ts`、`src/roles/role-editor.ts`、`src/roles/role-store.ts` | 校验与编辑角色路由、应用预算并原子保存；读取保持纯读。角色清单和路由语法由 `src/roles/` 维护。 |
 | 共享协议 | `src/roles/role-remote.ts`、`src/roles/role-wire.ts`、`src/models/catalogue.ts` | Host 与 Client 共用传输描述符、类型与边界解析，页面不另建协议副本。 |
-| 全局文件与兼容迁移 | `src/index.ts`、`src/pstack/home.ts`、`src/compat/` | 集中定义 pstack 文件路径；服务初始化时迁移旧角色与设置文件，当前文件优先，后续读取不触发迁移。 |
+| 全局文件与兼容迁移 | `src/index.ts`、`src/pstack/home.ts`、`src/compat/` | 集中定义 pstack 文件路径；服务初始化时执行配置迁移，当前文件优先，后续读取保持纯读。 |
 | Preset 与工作流 | `src/preset.ts`、`src/poteto-toggle.ts`、`src/readonly.ts` | 注册本地化子代理 preset、管理会话级 Poteto 工作流与新会话默认值，并提供只读沙箱策略；相关状态与协议归 `src/poteto/`。 |
 | 维护修复 | `src/poteto/maintenance.ts` | 扫描旧会话事件、执行排队修复并报告结果；会话日志与插件 sidecar 分开维护。 |
 | Client | `src/client/index.ts`、`src/client/pages/` | 挂载配置入口、Remote 和会话插槽，管理页面交互与草稿；共享组件、辅助逻辑、角色草稿与本地化各归其子目录。 |
@@ -60,7 +60,7 @@ Client 使用共享清单、类型和描述符，不直接访问文件系统或 
 
 ### 系统边界
 
-`src/pstack/home.ts` 是 `$DSH_HOME/pstack/` 路径的唯一来源，角色配置、工作流全局默认和修复队列各自保存。迁移集中在 `src/compat/`，旧的根目录修复队列不迁移、不读取；历史格式与迁移顺序以该目录实现为准。
+`src/pstack/home.ts` 是 `$DSH_HOME/pstack/` 路径的唯一来源，角色配置、工作流全局默认和修复队列各自保存。
 
 会话级 Poteto 选择通过 DSH storage domain 保存为 sidecar，不写入会话事件日志。维护修复在下次启动时处理排队的旧会话，保留失败信息；该流程的入口见上表。
 

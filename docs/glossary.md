@@ -24,11 +24,11 @@ Role 的路由基数由 `shape` 描述：
 
 ## Budget（推理预算）
 
-角色文件中一次批量应用推理目标的记录，不直接参与委派；真正生效的是各角色的具体路由。档位和 effort 映射以 `src/roles/budget.ts` 为准。应用时按模型实际公布的 efforts 匹配、向下回退或提示手动选择；自定义 efforts 或没有 effort 的模型保持原值。旧 `unlimited` 值兼容规范化为 `large`，落盘迁移见[角色文件模块](./architecture.md#模块与入口)。
+角色文件中一次批量应用推理目标的记录，不直接参与委派；真正生效的是各角色的具体路由。当前档位、effort 匹配与兼容处理以 `src/roles/budget.ts` 为准。
 
 ## Agent preset（Agent 预设）
 
-DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会话能力。DSH 的根 preset 面向用户会话；本插件只随包提供子代理 preset（`poteto-agent`、`comment-sicko`、`readonly`），用户会话的 Poteto 工作流改由会话级开关启用。`pstack_subagent` 的 `agent_preset` 选择 preset 类别；模型路由由调用方读取角色文件后通过 `provider`/`model`/`reasoning_effort` 传入，两者是正交配置。
+DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会话能力。DSH 的根 preset 面向用户会话；本插件只随包提供子代理 preset（`poteto-agent`、`comment-sicko`、`readonly`），用户会话的 Poteto 工作流通过会话级开关启用。`pstack_subagent` 的 `agent_preset` 选择 preset 类别；模型路由由调用方读取角色文件后通过 `provider`/`model`/`reasoning_effort` 传入，两者是正交配置。
 
 ## Session sidecar（会话 sidecar）
 
