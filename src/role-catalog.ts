@@ -27,7 +27,7 @@ export const inject = ["tools", "llm", "pstackHome"];
 
 export const TOOL_NAME = "pstack_roles";
 
-/** One configured route. The role file stores `effort`; a route reports the argument name. */
+/** One configured route. Caller-passed fields use the `pstack_subagent` argument names. */
 export interface RoleRoute {
   readonly provider?: string;
   readonly model?: string;
