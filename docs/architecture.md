@@ -1,119 +1,90 @@
 # 项目架构
 
-本文描述 `dsh-pstack` 当前的模块边界、依赖方向和扩展入口。用户使用方式见根 README；基准钉定与缺口提取按 `native/AGENTS.md` 执行，产品实现规范见 `src/AGENTS.md`。
+本文描述 `dsh-pstack` 的模块边界、依赖方向和扩展入口。用户使用方式见根 README；目录内的操作规则见各目录 `AGENTS.md`。
 
 ## 端到端流程
 
 ```text
-playground 真实会话验证
-  → 能力缺口和证据分析
-  → src/dsh.md + src/ 实现和 cordis.patch.yml 装配
-  → generate 生成 native/pstack/，build 复制并盖章 src/dsh.md
-  → 根 README 状态/兼容表
+native 钉定上游、维护标准模式答案与经确认的缺口
+  → playground 验证 native/adapted 行为并提供证据
+  → src 维护产品适配答案与实现，cordis.patch.yml 装配
+  → generate 生成 native/pstack/，build 产出 dist/
+  → 核对根 README 的能力说明与发布元数据
   → release-ready
 ```
 
-- `native` 是基准子包：钉定的已发布上游树、native 适配答案和缺口清单。
-- `playground` 负责运行 native/adapted probe、收集证据和分析问题。
-- `src` 负责随包适配答案与 Host/Client 实现；`cordis.patch.yml` 负责装配。
-- 根 README 同步已有兼容表、技能与能力状态、能力限制和最终适配结果。
-- 发布由用户手动执行；agent 停在 release-ready。
+`native/`、`playground/`、`src/` 分别拥有基准、验证和产品实现。playground 的快照证明所记录环境中的行为，不作为发布门禁。发布由用户手动执行，agent 停在 release-ready。
 
 ## Bundle assembly
 
-根 `cordis.patch.yml` 是 Host/Client 装配清单，不是生成物。它选择模块、注册技能和组合 preset；新增、删除或改变模块、工具、服务或 preset 时，同步 `src/` 实现、导出和测试，生成树 `native/pstack/` 不手工编辑。
+根 `cordis.patch.yml` 是 Host/Client 装配清单，选择模块、注册技能并组合 Agent preset。模块、工具、服务或 preset 的公开面变化时，同步实现、导出与装配；`native/pstack/` 由生成流程维护。
 
-## 系统边界
-
-本仓提供一个 DSH Cordis bundle：
-
-- Host 端注册技能、模型目录、角色目录和子代理工具，并提供角色配置与工作流开关 Remote 服务、Agent preset。
-- Client 端在插件详情页注入配置入口，通过 Remote 服务管理角色配置，并通过可选的插件管理接口管理关联插件。
-- 上游 pstack 内容经生成器进入 `native/pstack/`，构建时复制到 `dist/pstack/` 并把适配答案盖章为 `src/dsh.md`；vendored 和 authored 技能分别复制到 `dist/skills/` 下。
-- 角色配置保存在 `$DSH_HOME/pstack/models.json`，由本插件读取和编辑；旧文件在服务初始化时迁移，后续读取只访问当前文件。迁移入口与兼容格式见下方角色文件模块。
-- 会话级 Poteto 工作流开关的全局默认保存在 `$DSH_HOME/pstack/settings.json` 的 `potetoDefault`，与角色文件分开维护；根目录旧的 `pstack-settings.json` 同样在服务初始化时迁入。
+Host 注册工具、技能、preset 和 Remote 服务；Client 通过宿主插槽挂载配置入口，通过 Remote 管理 Host 状态，并通过可选的插件管理服务管理关联插件。各模块通过 Cordis 注入获取能力，不建立独立的 DSH 运行时。
 
 ## 模块与入口
 
-| 模块 | 真实路径与入口 | 当前职责 |
-|---|---|---|
-| Bundle 装配 | `cordis.patch.yml` | 注册技能目录、Host 工具和角色服务；组合三个子代理 preset（`poteto-agent`、`comment-sicko`、`readonly`）。 |
-| 模型目录 | `src/models.ts`、`src/models/catalogue.ts` | 实现 `pstack_models`，读取实时 LLM adapter 目录，保留单 provider 或 model 的发现错误；共享 catalogue 类型、schema 与 wire 解析。 |
-| 角色清单 | `src/roles/role-manifest.ts`、`src/role-catalog.ts` | 定义角色 key 与 shape；实现只读的 `pstack_roles`，按角色报告配置好的 provider/model/effort 路由，并附实时目录中该路由的可用 efforts 与默认档位。 |
-| 子代理委派 | `src/subagent.ts` | 实现 `pstack_subagent` 薄包装：一次调用只启动一个子代理，`description` 和 `prompt` 必填，支持可选 `agent_preset`、`name`、`maxDepth`；`provider`/`model`/`reasoning_effort` 转成 `agentOptions`，省略则继承父路由；做能力校验与路由预检后调用 `ctx.subagents.startActivation`，返回原生 `{kind:"activation", name}`。同一模块还注册 `pstack_interrupt`，用于按名称或会话 id 中断 pstack 子代理；列出与续聊改用原生 `list_agents`、`send_message`。 |
-| 角色文件 | `src/index.ts`、`src/pstack/home.ts`、`src/compat/migrate-pstack-home.ts`、`src/roles/role-store.ts`、`src/roles/route.ts`、`src/roles/budget.ts`、`src/roles/role-editor.ts`、`src/compat/` | `src/index.ts` 的 `PstackHomeService` 在服务初始化时调用 `src/compat/migrate-pstack-home.ts` 的 `migratePstackHome` 一次；`src/pstack/home.ts` 定义 `$DSH_HOME/pstack/` 布局与当前文件名。迁移把根目录旧 `pstack-models.json` 移入并升级，`pstack-models.mdc` 经 `compat/mdc-to-json.ts` 转成当前 JSON 并删除旧文件，`version: 1` 经 `compat/version-1-to-2.ts` 重写成版本 2 对象，当前版本则清理已退役角色与预算标签。`role-store.ts` 读写 `$DSH_HOME/pstack/models.json` 这份 typed JSON 文档，版本 2，每个角色保存结构化 Route 对象数组；读取为纯读，不再触发迁移。迁移逻辑集中在 `compat/`；旧角色与预算名称的识别分别由角色清单与预算模块提供。按预算把目标推理档位映射到具体模型并原子保存。 |
-| 角色 Remote 边界 | `src/roles/role-wire.ts`、`src/roles/role-remote.ts`、`src/role-service.ts` | 定义并严格校验传输结构；共享 Typert 描述符；在 Host 暴露状态、目录、保存和预算应用方法。 |
-| Preset 与工作流开关 | `src/preset.ts`、`src/presets/preset-copy.ts`、`src/poteto-toggle.ts`、`src/poteto/remote.ts`、`src/poteto/projection.ts`、`src/poteto/preset-gate.ts`、`src/poteto/settings.ts`、`src/poteto/storage.ts`、`src/readonly.ts` | 注册本地化 preset；实现会话级 Poteto 工作流开关并向系统提示注入常驻 `poteto-mode` 内容；持久化开关的全局默认；按会话所在的 Agent preset 判定能否启用（极简模式不启用）；为只读子代理设置沙箱策略。 |
-| Client 入口与对话框 | `src/client/index.ts`、`src/client/pages/PstackConfigDialog.tsx`、`src/client/pages/GeneralSettingsPage.tsx` | 挂载 Remote 描述符、注册 locale 和插件详情动作；管理配置对话框、页签、未保存草稿和通用默认开关。 |
-| 角色与插件页面 | `src/client/pages/RoleSettingsPage.tsx`、`src/client/pages/RecommendedPluginsPage.tsx`、`src/client/components/RoleCard.tsx`、`src/client/components/BudgetDialog.tsx` | 编辑角色草稿并展示保存结果；按预算批量预览并应用推理档位；展示关联插件及其变更结果。 |
-| Client 支撑 | `src/client/components/`（`ui.tsx`、`icons.tsx`、`DiscardConfirmation.tsx`、`PotetoModeToggle.tsx`、`PotetoModeBadge.tsx`）、`src/client/session-projection-types.ts`、`src/client/lib/`（`styles.css`、`poteto-mode.ts`、`toast.ts`、`message.ts`）、`src/client/roles/`（`role-copy.ts`、`role-draft.ts`、`role-selectors.ts`）、`src/client/locales/` | 提供本插件的 UI 组件、样式、共享提示、翻译、角色草稿和选择器文案；样式经 Client 模块元数据交给 DSH renderer 装载。 |
-| 维护修复 | `src/poteto/maintenance.ts`、`src/poteto/maintenance-remote.ts`、`src/poteto/maintenance-types.ts`、`src/client/pages/MaintenanceSettingsPage.tsx` | 扫描含旧 `poteto/mode` 事件的会话，按工作区展示并选择；确认后写入 `$DSH_HOME/pstack/repair.json`，下次启动时修复日志、把旧开关值写入会话 sidecar，并清理队列。旧的根目录 `pstack-repair.json` 不参与启动迁移，保持原样。 |
-| 移植与生成 | `native/scripts/fetch-upstream.ts`、`native/scripts/generate-pstack.ts`、`native/`（`upstream/`、`upstream.lock.json`、`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`、`gaps.json`）、`src/dsh.md`、`src/dsh.zh.md`、`playground/scenarios/` | fetch 把已发布上游版本钉定到 `native/upstream/`；生成器从上游树加注入行并盖章 `native/dsh.md` 产出唯一生成树 `native/pstack/`；`src/dsh.md` 是随包适配答案，构建时盖章替换 dist 内的基准答案；缺口提取规则见 `native/AGENTS.md`，缺口清单 `native/gaps.json` 与场景规则见 `playground/docs/scenarios.md`。 |
-| 发布元数据与发布说明 | `scripts/release-compatibility.ts`、`scripts/release-surface.ts`、`scripts/release.sh`、`bump.config.ts`、`changes/AGENTS.md` | 发布时按 DSH 兼容范围分组同步各本地化 README 的发布版本表与 pstack 徽标，并把对应本地化 README 加入发布提交；已发布行不可改写，`compatibility:check` 校验表格、徽标与最新发布行一致，并允许 pin 领先于最新发布版本。发布说明由 agent 会话按 `changes/AGENTS.md` 从版本间提交生成到 `changes/RELEASE.md`；`release.sh` 要求该文件存在且已提交后才 bumpp，打完 tag 后删除它，发布工作流在 tag 上读取它作为 Release 正文；`release-surface.ts` 维护 `src/surface.json`。 |
-| 构建与打包 | `vite.config.ts`、`package.json` | 分别构建 Host 与浏览器 Client；导出 Host 模块，复制生成树和技能资源。 |
-| 自动化验证 | `tests/`、`src/tests/`、`playground/tests/`、`playground/runner/cli/`（doctor、prepare、bootstrap、run-scenario、run-batch、collect、status、stop、stop-task、browser、build-image、session-tail）、`playground/scripts/`（review、redact、gap-lock） | 运行单元与契约测试；在 Docker worker 中运行 capability probes，收集 RunRecord、SessionAnalysis 和当前评审快照；后处理脚本执行语义审核、脱敏与缺口同步校验。 |
+下表提供定位入口；具体字段、内部辅助文件与调用步骤以入口实现为准。
+
+| 模块 | 入口 | 职责与边界 |
+| --- | --- | --- |
+| 模型与角色发现 | `src/models.ts`、`src/role-catalog.ts` | 读取实时模型目录与角色配置，报告可用路由及发现错误；不执行委派。 |
+| 子代理委派 | `src/subagent.ts` | 校验调用方给定的路由与后端能力，启动一个子代理或中断指定子代理；不读取角色文件。 |
+| 角色配置 | `src/role-service.ts`、`src/roles/role-editor.ts`、`src/roles/role-store.ts` | 校验与编辑角色路由、应用预算并原子保存；读取保持纯读。角色清单和路由语法由 `src/roles/` 维护。 |
+| 共享协议 | `src/roles/role-remote.ts`、`src/roles/role-wire.ts`、`src/models/catalogue.ts` | Host 与 Client 共用传输描述符、类型与边界解析，页面不另建协议副本。 |
+| 全局文件与兼容迁移 | `src/index.ts`、`src/pstack/home.ts`、`src/compat/` | 集中定义 pstack 文件路径；服务初始化时迁移旧角色与设置文件，当前文件优先，后续读取不触发迁移。 |
+| Preset 与工作流 | `src/preset.ts`、`src/poteto-toggle.ts`、`src/readonly.ts` | 注册本地化子代理 preset、管理会话级 Poteto 工作流与新会话默认值，并提供只读沙箱策略；相关状态与协议归 `src/poteto/`。 |
+| 维护修复 | `src/poteto/maintenance.ts` | 扫描旧会话事件、执行排队修复并报告结果；会话日志与插件 sidecar 分开维护。 |
+| Client | `src/client/index.ts`、`src/client/pages/` | 挂载配置入口、Remote 和会话插槽，管理页面交互与草稿；共享组件、辅助逻辑、角色草稿与本地化各归其子目录。 |
+| 基准与生成 | `native/scripts/fetch-upstream.ts`、`native/scripts/generate-pstack.ts` | 按 lock 恢复已发布上游并生成基准树；钉定与缺口维护规则见 [native/AGENTS.md](../native/AGENTS.md)。 |
+| 真实会话验证 | `playground/runner/cli/`、`playground/scripts/` | 运行容器 worker、收集证据与审核快照；场景、运行和脱敏规则见 [playground/AGENTS.md](../playground/AGENTS.md)。 |
+| 构建与发布 | `vite.config.ts`、`package.json`、`scripts/release.sh` | 构建 Host/Client 和资源，维护发布元数据与发布说明生命周期。 |
 
 ## 依赖方向
 
-### 运行时装配
-
-`cordis.patch.yml` 选择公开模块并注入 DSH 服务。各模块通过 Cordis `inject` 获取 Host 能力；工具实现依赖 DSH 的工具、技能、LLM 和子代理接口，不建立独立的运行时。
-
 ### 官方类型与本地投影
 
-官方 Remote、wire 和服务契约直接从对应 `@deepseek-ai/*` 包 `import type`，优先使用官方完整类型，不再为非必要收窄定义 `Pick` 或类型别名。跨包 Remote 类型统一从 `@deepseek-ai/dsh-api-remotes/client` 获取；不从某个功能包的 `typert.remote-client` 借用其他包的 namespace。角色文件、委派结果、页面草稿等本仓自有结构保留在本地；仅在官方声明缺失时保留局部服务切片。静态类型已保证的字段无需重复运行时校验。
+官方契约直接从所属 `@deepseek-ai/*` 包引入，跨包 Remote 类型从官方聚合入口获取；本仓保留角色配置、页面草稿等自有结构。类型与外部边界验证规则见[项目类型纪律](./decisions/2026-11-13-project-type-discipline.md)和[官方契约类型](./decisions/2026-11-07-official-contract-types.md)。
 
-依赖声明沿用官方插件的分类方式（见 `docs/decisions/2026-11-08-dsh-dependency-declarations.md`）：平台在运行时提供的 `@deepseek-ai/dsh-*` 服务包（如 `dsh-typert-protocol`、`dsh-sandbox-policy`、`cordis-plugin-loader`）进入 `peerDependencies`；随插件打包的独立运行时工具库（`@deepseek-ai/schemastery`）进入 `dependencies`；仅类型使用的官方包留在 `devDependencies` 与 workspace 的 `types` catalog，这些运行时包的版本统一取自 `runtime` catalog。React 由宿主模块加载器提供，只保留在 `devDependencies`。`dsh.client.inject` 只列出需要运行时模块装载的 assembly，不因类型导入而添加条目。Host 与 Client 构建都把 `@deepseek-ai/*` 与 React 保持为外部依赖，不把官方运行时实现打进 `dist`。
+平台服务、独立运行时库与类型依赖按[依赖分类决策](./decisions/2026-11-08-dsh-dependency-declarations.md)声明，安装使用[命名 catalog](./decisions/2026-11-07-pnpm-catalog-policy.md)。Host 与 Client 构建保持官方运行时实现外部化；Client 的 React 由宿主模块加载器提供。
 
-### 角色配置
-
-```text
-Client 页面
-  → src/client/index.ts 的页面 API 适配
-  → src/roles/role-remote.ts 的 Typert 描述符
-  → src/role-service.ts
-  → src/roles/role-editor.ts
-  → src/roles/role-store.ts
-  → $DSH_HOME/pstack/models.json
-```
-
-`roles/role-wire.ts` 是 Host 与 Client 共享的传输契约；`roles/role-remote.ts` 同时供 Host 注册和 Client 挂载。Client 使用共享类型、清单和描述符，不直接访问文件系统或 Host 的 LLM 服务。
-
-委派链路不再读取角色文件。调用方在委派前按需读取同一份角色文件，自己决定传哪个模型：
+### 角色配置与委派
 
 ```text
-src/subagent.ts
-  → 参数校验 + DSH LLM 预检（仅当显式给了 provider/model）
-  → ctx.subagents.startActivation
+Client 页面 → 页面 API → 共享 Remote 描述符
+  → Host 角色服务 → 角色编辑器 → 角色文件
+
+调用方读取角色配置并选择路由 → pstack_subagent → DSH 子代理服务
 ```
 
-`pstack_subagent` 只把调用方给的 `provider`、`model` 和可选 `reasoning_effort` 转成子代理的 `agentOptions`；三者都省略时子代理继承父路由。文件缺失或某个角色未配置不影响委派，因为工具本身不解析角色文件。一次调用只启动一个子代理；多子代理由调用方在同一消息里并行多次调用。
+Client 使用共享清单、类型和描述符，不直接访问文件系统或 Host 的 LLM 服务。角色配置与委派解耦：未配置角色时由调用方继承父路由；一次工具调用只启动一个子代理，多次委派由调用方组织。
+
+### 系统边界
+
+`src/pstack/home.ts` 是 `$DSH_HOME/pstack/` 路径的唯一来源，角色配置、工作流全局默认和修复队列各自保存。迁移集中在 `src/compat/`，旧的根目录修复队列不迁移、不读取；历史格式与迁移顺序以该目录实现为准。
+
+会话级 Poteto 选择通过 DSH storage domain 保存为 sidecar，不写入会话事件日志。维护修复在下次启动时处理排队的旧会话，保留失败信息；该流程的入口见上表。
 
 ### 生成与发布
 
 ```text
-已发布上游版本 --fetch--> native/upstream/（+ upstream.lock.json）
-native/upstream/ + native/dsh.md
-  → native/scripts/generate-pstack.ts
-  → native/pstack/（唯一生成树）
+已发布上游版本 → native/upstream/（由 upstream.lock.json 恢复）
+  + native/dsh.md → native/pstack/
+  + src/dsh.md（覆盖基准答案）→ dist/pstack/
 
-native/pstack/ + src/dsh.md
-  → vite.config.ts（copy + build 盖章）
-  → dist/pstack/
+skills/.agents/skills/ → dist/skills/vendored/
+skills/authored/       → dist/skills/authored/
 ```
 
-`skills/.agents/skills/` 与 `skills/authored/` 由构建配置分别复制到 `dist/skills/vendored/` 和 `dist/skills/authored/`；vendored 与 authored 技能目录由 `cordis.patch.yml` 的 `bundledSkillDir` 值在 `dist/skills/...` 下定位。`src/lib/paths.ts` 在发布后的 `dist/pstack/` 下定位 pstack 资源。
+技能内容的维护边界见 [skills/AGENTS.md](../skills/AGENTS.md)。`cordis.patch.yml` 定位随包技能目录，`src/lib/paths.ts` 定位构建后的 pstack 资源。根 `.agents/skills/` 用于本仓维护，不作为插件资源打包。
 
-## 扩展点
+发布元数据由 `scripts/release-compatibility.ts` 维护：兼容表与徽标记录已发布事实，上游 pin 可以领先，已发布行不能改写。公开工具参数清单由 `scripts/release-surface.ts` 从工具工厂生成。
 
-- **技能内容**：生成树只由生成器维护。手工适配文案进入 `src/dsh.md`，本仓技能进入 `skills/authored/`，外部随包技能保留在 vendored 工作区。
-- **Host 工具或服务**：在 `src/` 实现 Cordis 入口，由 `cordis.patch.yml` 选择并配置；声明实际需要的 DSH 服务依赖。
-- **角色能力**：`src/roles/role-manifest.ts` 同时驱动角色目录、文件解析、设置视图和只读的 `pstack_roles` 发现；`pstack_subagent` 不按角色解析路由。修改角色时同步其上游来源和对应测试。
-- **Agent preset**：在 `cordis.patch.yml` 组合插件行，由 `src/preset.ts` 注册；展示文案集中在 `src/client/locales/` 或 `src/presets/preset-copy.ts`。
-- **Client 配置能力**：通过 `plugins.detail.actions` 进入现有对话框；Host 数据通过显式 Remote 描述符和页面 API 适配层传递。
-- **上游移植**：先在 playground 审核技能，再调整生成器或手写适配来源，最后重新生成并检查漂移。
-- **验证**：纯逻辑和 DOM 行为放入各包的 `tests/`（`src/tests/`、`playground/tests/`）；仓库级发布测试留在 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
+发布说明的撰写与生命周期见 [changes/AGENTS.md](../changes/AGENTS.md)；发布脚本、版本 bump 配置和 tag 工作流共同消费该说明。版本发布前的检查从 `package.json` 与 `vite.config.ts` 读取。
 
-## 验证分层
+## 扩展与验证
 
-`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。移植审核另有 native 适配覆盖率与场景覆盖守卫。真实运行验证统一使用 `playground/`，其模型选择规则见该目录文档。
+- 新工具、服务或 preset 在 `src/` 实现，通过装配清单公开；Client 扩展沿用现有插槽和 Remote 边界。
+- 角色清单由 `src/roles/role-manifest.ts` 驱动配置与发现，修改时核对上游来源与相应测试。
+- 随包的本仓技能进入 `skills/authored/`；随包适配答案进入 `src/dsh.md` 及本地化版本，写作规则见 [dsh-adapter.md](./dsh-adapter.md)。
+- 纯逻辑与 DOM 行为测试归各包 `tests/`；根 `tests/` 保存仓库级测试。需要真实 Cordis、profile、浏览器或模型的验证归 playground，按其目录规则执行。
+- 静态检查、测试、生成一致性、公开工具面、兼容元数据和构建由项目 CI 任务核验。DSH 基线升级另按 [dsh-baseline-bump.md](./dsh-baseline-bump.md) 核对目标运行时与装配。

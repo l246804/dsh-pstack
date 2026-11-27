@@ -57,6 +57,12 @@ release. Add a tool name to select part of the graph. For example, run
 
 - 破坏性变更提交使用 Conventional Commits 的 `type!:` 形式，例如 `feat!: ...`；不要使用 `!feat:`。
 
+## Pull requests
+
+- PR 创建后，在 PR 正文保留逐文件改动说明；后续推送改变文件集合或改动意图时同步更新。
+- 每个新增、修改、删除、重命名文件各占一行，格式为 `文件 | 问题或需求 | 改动原因与验证依据`。原因解释为什么需要改、为何采用当前处理，不能只复述 diff。生成或同步文件注明来源和命令。
+- 用 PR 的实际文件列表核对说明表，保证无遗漏、无已撤销条目；验证结果和仍未验证的部分另行汇总。
+
 ## Issues
 
 - 一个 issue 聚焦一个问题，以观察到的行为、证据和影响为主。

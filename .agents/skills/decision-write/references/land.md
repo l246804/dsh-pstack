@@ -8,10 +8,11 @@ In Land when no candidate anchor is available, resolve `<base>` as described und
 
 ```bash
 git log --since=<Date> --format='%H %cs %s' <base> --
+git log --until=<Date> --format='%H %cs %s' <base> --
 gh pr list --state merged --search "<record title or scope keyword>" --json number,title,mergedAt,files --limit 20
 ```
 
-If `Scope` is absent, search commit subjects and PR titles for the record's title or keywords. Start at its `Date`; for a retrospective record, also inspect recent commits before `Date` that touch `Scope`. If `gh` is unavailable, search commits and report that PR discovery was skipped.
+If `Scope` is absent, search commit subjects and PR titles for the record's title or keywords. Start at its `Date`; for a retrospective record, also inspect recent commits before `Date` that touch `Scope` with the `--until` form. If `gh` is unavailable, search commits and report that PR discovery was skipped.
 
 Keep candidates whose changed paths intersect `Scope` and include at least one path outside `<dir>`; a change containing only decision records is not an implementation. Use one clearly matching candidate's `PR #N` or `commit:SHA`. If several match, list their dates, titles, and paths and ask which one. If none matches, use the fallback below.
 

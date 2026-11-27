@@ -12,7 +12,6 @@
 
 - 以当前运行时的 DSH 能力和官方类型/API 为准；不要凭 Cursor 或旧实现猜测接口。
 - 可选插件和运行时能力不作为默认存在；需要时先确认当前环境实际提供什么，并保留缺失时的降级。
-- 修改前读 `docs/architecture.md`；涉及适配文案时读 [../docs/dsh-adapter.md](../docs/dsh-adapter.md)。
 
 ## 适配原则
 

@@ -11,12 +11,12 @@
     "decision-audit": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "85533384149ecc297197087948fb498c321c6a82955e4e82b9395cdd4f8ad16d"
+      "computedHash": "7098c7cea5710b995ada3f34d7ba071e378b96dffb3462ac5b2c18559537a3a0"
     },
     "decision-write": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "352c385ccaafaaa0c03bff8d237131bffa837829c6e09c8aad749dcda4dad671"
+      "computedHash": "f8460b50c56f3b461aeffbe40c7c9aec96a3db5877ef8947c3bc14b98e336218"
     },
     "docs-drift": {
       "source": "./skills/authored",

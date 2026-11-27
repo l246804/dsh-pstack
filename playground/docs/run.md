@@ -21,7 +21,7 @@
 
 ## Worker
 
-worker 是独立 Docker 容器。仓库根、`playground/scenarios`、宿主 home、Docker socket 和宿主 browser profile 不进入容器。挂载、隔离参数和路径以 `runner/container/spec.ts` 为准。
+worker 的隔离边界见 [AGENTS.md](../AGENTS.md#边界)，挂载与启动参数以 `runner/container/spec.ts` 为准。
 
 - `prepare`：按场景数量、机器容量和 variant/environment 计算 worker 数量，写入 worker profile、模型和运行设置。
 - `bootstrap`：打开每个 worker 页面，检查默认 workspace、模型、reasoning effort 和登录状态，并生成 readiness 证据。
@@ -37,7 +37,6 @@ worker 是独立 Docker 容器。仓库根、`playground/scenarios`、宿主 hom
 | --- | --- | --- |
 | native 验证 | `evidence/runs/native-<environment>/` | 快照完整 |
 | native 分析 | `playground/evidence/findings/native.md` | 每个场景有结论 |
-| 适配开发 | 适配代码、`src/dsh.md`、build | adapted 可准备 |
 | adapted 验证 | `evidence/runs/adapted-<environment>/` | 快照完整 |
 | adapted 分析 | `playground/evidence/findings/adapted.md` | review 和 redaction 完成 |
 
@@ -128,7 +127,7 @@ vp run playground:redact -- --variant <variant> --environment <environment> --ap
 
 `--apply` 会用 safe record 替换 `record.json`。
 
-分析会话只读已机械脱敏的 record，不读取或粘贴原始 session；无法判断的字段标记为 `needs-human`，不要猜测放行；需要记录决定时，在同目录写本地 `redaction-notes.md`。
+脱敏审阅只读已机械脱敏的 record，不读取或粘贴原始 session；无法判断的字段标记为 `needs-human`，不要猜测放行；需要记录决定时，在同目录写本地 `redaction-notes.md`。语义审核的取证范围见 [judge.md](./judge.md#隔离)。
 
 提交门：`evidence/runs/**/session.jsonl.zstd`、`record.source.json`、`record.safe.json` 永不提交；只有 `redact --apply` 成功后的 `record.json` 和人工确认的截图进入提交。
 
