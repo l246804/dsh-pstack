@@ -40,11 +40,12 @@ export function shouldSeedPotetoDefault(input: {
 }
 
 /**
- * Whether the poteto system-prompt sections apply to one Agent. A subagent is a
- * delegate that carries its own preset persona, so the session's workflow prompt
- * must not follow it even when the global default is on.
+ * Whether the poteto workflow owns one Agent. A subagent is a delegate that
+ * carries its own preset persona, so neither the session's workflow prompt nor
+ * its native delegation restrictions may follow it, even when the global default
+ * is on.
  */
-export function potetoPromptApplies(input: {
+export function potetoWorkflowApplies(input: {
   readonly enabled: boolean;
   readonly origin: string | undefined;
 }): boolean {

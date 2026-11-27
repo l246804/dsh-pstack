@@ -66,21 +66,22 @@ export function PotetoModeToggle(
   // The projection carries the first-paint snapshot from the storage sidecar.
   // Live changes update local state and the shared browser event.
   const projected = useProjection("potetoMode");
-  const [mode, setMode] = useState<boolean | undefined>(projected?.enabled);
+  const [selected, setSelected] = useState<boolean | undefined>();
   const [pending, setPending] = useState(false);
+  const mode = selected ?? projected?.enabled;
 
   useEffect(() => {
     ensureStyle();
     let live = true;
     void readMode().then(
       (value) => {
-        if (live) setMode(value);
+        if (live) setSelected(value);
       },
       () => undefined,
     );
     const onChange = (event: Event): void => {
       const detail = (event as CustomEvent<{ sessionId: string; enabled: boolean }>).detail;
-      if (detail.sessionId === sessionId) setMode(detail.enabled);
+      if (detail.sessionId === sessionId) setSelected(detail.enabled);
     };
     window.addEventListener(POTETO_MODE_EVENT, onChange);
     return () => {
@@ -96,7 +97,7 @@ export function PotetoModeToggle(
     void selectMode(next)
       .then((failure) => {
         if (failure === null) {
-          setMode(next);
+          setSelected(next);
           window.dispatchEvent(
             new CustomEvent(POTETO_MODE_EVENT, { detail: { sessionId, enabled: next } }),
           );

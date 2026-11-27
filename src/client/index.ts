@@ -201,7 +201,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
           name: "plugins.detail.actions",
           id: "pstack",
           order: 20,
-          label: translations.config("configureAction"),
+          label: () => translations.config("configureAction"),
         },
         createPstackConfigAction(
           roleApi,

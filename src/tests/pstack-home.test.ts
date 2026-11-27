@@ -129,7 +129,7 @@ describe("migratePstackHome", () => {
     ]);
   });
 
-  it("upgrades a current models.json version 1 at startup", () => {
+  it("upgrades a version 1 models.json at startup", () => {
     const home = tempHome();
     writeJson(pstackHomePaths(home).models, {
       version: 1,

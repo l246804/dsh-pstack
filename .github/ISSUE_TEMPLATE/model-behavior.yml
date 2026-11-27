@@ -44,8 +44,8 @@ body:
     id: environment
     attributes:
       label: Environment（环境）
-      description: DSH version, dsh-pstack version, model, and preset. DSH 版本、插件版本、模型和预设。
-      placeholder: DSH 0.2.2-rc.2 / dsh-pstack 0.5.2 / model x / preset y
+      description: DSH version (`dsh --version`), dsh-pstack version, model, and preset. DSH 版本（`dsh --version`）、插件版本、模型和预设。
+      placeholder: DSH x.y.z / dsh-pstack x.y.z / model x / preset y
     validations:
       required: true
   - type: textarea

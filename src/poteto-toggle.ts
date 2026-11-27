@@ -16,7 +16,7 @@ import type {} from "@deepseek-ai/dsh-system-prompt";
 import type {} from "@deepseek-ai/dsh-typert-registry";
 
 import {
-  potetoPromptApplies,
+  potetoWorkflowApplies,
   potetoSupportsPreset,
   resolvePotetoEnabled,
   shouldSeedPotetoDefault,
@@ -124,7 +124,7 @@ export class PotetoModeService extends TypertRemoteService {
           order: CONTRACT_SECTION_ORDER,
           interpolate: false,
           text: ({ agent }) =>
-            agent !== undefined && this.promptAppliesTo(agent) ? CONTRACT_TEXT : "",
+            agent !== undefined && this.workflowAppliesTo(agent) ? CONTRACT_TEXT : "",
         }),
       "pstack.poteto-toggle.contract()",
     );
@@ -136,7 +136,7 @@ export class PotetoModeService extends TypertRemoteService {
           order: SECTION_ORDER,
           interpolate: false,
           text: ({ agent }) =>
-            agent !== undefined && this.promptAppliesTo(agent) ? this.sectionText : "",
+            agent !== undefined && this.workflowAppliesTo(agent) ? this.sectionText : "",
         }),
       "pstack.poteto-toggle.section()",
     );
@@ -159,7 +159,7 @@ export class PotetoModeService extends TypertRemoteService {
           async ({ agent }, next) => {
             const decision = await next();
             if (decision.kind === "reject") return decision;
-            if (this.isEnabledFor(agent)) this.ensureNativeToolsRestricted(agent);
+            if (this.workflowAppliesTo(agent)) this.ensureNativeToolsRestricted(agent);
             return decision;
           },
           { prepend: true },
@@ -188,8 +188,8 @@ export class PotetoModeService extends TypertRemoteService {
     });
   }
 
-  private promptAppliesTo(agent: Agent): boolean {
-    return potetoPromptApplies({
+  private workflowAppliesTo(agent: Agent): boolean {
+    return potetoWorkflowApplies({
       enabled: this.isEnabledFor(agent),
       origin: agent.session.header.origin,
     });
@@ -427,11 +427,9 @@ export class PotetoModeService extends TypertRemoteService {
     }
   }
 
-  /** Re-apply to every live root Agent, since a tool can register after the Agent was created. */
   private reconcileNativeTools(): void {
     for (const agent of this.ctx.agents.list()) {
-      if (agent.session.header.origin === "subagent") continue;
-      if (this.isEnabledFor(agent)) this.ensureNativeToolsRestricted(agent);
+      if (this.workflowAppliesTo(agent)) this.ensureNativeToolsRestricted(agent);
       else this.clearNativeToolsRestriction(agent);
     }
   }

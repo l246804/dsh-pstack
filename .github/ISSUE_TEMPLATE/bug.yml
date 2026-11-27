@@ -35,14 +35,15 @@ body:
     id: dsh-version
     attributes:
       label: DSH version（DSH 版本）
-      placeholder: 0.2.2-rc.2
+      description: The output of `dsh --version`. `dsh --version` 的输出。
+      placeholder: x.y.z
     validations:
       required: true
   - type: input
     id: plugin-version
     attributes:
       label: dsh-pstack version（插件版本）
-      placeholder: 0.5.2
+      placeholder: x.y.z
     validations:
       required: true
   - type: checkboxes
