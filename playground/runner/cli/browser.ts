@@ -1,5 +1,5 @@
 // Run a sequence of browser steps, navigating to the worker URL first.
-// For interactive commands that retain page state, use playground:ui:browser.
+// For agent-driven UI inspection, follow playground/docs/ui.md.
 //
 // Usage:
 //   vpx playground/runner/cli/browser.ts --environment <id> --variant <native|adapted> [--worker <k>] [url] [steps...]

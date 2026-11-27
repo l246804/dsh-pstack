@@ -141,22 +141,16 @@ export default defineConfig({
         dependsOn: ["build"],
       },
       "playground:ui:open": {
-        command:
-          "vpx playground/runner/cli/prepare.ts --variant adapted --environment ui && vpx playground/runner/cli/ui-browser.ts open",
+        command: "vpx playground/runner/cli/prepare.ts --variant adapted --environment ui",
         cache: false,
         dependsOn: ["build", "playground:ui:close"],
-      },
-      "playground:ui:browser": {
-        command: "vpx playground/runner/cli/ui-browser.ts",
-        cache: false,
       },
       "playground:ui:close": {
         command: "vpx playground/runner/cli/stop.ts --variant adapted --environment ui",
         cache: false,
       },
       "playground:ui:reset": {
-        command:
-          "vpx playground/runner/cli/prepare.ts --variant adapted --environment ui --reset && vpx playground/runner/cli/ui-browser.ts open",
+        command: "vpx playground/runner/cli/prepare.ts --variant adapted --environment ui --reset",
         cache: false,
         dependsOn: ["build", "playground:ui:close"],
       },

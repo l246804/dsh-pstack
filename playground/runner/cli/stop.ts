@@ -23,6 +23,8 @@ for (const paths of listWorkers({
   console.log(
     `[stop] ${paths.variant}/${paths.environmentId}/w${paths.index} stopped=${result.stopped}`,
   );
+  // UI browsers belong to the inspecting agent, not the scenario runner.
+  if (paths.environmentId === "ui") continue;
   try {
     createBrowserSession({
       session: `${paths.variant}-${paths.environmentId}-w${paths.index}`,

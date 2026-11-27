@@ -32,7 +32,7 @@ export const environments: readonly EnvironmentMatrix[] = [
   },
   {
     id: "ui",
-    description: "Agent 客户端交互验证专用环境，使用独立的 adapted worker 和浏览器。",
+    description: "Agent 客户端交互验证专用环境，提供独立的 adapted worker。",
     kind: "capability",
     enabledPluginPackages: [],
   },
