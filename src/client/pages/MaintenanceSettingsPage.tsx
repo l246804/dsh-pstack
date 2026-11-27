@@ -5,7 +5,6 @@ import { useMemo, useState, type ReactElement } from "react";
 import { Button, Checkbox, Modal } from "@deepseek-ai/dsh-client-ui-primitives";
 import { Spinner } from "../components/ui.tsx";
 import { messageOf } from "../lib/message.ts";
-import { ensurePstackStyles } from "../lib/styles.ts";
 import { showToast } from "../lib/toast.ts";
 import type { PstackTranslations } from "../locales/index.ts";
 import type {
@@ -13,8 +12,6 @@ import type {
   MaintenanceFailure,
   MaintenanceScanResult,
 } from "../../poteto/maintenance-types.ts";
-
-ensurePstackStyles();
 
 /** Host methods consumed by the maintenance page. */
 export interface MaintenanceSettingsApi {

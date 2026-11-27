@@ -1,6 +1,3 @@
-/** Stylesheet for the pstack client dialog and its pages. */
-
-const CSS = `
 .pstack-config-modal {
   gap: 0;
   width: min(800px, 100%);
@@ -306,7 +303,11 @@ const CSS = `
   margin: 0 0 12px;
   padding: 10px 12px;
   border: 0.5px solid
-    color-mix(in srgb, var(--dsw-alias-state-warn-primary) 35%, var(--dsw-alias-settings-card-stroke));
+    color-mix(
+      in srgb,
+      var(--dsw-alias-state-warn-primary) 35%,
+      var(--dsw-alias-settings-card-stroke)
+    );
   border-radius: var(--dsw-radius-lg);
   background: color-mix(
     in srgb,
@@ -882,18 +883,4 @@ const CSS = `
   display: flex;
   align-items: center;
   gap: 8px;
-}
-`;
-
-let installed = false;
-
-/** Insert the pstack stylesheet once per document. */
-export function ensurePstackStyles(): void {
-  if (installed || typeof document === "undefined") return;
-  installed = true;
-  if (document.querySelector("style[data-pstack-css]") !== null) return;
-  const tag = document.createElement("style");
-  tag.dataset.pstackCss = "";
-  tag.textContent = CSS;
-  document.head.appendChild(tag);
 }
