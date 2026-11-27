@@ -25,4 +25,4 @@ Review: 2026-11-27
 ## 后果
 
 - 角色文件升级到 `version: 2`，不再需要 join、split 字符串，provider 含 `/` 也能正确表达。`version: 1` 的字符串路由兼容读取，保存时升到 2。
-- `pstack_models`、`pstack_roles`、`pstack_subagent`、角色编辑器在结构化数据上对齐，模型直接拿 `provider`、`model`、`reasoning_effort`。角色文件里该字段仍叫 `effort`。
+- `pstack_models`、`pstack_roles`、`pstack_subagent`、角色编辑器在结构化数据上对齐，模型直接拿 `provider`、`model`、`reasoning_effort`。
