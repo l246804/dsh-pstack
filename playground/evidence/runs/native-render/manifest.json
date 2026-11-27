@@ -1,31 +1,29 @@
 {
   "variant": "native",
   "environment": "render",
-  "dshVersion": "0.2.2-rc.4",
-  "pstackVersion": "0.15.43",
-  "updatedAt": "2026-11-20T10:41:21.105Z",
-  "lastBatchId": "native-render-20261120183351",
+  "dshVersion": "0.2.3-alpha.2",
+  "pstackVersion": "0.15.48",
+  "updatedAt": "2026-11-27T02:28:41.616Z",
+  "lastBatchId": "native-render-20261127101833",
   "lastMode": "incremental",
   "lastScope": ["inline-video-playback"],
   "scenarioIds": ["inline-video-playback"],
   "scenarios": [
     {
       "id": "inline-video-playback",
-      "capturedAt": "2026-11-20T10:33:51.759Z",
-      "batchId": "native-render-20261120183351",
+      "capturedAt": "2026-11-27T02:18:33.976Z",
+      "batchId": "native-render-20261127101833",
       "environment": {
         "worker": 0,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": null,
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "render",
           "description": "用于验证 mermaid、图表、图片、视频和 UI 渲染能力；显式作为 native/adapted 的对照环境。",
           "kind": "capability",
           "enabledPluginPackages": ["dsh-genui"]
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "47a30a9c327a23bf6484a15bd9a28d956884f73f0da165fb4b6acd038e9d341c"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     }
   ]

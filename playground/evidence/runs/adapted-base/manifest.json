@@ -1,69 +1,63 @@
 {
   "variant": "adapted",
   "environment": "base",
-  "dshVersion": "0.2.2-rc.4",
-  "pstackVersion": "0.15.43",
-  "updatedAt": "2026-11-23T02:58:37.034Z",
-  "lastBatchId": "adapted-base-20261123105520",
+  "dshVersion": "0.2.3-alpha.2",
+  "pstackVersion": "0.15.48",
+  "updatedAt": "2026-11-27T03:12:18.209Z",
+  "lastBatchId": "adapted-base-20261127110856",
   "lastMode": "full",
   "lastScope": ["subagent-interrupt", "subagent-model-routing", "subagent-readonly-sandbox"],
   "scenarioIds": ["subagent-interrupt", "subagent-model-routing", "subagent-readonly-sandbox"],
   "scenarios": [
     {
       "id": "subagent-interrupt",
-      "capturedAt": "2026-11-23T02:55:21.489Z",
-      "batchId": "adapted-base-20261123105520",
+      "capturedAt": "2026-11-27T03:08:56.831Z",
+      "batchId": "adapted-base-20261127110856",
       "environment": {
         "worker": 0,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": "0.5.0",
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "base",
           "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
           "kind": "base",
           "enabledPluginPackages": []
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     },
     {
       "id": "subagent-model-routing",
-      "capturedAt": "2026-11-23T02:55:21.397Z",
-      "batchId": "adapted-base-20261123105520",
+      "capturedAt": "2026-11-27T03:08:56.766Z",
+      "batchId": "adapted-base-20261127110856",
       "environment": {
         "worker": 1,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": "0.5.0",
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "base",
           "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
           "kind": "base",
           "enabledPluginPackages": []
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     },
     {
       "id": "subagent-readonly-sandbox",
-      "capturedAt": "2026-11-23T02:55:21.482Z",
-      "batchId": "adapted-base-20261123105520",
+      "capturedAt": "2026-11-27T03:08:56.834Z",
+      "batchId": "adapted-base-20261127110856",
       "environment": {
         "worker": 2,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": "0.5.0",
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "base",
           "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
           "kind": "base",
           "enabledPluginPackages": []
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     }
   ]
