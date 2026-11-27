@@ -73,6 +73,7 @@ function selectedDeepSeekModels(
   wanted: HostModelSelection[],
   label: string,
 ): DeepSeekModel[] {
+  // No selection inherits the host catalog; DSH would otherwise fall back to its default one.
   if (wanted.length === 0) return models;
   const ids = new Set(models.map((model) => model.id));
   for (const entry of wanted) {
@@ -143,6 +144,13 @@ export function fromHost(
     }
     if (name === "deepseek-official") {
       if ("account" in selection) throw new Error("deepseek-official is not an account route");
+      for (const entry of selection.models ?? []) {
+        if (entry.efforts !== undefined) {
+          throw new Error(
+            `${name} sets per-model efforts; DeepSeek routes take provider-level reasoning instead`,
+          );
+        }
+      }
       const config = hostProvider(patch, "llm-deepseek") ?? {};
       const apiKeyEnv =
         typeof config.apiKeyEnv === "string" && config.apiKeyEnv !== ""

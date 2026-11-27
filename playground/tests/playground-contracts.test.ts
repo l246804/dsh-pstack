@@ -244,6 +244,32 @@ describe("playground configuration", () => {
       ),
     ).toThrow(/testModel/);
   });
+
+  it("rejects DeepSeek catalog entries the runtime would refuse to load", () => {
+    const withModel = (model: Record<string, unknown>): unknown => ({
+      ...config(),
+      testModel: { provider: "deepseek-official", model: "deepseek-flash", effort: "high" },
+      providers: {
+        "deepseek-official": {
+          kind: "deepseek-api-key",
+          apiKey: "secret",
+          apiKeyEnv: "DEEPSEEK_API_KEY",
+          models: [{ id: "deepseek-flash", ...model }],
+        },
+      },
+    });
+    expect(() => parseConfig(withModel({ inputModalities: [] }))).toThrow(/inputModalities/);
+    expect(() => parseConfig(withModel({ inputModalities: ["text", "text"] }))).toThrow(
+      /inputModalities/,
+    );
+    expect(() => parseConfig(withModel({ imageTargetBytes: 1024 }))).toThrow(/text-only/);
+    expect(() =>
+      parseConfig(withModel({ inputModalities: ["image"], imagePixelBudget: -1 })),
+    ).toThrow(/imagePixelBudget/);
+    expect(() =>
+      parseConfig(withModel({ inputModalities: ["text", "image"], imageTargetBytes: 1.5 })),
+    ).toThrow(/imageTargetBytes/);
+  });
 });
 
 function tempPatch(content: unknown): { dir: string; file: string } {
@@ -327,6 +353,20 @@ describe("fromHost DeepSeek routes", () => {
       expect(() => fromHost({ "deepseek-account": { account: true } }, { file })).toThrow(
         /modelOverrides/,
       );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects per-model efforts, which a DeepSeek route does not read", () => {
+    const { dir, file } = tempPatch([]);
+    try {
+      expect(() =>
+        fromHost(
+          { "deepseek-official": { models: [{ id: "deepseek-flash", efforts: ["low"] }] } },
+          { file },
+        ),
+      ).toThrow(/provider-level reasoning/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

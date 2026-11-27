@@ -15,9 +15,10 @@ export default {
 
   // Providers become the worker's $DSH_HOME/cordis.patch.yml model rows.
   // fromHost extracts selected provider/model/effort subsets from the host profile.
-  // DeepSeek API-key route:
-  // fromHost({ "deepseek-official": { models: [{ id: "deepseek-flash" }], reasoning: "high" } }).
-  // DeepSeek account: fromHost({ "deepseek-account": { account: true } }) with copyCredentials: true.
+  // A pi-ai route takes per-model efforts, as below. A DeepSeek route does not: it
+  // selects models by id and takes one reasoning effort for the whole route.
+  //   "deepseek-official": { models: [{ id: "deepseek-flash" }], reasoning: "high" }
+  //   "deepseek-account": { account: true }   // requires copyCredentials: true
   providers: fromHost(
     {
       "your-provider": {

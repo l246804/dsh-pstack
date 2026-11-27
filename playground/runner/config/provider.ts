@@ -24,7 +24,7 @@ function isDeepSeekEffort(effort: string): effort is DeepSeekEffort {
  * validate the playground's own selection; workers leave `models` unset so DSH
  * keeps owning the default catalog.
  */
-export const DEEPSEEK_BUILTIN_MODELS: DeepSeekModel[] = [
+const DEEPSEEK_BUILTIN_MODELS: DeepSeekModel[] = [
   {
     id: "deepseek-flash",
     name: "DeepSeek-V4.1-Flash",

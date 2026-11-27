@@ -112,17 +112,31 @@ function deepSeekModel(value: unknown, label: string): DeepSeekModel {
   if (
     inputModalities !== undefined &&
     (!Array.isArray(inputModalities) ||
+      inputModalities.length === 0 ||
       inputModalities.some((entry) => entry !== "text" && entry !== "image"))
   ) {
-    throw new Error(`${label}.inputModalities must be an array of text/image`);
+    throw new Error(`${label}.inputModalities must be a non-empty array of text/image`);
+  }
+  if (Array.isArray(inputModalities) && new Set(inputModalities).size !== inputModalities.length) {
+    throw new Error(`${label}.inputModalities must not repeat a modality`);
+  }
+  // DSH treats a missing list as text-only, so image limits require a declared image modality.
+  const hasImage = Array.isArray(inputModalities) && inputModalities.includes("image");
+  if (
+    !hasImage &&
+    (parsed.imagePixelBudget !== undefined || parsed.imageTargetBytes !== undefined)
+  ) {
+    throw new Error(`${label} is text-only, so it cannot declare image request limits`);
   }
   const imagePixelBudget = parsed.imagePixelBudget;
   if (
     imagePixelBudget !== undefined &&
     imagePixelBudget !== "low" &&
-    typeof imagePixelBudget !== "number"
+    (typeof imagePixelBudget !== "number" ||
+      !Number.isSafeInteger(imagePixelBudget) ||
+      imagePixelBudget <= 0)
   ) {
-    throw new Error(`${label}.imagePixelBudget must be a number or "low"`);
+    throw new Error(`${label}.imagePixelBudget must be "low" or a positive integer`);
   }
   const systemPromptUpdate = parsed.systemPromptUpdate;
   if (systemPromptUpdate !== undefined && systemPromptUpdate !== "in-history") {
@@ -135,6 +149,12 @@ function deepSeekModel(value: unknown, label: string): DeepSeekModel {
   const contextWindow = number(parsed.contextWindow, `${label}.contextWindow`);
   const maxTokens = number(parsed.maxTokens, `${label}.maxTokens`);
   const imageTargetBytes = number(parsed.imageTargetBytes, `${label}.imageTargetBytes`);
+  if (
+    imageTargetBytes !== undefined &&
+    (!Number.isSafeInteger(imageTargetBytes) || imageTargetBytes <= 0)
+  ) {
+    throw new Error(`${label}.imageTargetBytes must be a positive integer`);
+  }
   return {
     id: string(parsed.id, `${label}.id`),
     ...(parsed.name === undefined ? {} : { name: string(parsed.name, `${label}.name`) }),
