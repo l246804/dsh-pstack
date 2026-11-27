@@ -33,7 +33,7 @@ Use only tools visible in the current session, even when a name appears here. Wh
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]`, such as `claude-opus-5-5-xhigh` | Split it into `provider`, `model`, and `reasoning_effort`, and drop `-fast`; these arguments appear only when the delegation tool enables model selection. Discover ids with `list_subagent_models` when the tool offers it; when it does not, omit them and the child inherits the parent route. |
+| `claude-<family>-<version>-<effort>[-fast]`, such as `claude-opus-5-5-xhigh` | Split it into `provider`, `model`, and `reasoning_effort`, and drop `-fast`. The arguments appear only when the delegation tool enables model selection, and they take effect only when the host settings allow that route; with selection disabled the call is rejected and the child stays on the parent route. Discover ids with `list_subagent_models` when the tool offers it; when discovery or selection is unavailable, omit the arguments and say the child inherits the parent route. |
 | A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route. If none matches, omit `provider` and `model` so the child inherits the parent route, and say so. |
 | `auto` or `inherit-parent` | Omit `provider`, `model`, and `reasoning_effort`; the child inherits the parent route. |
 | The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | Base DeepSeek Harness has no `.mdc` rules directory and never loads one. The pstack role file is `$DSH_HOME/pstack/models.json`; base DeepSeek Harness does not read it, so read it yourself before delegation when it exists. |

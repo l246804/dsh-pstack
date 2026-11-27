@@ -33,7 +33,7 @@ pstack 技能使用 Cursor 名称。在 DeepSeek Harness 中，用下面的表�
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]`, such as `claude-opus-5-5-xhigh` | 拆成 `provider`、`model` 和 `reasoning_effort`，并去掉 `-fast`；只有委派工具启用模型选择时才有这些参数。工具提供 `list_subagent_models` 时用发现到的 id；不提供时省略它们，子代理继承父级路由。 |
+| `claude-<family>-<version>-<effort>[-fast]`, such as `claude-opus-5-5-xhigh` | 拆成 `provider`、`model` 和 `reasoning_effort`，并去掉 `-fast`。只有委派工具启用模型选择时才有这些参数，而且只有宿主设置允许该路由时才生效；选择关闭时调用会被拒绝，子代理留在父级路由。工具提供 `list_subagent_models` 时用发现到的 id；发现或选择不可用时省略这些参数，并说明子代理继承父级路由。 |
 | A `grok-*`, `gpt-*`, or other non-Claude slug | 选最接近的已公布路由。没有匹配时省略 `provider` 和 `model`，让子代理继承父级路由，并说明这一点。 |
 | `auto` or `inherit-parent` | 省略 `provider`、`model` 和 `reasoning_effort`；子代理继承父级路由。 |
 | The `pstack-models.mdc` rule, `~/.cursor/rules/pstack-models.mdc` | 基础 DeepSeek Harness 没有 `.mdc` rules 目录，也从不加载它。pstack 角色文件是 `$DSH_HOME/pstack/models.json`；基础 DeepSeek Harness 不读它，所以它存在时在委派前自行读取。 |
