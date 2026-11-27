@@ -1,12 +1,17 @@
 {
   "variant": "native",
   "environment": "base",
-  "dshVersion": "0.2.2-rc.4",
-  "pstackVersion": "0.15.43",
-  "updatedAt": "2026-11-20T11:22:31.015Z",
-  "lastBatchId": "native-base-20261120192122",
-  "lastMode": "incremental",
-  "lastScope": ["subagent-interrupt"],
+  "dshVersion": "0.2.3-alpha.2",
+  "pstackVersion": "0.15.48",
+  "updatedAt": "2026-11-27T02:06:06.280Z",
+  "lastBatchId": "native-base-20261127095521",
+  "lastMode": "full",
+  "lastScope": [
+    "inline-video-playback",
+    "subagent-interrupt",
+    "subagent-model-routing",
+    "subagent-readonly-sandbox"
+  ],
   "scenarioIds": [
     "inline-video-playback",
     "subagent-interrupt",
@@ -16,78 +21,70 @@
   "scenarios": [
     {
       "id": "inline-video-playback",
-      "capturedAt": "2026-11-20T10:56:32.763Z",
-      "batchId": "native-base-20261120185632",
+      "capturedAt": "2026-11-27T01:55:21.963Z",
+      "batchId": "native-base-20261127095521",
       "environment": {
         "worker": 0,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": null,
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "base",
           "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
           "kind": "base",
           "enabledPluginPackages": []
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     },
     {
       "id": "subagent-interrupt",
-      "capturedAt": "2026-11-20T11:21:23.134Z",
-      "batchId": "native-base-20261120192122",
+      "capturedAt": "2026-11-27T01:55:21.947Z",
+      "batchId": "native-base-20261127095521",
       "environment": {
-        "worker": 0,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": null,
+        "worker": 1,
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "base",
           "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
           "kind": "base",
           "enabledPluginPackages": []
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     },
     {
       "id": "subagent-model-routing",
-      "capturedAt": "2026-11-20T11:16:53.921Z",
-      "batchId": "native-base-20261120191653",
+      "capturedAt": "2026-11-27T01:55:21.979Z",
+      "batchId": "native-base-20261127095521",
       "environment": {
-        "worker": 0,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": null,
+        "worker": 2,
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "base",
           "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
           "kind": "base",
           "enabledPluginPackages": []
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     },
     {
       "id": "subagent-readonly-sandbox",
-      "capturedAt": "2026-11-20T10:56:32.733Z",
-      "batchId": "native-base-20261120185632",
+      "capturedAt": "2026-11-27T01:55:21.967Z",
+      "batchId": "native-base-20261127095521",
       "environment": {
         "worker": 3,
-        "dshVersion": "0.2.2-rc.4",
-        "pstackVersion": "0.15.43",
-        "adaptedVersion": null,
+        "dshVersion": "0.2.3-alpha.2",
+        "pstackVersion": "0.15.48",
         "matrix": {
           "id": "base",
           "description": "默认环境，不加载额外插件，用于观察原生 DSH 能力。",
           "kind": "base",
           "enabledPluginPackages": []
         },
-        "upstreamRevision": "2f87c854fe3e2fcda44ca86b46ede35aad3c46b7",
-        "configHash": "7f65ea17946aefa3d4a21e251ae8e90eccb039e0e283d9660d6212fce5574b9e"
+        "upstreamRevision": "9e278fe4d4ecd8bfe98b1b79bf4be662efb338cc"
       }
     }
   ]
