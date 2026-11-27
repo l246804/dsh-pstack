@@ -128,7 +128,7 @@
 | `pstack_subagent` | 用 `agent_preset` 启动一个子代理，可用 provider、model 和 reasoning_effort 覆盖路由。 |
 | `pstack_interrupt` | 按 `list_agents` 的名称或会话 id 中断一个 pstack 子代理当前回合。内置预设禁用了原生 `interrupt_agent`，所以这是中断通道。 |
 | `pstack_models` | 列出本部署实际提供的 provider、model 和 reasoning effort。 |
-| `pstack_roles` | 报告每个角色已配置的路由，以 provider、model 和 reasoningEffort 给出，并附该路由的可用 efforts 和默认档位。 |
+| `pstack_roles` | 报告每个角色已配置的路由，以 provider、model 和 reasoning_effort 给出，并附该路由的可用 efforts 和默认档位。 |
 
 ### 🎛️ 工作流开关
 

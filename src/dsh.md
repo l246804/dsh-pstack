@@ -50,7 +50,7 @@ On the board path, create the task first, start the child with a `name`, reassig
 
 | Cursor | DeepSeek Harness |
 | --- | --- |
-| `claude-<family>-<version>-<effort>[-fast]` | Drop `-fast`; DeepSeek Harness has no speed parameter. Read the role's `provider`, `model`, and `reasoningEffort` from `pstack_roles`, and use a served `effort` when you change it. |
+| `claude-<family>-<version>-<effort>[-fast]` | Drop `-fast`; DeepSeek Harness has no speed parameter. Read the role's `provider`, `model`, and `reasoning_effort` from `pstack_roles`, and use a served `effort` when you change it. |
 | A `grok-*`, `gpt-*`, or other non-Claude slug | Pick the closest advertised route, or omit the route and let the child inherit the parent route; say which you did. |
 | `auto` or `inherit-parent` | Omit the route; the child inherits the parent route. |
 | The pstack role file | `$DSH_HOME/pstack/models.json`. Read it through `pstack_roles`; `pstack_subagent` does not parse it. A missing file leaves the parent route in effect. |
