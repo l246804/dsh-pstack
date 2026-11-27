@@ -47,6 +47,25 @@ describe("pstack_models", () => {
     expect((await collectCatalogue(llm, "missing", signal)).providers).toHaveLength(0);
   });
 
+  it("keeps providers and models beyond the former directory limits", async () => {
+    const large = {
+      resolveModelInfo: llm.resolveModelInfo.bind(llm),
+      listProviders: () =>
+        Array.from({ length: 65 }, (_, index) => ({ id: `p${index}`, name: `P${index}` })),
+      listModels: async (provider: string) =>
+        Array.from({ length: provider === "p64" ? 201 : 1 }, (_, index) => ({
+          provider,
+          id: `m${index}`,
+          name: `M${index}`,
+        })),
+    } as LlmRuntime;
+    const result = await collectCatalogue(large, undefined, signal);
+    expect(result.providers).toHaveLength(65);
+    expect(result.providers[64]?.models).toHaveLength(201);
+    expect(result.providers[64]?.models[200]?.efforts).toEqual(["off", "low", "high"]);
+    expect(result.truncated).toBe(false);
+  });
+
   it("propagates cancellation instead of reporting it as a provider error", async () => {
     const controller = new AbortController();
     const cancelled = {

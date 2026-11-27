@@ -62,11 +62,16 @@ function sessionSignature(file: string): string {
   return `${events.length}:${events.at(-1)?.type ?? "none"}`;
 }
 
-function waitForSettledSession(file: string, scenarioDeadline: number): void {
+function waitForSettledSession(
+  file: string,
+  scenarioDeadline: number,
+  checkStopped: () => void,
+): void {
   const deadline = Math.min(Date.now() + runtimeSettings().turnTimeoutMs, scenarioDeadline);
   let signature = sessionSignature(file);
   let stableSince = Date.now();
   while (Date.now() < deadline) {
+    checkStopped();
     sleep(POLL_INTERVAL_MS);
     const next = sessionSignature(file);
     if (next !== signature) {
@@ -148,11 +153,16 @@ function activeSubagents(file: string): number {
   return activeSubagentCount(readSessionEvents(file));
 }
 
-function waitForSubagentsSettled(file: string, scenarioDeadline: number): void {
+function waitForSubagentsSettled(
+  file: string,
+  scenarioDeadline: number,
+  checkStopped: () => void,
+): void {
   const deadline = Math.min(Date.now() + runtimeSettings().subagentTimeoutMs, scenarioDeadline);
   let signature = sessionSignature(file);
   let stableSince = Date.now();
   for (;;) {
+    checkStopped();
     if (Date.now() > deadline) throw new InfraError("subagents did not settle before capture");
     sleep(POLL_INTERVAL_MS);
     const next = sessionSignature(file);
@@ -616,7 +626,9 @@ export function attemptScenario(input: AttemptInput): {
             ).length;
             if (ends > seenTurnEnds) {
               seenTurnEnds = ends;
-              waitForSettledSession(match.file, scenarioDeadline);
+              waitForSettledSession(match.file, scenarioDeadline, () =>
+                throwIfStopped(paths, session, screenshotFile),
+              );
               break;
             }
           }
@@ -629,7 +641,9 @@ export function attemptScenario(input: AttemptInput): {
     }
     if (!match) throw new InfraError("no session matched the scenario");
     const matched: MatchResult = match;
-    waitForSubagentsSettled(matched.file, scenarioDeadline);
+    waitForSubagentsSettled(matched.file, scenarioDeadline, () =>
+      throwIfStopped(paths, session, screenshotFile),
+    );
     session.wait(1000);
     const lastPrompt = scenario.turns.at(-1)?.prompt ?? "";
     captureVerified(session, screenshotFile, lastPrompt);

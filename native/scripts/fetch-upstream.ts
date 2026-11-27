@@ -192,6 +192,7 @@ if (commitOverride) {
 }
 
 // Extract the subtree at the pin. native/upstream/ holds the tree root itself.
+const pinnedSource = remoteUrl(work, source);
 mkdirSync(SCRATCH, { recursive: true });
 const target = join(NATIVE, "upstream");
 const archive = join(SCRATCH, `archive-${Date.now()}.tar`);
@@ -231,7 +232,7 @@ const lock = {
   commit: fullSha(bump, work),
   path,
   // The canonical remote, not the ephemeral local path that may have served the fetch.
-  source: remoteUrl(work, source),
+  source: pinnedSource,
 };
 writeFileSync(LOCK_FILE, `${JSON.stringify(lock, null, 2)}\n`);
 writeFileSync(RESTORED_PIN, `${lock.commit}\n${lock.path}\n`);

@@ -158,6 +158,24 @@ describe("pstack_roles", () => {
     }
   });
 
+  it.each([
+    { "bug-fix": [{ kind: "route", provider: "p", model: "" }] },
+    { "bug-fix": "invalid" },
+    { "bug-fix": [] },
+    { "unknown-role": [{ kind: "inherit", alias: "auto" }] },
+  ])("rejects damaged role configuration instead of reporting inheritance: %j", async (roles) => {
+    const home = mkdtempSync(join(tmpdir(), "pstack-roles-"));
+    try {
+      mkdirSync(join(home, "pstack"));
+      writeFileSync(join(home, "pstack", "models.json"), JSON.stringify({ version: 2, roles }));
+      await expect(
+        createPstackRolesTool(home).execute({}, { signal: new AbortController().signal } as never),
+      ).rejects.toThrow(/has invalid configuration:/);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   it("annotates role routes through the tool when the llm is available", async () => {
     const home = mkdtempSync(join(tmpdir(), "pstack-roles-"));
     try {
@@ -168,16 +186,16 @@ describe("pstack_roles", () => {
         JSON.stringify({
           version: 2,
           roles: {
-            "swarm workers": [{ kind: "route", provider: "p", model: "a", effort: "low" }],
+            "swarm workers": [{ kind: "route", provider: "p", model: "m200", effort: "low" }],
           },
         }),
       );
       const llm = {
         listProviders: () => [{ id: "p", name: "P" }],
-        listModels: async () => [{ id: "a", name: "A" }],
-        resolveModelInfo: async () => ({
-          id: "a",
-          name: "A",
+        listModels: async () => Array.from({ length: 201 }, (_, index) => ({ id: `m${index}` })),
+        resolveModelInfo: async (_provider: string, id: string) => ({
+          id,
+          name: id,
           reasoning: { efforts: [{ id: "low" }, { id: "high" }], defaultEffort: "high" },
         }),
       } as unknown as LlmRuntime;
@@ -190,7 +208,7 @@ describe("pstack_roles", () => {
       expect(result.roles.find((role) => role.role === "swarm workers")?.routes).toEqual([
         {
           provider: "p",
-          model: "a",
+          model: "m200",
           reasoning_effort: "low",
           efforts: ["low", "high"],
           defaultEffort: "high",

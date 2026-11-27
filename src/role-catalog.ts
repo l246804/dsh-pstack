@@ -167,6 +167,11 @@ export function createPstackRolesTool(
           `the pstack role file at ${roleFile.path} cannot be read: ${roleFile.reason}`,
         );
       }
+      if (roleFile.status === "loaded" && roleFile.issues.length > 0) {
+        throw new Error(
+          `the pstack role file at ${roleFile.path} has invalid configuration: ${roleFile.issues.map((issue) => issue.message).join("; ")}`,
+        );
+      }
       const entries = roleFile.status === "loaded" ? roleFile.roles : undefined;
       const roles = roleCapabilities(entries);
       if (llm === undefined) return { roles };

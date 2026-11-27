@@ -95,6 +95,12 @@ export class PotetoModeService extends TypertRemoteService {
     this.domain = await this.ctx.storageDomain.open(potetoDomainSpec);
     this.modeTable = this.domain.table("poteto_modes");
     this.ctx.effect(() => () => this.domain.close(), "pstack.poteto-toggle.domain");
+    this.ctx.effect(
+      () => () => {
+        for (const agent of this.ctx.agents.list()) this.clearNativeToolsRestriction(agent);
+      },
+      "pstack.poteto-toggle.native-tools",
+    );
     this.repairOutcome = await this.processRepairQueue();
     await this.ctx.sessionProjections.register(
       createPotetoProjectionDefinition((header) =>

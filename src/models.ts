@@ -28,10 +28,7 @@ export const inject = ["llm", "tools"];
 
 export const TOOL_NAME = "pstack_models";
 
-const MAX_PROVIDERS = 64;
-const MAX_MODELS = 200;
-
-/** Collect the live catalogue with bounded provider/model counts. */
+/** Collect the complete live catalogue used for discovery and route validation. */
 export async function collectCatalogue(
   llm: LlmRuntime,
   providerFilter: string | undefined,
@@ -44,11 +41,9 @@ export async function collectCatalogue(
       : registered.filter(
           (provider) => provider.id === providerFilter || provider.name === providerFilter,
         );
-  const selected = providers.slice(0, MAX_PROVIDERS);
   const output: ProviderEntry[] = [];
-  let truncated = providers.length > selected.length;
 
-  for (const provider of selected) {
+  for (const provider of providers) {
     signal.throwIfAborted();
     let models: readonly LlmModelInfo[];
     try {
@@ -63,9 +58,8 @@ export async function collectCatalogue(
       });
       continue;
     }
-    if (models.length > MAX_MODELS) truncated = true;
     const entries: ModelEntry[] = [];
-    for (const model of models.slice(0, MAX_MODELS)) {
+    for (const model of models) {
       signal.throwIfAborted();
       try {
         const info: LlmResolvedModelInfo = await llm.resolveModelInfo(
@@ -89,7 +83,7 @@ export async function collectCatalogue(
 
   return {
     providers: output,
-    truncated,
+    truncated: false,
     ...(providerFilter === undefined ? {} : { providerFilter }),
   };
 }

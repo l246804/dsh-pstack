@@ -150,6 +150,25 @@ const unavailable = {
 } as unknown as LlmRuntime;
 
 describe("role editor", () => {
+  it("saves a valid route beyond the former model directory limit", async () => {
+    const path = pathOf(tempHome(undefined));
+    const result = await saveRoleConfiguration(
+      path,
+      { key: "bug-fix", routes: [{ kind: "route", provider: "cpa", model: "model-200" }] },
+      llmFixture({
+        listModels: async () =>
+          Array.from({ length: 201 }, (_, index) => ({
+            provider: "cpa",
+            id: `model-${index}`,
+            name: `Model ${index}`,
+          })),
+      }),
+      new AbortController().signal,
+    );
+    expect(result.ok).toBe(true);
+    expect(readDoc(path).roles["bug-fix"]).toEqual(["cpa/model-200"]);
+  });
+
   it("reports every manifest role in a missing snapshot", () => {
     const path = join(tempHome(undefined), "missing.json");
     const snapshot = snapshotFromConfiguration({ status: "missing", path });

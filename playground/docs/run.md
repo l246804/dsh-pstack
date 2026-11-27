@@ -26,7 +26,7 @@ worker 的隔离边界见 [AGENTS.md](../AGENTS.md#边界)，挂载与启动参�
 - `prepare`：按场景数量、机器容量和 variant/environment 计算 worker 数量，写入 worker profile、模型和运行设置。
 - `bootstrap`：打开每个 worker 页面，检查默认 workspace、模型、reasoning effort 和登录状态，并生成 readiness 证据。
 - `open` / `close` / `reset`：预览、停止预览和重建 preview worker。
-- `stop`：停止所有匹配的 worker；`stop-task` 写入当前场景的停止请求，由 `run-scenario` 在轮询点处理。
+- `stop`：停止所有匹配的 worker；`stop-task` 记录当前场景的停止请求并停止对应 worker，终止服务端 Agent 及其子进程。该 worker 重新使用前须执行 `prepare → bootstrap`。
 - `run-batch` 退出不会自动停止 worker；需要时运行 `playground:stop`。
 
 完成标准：`prepare` 后 worker 的模型配置与当前 `config.ts` 一致；`bootstrap --all` 通过并生成环境级 readiness 标记。
@@ -106,6 +106,8 @@ vp run playground:session-tail -- --variant <variant> --environment <environment
 ```
 
 检查最后 10 个事件的类型、时间和 `latestAge`。同一工具重复、连续轮询子代理但没有完成事件、`latestAge` 超过 5 分钟且仍在运行，或内容明显偏离当前 scenario 时，调用 `playground:stop-task`。`scenarioTimeoutMs` 仍是最终 hard timeout。
+
+场景执行失败或超时也会停止对应 worker。批次继续使用其他存活 worker；全部停止后，报告尚未运行的场景并返回非零，不再向已停止的 worker 派发任务。
 
 ## 证据脱敏
 
