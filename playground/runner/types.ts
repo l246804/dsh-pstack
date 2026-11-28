@@ -167,8 +167,6 @@ export interface EnvironmentMatrix {
   enabledPluginPackages: string[];
   /** Package names force-loaded despite a peer/runtime version mismatch. */
   versionExemptions?: string[];
-  /** Enable Agent Teams for new root Sessions in this environment. */
-  teamMode?: boolean;
 }
 
 export interface RunEnvironment {

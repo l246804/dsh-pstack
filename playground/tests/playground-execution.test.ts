@@ -643,7 +643,7 @@ describe("workspace isolation", () => {
       /native tree is missing/,
     );
 
-    writeHomePatch(paths, isolationPlan, "native", false, "host");
+    writeHomePatch(paths, isolationPlan, "native", "host");
     const patch = readFileSync(join(paths.home, "cordis.patch.yml"), "utf8");
     expect(patch).not.toContain("system-prompt");
     expect(patch).toContain(join(paths.containerNative, "pstack/skills"));

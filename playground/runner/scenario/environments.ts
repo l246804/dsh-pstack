@@ -23,14 +23,6 @@ export const environments: readonly EnvironmentMatrix[] = [
     enabledPluginPackages: ["dsh-genui"],
   },
   {
-    id: "agent-team",
-    description:
-      "Team-on 环境：prepare 在 profile cordis.patch.yml 写入 agent-team.defaultEnabled=true，验证 pstack 执行者作为 teammate、共享任务板、owner 绑定、消息续跑与中断。",
-    kind: "capability",
-    enabledPluginPackages: [],
-    teamMode: true,
-  },
-  {
     id: "ui",
     description: "Agent 客户端交互验证专用环境，提供独立的 adapted worker。",
     kind: "capability",
@@ -57,6 +49,5 @@ export function environmentMatrix(id: string): RunEnvironment["matrix"] {
     ...(matrix.versionExemptions === undefined
       ? {}
       : { versionExemptions: [...matrix.versionExemptions] }),
-    ...(matrix.teamMode === undefined ? {} : { teamMode: matrix.teamMode }),
   };
 }

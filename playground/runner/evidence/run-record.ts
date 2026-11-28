@@ -27,7 +27,6 @@ const runRecord = z.object({
       kind: z.enum(["base", "capability", "conflict"]),
       enabledPluginPackages: strings,
       versionExemptions: strings.optional(),
-      teamMode: z.boolean().optional(),
     }),
   }),
   target: target.nullable(),

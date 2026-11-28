@@ -142,7 +142,7 @@ export async function prepareWorkers(
     // cleared temp root does not restart native workers with missing skills.
     for (const worker of workers) {
       if (readVariant(worker) === "native") mountNativeTree(worker);
-      writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime.networkMode);
+      writeHomePatch(worker, plan, variant, config.runtime.networkMode);
       writeRoleFile(worker, config);
       writePstackSettings(worker, variant === "adapted");
       registerWorkspaces(worker, scenarioIds);
@@ -185,7 +185,7 @@ export async function prepareWorkers(
     }
     writeFileSync(worker.variantFile, `${variant}\n`);
     if (config.copyCredentials) copyCredentials(worker, config.credentialsFile);
-    writeHomePatch(worker, plan, variant, matrix.teamMode === true, config.runtime.networkMode);
+    writeHomePatch(worker, plan, variant, config.runtime.networkMode);
     writeRoleFile(worker, config);
     writePstackSettings(worker, variant === "adapted");
     registerWorkspaces(worker, scenarioIds);

@@ -132,7 +132,6 @@ export function writeHomePatch(
   paths: WorkerPaths,
   plan: ProviderPlan,
   variant: Variant,
-  teamMode: boolean,
   networkMode: NetworkMode,
 ): void {
   mkdirSync(paths.home, { recursive: true });
@@ -185,7 +184,6 @@ export function writeHomePatch(
       ],
     });
   }
-  if (teamMode) patch.push({ id: "agent-team", config: { defaultEnabled: true } });
   writeFileSync(homePatchFile(paths), yamlDump(patch, { lineWidth: 120 }));
 
   // The Settings page reads the profile patch, while the worker also loads the home patch.
