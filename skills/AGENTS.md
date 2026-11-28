@@ -12,8 +12,6 @@
 
 - 修改 authored 来源后，在仓库根运行 `vp exec skills add ./skills/authored -y -a universal --copy`，提交来源、根安装副本和根 `skills-lock.json`。
 - 更新 vendored 时修改本目录 `package.json` 的来源/ref，在本目录运行 `vp run prepare`，提交配置、vendored 副本和本目录锁文件。根开发工具与发布技能分别钉定，无需强制使用相同 ref。
-- vendored 内容由 skills CLI 同步维护；构建按原样复制到发布目录，不做本地补丁或二次加工。
-- 真实技能运行按 playground 指引执行。
 
 ## 用户文档
 
