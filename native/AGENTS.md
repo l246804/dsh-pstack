@@ -27,7 +27,7 @@
 4. 对照本次上游差异与生成后的 `pstack/`，复核根 README 及其他依赖该基线的本仓文档，按各自职责与统计口径更新受影响的内容，并同步各本地化版本。兼容表与 pstack 徽标记录已发布事实，由发版流程维护，见 [项目架构](../docs/architecture.md)。
 5. `upstream.lock.json`、`pstack/`、`gaps.json` 与需同步的本仓文档同波提交；`upstream/` 不入库。
 
-生成器改写的上游资源链接使用 lock 的 commit，保持与基准相同的来源。
+生成树完整保留钉定的上游文件、内容和链接，只增加 `docs/harness/dsh.md`，并在需要适配的 skill 中注入该文档指针。commit 只用于确定和恢复上游快照，不用于改写文档链接。
 
 完成标准：`vp run native:generate:check` 绿，文档中对当前基线的描述与实际产物一致，改动限于升级及其必要同步。
 

@@ -64,7 +64,7 @@ const {
   files: rendered,
   skillCount,
   wrappedCount,
-} = renderPstack(source, readFileSync(join(ROOT, ADAPTER_SOURCE), "utf8"), lock);
+} = renderPstack(source, readFileSync(join(ROOT, ADAPTER_SOURCE), "utf8"));
 
 if (checkMode) {
   const onDisk = new Map(

@@ -1,9 +1,6 @@
 /** Pure transformation of the pinned upstream files into the native baseline. */
-import { posix } from "node:path";
-
 const ADAPTER_TREE = "docs/harness/dsh.md";
 const INJECTION = `In DeepSeek Harness, read [the DSH adapter](../../${ADAPTER_TREE}) once per session before you follow this skill. It maps the Cursor names in pstack skills to DeepSeek Harness.`;
-const LINK = /\]\(([^)\s]+)\)/g;
 const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export interface TreeFile {
@@ -80,14 +77,9 @@ function classify(
   return { terms, wrap: terms.size > 0 && /^# /m.test(text), name };
 }
 
-function has(files: ReadonlyMap<string, TreeFile>, path: string): boolean {
-  return files.has(path) || [...files.keys()].some((key) => key.startsWith(`${path}/`));
-}
-
 export function renderPstack(
   source: ReadonlyMap<string, TreeFile>,
   adapterText: string,
-  pin: { readonly source: string; readonly commit: string; readonly path: string },
 ): { files: Map<string, TreeFile>; skillCount: number; wrappedCount: number } {
   const skills = [...source.keys()].flatMap((path) => {
     const match = /^skills\/([^/]+)\/SKILL\.md$/.exec(path);
@@ -107,34 +99,14 @@ export function renderPstack(
   }
 
   if (problems.length > 0) throw new Error(problems.join("\n"));
-  const copies = [...source].filter(
-    ([path]) =>
-      /^(skills|agents|docs\/guide)\//.test(path) ||
-      ["README.md", "plugin.json", "LICENSE"].includes(path),
-  );
-  const files = new Map(copies.map(([path, entry]) => [path, { ...entry }]));
+  const files = new Map([...source].map(([path, entry]) => [path, { ...entry }]));
   files.set(ADAPTER_TREE, { bytes: Buffer.from(adapterText), executable: false });
   for (const [skill, { wrap }] of classes) {
     const entry = files.get(`skills/${skill}/SKILL.md`)!;
     if (wrap)
       entry.bytes = Buffer.from(
-        entry.bytes.toString("utf8").replace(/^(# .*)\n+/m, `$1\n\n${INJECTION}\n\n`),
+        entry.bytes.toString("utf8").replace(/^(# .*\n)/m, `$1\n${INJECTION}\n`),
       );
-  }
-  const upstreamUrl = pin.source
-    .replace(/^git@github.com:/, "https://github.com/")
-    .replace(/\.git$/, "");
-  for (const [path, entry] of files) {
-    if (!path.endsWith(".md")) continue;
-    const text = entry.bytes.toString("utf8").replace(LINK, (link, href: string) => {
-      const local = href.replace(/[#?].*/, "");
-      if (!local || /^[a-z][a-z0-9+.-]*:/i.test(local)) return link;
-      const target = posix.join(posix.dirname(path), local).replace(/\/$/, "");
-      if (target.split("/")[0] === ".." || !has(source, target) || has(files, target)) return link;
-      const kind = source.has(target) ? "blob" : "tree";
-      return `](${upstreamUrl}/${kind}/${pin.commit}/${pin.path}/${target}${href.slice(href.search(/[#?]|$/))})`;
-    });
-    entry.bytes = Buffer.from(text);
   }
   return {
     files,

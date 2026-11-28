@@ -36,7 +36,12 @@ export default defineConfig({
       copy: [
         // Copy entries run concurrently; only the adapter writes this harness file.
         {
-          from: ["native/pstack/**/*", "!native/pstack/docs/harness/dsh.md"],
+          from: [
+            "native/pstack/**/*",
+            "native/pstack/.*",
+            "native/pstack/.*/**/*",
+            "!native/pstack/docs/harness/dsh.md",
+          ],
           to: "dist",
           flatten: false,
         },
