@@ -176,8 +176,6 @@ Poteto 工作流和智能体团队协作是两个独立开关，可以在同一�
 
 vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/skills-lock.json)。
 
-用 `/setup-project-docs` 建立项目文档约定。项目已有决策目录时，可以直接用 `/decision-write`。agent 按用户的记录请求或项目约定写决策记录；仅安装技能，不会让普通编码任务自动新增记录。
-
 ## 🔌 可选 DSH 插件
 
 安装 dsh-pstack 时无需一并安装这些插件，按需启用即可。插件对话框的**推荐插件**页是权威清单；本表是它的镜像。

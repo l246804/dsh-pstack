@@ -176,8 +176,6 @@ These skills extend pstack with authoring, project-maintenance, and evidence-gat
 
 [`skills/skills-lock.json`](./skills/skills-lock.json) records the sources and hashes of vendored skills.
 
-Use `/setup-project-docs` to establish project documentation conventions. If your project already has a decision directory, you can use `/decision-write` directly. The agent writes decision records when requested or required by the project's conventions; installing the skills alone does not make ordinary coding tasks create records.
-
 ## 🔌 Optional DSH plugins
 
 Install dsh-pstack without these plugins, then enable only the capabilities you need. The plugin dialog's **Recommended plugins** page is the authoritative list; this table mirrors it.
