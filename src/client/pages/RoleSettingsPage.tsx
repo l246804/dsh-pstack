@@ -64,7 +64,6 @@ export function RoleSettingsView(props: {
   const discard = useDiscardConfirm({
     title: t("discardTitle"),
     description: t("confirmDiscardChanges"),
-    acknowledge: t("discardAcknowledge"),
     cancel: common("cancel"),
     close: common("close"),
     confirm: t("discardConfirm"),

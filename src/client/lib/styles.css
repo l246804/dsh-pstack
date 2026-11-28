@@ -19,6 +19,12 @@
   margin-top: 8px;
   padding: 0;
 }
+.pstack-discard-panel {
+  width: min(440px, 100%);
+}
+.pstack-discard-confirm {
+  min-width: 136px;
+}
 .pstack-status {
   box-sizing: border-box;
   display: inline-flex;
