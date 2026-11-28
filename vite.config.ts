@@ -36,12 +36,7 @@ export default defineConfig({
       copy: [
         // Copy entries run concurrently; only the adapter writes this harness file.
         {
-          from: [
-            "native/pstack/**/*",
-            "native/pstack/.*",
-            "native/pstack/.*/**/*",
-            "!native/pstack/docs/harness/dsh.md",
-          ],
+          from: ["native/pstack/**/*", "!native/pstack/docs/harness/dsh.md"],
           to: "dist",
           flatten: false,
         },
@@ -77,7 +72,6 @@ export default defineConfig({
       "tests/**/*.test.{ts,tsx,mjs}",
       "src/tests/**/*.test.{ts,tsx,mjs}",
       "native/tests/**/*.test.{ts,tsx,mjs}",
-      "skills/tests/**/*.test.{ts,tsx,mjs}",
       "playground/tests/**/*.test.{ts,tsx,mjs}",
     ],
   },
@@ -85,7 +79,7 @@ export default defineConfig({
     tasks: {
       // Repository level: build, static checks, release consistency.
       build: {
-        command: "vpx skills/scripts/check.ts && vp pack && vpx skills/scripts/adapt-dist.ts",
+        command: "vp pack",
         dependsOn: ["native:generate"],
       },
       typecheck: {
@@ -93,11 +87,6 @@ export default defineConfig({
       },
       "compatibility:check": {
         command: "vpx scripts/release-compatibility.ts --check",
-        cache: false,
-      },
-
-      "skills:check": {
-        command: "vpx skills/scripts/check.ts",
         cache: false,
       },
 

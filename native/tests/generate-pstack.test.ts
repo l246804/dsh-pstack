@@ -10,7 +10,7 @@ function tree(entries: Record<string, string>): Map<string, TreeFile> {
   );
 }
 describe("native tree generation", () => {
-  it("preserves the complete upstream tree and only adds the adapter and its pointer", () => {
+  it("preserves the packaged scope, injects the adapter and links to omitted resources", () => {
     const source = tree({
       "skills/probe/SKILL.md":
         "---\nname: probe\n---\n# Probe\n\nRead [reference](reference.md) and [harness](../../docs/harness/claude-code.md#tools).\n",
@@ -24,9 +24,11 @@ describe("native tree generation", () => {
       ".gitignore": "node_modules/\n",
       "plugin.json": '{"version":"1.0.0"}',
       LICENSE: "License",
-      "README.md": "[upstream](https://github.com/cursor/plugins/tree/main/pstack)\n",
+      "README.md":
+        "[upstream](https://github.com/cursor/plugins/tree/main/pstack) and [automation](automations/benny/)\n",
     });
     source.set("assets/logo.png", { bytes: Buffer.from([0, 128, 255]), executable: false });
+    source.set("skills/probe/image.png", { bytes: Buffer.from([0, 128, 255]), executable: false });
     const { files, wrappedCount } = renderPstack(source, "DSH answers");
     expect(wrappedCount).toBe(1);
     expect(files.get("skills/probe/SKILL.md")!.bytes.toString()).toContain(
@@ -36,19 +38,43 @@ describe("native tree generation", () => {
       "[reference](reference.md)",
     );
     expect(files.get("skills/probe/SKILL.md")!.bytes.toString()).toContain(
-      "[harness](../../docs/harness/claude-code.md#tools)",
+      "[harness](https://github.com/cursor/plugins/blob/main/pstack/docs/harness/claude-code.md#tools)",
     );
-    expect([...files.keys()].sort()).toEqual([...source.keys(), "docs/harness/dsh.md"].sort());
-    for (const [path, entry] of source) {
-      if (path === "skills/probe/SKILL.md") continue;
-      expect(files.get(path), path).toEqual(entry);
+    expect([...files.keys()].sort()).toEqual(
+      [
+        "skills/probe/SKILL.md",
+        "skills/probe/reference.md",
+        "skills/probe/run.sh",
+        "skills/probe/image.png",
+        "skills/plain/SKILL.md",
+        "docs/guide/start.md",
+        "docs/harness/dsh.md",
+        "plugin.json",
+        "LICENSE",
+        "README.md",
+      ].sort(),
+    );
+    for (const path of [
+      "skills/probe/reference.md",
+      "skills/probe/run.sh",
+      "skills/probe/image.png",
+      "skills/plain/SKILL.md",
+      "plugin.json",
+      "LICENSE",
+    ]) {
+      expect(files.get(path), path).toEqual(source.get(path));
     }
-    const injected = files.get("skills/probe/SKILL.md")!.bytes.toString();
-    expect(injected.replace(/\nIn DeepSeek Harness,[^\n]+\n/, "")).toBe(
-      source.get("skills/probe/SKILL.md")!.bytes.toString(),
+    expect(files.get("README.md")!.bytes.toString()).toBe(
+      "[upstream](https://github.com/cursor/plugins/tree/main/pstack) and [automation](https://github.com/cursor/plugins/tree/main/pstack/automations/benny)\n",
+    );
+    expect(files.get("docs/guide/start.md")!.bytes.toString()).toBe(
+      "[harness](https://github.com/cursor/plugins/blob/main/pstack/docs/harness/claude-code.md)\n",
     );
     expect(files.get("docs/harness/dsh.md")!.bytes.toString()).toBe("DSH answers");
     expect(source.get("skills/probe/SKILL.md")!.bytes.toString()).not.toContain("DSH adapter");
+    expect(source.get("skills/probe/SKILL.md")!.bytes.toString()).toContain(
+      "[harness](../../docs/harness/claude-code.md#tools)",
+    );
   });
 
   it("rejects a misnamed skill and a Cursor-dependent skill without an injection heading", () => {

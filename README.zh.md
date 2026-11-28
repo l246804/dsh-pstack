@@ -174,7 +174,7 @@ Poteto 工作流和智能体团队协作是两个独立开关，可以在同一�
 | `setup-project-docs` | `authored` | 为项目建立架构、术语、决策约定和文档指针。 |
 | `docs-drift` | `authored` | 巡检持续维护的文档，修复获批的漂移、冗余和无依据表述。 |
 
-vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/skills-lock.json)。发布版 writing-for-agents 的机制参考加入 [DSH 调用说明](./skills/dsh-mechanics.md)，上游副本保持钉定。authored 维护技能沿用用户对具体修复的已有授权，只询问未决选择。
+vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/skills-lock.json)。authored 维护技能沿用用户对具体修复的已有授权，只询问未决选择。
 
 ## 🔌 可选 DSH 插件
 

@@ -47,7 +47,7 @@ native 上游基准与最小适配答案 → generate 生成 native/pstack/
 | 旧日志维护 | `src/poteto/maintenance-service.ts`、`src/poteto/maintenance.ts` | 独立维护 Remote、修复队列及日志转换。开关服务打开 sidecar 后挂载维护服务，等待修复完成再注册投影；子服务随开关服务卸载。 |
 | Client | `src/client/index.ts`、`src/client/pages/`、`src/client/components/`、`src/client/roles/` | 入口适配 Remote，页面管理交互与草稿，组件复用宿主 primitives；通过协议访问 Host。 |
 | native 基准 | `native/scripts/`、`native/AGENTS.md` | 恢复上游钉定并生成基准树；纯转换与 Git 版本解析在 `scripts/lib/`，CLI 负责文件和命令执行。 |
-| 技能工作区 | `skills/AGENTS.md`、`skills/scripts/` | 区分 authored 来源、vendored 锁定副本和根开发安装副本；离线检查一致性，发布时应用 DSH 机制说明。 |
+| 技能工作区 | `skills/AGENTS.md`、`skills/package.json`、`skills/skills-lock.json` | 区分 authored 来源、vendored 锁定副本和根开发安装副本；由 skills CLI 同步，构建按原样复制。 |
 | 发布与打包 | `vite.config.ts`、`scripts/release*.ts`、`scripts/release.sh`、`changes/AGENTS.md` | 构建 Host/Client 和资源，维护工具清单及已发布兼容事实；发布说明流程按 changes 指引。 |
 | 验证 | 各目录 `tests/`、`playground/runner/`、`playground/results/` | 离线测试按所有者归属；真实 Cordis 与宿主验证在 playground，运行证据及逐场景结果按其指引维护。 |
 
@@ -118,7 +118,7 @@ native/pstack/ + src/dsh.md
   → dist/pstack/
 ```
 
-`skills/.agents/skills/` 与 `skills/authored/` 由构建配置分别复制到 `dist/skills/vendored/` 和 `dist/skills/authored/`，随后只对 writing-for-agents 的机制参考注入 `skills/dsh-mechanics.md`；vendored 与 authored 技能目录由 `cordis.patch.yml` 的 `bundledSkillDir` 值在 `dist/skills/...` 下定位。`src/lib/paths.ts` 在发布后的 `dist/pstack/` 下定位 pstack 资源。
+`skills/.agents/skills/` 与 `skills/authored/` 由构建配置分别原样复制到 `dist/skills/vendored/` 和 `dist/skills/authored/`；vendored 与 authored 技能目录由 `cordis.patch.yml` 的 `bundledSkillDir` 值在 `dist/skills/...` 下定位。`src/lib/paths.ts` 在发布后的 `dist/pstack/` 下定位 pstack 资源。
 
 ## 扩展点
 
@@ -128,11 +128,11 @@ native/pstack/ + src/dsh.md
 - **Agent preset**：在 `cordis.patch.yml` 组合插件行，由 `src/preset.ts` 注册；展示文案集中在 `src/client/locales/` 或 `src/presets/preset-copy.ts`。
 - **Client 配置能力**：通过 `plugins.detail.actions` 进入现有对话框；Host 数据通过显式 Remote 描述符和页面 API 适配层传递。
 - **上游移植**：先在 playground 审核技能，再调整生成器或手写适配来源，最后重新生成并检查漂移。
-- **验证**：离线测试放入所属目录的 `tests/`（native、src、skills、playground）；仓库级发布测试留在 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
+- **验证**：离线测试放入所属目录的 `tests/`；仓库级发布测试留在 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
 
 ## 验证分层
 
-`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。`native/tests/` 校验钉定、生成转换和缺口枚举；`skills/tests/` 校验同步守卫；`playground/tests/` 校验场景契约和集成行为；`playground:gap-lock` 检查 confirmed 缺口与场景覆盖、描述指纹。真实运行与结果判定遵循 `playground/AGENTS.md`，按需运行，不随发布版本变化强制重跑。
+`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。`native/tests/` 校验钉定、生成转换和缺口枚举；`playground/tests/` 校验场景契约和集成行为；`playground:gap-lock` 检查 confirmed 缺口与场景覆盖、描述指纹。真实运行与结果判定遵循 `playground/AGENTS.md`，按需运行，不随发布版本变化强制重跑。
 
 
 ## 事实来源
@@ -143,7 +143,7 @@ native/pstack/ + src/dsh.md
 | 标准模式能力与缺口 | `native/dsh.md`、`native/dsh-evidence.md`、`native/gaps.json` |
 | 当前协议和行为 | 官方类型、`src/` 实现及契约测试 |
 | 真实场景结论 | `playground/results/`；原始运行记录保留在 worker 本地 |
-| 技能来源与发布适配 | `skills/package.json`、`skills/skills-lock.json`、`skills/AGENTS.md` |
+| 技能来源与同步发布 | `skills/package.json`、`skills/skills-lock.json`、`skills/AGENTS.md` |
 | 已发布兼容关系 | 发布流程维护的 README 兼容表，允许当前 pin 领先于最新发布行 |
 
 本页保留跨模块边界；参数、schema 和兼容值由对应源码维护，具体操作遵循目录指引。
