@@ -2,31 +2,19 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { join, resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { main } from "../runner/cli/run-batch.ts";
+import { runBatch } from "../runner/execution/batch.ts";
 import { setRuntimeSettings } from "../runner/config/runtime.ts";
 import { batchLockFile, readBatchMetadata } from "../runner/worker/batch.ts";
 import { progressFilePath, readProgress } from "../runner/worker/progress.ts";
 import { currentTaskFile, stopRequestFile, workerPaths } from "../runner/worker/worker.ts";
 import type { RunRecord } from "../runner/types.ts";
 
-vi.mock("../runner/worker/home.ts", () => ({
-  CONFIG_FILE: "unused",
-  readPlaygroundConfig: async () => undefined,
-}));
-vi.mock("../runner/scenario/scenarios.ts", () => ({
-  listScenarioIds: () => ["first", "second", "third"],
-  loadScenario: (id: string) => ({ id }),
-}));
 vi.mock("../runner/worker/capacity.ts", () => ({
   computeWorkers: (count: number) => ({ workers: Math.min(2, count) }),
 }));
 
 const directories: string[] = [];
-const originalArgv = process.argv;
-const originalExitCode = process.exitCode;
 afterEach(() => {
-  process.argv = originalArgv;
-  process.exitCode = originalExitCode;
   vi.useRealTimers();
   vi.restoreAllMocks();
   setRuntimeSettings(undefined);
@@ -109,24 +97,9 @@ run();
     mkdirSync(paths.root, { recursive: true });
     writeFileSync(paths.urlFile, "http://127.0.0.1:1");
   }
-  process.exitCode = 0;
-  vi.spyOn(console, "log").mockImplementation(() => {});
-  vi.spyOn(console, "error").mockImplementation(() => {});
   return {
     root,
-    run: (ids: string[]) => {
-      process.argv = [
-        process.execPath,
-        "run-batch.ts",
-        "--variant",
-        "native",
-        "--environment",
-        "base",
-        "--scenarios",
-        ids.join(","),
-      ];
-      return main();
-    },
+    run: (ids: string[]) => runBatch({ variant: "native", environment: "base", scenarioIds: ids }),
     progress: () => readProgress(progressFilePath("base", "native")),
   };
 }
@@ -140,7 +113,6 @@ describe("batch lifecycle", () => {
       statuses: { completed: 1 },
       perWorker: { w1: { done: 1, total: 1 } },
     });
-    expect(process.exitCode).toBe(0);
   });
 
   it("does not reuse a previous batch's record when a retry starts in the same second", async () => {
@@ -155,7 +127,6 @@ describe("batch lifecycle", () => {
     await test.run(["first"]);
     expect(readBatchMetadata("native", "base").batchId).not.toBe(before);
     expect(test.progress()).toMatchObject({ statuses: { completed: 0, blocked: 1 } });
-    expect(process.exitCode).toBe(1);
   });
 
   it("holds the batch lock until the other child exits after a record read fails", async () => {
@@ -189,10 +160,10 @@ describe("batch lifecycle", () => {
 
   it("does not dispatch another scenario after a stop request, even if Docker could not remove the URL", async () => {
     const test = fixture([0], { first: "stop" });
-    await test.run(["first", "second"]);
+    const result = await test.run(["first", "second"]);
+    expect(result.notRun).toEqual(["second"]);
     expect(existsSync(join(test.root, "second.started"))).toBe(false);
     expect(existsSync(stopRequestFile(workerPaths(0, "base", "native")))).toBe(true);
     expect(test.progress()?.done).toBe(1);
-    expect(process.exitCode).toBe(1);
   });
 });

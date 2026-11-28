@@ -4,33 +4,28 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import type { Assertion, BehaviorScenario, RunRecord, SessionFacts } from "../runner/types.ts";
+import { mountNativeTree, resetHome, writeHomePatch } from "../runner/worker/home.ts";
 import {
-  mountNativeTree,
   readWorkspaceStore,
   registerWorkspaces,
-  resetHome,
   setDefaultWorkspace,
-  writeHomePatch,
-} from "../runner/worker/home.ts";
+} from "../runner/storage/workspaces.ts";
 import type { ProviderPlan } from "../runner/config/provider.ts";
+import { assertSafeRecord, latestRecords, recordFileName } from "../runner/evidence/run-record.ts";
 import {
-  assertSafeRecord,
   digestEvents,
-  evaluateAssertions,
   firstUserText,
-  latestRecords,
-  mechanicalFailures,
-  recordFileName,
   sessionMatchesPrompt,
   summarizeToolArguments,
-  type SessionEvent,
-} from "../runner/evidence/evidence.ts";
+} from "../runner/evidence/session-facts.ts";
+import { evaluateAssertions, mechanicalFailures } from "../runner/evidence/assertions.ts";
+import { type SessionEvent } from "../runner/storage/sessions.ts";
 import {
   WORKERS_ROOT,
   WORKSPACE_ROOT,
   isolatedRootDirectory,
   REPOSITORY_ROOT,
-} from "../runner/worker/run-metadata.ts";
+} from "../runner/shared/paths.ts";
 import { setRuntimeSettings } from "../runner/config/runtime.ts";
 import {
   workerPaths,
@@ -38,7 +33,7 @@ import {
   resetVariant,
   type WorkerPaths,
 } from "../runner/worker/worker.ts";
-import { activeSubagentCount } from "../runner/execution/run.ts";
+import { activeSubagentCount } from "../runner/execution/session.ts";
 import { acquireBatchLock, batchLockFile, type BatchMetadata } from "../runner/worker/batch.ts";
 import { readRunRecords } from "../runner/evidence/run-record.ts";
 

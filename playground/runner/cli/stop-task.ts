@@ -3,9 +3,10 @@ import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
 import { workerPaths } from "../worker/worker.ts";
 import { stopWorkerTask } from "../execution/stop-task.ts";
-import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { readRuntimeConfig } from "../config/config.ts";
 
-await readPlaygroundConfig(CONFIG_FILE);
+await readRuntimeConfig(CONFIG_FILE);
 
 const variant = argValue("--variant") as Variant | undefined;
 if (!isVariant(variant)) throw new Error("stop-task requires --variant native|adapted");

@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 import { z } from "zod";
 
 import { VARIANTS, type Variant } from "../types.ts";
-import { workersDirectory } from "./run-metadata.ts";
+import { workersDirectory } from "../shared/paths.ts";
 
 const batchMetadata = z.object({
   batchId: z.string(),

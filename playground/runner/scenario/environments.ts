@@ -1,4 +1,4 @@
-import type { EnvironmentMatrix } from "../types.ts";
+import type { RunEnvironment, EnvironmentMatrix } from "../types.ts";
 
 /** Capability probes run in base unless a probe explicitly requires a special environment. */
 export const environments: readonly EnvironmentMatrix[] = [
@@ -43,4 +43,20 @@ export function environmentOffset(id: string): number {
   const index = environments.findIndex((environment) => environment.id === id);
   if (index < 0) throw new Error(`unknown playground environment: ${id}`);
   return index;
+}
+
+export function environmentMatrix(id: string): RunEnvironment["matrix"] {
+  if (id.trim() === "") throw new Error("playground environment id is required");
+  const matrix = environments.find((entry) => entry.id === id);
+  if (!matrix) throw new Error(`unknown playground environment: ${id}`);
+  return {
+    id: matrix.id,
+    description: matrix.description,
+    kind: matrix.kind,
+    enabledPluginPackages: [...matrix.enabledPluginPackages],
+    ...(matrix.versionExemptions === undefined
+      ? {}
+      : { versionExemptions: [...matrix.versionExemptions] }),
+    ...(matrix.teamMode === undefined ? {} : { teamMode: matrix.teamMode }),
+  };
 }

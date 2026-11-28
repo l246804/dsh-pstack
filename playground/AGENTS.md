@@ -11,6 +11,7 @@
 | 新增或调整场景 | [docs/scenarios.md](./docs/scenarios.md) |
 | 分析结果、提出建议、记录审批 | [docs/judge.md](./docs/judge.md) |
 | 查看最近验证结论 | [results/README.md](./results/README.md) |
+| 修改 runner 或存储适配 | [模块职责](../docs/architecture.md#playground-runner) |
 
 ## 边界
 

@@ -1,9 +1,13 @@
+import { createEnvironment } from "../worker/run-metadata.ts";
+import { environmentMatrix } from "../scenario/environments.ts";
+import type { WorkerPaths } from "../worker/worker.ts";
+import { digestSession, sessionFacts } from "./session-facts.ts";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { z } from "zod";
 
-import { RUN_STATUSES, VARIANTS, type RunRecord } from "../types.ts";
+import { RUN_STATUSES, VARIANTS, type Variant, type RunRecord } from "../types.ts";
 
 const strings = z.array(z.string());
 const target = z.object({ provider: z.string(), model: z.string(), effort: z.string() });
@@ -87,4 +91,79 @@ export function readRunRecords(directory: string): RunRecord[] {
     }
     return [parseRunRecord(value, file)];
   });
+}
+
+export function assertSafeRecord(record: RunRecord, apiKeys: string[]): void {
+  const serialized = JSON.stringify(record);
+  for (const apiKey of apiKeys) {
+    if (apiKey && serialized.includes(apiKey)) throw new Error("RunRecord contains an apiKey");
+  }
+}
+
+export function latestRecords(records: RunRecord[]): RunRecord[] {
+  const latest = new Map<string, RunRecord>();
+  for (const record of records) {
+    const key = `${record.scenarioId}\0${record.variant}\0${record.environment.matrix.id}`;
+    const current = latest.get(key);
+    if (!current || record.capturedAt > current.capturedAt) latest.set(key, record);
+  }
+  return [...latest.values()];
+}
+
+export function recordFileName(
+  scenarioId: string,
+  variant: Variant,
+  environmentId: string,
+  stamp: string,
+): string {
+  return `${scenarioId}-${variant}-${environmentId}-${stamp}.json`;
+}
+
+export function blockedRecord(input: {
+  scenarioId: string;
+  variant: Variant;
+  paths: WorkerPaths;
+  recordFile: string;
+  screenshotFile: string;
+  sessionFile?: string;
+  sessionId?: string;
+  reason: string;
+  batchId?: string;
+  /** The attempt start stamp shared with the record and screenshot filenames. */
+  capturedAt: string;
+}): RunRecord {
+  const matrix = environmentMatrix(input.paths.environmentId);
+  const sessionFile = input.sessionFile;
+  const session = sessionFile
+    ? (() => {
+        try {
+          return sessionFacts(
+            digestSession(sessionFile, input.sessionId ?? "", input.paths.index),
+            sessionFile,
+            [],
+          );
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+  return {
+    scenarioId: input.scenarioId,
+    variant: input.variant,
+    environment: createEnvironment({
+      worker: input.paths.index,
+      matrix,
+    }),
+    target: null,
+    session,
+    artifacts: {
+      recordFile: input.recordFile,
+      screenshotFile: input.screenshotFile,
+    },
+    mechanicalFailures: [],
+    status: "blocked",
+    blockedReason: input.reason,
+    batchId: input.batchId,
+    capturedAt: input.capturedAt,
+  };
 }

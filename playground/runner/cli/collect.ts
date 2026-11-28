@@ -1,19 +1,16 @@
-import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { isVariant } from "../types.ts";
-import { argValue } from "../shared/args.ts";
-import { environmentMatrix } from "../worker/run-metadata.ts";
-import { collectScreenshots, selectRecords } from "../evidence/collect.ts";
-import { readRunRecords } from "../evidence/run-record.ts";
+import { argValue, parseList } from "../shared/args.ts";
+import { environmentMatrix } from "../scenario/environments.ts";
+import { collectWorkerScreenshots } from "../evidence/collect.ts";
 import { readBatchMetadata } from "../worker/batch.ts";
-import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
-import { variantWorkersDirectory } from "../worker/worker.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { readRuntimeConfig } from "../config/config.ts";
 import { loadScenario, scenarioApplies } from "../scenario/scenarios.ts";
 
 async function main(): Promise<void> {
-  await readPlaygroundConfig(CONFIG_FILE);
+  await readRuntimeConfig(CONFIG_FILE);
   const variant = argValue("--variant");
   const environment = argValue("--environment");
   if (!isVariant(variant) || environment === undefined) {
@@ -25,14 +22,7 @@ async function main(): Promise<void> {
     explicit === undefined
       ? readBatchMetadata(variant, environment)
       : {
-          scope: [
-            ...new Set(
-              explicit
-                .split(",")
-                .map((id) => id.trim())
-                .filter(Boolean),
-            ),
-          ],
+          scope: parseList(explicit),
           batchId: undefined,
         };
   const ids = selection.scope;
@@ -42,18 +32,11 @@ async function main(): Promise<void> {
       throw new Error(`scenario ${id} does not run in ${variant}-${environment}`);
     }
   }
-  const directory = variantWorkersDirectory(environment, variant);
-  const records = existsSync(directory)
-    ? readdirSync(directory, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() && /^w\d+$/.test(entry.name))
-        .flatMap((entry) => readRunRecords(join(directory, entry.name, "evidence")))
-    : [];
-  const selected = selectRecords(records, variant, environment, ids, selection.batchId);
-  for (const record of selected)
+  const { records, files } = collectWorkerScreenshots(variant, environment, ids, selection.batchId);
+  for (const record of records)
     console.log(
       `[collect] ${record.scenarioId}: ${record.status}; record=${record.artifacts.recordFile}`,
     );
-  const files = collectScreenshots(selected);
   for (const file of files) console.log(`[collect] screenshot=${file}`);
   console.log("[collect] update the selected scenarios' result.md after reviewing local evidence");
 }

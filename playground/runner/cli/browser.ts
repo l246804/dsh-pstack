@@ -18,8 +18,9 @@ import { join } from "node:path";
 
 import { createBrowserSession } from "../browser/session.ts";
 import { readWebUrl } from "../container/index.ts";
-import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
-import { environmentMatrix } from "../worker/run-metadata.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { readBrowserConfig } from "../config/config.ts";
+import { environmentMatrix } from "../scenario/environments.ts";
 import { workerPaths } from "../worker/worker.ts";
 import { isVariant } from "../types.ts";
 import type { Variant } from "../types.ts";
@@ -45,7 +46,7 @@ async function main(): Promise<void> {
     workerIndex = parsed;
     argv.splice(workerPos, 2);
   }
-  const config = await readPlaygroundConfig(CONFIG_FILE);
+  const config = await readBrowserConfig(CONFIG_FILE);
   const paths = workerPaths(workerIndex, environmentId, variant);
 
   let url: string | undefined;

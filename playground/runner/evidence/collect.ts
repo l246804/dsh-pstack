@@ -1,11 +1,29 @@
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 import type { RunRecord, Variant } from "../types.ts";
-import { PLAYGROUND_DIRECTORY } from "../worker/run-metadata.ts";
-import { latestRecords } from "./evidence.ts";
+import { PLAYGROUND_DIRECTORY } from "../shared/paths.ts";
+import { latestRecords, readRunRecords } from "./run-record.ts";
+import { variantWorkersDirectory } from "../worker/worker.ts";
 
 export const RESULTS_DIRECTORY = join(PLAYGROUND_DIRECTORY, "results");
+
+/** Stopped workers keep their local evidence, so discovery does not depend on a URL file. */
+export function collectWorkerScreenshots(
+  variant: Variant,
+  environment: string,
+  scenarioIds: string[],
+  batchId?: string,
+): { records: RunRecord[]; files: string[] } {
+  const directory = variantWorkersDirectory(environment, variant);
+  const records = existsSync(directory)
+    ? readdirSync(directory, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && /^w\d+$/.test(entry.name))
+        .flatMap((entry) => readRunRecords(join(directory, entry.name, "evidence")))
+    : [];
+  const selected = selectRecords(records, variant, environment, scenarioIds, batchId);
+  return { records: selected, files: collectScreenshots(selected) };
+}
 
 /** Select this request's records before choosing the latest attempt for each scenario. */
 export function selectRecords(

@@ -55,6 +55,24 @@ native 上游基准与最小适配答案 → generate 生成 native/pstack/
 
 ## 依赖方向
 
+### Playground runner
+
+`playground/scripts/` 校验场景与 confirmed 缺口的契约；`runner/` 执行场景和管理 worker，两者共享场景定义。
+
+| 目录 | 职责 |
+|---|---|
+| `cli/` | 解析命令参数、调用流程、输出结果和设置退出码。 |
+| `execution/` | 批次调度、单场景流程、会话完成等待和取消；流程接收参数并返回结果。 |
+| `worker/` | 准备 profile、安装插件、生成 fixture、管理 worker 路径与批次进度。 |
+| `container/` | 镜像检查、挂载规格和容器生命周期。 |
+| `browser/` | agent-browser 调用、DSH 页面操作、就绪检查与截图；页面选择器集中在这里。 |
+| `storage/` | DSH 会话文件定位、事件读取和工作区存储读写；上游持久化格式的适配落在这里。 |
+| `evidence/` | 从事件提取事实、执行机械断言、读写本地运行记录和导出图片。 |
+| `config/` | 按命令需要读取 runtime、browser 或完整配置；凭据解析与模型预检仅用于需要模型配置的流程。 |
+| `scenario/`、`shared/` | 场景注册与适用范围；共享路径和 CLI 参数解析。 |
+
+状态查询、截图收集和停止 worker 只加载 runtime 配置；浏览器验证另读 browser 配置。`config.example.ts` 用 getter 延迟宿主 provider 发现，避免本地维护命令触发模型配置读取。执行流程通过 `storage/` 读取 DSH 数据，状态查询不依赖场景执行器。agent 手动检查 UI 仍按 `playground/docs/ui.md` 直接管理浏览器。
+
 ### 运行时装配
 
 `cordis.patch.yml` 选择公开模块并注入 DSH 服务。各模块通过 Cordis `inject` 获取 Host 能力；工具实现依赖 DSH 的工具、技能、LLM 和子代理接口，不建立独立的运行时。

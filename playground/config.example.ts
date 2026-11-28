@@ -19,16 +19,19 @@ export default {
   // selects models by id and takes one reasoning effort for the whole route.
   //   "deepseek-official": { models: [{ id: "deepseek-flash" }], reasoning: "high" }
   //   "deepseek-account": { account: true }   // requires copyCredentials: true
-  providers: fromHost(
-    {
-      "your-provider": {
-        // apiKey: "your-api-key", // optional; config.ts is gitignored
-        models: [{ id: "your-model", efforts: ["low", "high"] }],
-        reasoning: "low",
+  // Defer host-profile discovery so status, collect and stop only need runtime settings.
+  get providers() {
+    return fromHost(
+      {
+        "your-provider": {
+          // apiKey: "your-api-key", // optional; config.ts is gitignored
+          models: [{ id: "your-model", efforts: ["low", "high"] }],
+          reasoning: "low",
+        },
       },
-    },
-    { env },
-  ),
+      { env },
+    );
+  },
 
   testModel: {
     provider: "your-provider",

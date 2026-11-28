@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import type { Variant } from "../types.ts";
 import { VARIANTS } from "../types.ts";
-import { isolatedRootDirectory, workersDirectory } from "./run-metadata.ts";
+import { isolatedRootDirectory, workersDirectory } from "../shared/paths.ts";
 import { CONTAINER_LAYOUT } from "../container/layout.ts";
 
 /** The runtime directory pair every worker child inherits. */

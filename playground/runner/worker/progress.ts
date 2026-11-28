@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { dirname, join } from "node:path";
 
 import type { Variant, RunStatus } from "../types.ts";
-import { workersDirectory } from "./run-metadata.ts";
+import { workersDirectory } from "../shared/paths.ts";
 
 export interface ProgressState {
   variant: Variant;

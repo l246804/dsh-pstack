@@ -1,7 +1,8 @@
 import { join } from "node:path";
 
 import { docker, dockerStream } from "./docker-command.ts";
-import { REPOSITORY_ROOT, dshVersion } from "../worker/run-metadata.ts";
+import { REPOSITORY_ROOT } from "../shared/paths.ts";
+import { dshVersion } from "../worker/run-metadata.ts";
 
 export const IMAGE_REPOSITORY = "dsh-playground";
 const DOCKERFILE_DIR = join(REPOSITORY_ROOT, "playground", "docker");
