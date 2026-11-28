@@ -137,13 +137,3 @@ export function listWorkers(filter: WorkerFilter = {}): WorkerPaths[] {
   }
   return workers;
 }
-
-export function workerCount(environmentId: string, variant: Variant): number {
-  const root = variantWorkersDirectory(environmentId, variant);
-  if (!existsSync(root)) return 0;
-  return readdirSync(root).filter(
-    (name) =>
-      /^w\d+$/.test(name) &&
-      existsSync(workerPaths(Number(name.slice(1)), environmentId, variant).urlFile),
-  ).length;
-}

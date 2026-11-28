@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { appendFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { isVariant } from "../types.ts";
 import { argValue } from "../shared/args.ts";
@@ -22,9 +24,8 @@ import { acquireBatchLock, writeBatchMetadata, type BatchMetadata } from "../wor
 import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
 import {
   currentTaskFile,
+  listWorkers,
   stopRequestFile,
-  workerCount,
-  workerPaths,
   type WorkerPaths,
 } from "../worker/worker.ts";
 import { stopWorkerTask } from "../execution/stop-task.ts";
@@ -109,7 +110,7 @@ function runCase(args: string[], env: NodeJS.ProcessEnv, paths: WorkerPaths): Pr
   });
 }
 
-async function main(): Promise<void> {
+export async function main(): Promise<void> {
   await readPlaygroundConfig(CONFIG_FILE);
   if (listScenarioIds().length === 0) {
     throw new Error("no scenarios are registered; add a scenario first");
@@ -141,16 +142,18 @@ async function main(): Promise<void> {
     console.log("[run-batch] no scenarios selected");
     return;
   }
-  const prepared = workerCount(matrix.id, variant);
-  if (prepared === 0) throw new Error("no prepared workers; run playground:prepare first");
-  const workers = Math.min(computeWorkers(ids.length).workers, prepared);
+  const prepared = listWorkers({ environmentId: matrix.id, variant })
+    .filter((paths) => !existsSync(stopRequestFile(paths)))
+    .sort((left, right) => left.index - right.index)
+    .slice(0, computeWorkers(ids.length).workers);
+  if (prepared.length === 0) throw new Error("no prepared workers; run playground:prepare first");
   const pending = [...ids];
   const roundFlag = argValue("--round");
   const file = progressFilePath(matrix.id, variant);
   const round = roundFlag ? Number(roundFlag) : (readProgress(file)?.round ?? 0) + 1;
   if (!Number.isInteger(round) || round < 1) throw new Error("--round must be positive");
   const batch: BatchMetadata = {
-    batchId: `${variant}-${matrix.id}-${formatTimestamp().replace(/[-: ]/g, "")}`,
+    batchId: randomUUID(),
     variant,
     environment: matrix.id,
     scope: ids,
@@ -169,10 +172,10 @@ async function main(): Promise<void> {
       startedAt: formatTimestamp(),
       updatedAt: formatTimestamp(),
       perWorker: Object.fromEntries(
-        Array.from({ length: workers }, (_, index) => [`w${index}`, { done: 0, total: 0 }]),
+        prepared.map(({ index }) => [`w${index}`, { done: 0, total: 0 }]),
       ),
       failures: [],
-      workers,
+      workers: prepared.length,
     };
     writeProgress(file, state);
     console.log(`[run-batch] progress=${file}`);
@@ -180,76 +183,99 @@ async function main(): Promise<void> {
     const logFile = join(workersDirectory(), variant, matrix.id, "batch.log");
     writeFileSync(logFile, `variant=${variant} environment=${matrix.id} round=${round}\n`);
     writeBatchMetadata(batch);
-    await Promise.all(
-      Array.from({ length: workers }, async (_, worker) => {
-        const workerPathsForTask = workerPaths(worker, matrix.id, variant);
-        while (true) {
-          if (!existsSync(workerPathsForTask.urlFile)) return;
-          const scenarioId = pending.shift();
-          if (scenarioId === undefined) return;
-          updateProgress(file, (current) => {
-            current.running.push({ worker, scenarioId });
-            const perWorker = current.perWorker[`w${worker}`];
-            if (perWorker) perWorker.total += 1;
-          });
-          const taskFile = currentTaskFile(workerPathsForTask);
-          rmSync(stopRequestFile(workerPathsForTask), { force: true });
-          writeFileSync(
-            taskFile,
-            `${JSON.stringify({ scenarioId, startedAt: new Date().toISOString(), batchId: batch.batchId }, null, 2)}\n`,
-          );
-          const args = [
-            "playground/runner/cli/run-scenario.ts",
-            "--worker",
-            String(worker),
-            "--scenario",
-            scenarioId,
-            "--variant",
-            variant,
-            "--environment",
-            matrix.id,
-          ];
-          const result = await runCase(args, process.env, workerPathsForTask);
-          rmSync(taskFile, { force: true });
-          rmSync(stopRequestFile(workerPathsForTask), { force: true });
-          appendFileSync(
-            logFile,
-            `\n===== ${scenarioId} ${variant} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
-          );
-          const records = readRunRecords(
-            join(workersDirectory(), variant, matrix.id, `w${worker}/evidence`),
-          );
-          const record = records.find(
-            (entry) =>
-              entry.scenarioId === scenarioId &&
-              entry.variant === variant &&
-              entry.batchId === batch.batchId,
-          );
-          const status = record?.status ?? "blocked";
-          const failureReason =
-            record === undefined
-              ? `run-scenario exited ${String(result.code)} without a record`
-              : (record.blockedReason ?? record.mechanicalFailures.join("; "));
-          updateProgress(file, (current) => {
-            current.running = current.running.filter(
-              (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
+    const outcomes = await Promise.allSettled(
+      prepared.map(async (workerPathsForTask) => {
+        const worker = workerPathsForTask.index;
+        try {
+          while (true) {
+            if (
+              !existsSync(workerPathsForTask.urlFile) ||
+              existsSync(stopRequestFile(workerPathsForTask))
+            )
+              return;
+            const scenarioId = pending.shift();
+            if (scenarioId === undefined) return;
+            updateProgress(file, (current) => {
+              current.running.push({ worker, scenarioId });
+              const perWorker = current.perWorker[`w${worker}`];
+              if (perWorker) perWorker.total += 1;
+            });
+            const taskFile = currentTaskFile(workerPathsForTask);
+            writeFileSync(
+              taskFile,
+              `${JSON.stringify({ scenarioId, startedAt: new Date().toISOString(), batchId: batch.batchId }, null, 2)}\n`,
             );
+            const args = [
+              "playground/runner/cli/run-scenario.ts",
+              "--worker",
+              String(worker),
+              "--scenario",
+              scenarioId,
+              "--variant",
+              variant,
+              "--environment",
+              matrix.id,
+            ];
+            const result = await runCase(args, process.env, workerPathsForTask);
+            rmSync(taskFile, { force: true });
+            appendFileSync(
+              logFile,
+              `\n===== ${scenarioId} ${variant} ${matrix.id} exit=${String(result.code)} =====\n${result.output}\n`,
+            );
+            const records = readRunRecords(
+              join(workersDirectory(), variant, matrix.id, `w${worker}/evidence`),
+            );
+            const record = records.find(
+              (entry) =>
+                entry.scenarioId === scenarioId &&
+                entry.variant === variant &&
+                entry.batchId === batch.batchId,
+            );
+            const status = record?.status ?? "blocked";
+            const failureReason =
+              record === undefined
+                ? `run-scenario exited ${String(result.code)} without a record`
+                : (record.blockedReason ?? record.mechanicalFailures.join("; "));
+            updateProgress(file, (current) => {
+              current.running = current.running.filter(
+                (entry) => !(entry.worker === worker && entry.scenarioId === scenarioId),
+              );
+              current.done += 1;
+              current.statuses[status] += 1;
+              const perWorker = current.perWorker[`w${worker}`];
+              if (perWorker) perWorker.done += 1;
+              if (status !== "completed") {
+                current.failures.push({
+                  scenarioId,
+                  worker,
+                  reason: failureReason,
+                });
+              }
+            });
+            console.log(`[run-batch] ${scenarioId} ${variant} ${matrix.id} ${status}`);
+          }
+        } catch (error) {
+          updateProgress(file, (current) => {
+            const task = current.running.find((entry) => entry.worker === worker);
+            if (!task) return;
+            current.running = current.running.filter((entry) => entry.worker !== worker);
             current.done += 1;
-            current.statuses[status] += 1;
+            current.statuses.blocked += 1;
             const perWorker = current.perWorker[`w${worker}`];
             if (perWorker) perWorker.done += 1;
-            if (status !== "completed") {
-              current.failures.push({
-                scenarioId,
-                worker,
-                reason: failureReason,
-              });
-            }
+            current.failures.push({ scenarioId: task.scenarioId, worker, reason: String(error) });
           });
-          console.log(`[run-batch] ${scenarioId} ${variant} ${matrix.id} ${status}`);
+          throw error;
         }
       }),
     );
+    const errors = outcomes.filter((outcome) => outcome.status === "rejected");
+    if (errors.length > 0) {
+      throw new AggregateError(
+        errors.map((error) => error.reason),
+        errors.map((error) => String(error.reason)).join("; "),
+      );
+    }
     console.log(`[run-batch] log=${logFile}`);
     const finalState = readProgress(file);
     if (pending.length > 0) {
@@ -267,7 +293,9 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((error: unknown) => {
-  console.error(`[run-batch] ERROR: ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error: unknown) => {
+    console.error(`[run-batch] ERROR: ${error instanceof Error ? error.message : String(error)}`);
+    process.exitCode = 1;
+  });
+}

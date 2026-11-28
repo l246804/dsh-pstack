@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -74,7 +74,6 @@ async function main(): Promise<void> {
   const expectedPreset = "standard";
   const workspace = materializeWorkspace(paths, scenario);
   setDefaultWorkspace(paths, scenario.id);
-  rmSync(stopRequestFile(paths), { force: true });
   const capturedAt = new Date().toISOString();
   const stamp = capturedAt.replace(/[:.]/g, "-");
   mkdirSync(paths.evidenceDir, { recursive: true });
@@ -82,6 +81,7 @@ async function main(): Promise<void> {
   const screenshotFile = recordFile.replace(/\.json$/, ".png");
   let record: RunRecord;
   try {
+    if (existsSync(stopRequestFile(paths))) throw new Error("external stop requested");
     const outcome = attemptScenario({
       paths,
       scenario,
