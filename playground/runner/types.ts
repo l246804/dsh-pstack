@@ -195,22 +195,6 @@ export interface ToolCallEvidence {
 }
 
 export const SKILL_TOOL_NAMES = ["skill"] as const;
-export interface ToolAttemptAnalysis {
-  name: string;
-  attempts: number;
-  failures: number;
-  firstAttemptStatus: "ok" | "error" | "pending";
-  finalStatus: "ok" | "error" | "pending";
-  /** True when at least one attempt failed and the final attempt succeeded. */
-  recovered: boolean;
-}
-
-export interface SessionAnalysis {
-  tools: ToolAttemptAnalysis[];
-  artifacts: string[];
-  warnings: string[];
-}
-
 export interface SessionFacts {
   sessionId: string;
   sessionFile: string;
@@ -224,71 +208,28 @@ export interface SessionFacts {
   /** Every user-authored turn text in order; userText stays the first one for the entry check. */
   userTexts: string[];
   autoAnswers: Array<{ question: string; answer: string }>;
-  analysis?: SessionAnalysis;
 }
 
 export interface ArtifactEvidence {
   recordFile: string;
   screenshotFile?: string;
-  observed: string[];
 }
 
-export const SEMANTIC_REVIEW_STATUSES = ["supported", "gap", "inconclusive"] as const;
-export type SemanticReviewStatus = (typeof SEMANTIC_REVIEW_STATUSES)[number];
-
-export type SemanticReview =
-  | { status: "pending"; reason: string }
-  | {
-      status: SemanticReviewStatus;
-      reason: string;
-      reviewer: { kind: "model"; route: TestTarget } | { kind: "human"; name: string };
-    };
-
-export const VERDICT_STATUSES = [
-  "observed",
-  "gap",
-  "blocked",
-  "unobserved",
-  "verified",
-  "not-verified",
-  "inconclusive",
-] as const;
-
-export type Verdict =
-  | { variant: "native"; status: "observed"; gaps: string[] }
-  | { variant: "native"; status: "gap"; gaps: string[] }
-  | { variant: "native"; status: "blocked"; reason: string }
-  | { variant: "native"; status: "unobserved"; reason: string }
-  | { variant: "adapted"; status: "verified" }
-  | { variant: "adapted"; status: "not-verified"; failures: string[] }
-  /** A conflict regression whose expected startup conflict reproduced: blocked by design. */
-  | { variant: "adapted"; status: "blocked"; reason: string }
-  | { variant: "adapted"; status: "inconclusive"; reason: string };
+/** Execution and mechanical checks only; semantic conclusions live in result.md. */
+export const RUN_STATUSES = ["completed", "failed", "blocked"] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
 
 export interface RunRecord {
   scenarioId: string;
-  /** Stable hash of the scenario content captured with this record. */
-  scenarioHash?: string;
   variant: Variant;
   environment: RunEnvironment;
   target: TestTarget | null;
   session: SessionFacts | null;
   artifacts: ArtifactEvidence;
-  semanticReview: SemanticReview;
-  /**
-   * Every mechanical check result at capture time (assertions, workspace, entry, route).
-   * Always recorded: an unobserved or inconclusive verdict must not hide them, and a
-   * review revision must not launder them. Records written before this field existed
-   * lack it on disk.
-   */
   mechanicalFailures: string[];
-  verdict: Verdict;
-  /**
-   * Set when the scenario did not produce a normal record, for example because execution
-   * failed before assertions ran. Review must never recompute such a record into a pass.
-   */
+  status: RunStatus;
+  /** Why execution stopped before the mechanical checks completed. */
   blockedReason?: string;
   capturedAt: string;
-  /** Batch that produced this record; optional on records written before current snapshots. */
   batchId?: string;
 }

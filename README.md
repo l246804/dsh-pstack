@@ -197,10 +197,9 @@ Steps that depend on a disabled plugin report skipped or blocked, never passed. 
 Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/run.md](./playground/docs/run.md) documents the full procedure.
 
 - **Native baseline.** `native/` pins the upstream pstack and generates `native/pstack`; `native/dsh.md` maps each Cursor name to its DSH replacement and states the fallback when the replacement is unavailable. The generator inserts that document into the generated tree, so the upstream wording stays intact.
-- **Capability-driven runs.** Coverage comes from `native/gaps.json` and the scenario files under `playground/scenarios/`; the gap list records what the DSH standard runtime lacks, and the scenarios verify those gaps.
-- **Semantic review.** A skill that loads only proves it was reachable. Each scenario records a separate semantic review (`supported`, `gap`, or `inconclusive`) with a reviewer and a reason. The adapted run records `verified`, `not-verified`, or `inconclusive`; a conflict regression whose expected startup conflict reproduces records `blocked`.
-- **Adapted re-check.** Review findings drive [src/dsh.md](./src/dsh.md). Rebuild the adapted package with `vp run build`, then rerun the same scenarios to confirm the mapped behavior.
-- **Environment matrix.** Capability probes run in `base` by default. `render` is the rendering comparison environment. `agent-team` is the Team-on environment that verifies pstack delegation with Agent Teams enabled.
+- **Scenario validation.** Gap scenarios correspond to confirmed entries in `native/gaps.json`; regression scenarios are maintained separately. [Scenario rules](./playground/docs/scenarios.md) describe coverage checks and the gap lock.
+- **Results and approval.** [Validation results](./playground/results/README.md) record native findings, proposed actions, user approvals and adapted outcomes per scenario. Mechanical checks and observed behavior are assessed separately; selected screenshots are committed while run records remain local.
+- **Targeted reruns.** Revisit affected scenarios when behavior or criteria change. Upgrades and releases do not require a full rerun. After changing the adaptation or `src/dsh.md`, validate whether the relevant gaps are addressed.
 
 ## ⚠️ Remaining gaps
 

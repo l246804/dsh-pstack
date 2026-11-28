@@ -3,13 +3,14 @@ import { existsSync, readFileSync } from "node:fs";
 import { isVariant } from "../types.ts";
 import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
-import { environmentMatrix } from "../worker/run-metadata.ts";
+import { environmentMatrix } from "../scenario/environments.ts";
 import { progressFilePath, readProgress } from "../worker/progress.ts";
 import { currentTaskFile, workerPaths } from "../worker/worker.ts";
-import { latestSessionFile } from "../execution/run.ts";
-import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
+import { latestSessionFile } from "../storage/sessions.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { readRuntimeConfig } from "../config/config.ts";
 
-await readPlaygroundConfig(CONFIG_FILE);
+await readRuntimeConfig(CONFIG_FILE);
 
 const variant = argValue("--variant") as Variant | undefined;
 if (!isVariant(variant)) throw new Error("status requires --variant native|adapted");

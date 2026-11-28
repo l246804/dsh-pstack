@@ -5,16 +5,16 @@
 ## 端到端流程
 
 ```text
-playground 真实会话验证
-  → 能力缺口和证据分析
-  → src/dsh.md + src/ 实现和 cordis.patch.yml 装配
-  → generate 生成 native/pstack/，build 复制并盖章 src/dsh.md
+native 上游基准与最小适配答案 → generate 生成 native/pstack/
+  → playground 按场景运行 native，对照缺口与适配答案
+  → 用户审批处理建议 → src/dsh.md + src/ 实现和 cordis.patch.yml 装配
+  → build 复制并盖章 src/dsh.md → playground 按需验证 adapted
   → 根 README 状态/兼容表
   → release-ready
 ```
 
 - `native` 是基准子包：钉定的已发布上游树、native 适配答案和缺口清单。
-- `playground` 负责运行 native/adapted probe、收集证据和分析问题。
+- `playground` 运行 native/adapted 的缺口与回归场景，缺口场景对应 native 中已确认的条目；本地保存运行记录，提交逐场景结论与截图。客户端交互验证复用独立的 adapted/ui worker；浏览器由 agent 使用 agent-browser 管理，入口见 `playground/docs/ui.md`。
 - `src` 负责随包适配答案与 Host/Client 实现；`cordis.patch.yml` 负责装配。
 - 根 README 同步已有兼容表、技能与能力状态、能力限制和最终适配结果。
 - 发布由用户手动执行；agent 停在 release-ready。
@@ -48,12 +48,30 @@ playground 真实会话验证
 | 角色与插件页面 | `src/client/pages/RoleSettingsPage.tsx`、`src/client/pages/RecommendedPluginsPage.tsx`、`src/client/components/RoleCard.tsx`、`src/client/components/BudgetDialog.tsx` | 编辑角色草稿并展示保存结果；按预算批量预览并应用推理档位；展示关联插件及其变更结果。 |
 | Client 支撑 | `src/client/components/`（`ui.tsx`、`icons.tsx`、`DiscardConfirmation.tsx`、`PotetoModeToggle.tsx`、`PotetoModeBadge.tsx`）、`src/client/session-projection-types.ts`、`src/client/lib/`（`styles.css`、`poteto-mode.ts`、`toast.ts`、`message.ts`）、`src/client/roles/`（`role-copy.ts`、`role-draft.ts`、`role-selectors.ts`）、`src/client/locales/` | 提供本插件的 UI 组件、样式、共享提示、翻译、角色草稿和选择器文案；样式经 Client 模块元数据交给 DSH renderer 装载。 |
 | 维护修复 | `src/poteto/maintenance.ts`、`src/poteto/maintenance-remote.ts`、`src/poteto/maintenance-types.ts`、`src/client/pages/MaintenanceSettingsPage.tsx` | 扫描含旧 `poteto/mode` 事件的会话，按工作区展示并选择；确认后写入 `$DSH_HOME/pstack/repair.json`，下次启动时修复日志、把旧开关值写入会话 sidecar，并清理队列。旧的根目录 `pstack-repair.json` 不参与启动迁移，保持原样。 |
-| 移植与生成 | `native/scripts/fetch-upstream.ts`、`native/scripts/generate-pstack.ts`、`native/`（`upstream/`、`upstream.lock.json`、`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`、`gaps.json`）、`src/dsh.md`、`src/dsh.zh.md`、`playground/scenarios/` | fetch 把已发布上游版本钉定到 `native/upstream/`；生成器从上游树加注入行并盖章 `native/dsh.md` 产出唯一生成树 `native/pstack/`；`src/dsh.md` 是随包适配答案，构建时盖章替换 dist 内的基准答案；缺口提取规则见 `native/AGENTS.md`，缺口清单 `native/gaps.json` 与场景规则见 `playground/docs/scenarios.md`。 |
+| 移植与生成 | `native/scripts/fetch-upstream.ts`、`native/scripts/generate-pstack.ts`、`native/`（`upstream/`、`upstream.lock.json`、`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`、`gaps.json`）、`src/dsh.md`、`src/dsh.zh.md`、`playground/scenarios/` | fetch 把已发布上游版本钉定到 `native/upstream/`；生成器从上游树加注入行并盖章 `native/dsh.md` 产出唯一生成树 `native/pstack/`；`src/dsh.md` 是随包适配答案，构建时盖章替换 dist 内的基准答案；缺口提取规则见 `native/AGENTS.md`，场景对应关系与 gap-lock 规则见 `playground/docs/scenarios.md`。 |
 | 发布元数据与发布说明 | `scripts/release-compatibility.ts`、`scripts/release-surface.ts`、`scripts/release.sh`、`bump.config.ts`、`changes/AGENTS.md` | 发布时按 DSH 兼容范围分组同步各本地化 README 的发布版本表与 pstack 徽标，并把对应本地化 README 加入发布提交；已发布行不可改写，`compatibility:check` 校验表格、徽标与最新发布行一致，并允许 pin 领先于最新发布版本。发布说明由 agent 会话按 `changes/AGENTS.md` 从版本间提交生成到 `changes/RELEASE.md`；`release.sh` 要求该文件存在且已提交后才 bumpp，打完 tag 后删除它，发布工作流在 tag 上读取它作为 Release 正文；`release-surface.ts` 维护 `src/surface.json`。 |
 | 构建与打包 | `vite.config.ts`、`package.json` | 分别构建 Host 与浏览器 Client；导出 Host 模块，复制生成树和技能资源。 |
-| 自动化验证 | `tests/`、`src/tests/`、`playground/tests/`、`playground/runner/cli/`（doctor、prepare、bootstrap、run-scenario、run-batch、collect、status、stop、stop-task、browser、build-image、session-tail）、`playground/scripts/`（review、redact、gap-lock） | 运行单元与契约测试；在 Docker worker 中运行 capability probes，收集 RunRecord、SessionAnalysis 和当前评审快照；后处理脚本执行语义审核、脱敏与缺口同步校验。 |
+| 自动化验证 | `tests/`、`src/tests/`、`playground/tests/`、`playground/runner/`、`playground/scripts/gap-lock.ts`、`playground/results/` | 运行单元与契约测试，校验缺口枚举及场景对应关系；runner 执行真实场景并保留本地记录，collect 只导出截图；按场景维护分析、建议、审批和适配结果。 |
 
 ## 依赖方向
+
+### Playground runner
+
+`playground/scripts/` 校验场景与 confirmed 缺口的契约；`runner/` 执行场景和管理 worker，两者共享场景定义。
+
+| 目录 | 职责 |
+|---|---|
+| `cli/` | 解析命令参数、调用流程、输出结果和设置退出码。 |
+| `execution/` | 批次调度、单场景流程、会话完成等待和取消；流程接收参数并返回结果。 |
+| `worker/` | 准备 profile、安装插件、生成 fixture、管理 worker 路径与批次进度。 |
+| `container/` | 镜像检查、挂载规格和容器生命周期。 |
+| `browser/` | agent-browser 调用、DSH 页面操作、就绪检查与截图；页面选择器集中在这里。 |
+| `storage/` | DSH 会话文件定位、事件读取和工作区存储读写；上游持久化格式的适配落在这里。 |
+| `evidence/` | 从事件提取事实、执行机械断言、读写本地运行记录和导出图片。 |
+| `config/` | 按命令需要读取 runtime、browser 或完整配置；凭据解析与模型预检仅用于需要模型配置的流程。 |
+| `scenario/`、`shared/` | 场景注册与适用范围；共享路径和 CLI 参数解析。 |
+
+状态查询、截图收集和停止 worker 只加载 runtime 配置；浏览器验证另读 browser 配置。`config.example.ts` 用 getter 延迟宿主 provider 发现，避免本地维护命令触发模型配置读取。执行流程通过 `storage/` 读取 DSH 数据，状态查询不依赖场景执行器。agent 手动检查 UI 仍按 `playground/docs/ui.md` 直接管理浏览器。
 
 ### 运行时装配
 
@@ -116,4 +134,4 @@ native/pstack/ + src/dsh.md
 
 ## 验证分层
 
-`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。移植审核另有 native 适配覆盖率与场景覆盖守卫。真实运行验证统一使用 `playground/`，其模型选择规则见该目录文档。
+`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。`playground/tests/` 校验缺口枚举及场景契约；`playground:gap-lock` 检查 confirmed 缺口与场景覆盖、描述指纹。真实运行与结果判定遵循 `playground/AGENTS.md`，按需运行，不随发布版本变化强制重跑。

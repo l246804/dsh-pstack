@@ -1,13 +1,16 @@
+import { loadProviderPlan } from "../config/provider.ts";
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
 import { agentBrowserBin, chromeExecutable } from "../browser/session.ts";
-import { CONFIG_FILE, DEFAULT_CREDENTIALS_FILE, readPlaygroundConfig } from "../worker/home.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { DEFAULT_CREDENTIALS_FILE, readConfig } from "../config/config.ts";
 import { runtimeSettings } from "../config/runtime.ts";
 import { IS_WINDOWS } from "../worker/platform.ts";
 import { imageProblems } from "../container/image.ts";
 
-const config = await readPlaygroundConfig(CONFIG_FILE);
+const config = await readConfig(CONFIG_FILE);
+loadProviderPlan(config);
 const failures: string[] = [];
 
 function check(name: string, ok: boolean, detail: string): void {

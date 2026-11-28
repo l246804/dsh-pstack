@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import type { Variant } from "../types.ts";
 import { VARIANTS } from "../types.ts";
-import { isolatedRootDirectory, workersDirectory } from "./run-metadata.ts";
+import { isolatedRootDirectory, workersDirectory } from "../shared/paths.ts";
 import { CONTAINER_LAYOUT } from "../container/layout.ts";
 
 /** The runtime directory pair every worker child inherits. */
@@ -136,14 +136,4 @@ export function listWorkers(filter: WorkerFilter = {}): WorkerPaths[] {
     }
   }
   return workers;
-}
-
-export function workerCount(environmentId: string, variant: Variant): number {
-  const root = variantWorkersDirectory(environmentId, variant);
-  if (!existsSync(root)) return 0;
-  return readdirSync(root).filter(
-    (name) =>
-      /^w\d+$/.test(name) &&
-      existsSync(workerPaths(Number(name.slice(1)), environmentId, variant).urlFile),
-  ).length;
 }

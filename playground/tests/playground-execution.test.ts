@@ -4,35 +4,28 @@ import { dirname, isAbsolute, join, resolve } from "node:path";
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
 import type { Assertion, BehaviorScenario, RunRecord, SessionFacts } from "../runner/types.ts";
+import { mountNativeTree, resetHome, writeHomePatch } from "../runner/worker/home.ts";
 import {
-  mountNativeTree,
   readWorkspaceStore,
   registerWorkspaces,
-  resetHome,
   setDefaultWorkspace,
-  writeHomePatch,
-} from "../runner/worker/home.ts";
+} from "../runner/storage/workspaces.ts";
 import type { ProviderPlan } from "../runner/config/provider.ts";
+import { assertSafeRecord, latestRecords, recordFileName } from "../runner/evidence/run-record.ts";
 import {
-  assertSafeRecord,
   digestEvents,
-  evaluateAssertions,
   firstUserText,
-  latestRecords,
-  mechanicalFailures,
-  pendingSemanticReview,
-  recordFileName,
   sessionMatchesPrompt,
   summarizeToolArguments,
-  type SessionEvent,
-  verdictFor,
-} from "../runner/evidence/evidence.ts";
+} from "../runner/evidence/session-facts.ts";
+import { evaluateAssertions, mechanicalFailures } from "../runner/evidence/assertions.ts";
+import { type SessionEvent } from "../runner/storage/sessions.ts";
 import {
   WORKERS_ROOT,
   WORKSPACE_ROOT,
   isolatedRootDirectory,
   REPOSITORY_ROOT,
-} from "../runner/worker/run-metadata.ts";
+} from "../runner/shared/paths.ts";
 import { setRuntimeSettings } from "../runner/config/runtime.ts";
 import {
   workerPaths,
@@ -40,16 +33,9 @@ import {
   resetVariant,
   type WorkerPaths,
 } from "../runner/worker/worker.ts";
-import { activeSubagentCount } from "../runner/execution/run.ts";
-import {
-  acquireBatchLock,
-  batchLockFile,
-  batchRecordProblems,
-  listSnapshotRecords,
-  readRunRecords,
-  writeReviewSnapshot,
-  type BatchMetadata,
-} from "../runner/evidence/review-snapshot.ts";
+import { activeSubagentCount } from "../runner/execution/session.ts";
+import { acquireBatchLock, batchLockFile, type BatchMetadata } from "../runner/worker/batch.ts";
+import { readRunRecords } from "../runner/evidence/run-record.ts";
 
 const temporary = mkdtempSync(join(tmpdir(), "pstack-execution-test-"));
 afterAll(() => rmSync(temporary, { recursive: true, force: true }));
@@ -118,10 +104,9 @@ function record(variant: "native" | "adapted", environmentId: string): RunRecord
       userTexts: [scenario.turns[0]?.prompt ?? ""],
       autoAnswers: [],
     },
-    artifacts: { recordFile: "record.json", observed: [] },
-    semanticReview: pendingSemanticReview(),
+    artifacts: { recordFile: "record.json" },
     mechanicalFailures: [],
-    verdict: verdictFor({ variant, failures: [], semanticReview: pendingSemanticReview() }),
+    status: "completed",
     capturedAt: "2026-11-11T00:00:00.000Z",
   };
 }
@@ -159,11 +144,10 @@ describe("execution contracts", () => {
   });
 
   it.each([
-    { verdict: undefined },
+    { status: undefined },
     { mechanicalFailures: [123] },
     { session: { toolCalls: [null] } },
-    { semanticReview: { status: "supported", reason: "missing reviewer" } },
-    { verdict: { variant: "adapted", status: "verified" } },
+    { status: "verified" },
   ])("reports a malformed evidence record at its source: %j", (invalid) => {
     const directory = join(temporary, "invalid-evidence");
     mkdirSync(directory, { recursive: true });
@@ -192,7 +176,6 @@ describe("execution contracts", () => {
       batchId: "new",
       variant: "native",
       environment: "base",
-      mode: "full",
       scope: [],
       startedAt: "now",
     };
@@ -210,72 +193,6 @@ describe("execution contracts", () => {
     }
   });
 
-  it("does not pass an unreviewed semantic effect in either variant", () => {
-    expect(record("native", "base").verdict.status).toBe("unobserved");
-    expect(record("adapted", "base").verdict.status).toBe("inconclusive");
-  });
-
-  it("rejects a record from an earlier batch", () => {
-    const batch: BatchMetadata = {
-      batchId: "batch-new",
-      variant: "native",
-      environment: "base",
-      mode: "full",
-      scope: ["capability-test"],
-      startedAt: "2026-11-24T00:00:00.000Z",
-    };
-    expect(batchRecordProblems(batch, [record("native", "base")])).toEqual([
-      "capability-test has no record in batch batch-new",
-    ]);
-    expect(
-      batchRecordProblems(batch, [{ ...record("native", "base"), batchId: "batch-new" }]),
-    ).toEqual([]);
-  });
-
-  it("writes a snapshot and keeps it intact when a screenshot is missing", () => {
-    const reviews = join(temporary, "snapshot-reviews");
-    const workers = join(temporary, "snapshot-workers");
-    setRuntimeSettings({ ...defaultRuntimeSettings, workersDir: workers });
-    try {
-      const snapshotRecord = record("native", "base");
-      const paths = workerPaths(0, "base", "native");
-      const shot = join(paths.evidenceDir, "screenshot.png");
-      const stamp = snapshotRecord.capturedAt.replace(/[:.]/g, "-");
-      const source = join(
-        paths.evidenceDir,
-        recordFileName(
-          snapshotRecord.scenarioId,
-          snapshotRecord.variant,
-          snapshotRecord.environment.matrix.id,
-          stamp,
-        ).replace(/\.json$/, ".source.json"),
-      );
-      mkdirSync(paths.evidenceDir, { recursive: true });
-      writeFileSync(shot, "png");
-      writeFileSync(source, JSON.stringify({ screenshotFile: shot }));
-
-      const first = writeReviewSnapshot("native", "base", null, [snapshotRecord], reviews);
-      expect(first.scenarioIds).toEqual(["capability-test"]);
-      const recordPath = join(
-        reviews,
-        "native-base",
-        "scenarios",
-        "capability-test",
-        "native-base",
-        "record.json",
-      );
-      expect(existsSync(recordPath)).toBe(true);
-
-      rmSync(shot);
-      expect(() => writeReviewSnapshot("native", "base", null, [snapshotRecord], reviews)).toThrow(
-        /missing screenshot/,
-      );
-      expect(existsSync(recordPath)).toBe(true);
-    } finally {
-      setRuntimeSettings(defaultRuntimeSettings);
-    }
-  });
-
   it("rejects a second active batch lock", () => {
     setRuntimeSettings({
       ...defaultRuntimeSettings,
@@ -285,7 +202,6 @@ describe("execution contracts", () => {
       batchId: "batch-lock",
       variant: "native",
       environment: "base",
-      mode: "full",
       scope: ["capability-test"],
       startedAt: "2026-11-24T00:00:00.000Z",
     };
@@ -303,99 +219,12 @@ describe("execution contracts", () => {
     }
   });
 
-  it("keeps the incremental manifest aligned with retained snapshot records after a worker reset", () => {
-    const reviews = join(temporary, "incremental-reviews");
-    const workers = join(temporary, "incremental-workers");
-    setRuntimeSettings({ ...defaultRuntimeSettings, workersDir: workers });
-    const paths = workerPaths(0, "base", "native");
-    const source = (scenarioId: string, batchId: string): RunRecord => {
-      const entry = { ...record("native", "base"), scenarioId, batchId };
-      const stamp = entry.capturedAt.replace(/[:.]/g, "-");
-      const file = join(paths.evidenceDir, recordFileName(scenarioId, "native", "base", stamp));
-      mkdirSync(paths.evidenceDir, { recursive: true });
-      writeFileSync(`${file}.png`, "png");
-      writeFileSync(
-        file.replace(/\.json$/, ".source.json"),
-        JSON.stringify({ screenshotFile: `${file}.png` }),
-      );
-      return entry;
-    };
-    const batch: BatchMetadata = {
-      batchId: "full",
-      variant: "native",
-      environment: "base",
-      mode: "full",
-      scope: ["a", "b"],
-      startedAt: "2026-11-24T00:00:00.000Z",
-    };
-    try {
-      writeReviewSnapshot(
-        "native",
-        "base",
-        batch,
-        [source("a", "full"), source("b", "full")],
-        reviews,
-      );
-      rmSync(paths.root, { recursive: true, force: true });
-      const incremental: BatchMetadata = {
-        ...batch,
-        batchId: "incremental",
-        mode: "incremental",
-        scope: ["a"],
-      };
-      const updated = source("a", "incremental");
-      const manifest = writeReviewSnapshot("native", "base", incremental, [updated], reviews);
-      const saved = listSnapshotRecords("native", "base", reviews);
-      expect(manifest.scenarioIds).toEqual(saved.map(({ scenarioId }) => scenarioId));
-      expect(manifest.scenarioIds).toEqual(["a", "b"]);
-      expect(manifest.scenarios.find(({ id }) => id === "b")?.batchId).toBe("full");
-
-      const differentRuntime = {
-        ...updated,
-        environment: { ...updated.environment, dshVersion: "new-dsh" },
-      };
-      expect(() =>
-        writeReviewSnapshot("native", "base", incremental, [differentRuntime], reviews),
-      ).toThrow("snapshot mixes DSH/pstack versions");
-
-      const full = writeReviewSnapshot(
-        "native",
-        "base",
-        { ...incremental, mode: "full" },
-        [updated],
-        reviews,
-      );
-      expect(full.scenarioIds).toEqual(["a"]);
-      expect(
-        listSnapshotRecords("native", "base", reviews).map(({ scenarioId }) => scenarioId),
-      ).toEqual(["a"]);
-    } finally {
-      setRuntimeSettings(defaultRuntimeSettings);
-    }
-  });
-
   it("rejects a record that carries an api key", () => {
     const raw = record("native", "base");
     expect(JSON.stringify(raw)).not.toContain("secret-value");
     expect(() =>
-      assertSafeRecord({ ...raw, artifacts: { recordFile: "secret-value", observed: [] } }, [
-        "secret-value",
-      ]),
+      assertSafeRecord({ ...raw, artifacts: { recordFile: "secret-value" } }, ["secret-value"]),
     ).toThrow(/apiKey/);
-  });
-
-  it("contains no probe timeout or automatic stop in the execution scripts", () => {
-    const root = resolve(__dirname, "../runner/cli");
-    for (const file of ["run-scenario.ts", "run-batch.ts", "prepare.ts", "collect.ts"]) {
-      const source = readFileSync(join(root, file), "utf8");
-      expect(source).not.toMatch(
-        /probeSeconds|DEFAULT_PROBE_SECONDS|truncated|stopInFlightTurn|--probe|--timeout/,
-      );
-    }
-  });
-
-  it("leaves temporary test directories under the system temp root", () => {
-    expect(existsSync(temporary)).toBe(true);
   });
 });
 
@@ -692,10 +521,6 @@ describe("mechanical failures", () => {
     expect(mechanicalFailures({ ...input, route: null })).toContain(
       "actual model route differs from testModel",
     );
-    // The pending verdict stays unobserved while the list is already on the record.
-    expect(
-      verdictFor({ variant: "native", failures, semanticReview: pendingSemanticReview() }).status,
-    ).toBe("unobserved");
   });
 });
 

@@ -1,10 +1,11 @@
 # 决策：用每个 variant/environment 的当前快照取代 reports 汇总和 review sidecar
 
-Status: accepted
+Status: superseded
 Date: 2026-11-13
 Scope: playground/runner/cli/collect.ts, playground/runner/evidence/review-snapshot.ts, playground/runner/cli/run-batch.ts, playground/runner/cli/run-scenario.ts, playground/AGENTS.md, playground/docs/run.md, playground/docs/records.md, playground/docs/judge.md, playground/evidence/runs/**
 Implemented-by: commit:ef01e56
-Review: 2026-11-23
+Review: 2026-11-27
+Superseded-by: docs/decisions/2026-11-27-playground-scenario-results.md — 逐环境 JSON 快照改为本地运行记录和逐场景 Markdown 结果，collect 仅导出截图
 
 ## 背景
 

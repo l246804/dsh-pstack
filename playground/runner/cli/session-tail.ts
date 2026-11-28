@@ -3,11 +3,11 @@ import { existsSync } from "node:fs";
 import { isVariant } from "../types.ts";
 import { argValue } from "../shared/args.ts";
 import type { Variant } from "../types.ts";
-import { environmentMatrix } from "../worker/run-metadata.ts";
+import { environmentMatrix } from "../scenario/environments.ts";
 import { workerPaths } from "../worker/worker.ts";
-import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
-import { latestSessionFile } from "../execution/run.ts";
-import { readSessionEvents, type SessionEvent } from "../evidence/evidence.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { readRuntimeConfig } from "../config/config.ts";
+import { latestSessionFile, readSessionEvents, type SessionEvent } from "../storage/sessions.ts";
 
 function positiveInteger(value: string | undefined, fallback: number, label: string): number {
   const parsed = value === undefined ? fallback : Number(value);
@@ -52,7 +52,7 @@ function detailOf(event: SessionEvent): string {
   return "";
 }
 
-await readPlaygroundConfig(CONFIG_FILE);
+await readRuntimeConfig(CONFIG_FILE);
 const variant = argValue("--variant") as Variant | undefined;
 if (!isVariant(variant)) throw new Error("session-tail requires --variant native|adapted");
 const environment = argValue("--environment");
@@ -70,7 +70,7 @@ if (session === null || !existsSync(session.file)) {
   throw new Error(`no session file for ${variant}/${environment}/w${worker}`);
 }
 const events = readSessionEvents(session.file).slice(-limit);
-const latest = events.at(-1) as (SessionEvent & { time?: number }) | undefined;
+const latest = events.at(-1);
 const latestAge =
   latest?.time === undefined
     ? "unknown"
@@ -78,9 +78,8 @@ const latestAge =
 console.log(`[session-tail] ${variant}/${environment}/w${worker} ${session.file}`);
 console.log(`[session-tail] latestAge=${latestAge}`);
 for (const event of events) {
-  const raw = event as SessionEvent & { seq?: number; time?: number };
-  const seq = raw.seq === undefined ? "-" : String(raw.seq);
-  const time = raw.time === undefined ? "?" : new Date(raw.time).toISOString();
+  const seq = event.seq === undefined ? "-" : String(event.seq);
+  const time = event.time === undefined ? "?" : new Date(event.time).toISOString();
   const detail = detailOf(event);
   console.log(`[session-tail] #${seq} ${time} ${event.type}${detail === "" ? "" : ` ${detail}`}`);
 }

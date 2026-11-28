@@ -11,9 +11,12 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
-import { PROFILE_NAME, REPOSITORY_ROOT, dshVersion } from "./run-metadata.ts";
+import { REPOSITORY_ROOT } from "../shared/paths.ts";
+import { dshVersion } from "./run-metadata.ts";
 import { runtimeSettings } from "../config/runtime.ts";
 import { runtimeEnv, type WorkerPaths } from "./worker.ts";
+
+const PROFILE_NAME = "web";
 
 function dshBin(): string {
   return runtimeSettings().dshBin;
