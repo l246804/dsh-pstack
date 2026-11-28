@@ -39,5 +39,6 @@
 
 - 按仓库标准命令运行检查、类型检查、测试和生成一致性检查。
 - 只在 `src/` 内做纯逻辑和 DOM 行为测试；需要真实 Cordis、profile、浏览器或模型的验证放到 `playground/`。
+- 修改客户端布局或交互后，按 [UI 验证说明](../playground/docs/ui.md) 在真实页面验证受影响流程：视觉变化查看截图，交互变化实际操作。
 - 反复出现的移植陷阱登记到 [docs/regressions.md](./docs/regressions.md)，普通缺陷由测试和提交记录承载。
 - 具体验证命令以 `package.json` 和 `vite.config.ts` 为准，不在此复制会变化的脚本列表。

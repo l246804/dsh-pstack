@@ -4,7 +4,7 @@ Status: accepted
 Date: 2026-11-23
 Scope: native/**, src/**, playground/**, docs/architecture.md, docs/glossary.md, docs/decisions/**
 Implemented-by: PR #43
-Review: 2026-11-23
+Review: 2026-11-28
 
 ## 背景
 
@@ -15,10 +15,10 @@ Review: 2026-11-23
 ## 决策
 
 - `native/` 是基准子包。它钉定已发布上游 pstack，维护 `native/dsh.md`、`native/dsh-evidence.md` 和 `native/gaps.json`，并由生成器产出唯一生成树 `native/pstack/`。
-- `playground/` 是验证场。它用真实 DSH Web 会话运行 `native` 和 `adapted` 场景，保存 RunRecord、截图、manifest、review 和脱敏证据；它不承载产品实现。
+- `playground/` 是验证场。它用真实 DSH Web 会话运行 `native` 和 `adapted` 场景，收集运行事实并分析结果；它不承载产品实现。
 - `src/` 是产品实现。它包含随包的 `src/dsh.md`、Host/Client 实现、角色与工作流配置，并负责生成 `dist/`。
 - 构建链固定为 `native/upstream/ → native/pstack/ → dist/pstack/`，适配答案由 `src/dsh.md` 在构建时盖章；`native/pstack/` 不由手工编辑。
-- `playground/scenarios/` 从 `native/gaps.json` 推导验证覆盖，使用 `native`/`adapted` variant 和 `base`/`render`/`agent-team` environment；旧 `raw` 阶段和 `playground/reviews` 不再作为当前实现路径。
+- `playground/scenarios/` 保存验证场景，使用 `native`/`adapted` variant 和各对照 environment；场景来源与覆盖遵循 [gap 驱动场景](./2026-11-23-gap-driven-scenarios.md)。
 
 ## 替代方案
 
@@ -34,6 +34,6 @@ Review: 2026-11-23
 
 - `native/`、`playground/`、`src/` 的职责和输入输出固定，新增文件先按这三层归档。
 - `native/pstack/` 是唯一生成树，`src/dsh.md` 是唯一产品适配答案；文档和测试均引用当前路径。
-- `playground/evidence/runs/` 保存当前验证快照，历史记录依赖 Git，不再维护 `playground/reviews`。
-- 相关记录：[2026-11-23-gap-driven-scenarios.md](./2026-11-23-gap-driven-scenarios.md) 承接 capability 覆盖原则，[2026-11-23-playground-worker-container-isolation.md](./2026-11-23-playground-worker-container-isolation.md) 承接 worker 读取边界；旧记录中的 `port/`、`playground/raw`、`playground/reviews`、根 `pstack/`、根 `tests/` 下的产品测试和 `port/surface.json` 路径属于历史，当前对应 `src/`、`playground/runner`、`native/`、`src/tests/` 和 `src/surface.json`。
+- 验证场的运行数据与提交结果按 [逐场景结果](./2026-11-27-playground-scenario-results.md) 管理，历史结论依赖 Git。
+- 相关记录：[2026-11-23-playground-worker-container-isolation.md](./2026-11-23-playground-worker-container-isolation.md) 承接 worker 读取边界；旧记录中的 `port/`、`playground/raw`、`playground/reviews`、根 `pstack/`、根 `tests/` 下的产品测试和 `port/surface.json` 路径属于历史，当前对应 `src/`、`playground/runner`、`native/`、`src/tests/` 和 `src/surface.json`。
 - 本记录已在 PR #43 合并后更新为 `Status: accepted`、`Implemented-by: PR #43`。

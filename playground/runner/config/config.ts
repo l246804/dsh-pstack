@@ -5,7 +5,7 @@ import { pathToFileURL } from "node:url";
 import { load as yamlLoad } from "js-yaml";
 
 import { setRuntimeSettings } from "./runtime.ts";
-import { DEEPSEEK_REASONING_EFFORTS, loadProviderPlan } from "./provider.ts";
+import { DEEPSEEK_REASONING_EFFORTS } from "./provider.ts";
 import type {
   BrowserConfig,
   DeepSeekModel,
@@ -15,6 +15,8 @@ import type {
   RuntimeConfig,
   TestTarget,
 } from "../types.ts";
+
+export const DEFAULT_CREDENTIALS_FILE = join(homedir(), ".dsh/.credentials.yaml");
 
 function object(value: unknown, label: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
@@ -333,7 +335,7 @@ export function parseConfig(value: unknown, credentialsFileOption?: string): Pla
   const credentialsFile =
     credentialsFileOption ??
     (input.credentialsFile === undefined
-      ? join(homedir(), ".dsh/.credentials.yaml")
+      ? DEFAULT_CREDENTIALS_FILE
       : string(input.credentialsFile, "credentialsFile"));
   const providersInput = object(input.providers, "providers");
   const providers: Record<string, ProviderConfig> = {};
@@ -375,21 +377,38 @@ export function parseConfig(value: unknown, credentialsFileOption?: string): Pla
   };
 }
 
-function loaded(value: unknown): PlaygroundConfig {
-  const config = parseConfig(value);
-  loadProviderPlan(config);
-  setRuntimeSettings(config.runtime);
-  return config;
-}
-
-/** Load a TS or JSON config. TS is imported through the same runtime as every other script. */
-export async function readConfig(file: string): Promise<PlaygroundConfig> {
-  if (file.endsWith(".json")) {
-    return loaded(JSON.parse(readFileSync(file, "utf8")));
-  }
+async function readConfigInput(file: string): Promise<Record<string, unknown>> {
+  if (file.endsWith(".json"))
+    return object(JSON.parse(readFileSync(file, "utf8")), "playground config");
   const module = (await import(pathToFileURL(file).href)) as {
     default?: unknown;
     config?: unknown;
   };
-  return loaded(module.default ?? module.config);
+  return object(module.default ?? module.config, "playground config");
+}
+
+/** Local inspection and worker shutdown do not resolve providers or validate models. */
+export async function readRuntimeConfig(file: string): Promise<RuntimeConfig> {
+  const value = runtime((await readConfigInput(file)).runtime);
+  setRuntimeSettings(value);
+  return value;
+}
+
+/** Browser-only commands use the worker's already prepared model configuration. */
+export async function readBrowserConfig(
+  file: string,
+): Promise<Pick<PlaygroundConfig, "runtime" | "browser">> {
+  const input = await readConfigInput(file);
+  const settings = runtime(input.runtime);
+  setRuntimeSettings(settings);
+  return {
+    runtime: settings,
+    ...(input.browser === undefined ? {} : { browser: browser(input.browser) }),
+  };
+}
+
+export async function readConfig(file: string): Promise<PlaygroundConfig> {
+  const config = parseConfig(await readConfigInput(file));
+  setRuntimeSettings(config.runtime);
+  return config;
 }

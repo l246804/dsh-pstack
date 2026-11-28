@@ -1,13 +1,14 @@
 import { createBrowserSession } from "../browser/session.ts";
 import { argValue } from "../shared/args.ts";
 import { stopWeb } from "../container/index.ts";
-import { environmentMatrix } from "../worker/run-metadata.ts";
+import { environmentMatrix } from "../scenario/environments.ts";
 import { clearBootstrapReady, listWorkers } from "../worker/worker.ts";
 import { isVariant } from "../types.ts";
 import type { Variant } from "../types.ts";
-import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { readRuntimeConfig } from "../config/config.ts";
 
-await readPlaygroundConfig(CONFIG_FILE);
+await readRuntimeConfig(CONFIG_FILE);
 
 const environment = argValue("--environment");
 if (environment) environmentMatrix(environment);
@@ -23,6 +24,8 @@ for (const paths of listWorkers({
   console.log(
     `[stop] ${paths.variant}/${paths.environmentId}/w${paths.index} stopped=${result.stopped}`,
   );
+  // UI browsers belong to the inspecting agent, not the scenario runner.
+  if (paths.environmentId === "ui") continue;
   try {
     createBrowserSession({
       session: `${paths.variant}-${paths.environmentId}-w${paths.index}`,

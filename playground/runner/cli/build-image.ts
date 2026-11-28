@@ -1,7 +1,8 @@
 import { buildImage } from "../container/image.ts";
-import { CONFIG_FILE, readPlaygroundConfig } from "../worker/home.ts";
+import { DEFAULT_CONFIG_FILE as CONFIG_FILE } from "../shared/paths.ts";
+import { readRuntimeConfig } from "../config/config.ts";
 
-await readPlaygroundConfig(CONFIG_FILE);
+await readRuntimeConfig(CONFIG_FILE);
 
 try {
   console.log(`[image] ${buildImage()}`);

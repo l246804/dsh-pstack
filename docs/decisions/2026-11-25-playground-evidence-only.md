@@ -1,10 +1,11 @@
 # 决策：playground 只保留证据与判定
 
-Status: accepted
+Status: superseded
 Date: 2026-11-25
 Scope: playground/**, vite.config.ts, docs/decisions/**
 Implemented-by: PR #59
-Review: 2026-11-25
+Review: 2026-11-27
+Superseded-by: docs/decisions/2026-11-27-playground-scenario-results.md — 运行证据留在本地，取消审核 JSON、脱敏提交和版本对齐约束
 
 ## 背景
 

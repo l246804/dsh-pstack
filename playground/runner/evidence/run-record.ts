@@ -1,111 +1,68 @@
+import { createEnvironment } from "../worker/run-metadata.ts";
+import { environmentMatrix } from "../scenario/environments.ts";
+import type { WorkerPaths } from "../worker/worker.ts";
+import { digestSession, sessionFacts } from "./session-facts.ts";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { z } from "zod";
 
-import { SEMANTIC_REVIEW_STATUSES, VARIANTS, type RunRecord } from "../types.ts";
+import { RUN_STATUSES, VARIANTS, type Variant, type RunRecord } from "../types.ts";
 
 const strings = z.array(z.string());
 const target = z.object({ provider: z.string(), model: z.string(), effort: z.string() });
 const toolStatus = z.enum(["pending", "ok", "error"]);
-const verdict = z.union([
-  z.object({ variant: z.literal("native"), status: z.enum(["observed", "gap"]), gaps: strings }),
-  z.object({
-    variant: z.literal("native"),
-    status: z.enum(["blocked", "unobserved"]),
-    reason: z.string(),
-  }),
-  z.object({ variant: z.literal("adapted"), status: z.literal("verified") }),
-  z.object({ variant: z.literal("adapted"), status: z.literal("not-verified"), failures: strings }),
-  z.object({
-    variant: z.literal("adapted"),
-    status: z.enum(["blocked", "inconclusive"]),
-    reason: z.string(),
-  }),
-]);
-
 /** Validate disk input once before consumers rely on the complete RunRecord contract. */
-const runRecord = z
-  .object({
-    scenarioId: z.string(),
-    scenarioHash: z.string().optional(),
-    variant: z.enum(VARIANTS),
-    environment: z.object({
-      worker: z.number(),
-      dshVersion: z.string(),
-      pstackVersion: z.string(),
-      upstreamRevision: z.string(),
-      matrix: z.object({
-        id: z.string(),
-        description: z.string(),
-        kind: z.enum(["base", "capability", "conflict"]),
-        enabledPluginPackages: strings,
-        versionExemptions: strings.optional(),
-        teamMode: z.boolean().optional(),
-      }),
+const runRecord = z.object({
+  scenarioId: z.string(),
+  variant: z.enum(VARIANTS),
+  environment: z.object({
+    worker: z.number(),
+    dshVersion: z.string(),
+    pstackVersion: z.string(),
+    upstreamRevision: z.string(),
+    matrix: z.object({
+      id: z.string(),
+      description: z.string(),
+      kind: z.enum(["base", "capability", "conflict"]),
+      enabledPluginPackages: strings,
+      versionExemptions: strings.optional(),
+      teamMode: z.boolean().optional(),
     }),
-    target: target.nullable(),
-    session: z
-      .object({
-        sessionId: z.string(),
-        sessionFile: z.string(),
-        workspacePath: z.string().nullable(),
-        agentPreset: z.string().nullable(),
-        skillLoads: strings,
-        toolCalls: z.array(
-          z.object({
-            name: z.string(),
-            status: toolStatus,
-            argsSummary: z.string(),
-            errorText: z.string().optional(),
-          }),
-        ),
-        turnEndReason: z.string().nullable(),
-        assistantText: z.string(),
-        userText: z.string(),
-        userTexts: strings,
-        autoAnswers: z.array(z.object({ question: z.string(), answer: z.string() })),
-        analysis: z
-          .object({
-            tools: z.array(
-              z.object({
-                name: z.string(),
-                attempts: z.number(),
-                failures: z.number(),
-                firstAttemptStatus: toolStatus,
-                finalStatus: toolStatus,
-                recovered: z.boolean(),
-              }),
-            ),
-            artifacts: strings,
-            warnings: strings,
-          })
-          .optional(),
-      })
-      .nullable(),
-    artifacts: z.object({
-      recordFile: z.string(),
-      screenshotFile: z.string().optional(),
-      observed: strings,
-    }),
-    semanticReview: z.discriminatedUnion("status", [
-      z.object({ status: z.literal("pending"), reason: z.string() }),
-      z.object({
-        status: z.enum(SEMANTIC_REVIEW_STATUSES),
-        reason: z.string(),
-        reviewer: z.discriminatedUnion("kind", [
-          z.object({ kind: z.literal("model"), route: target }),
-          z.object({ kind: z.literal("human"), name: z.string() }),
-        ]),
-      }),
-    ]),
-    mechanicalFailures: strings,
-    verdict,
-    blockedReason: z.string().optional(),
-    capturedAt: z.string(),
-    batchId: z.string().optional(),
-  })
-  .refine((record) => record.variant === record.verdict.variant, {
-    path: ["verdict", "variant"],
-    message: "must match record.variant",
-  }) satisfies z.ZodType<RunRecord>;
+  }),
+  target: target.nullable(),
+  session: z
+    .object({
+      sessionId: z.string(),
+      sessionFile: z.string(),
+      workspacePath: z.string().nullable(),
+      agentPreset: z.string().nullable(),
+      skillLoads: strings,
+      toolCalls: z.array(
+        z.object({
+          name: z.string(),
+          status: toolStatus,
+          argsSummary: z.string(),
+          errorText: z.string().optional(),
+        }),
+      ),
+      turnEndReason: z.string().nullable(),
+      assistantText: z.string(),
+      userText: z.string(),
+      userTexts: strings,
+      autoAnswers: z.array(z.object({ question: z.string(), answer: z.string() })),
+    })
+    .nullable(),
+  artifacts: z.object({
+    recordFile: z.string(),
+    screenshotFile: z.string().optional(),
+  }),
+  mechanicalFailures: strings,
+  status: z.enum(RUN_STATUSES),
+  blockedReason: z.string().optional(),
+  capturedAt: z.string(),
+  batchId: z.string().optional(),
+}) satisfies z.ZodType<RunRecord>;
 
 export function parseRunRecord(value: unknown, file: string): RunRecord {
   const result = runRecord.safeParse(value);
@@ -113,4 +70,100 @@ export function parseRunRecord(value: unknown, file: string): RunRecord {
     throw new Error(`invalid RunRecord in ${file}: ${result.error.message}`);
   }
   return result.data;
+}
+
+/** Read only run records; worker config and progress are separate inputs. */
+export function readRunRecords(directory: string): RunRecord[] {
+  if (!existsSync(directory)) return [];
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const file = join(directory, entry.name);
+    if (!entry.isFile()) return [];
+    if (
+      entry.name !== "record.json" &&
+      !/-(?:native|adapted)-.+-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.json$/.test(entry.name)
+    )
+      return [];
+    let value: unknown;
+    try {
+      value = JSON.parse(readFileSync(file, "utf8"));
+    } catch (error) {
+      throw new Error(`invalid RunRecord in ${file}: ${String(error)}`);
+    }
+    return [parseRunRecord(value, file)];
+  });
+}
+
+export function assertSafeRecord(record: RunRecord, apiKeys: string[]): void {
+  const serialized = JSON.stringify(record);
+  for (const apiKey of apiKeys) {
+    if (apiKey && serialized.includes(apiKey)) throw new Error("RunRecord contains an apiKey");
+  }
+}
+
+export function latestRecords(records: RunRecord[]): RunRecord[] {
+  const latest = new Map<string, RunRecord>();
+  for (const record of records) {
+    const key = `${record.scenarioId}\0${record.variant}\0${record.environment.matrix.id}`;
+    const current = latest.get(key);
+    if (!current || record.capturedAt > current.capturedAt) latest.set(key, record);
+  }
+  return [...latest.values()];
+}
+
+export function recordFileName(
+  scenarioId: string,
+  variant: Variant,
+  environmentId: string,
+  stamp: string,
+): string {
+  return `${scenarioId}-${variant}-${environmentId}-${stamp}.json`;
+}
+
+export function blockedRecord(input: {
+  scenarioId: string;
+  variant: Variant;
+  paths: WorkerPaths;
+  recordFile: string;
+  screenshotFile: string;
+  sessionFile?: string;
+  sessionId?: string;
+  reason: string;
+  batchId?: string;
+  /** The attempt start stamp shared with the record and screenshot filenames. */
+  capturedAt: string;
+}): RunRecord {
+  const matrix = environmentMatrix(input.paths.environmentId);
+  const sessionFile = input.sessionFile;
+  const session = sessionFile
+    ? (() => {
+        try {
+          return sessionFacts(
+            digestSession(sessionFile, input.sessionId ?? "", input.paths.index),
+            sessionFile,
+            [],
+          );
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+  return {
+    scenarioId: input.scenarioId,
+    variant: input.variant,
+    environment: createEnvironment({
+      worker: input.paths.index,
+      matrix,
+    }),
+    target: null,
+    session,
+    artifacts: {
+      recordFile: input.recordFile,
+      screenshotFile: input.screenshotFile,
+    },
+    mechanicalFailures: [],
+    status: "blocked",
+    blockedReason: input.reason,
+    batchId: input.batchId,
+    capturedAt: input.capturedAt,
+  };
 }

@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 import type { ProviderPlan } from "../config/provider.ts";
-import type { WorkerPaths } from "../worker/worker.ts";
+import { stopRequestFile, type WorkerPaths } from "../worker/worker.ts";
 import { docker } from "./docker-command.ts";
 import { requireImage } from "./image.ts";
 import {
@@ -87,6 +87,7 @@ export class DockerSandbox {
         url.port = String(port);
         mkdirSync(paths.root, { recursive: true });
         writeFileSync(paths.logFile, `${tail}\n`);
+        rmSync(stopRequestFile(paths), { force: true });
         writeFileSync(paths.urlFile, `${url.toString()}\n`);
         return { url: url.toString(), port };
       }
@@ -103,13 +104,16 @@ export class DockerSandbox {
   stop(paths: WorkerPaths): { stopped: boolean; id: string | null } {
     const name = paths.containerName;
     const stop = docker(["stop", "-t", "10", name], 20_000);
-    const existed = stop.status === 0;
-    docker(["rm", "-f", name]);
-    try {
-      rmSync(paths.urlFile, { force: true });
-    } catch {
-      // Best effort; the worker root is removed on reset.
+    const removed = docker(["rm", "-f", name]);
+    if (stop.status !== 0 && removed.status !== 0) {
+      const remaining = docker(["ps", "-a", "--filter", `name=^/${name}$`, "--format", "{{.ID}}"]);
+      if (remaining.status !== 0 || remaining.out.trim() !== "") {
+        throw new Error(
+          `could not confirm that worker ${name} stopped: ${removed.err || removed.out || stop.err || stop.out}`,
+        );
+      }
     }
-    return { stopped: existed, id: existed ? name : null };
+    rmSync(paths.urlFile, { force: true });
+    return { stopped: true, id: name };
   }
 }

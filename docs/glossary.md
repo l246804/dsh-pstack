@@ -24,11 +24,11 @@ Role 的路由基数由 `shape` 描述：
 
 ## Budget（推理预算）
 
-角色文件中一次批量应用推理目标的记录，不直接参与委派；真正生效的是各角色的具体路由。当前档位、effort 匹配与兼容处理以 `src/roles/budget.ts` 为准。
+角色文件中一次批量应用推理目标的记录，不直接参与委派；真正生效的是各角色的具体路由。档位和 effort 映射以 `src/roles/budget.ts` 为准。应用时按模型实际公布的 efforts 匹配、向下回退或提示手动选择；自定义 efforts 或没有 effort 的模型保持原值。旧 `unlimited` 值兼容规范化为 `large`，落盘迁移见[角色文件模块](./architecture.md#模块与入口)。
 
 ## Agent preset（Agent 预设）
 
-DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会话能力。DSH 的根 preset 面向用户会话；本插件只随包提供子代理 preset（`poteto-agent`、`comment-sicko`、`readonly`），用户会话的 Poteto 工作流通过会话级开关启用。`pstack_subagent` 的 `agent_preset` 选择 preset 类别；模型路由由调用方读取角色文件后通过 `provider`/`model`/`reasoning_effort` 传入，两者是正交配置。
+DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会话能力。DSH 的根 preset 面向用户会话；本插件只随包提供子代理 preset（`poteto-agent`、`comment-sicko`、`readonly`），用户会话的 Poteto 工作流改由会话级开关启用。`pstack_subagent` 的 `agent_preset` 选择 preset 类别；模型路由由调用方读取角色文件后通过 `provider`/`model`/`reasoning_effort` 传入，两者是正交配置。
 
 ## Session sidecar（会话 sidecar）
 
@@ -38,11 +38,11 @@ DSH 对一类 Agent 的插件组合，包含人格、工具、沙箱及其他会
 
 由 `native/scripts/generate-pstack.ts` 从钉定的已发布上游树和 `native/dsh.md` 生成的 `native/pstack/` 目录，是全仓唯一生成树；构建时复制到 `dist/pstack/`，并把适配答案盖章为 `src/dsh.md`。
 
-手工变更落在生成来源。生成链路和发布资源布局见[架构](./architecture.md#生成与发布)。
+手工变更应落在生成来源、插件源码、测试或技能工作区。发布兼容范围由 `package.json` 的 `engines.dsh` 提供，pstack 版本记在 `native/upstream.lock.json`；能力探针位于 `playground/scenarios/`，场景注册表在 `playground/runner/scenario/`，逐场景结果与截图在 `playground/results/`，都不属于本仓工程决策记录目录。
 
 ## Playground（验证场）
 
-`playground/` 的真实 DSH Web 会话验证环境。它运行 native/adapted 能力 probe，收集 RunRecord、SessionAnalysis 和评审快照，为基准与产品两侧提供缺口与结论。
+`playground/` 的真实 DSH Web 会话验证环境。它按场景文件运行 native/adapted 能力 probe，提交逐场景结论、建议、审批和截图；执行记录保留本地，为分析提供事实。
 
 ## Native 与 Adapted
 

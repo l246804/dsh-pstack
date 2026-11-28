@@ -1,58 +1,32 @@
-# 怎么判定
+# 分析与审批
 
-本文件说明 `collect` 后的独立分析会话：输入、隔离、判定、输出和 review。怎么跑见 [run.md](./run.md)，记录结构见 [records.md](./records.md)。
+依据本次选中的场景、worker 本地运行记录、实际 session 和截图判定。执行记录中的 `completed` 只表示执行完成且机械检查通过；最终行为是否满足由 rubric 和实际观察决定。
 
-## 输入
+## 判断
 
-- `playground/evidence/runs/<variant>-<environment>/manifest.json`：快照范围和批次信息。
-- 快照下每个场景的 `record.json` 和 `screenshot.png`。
-- `native/gaps.json`：native 判断缺口；adapted 判断缺口是否闭合。
-- `playground/scenarios/`：prompt、assertions、rubric 和 UI 观察点。
-- native 对照 `native/dsh.md`；adapted 对照 `src/dsh.md`。
-- 场景声明 `variants: ["native"]` 时，adapted 快照没有对应 record 是声明范围，不是缺失或 blocked。
+1. native 侧对照 `native/dsh.md` 和 `native/dsh-evidence.md`，判断最小适配下行为是否成立。能力不存在与模型偶发失误分开；后者附重试结果，证据不足记「待判定」。native 的判断不引用插件实现或 adapted 结果。
+2. 按需检查 render 等对照环境。可选插件下通过，只证明该环境满足目标；不能据此认定 base 已具备能力。
+3. 给出具体处理建议：补齐、接受降级、无需处理，或修改适配答案。缺口判断和建议分开陈述，明确需要用户审批的内容。`native/dsh.md` 的实质修改同样等待用户确认。
+4. adapted 依据自身实测与 `src/dsh.md` 判断是否通过。适配通过不会改变 native 的能力结论；不在场景范围内的组合写「不适用」。
 
-完整 session 的位置与提交边界见 [records.md](./records.md#证据布局)。需要时按 record 的 `session.sessionId` 定位。
+机械失败先查原因，语义判断不覆盖失败事实。图像、视频等必须观察实际呈现；路径、源码和模型自述不能证明渲染或播放。模型偶发问题按根 [AGENTS.md](../../AGENTS.md) 的证据规则处理。
 
-## 隔离
+## 结果
 
-- native 分析只读 native 快照、`native/dsh.md`、`native/dsh-evidence.md`、场景文件和本地 native session；不读 `src/dsh.md`、当前插件实现或 adapted 证据。
-- adapted 分析只读 adapted 快照、`src/dsh.md` 和当前适配实现；不以 native 的缺失替代 adapted 验证。
-- 合并视图只读，不把一侧结论写进另一侧 findings。
+维护 `results/<scenario-id>/result.md`，开头链接场景定义。用短表给出每个已评估 variant/environment 的结论和一句依据；日期记录各自最近一次实际验证。可用结论是「通过」「未通过」「缺口成立」「待判定」「未运行」「不适用」，按场景语义选择。
 
-## 判定
+表后只保留该项需要的内容：
 
-1. 区分「能力不存在」和「模型没有完成任务」：能力确实缺失才记为 `gap`；能力存在但模型未完成或质量不足，记为 `inconclusive` 或待用户判断。
-2. 机械断言是下限，rubric 是语义边界；两者都满足才算通过。
-3. 性能、质量和精确数量不是默认门槛；有操作或测量但未达目标时，优先 `inconclusive` 或待用户判断。
-4. 非文本产物必须看到实际呈现；源码、路径、文件卡片和 assistant 文本不能替代渲染、播放或 UI 观察。
-5. 证据不足时留给用户判断，不把模型表现当成 DSH 能力结论。
-6. `dsh.md` 审查只依据当前 variant 的实际实现、文档内容和实测证据；不把另一 variant 的结构或术语作为判定标准。
+- **建议与审批**：具体处理、待用户确认或已确认的决定。用户批准处理方案不等于 adapted 已通过；已有批准沿用，不重复申请。
+- **适配答案**：相关 `dsh.md` 条目的判断、具体修订与审批；没有发现问题时一句话即可。
+- **证据**：链接选用的截图；截图无法证明的事实用一两句核实结果说明。记录、session 和排查过程保留本地，按 runner 输出的路径查阅。
 
-## 输出
+同一事实只在对应场景展开。跨场景共因集中写一次，其余指向它；与场景无关的适配答案审查放在 `results/README.md` 的独立条目中，注明对象、依据、建议和审批状态。
 
-按 variant 手写 `playground/evidence/findings/<variant>.md`，包含：
+`results/README.md` 只放场景索引、短结果与待审批项。正常通过项不扩写分析过程，已处理项不保留调试经过。报告不列批次 id、hash、版本对齐或逐轮变化说明；只有影响结论的环境条件才进入正文。
 
-1. 本轮范围：full/incremental、覆盖场景、沿用快照、实际版本。
-2. 按 probe 汇总：通过、失败或未完成、未观察到、能力缺失。
-3. `dsh.md` 审查：按当前 variant 的实际实现和章节判断 `够用`、`缺失`、`误导`、`不适用`；判定只针对当前 variant，不与其他 variant 的组织方式比较。
-4. 问题与建议：按根因去重，每条带 capability id、证据、建议和需要用户确认的事项。
+## 提交前
 
-`review.json` 的字段和校验见 `runner/evidence/review-snapshot.ts`；本文件只定义分析步骤，不复制记录结构。
+核对本次运行项都有结论或明确的待判定原因，审批状态来自用户实际决定，索引与单项结果一致。检查截图与摘录中的敏感信息，只保留支撑结论的内容。
 
-## Review
-
-在当前 variant/environment 的快照根目录写一份 `review.json`，以 scenario id 为键填写每个场景的结论，由 `playground:review` 解析。之后执行：
-
-```sh
-vp run playground:review -- --variant <variant> --environment <environment> --apply
-vp run playground:review -- --variant <variant> --environment <environment> --check
-```
-
-`--apply` 是 pending 变成 verified / not-verified 的唯一路径；`--check` 必须没有 pending，且 record 与 review 内容一致。判定完成后按 [run.md](./run.md#证据脱敏) 生成 `record.safe.json` 并运行 `playground:redact --apply`。
-
-## 完成标准
-
-- 每个快照场景都有明确结论和 reason。
-- 问题条目按根因去重，带 capability id、证据、建议和需要用户确认的事项。
-- `dsh.md` 审查只覆盖当前 variant 的那一份。
-- `review --check` 通过，没有 pending。
+本地记录可供当次复核和排查，不进入 Git；仓库结果保留结论、必要依据与复跑入口。未重跑的场景保留原日期和结果，不为发版补写通过或版本差异说明。

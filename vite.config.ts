@@ -139,6 +139,20 @@ export default defineConfig({
         cache: false,
         dependsOn: ["build"],
       },
+      "playground:ui:open": {
+        command: "vpx playground/runner/cli/prepare.ts --variant adapted --environment ui",
+        cache: false,
+        dependsOn: ["build", "playground:ui:close"],
+      },
+      "playground:ui:close": {
+        command: "vpx playground/runner/cli/stop.ts --variant adapted --environment ui",
+        cache: false,
+      },
+      "playground:ui:reset": {
+        command: "vpx playground/runner/cli/prepare.ts --variant adapted --environment ui --reset",
+        cache: false,
+        dependsOn: ["build", "playground:ui:close"],
+      },
       "playground:bootstrap": {
         command: "vpx playground/runner/cli/bootstrap.ts",
         cache: false,
@@ -159,10 +173,6 @@ export default defineConfig({
         command: "vpx playground/runner/cli/stop-task.ts",
         cache: false,
       },
-      "playground:redact": {
-        command: "vpx playground/scripts/redact.ts",
-        cache: false,
-      },
       "playground:run": {
         command: "vpx playground/runner/cli/run-scenario.ts",
         cache: false,
@@ -173,10 +183,6 @@ export default defineConfig({
       },
       "playground:collect": {
         command: "vpx playground/runner/cli/collect.ts",
-        cache: false,
-      },
-      "playground:review": {
-        command: "vpx playground/scripts/review.ts",
         cache: false,
       },
       "playground:gap-lock": {

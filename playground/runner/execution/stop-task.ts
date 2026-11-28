@@ -11,8 +11,5 @@ export function stopWorkerTask(paths: WorkerPaths): void {
     `${JSON.stringify({ requestedAt: new Date().toISOString(), worker: paths.index }, null, 2)}\n`,
   );
   clearBootstrapReady(paths.environmentId, paths.variant);
-  const result = stopWeb(paths);
-  if (!result.stopped) {
-    throw new Error(`could not confirm that worker ${paths.containerName} stopped`);
-  }
+  stopWeb(paths);
 }

@@ -5,7 +5,7 @@ import { parseArgs } from "node:util";
 import { expectedGapLock, gapLockProblems, type GapLock, type LockedGap } from "./lib/gap-lock.ts";
 import { gapCoverageProblems } from "./lib/coverage.ts";
 import { listScenarioIds, loadScenario } from "../runner/scenario/scenarios.ts";
-import { REPOSITORY_ROOT } from "../runner/worker/run-metadata.ts";
+import { REPOSITORY_ROOT } from "../runner/shared/paths.ts";
 
 const GAPS_FILE = join(REPOSITORY_ROOT, "native", "gaps.json");
 const LOCK_FILE = join(REPOSITORY_ROOT, "playground", "scenarios", "gap-lock.json");
