@@ -149,8 +149,12 @@ export interface BehaviorScenario {
   /** Environments this probe runs in; omitted means only the base environment. */
   environments?: readonly string[];
   answers?: Array<{ match: string; selected?: string[]; custom?: string }>;
-  /** Whether this scenario investigates a missing capability or checks a regression. */
+  /** Capability id this probe covers. */
+  capability: string;
+  /** Scenario kind: gap (linked to the native gap list) or regression. */
   kind: "gap" | "regression";
+  /** Native gap id this scenario verifies; required for gap scenarios. */
+  gap?: string;
 }
 
 export type EnvironmentKind = "base" | "capability" | "conflict";

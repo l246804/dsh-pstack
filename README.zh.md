@@ -197,7 +197,7 @@ vendored 技能的来源与哈希记录在 [`skills/skills-lock.json`](./skills/
 移植由真实 DeepSeek Harness Web 会话验证，不靠与上游比对文本。完整流程见 [playground/docs/run.md](./playground/docs/run.md)。
 
 - **native 基准。** `native/` 钉定上游 pstack 并生成 `native/pstack`；`native/dsh.md` 把每个 Cursor 名称映射到 DSH 替代项，并写清替代项不可用时的 fallback。生成器把该文档插入生成树，上游文案保持原样。
-- **场景验证。** `playground/scenarios/` 定义需要验证的缺口与回归，由用户维护，独立于 `native/gaps.json` 的审批状态。
+- **场景验证。** 缺口场景对应 `native/gaps.json` 中已 confirmed 的条目，回归场景独立维护；覆盖校验和 gap-lock 规则见 [场景契约](./playground/docs/scenarios.md)。
 - **结果与审批。** [验证结果](./playground/results/README.md) 按场景记录 native 结论、处理建议、用户审批和 adapted 结果。机械断言与实际行为分别核对，截图按需保留，运行记录只存本地。
 - **按需复测。** 场景或行为变化时复核受影响项；版本升级和发版不要求全量重跑。适配实现与 `src/dsh.md` 修改后，按场景验证缺口是否弥补。
 

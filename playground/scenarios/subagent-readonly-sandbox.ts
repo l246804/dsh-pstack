@@ -3,6 +3,8 @@ import type { BehaviorScenario } from "../runner/types.ts";
 export default {
   id: "subagent-readonly-sandbox",
   kind: "gap",
+  gap: "subagent-readonly-sandbox",
+  capability: "subagent-readonly-sandbox",
   turns: [
     {
       prompt:

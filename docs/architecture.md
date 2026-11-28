@@ -14,7 +14,7 @@ native 上游基准与最小适配答案 → generate 生成 native/pstack/
 ```
 
 - `native` 是基准子包：钉定的已发布上游树、native 适配答案和缺口清单。
-- `playground` 以自行维护的场景为验证范围，运行 native/adapted probe；本地保存运行记录，提交逐场景结论与截图。客户端交互验证复用独立的 adapted/ui worker；浏览器由 agent 使用 agent-browser 管理，入口见 `playground/docs/ui.md`。
+- `playground` 运行 native/adapted 的缺口与回归场景，缺口场景对应 native 中已确认的条目；本地保存运行记录，提交逐场景结论与截图。客户端交互验证复用独立的 adapted/ui worker；浏览器由 agent 使用 agent-browser 管理，入口见 `playground/docs/ui.md`。
 - `src` 负责随包适配答案与 Host/Client 实现；`cordis.patch.yml` 负责装配。
 - 根 README 同步已有兼容表、技能与能力状态、能力限制和最终适配结果。
 - 发布由用户手动执行；agent 停在 release-ready。
@@ -48,10 +48,10 @@ native 上游基准与最小适配答案 → generate 生成 native/pstack/
 | 角色与插件页面 | `src/client/pages/RoleSettingsPage.tsx`、`src/client/pages/RecommendedPluginsPage.tsx`、`src/client/components/RoleCard.tsx`、`src/client/components/BudgetDialog.tsx` | 编辑角色草稿并展示保存结果；按预算批量预览并应用推理档位；展示关联插件及其变更结果。 |
 | Client 支撑 | `src/client/components/`（`ui.tsx`、`icons.tsx`、`DiscardConfirmation.tsx`、`PotetoModeToggle.tsx`、`PotetoModeBadge.tsx`）、`src/client/session-projection-types.ts`、`src/client/lib/`（`styles.css`、`poteto-mode.ts`、`toast.ts`、`message.ts`）、`src/client/roles/`（`role-copy.ts`、`role-draft.ts`、`role-selectors.ts`）、`src/client/locales/` | 提供本插件的 UI 组件、样式、共享提示、翻译、角色草稿和选择器文案；样式经 Client 模块元数据交给 DSH renderer 装载。 |
 | 维护修复 | `src/poteto/maintenance.ts`、`src/poteto/maintenance-remote.ts`、`src/poteto/maintenance-types.ts`、`src/client/pages/MaintenanceSettingsPage.tsx` | 扫描含旧 `poteto/mode` 事件的会话，按工作区展示并选择；确认后写入 `$DSH_HOME/pstack/repair.json`，下次启动时修复日志、把旧开关值写入会话 sidecar，并清理队列。旧的根目录 `pstack-repair.json` 不参与启动迁移，保持原样。 |
-| 移植与生成 | `native/scripts/fetch-upstream.ts`、`native/scripts/generate-pstack.ts`、`native/`（`upstream/`、`upstream.lock.json`、`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`、`gaps.json`）、`src/dsh.md`、`src/dsh.zh.md`、`playground/scenarios/` | fetch 把已发布上游版本钉定到 `native/upstream/`；生成器从上游树加注入行并盖章 `native/dsh.md` 产出唯一生成树 `native/pstack/`；`src/dsh.md` 是随包适配答案，构建时盖章替换 dist 内的基准答案；缺口提取规则见 `native/AGENTS.md`，场景由用户独立维护，规则见 `playground/docs/scenarios.md`。 |
+| 移植与生成 | `native/scripts/fetch-upstream.ts`、`native/scripts/generate-pstack.ts`、`native/`（`upstream/`、`upstream.lock.json`、`dsh.md`、`dsh.zh.md`、`dsh-evidence.md`、`gaps.json`）、`src/dsh.md`、`src/dsh.zh.md`、`playground/scenarios/` | fetch 把已发布上游版本钉定到 `native/upstream/`；生成器从上游树加注入行并盖章 `native/dsh.md` 产出唯一生成树 `native/pstack/`；`src/dsh.md` 是随包适配答案，构建时盖章替换 dist 内的基准答案；缺口提取规则见 `native/AGENTS.md`，场景对应关系与 gap-lock 规则见 `playground/docs/scenarios.md`。 |
 | 发布元数据与发布说明 | `scripts/release-compatibility.ts`、`scripts/release-surface.ts`、`scripts/release.sh`、`bump.config.ts`、`changes/AGENTS.md` | 发布时按 DSH 兼容范围分组同步各本地化 README 的发布版本表与 pstack 徽标，并把对应本地化 README 加入发布提交；已发布行不可改写，`compatibility:check` 校验表格、徽标与最新发布行一致，并允许 pin 领先于最新发布版本。发布说明由 agent 会话按 `changes/AGENTS.md` 从版本间提交生成到 `changes/RELEASE.md`；`release.sh` 要求该文件存在且已提交后才 bumpp，打完 tag 后删除它，发布工作流在 tag 上读取它作为 Release 正文；`release-surface.ts` 维护 `src/surface.json`。 |
 | 构建与打包 | `vite.config.ts`、`package.json` | 分别构建 Host 与浏览器 Client；导出 Host 模块，复制生成树和技能资源。 |
-| 自动化验证 | `tests/`、`native/tests/`、`src/tests/`、`playground/tests/`、`playground/runner/`、`playground/results/` | 自动化测试按包归属；runner 执行真实场景并保留本地记录，collect 只导出截图；按场景维护分析、建议、审批和适配结果。 |
+| 自动化验证 | `tests/`、`src/tests/`、`playground/tests/`、`playground/runner/`、`playground/scripts/gap-lock.ts`、`playground/results/` | 运行单元与契约测试，校验缺口枚举及场景对应关系；runner 执行真实场景并保留本地记录，collect 只导出截图；按场景维护分析、建议、审批和适配结果。 |
 
 ## 依赖方向
 
@@ -112,8 +112,8 @@ native/pstack/ + src/dsh.md
 - **Agent preset**：在 `cordis.patch.yml` 组合插件行，由 `src/preset.ts` 注册；展示文案集中在 `src/client/locales/` 或 `src/presets/preset-copy.ts`。
 - **Client 配置能力**：通过 `plugins.detail.actions` 进入现有对话框；Host 数据通过显式 Remote 描述符和页面 API 适配层传递。
 - **上游移植**：先在 playground 审核技能，再调整生成器或手写适配来源，最后重新生成并检查漂移。
-- **验证**：纯逻辑和 DOM 行为放入各包的 `tests/`（`native/tests/`、`src/tests/`、`playground/tests/`）；仓库级发布测试留在 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
+- **验证**：纯逻辑和 DOM 行为放入各包的 `tests/`（`src/tests/`、`playground/tests/`）；仓库级发布测试留在 `tests/`；需要真实 Cordis、profile 或模型的验证放入 `playground/`。
 
 ## 验证分层
 
-`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。native 的缺口枚举由本包测试检查。playground 场景以文件集合为准，不与缺口审批状态或发布版本联动；真实运行与结果判定遵循 `playground/AGENTS.md`，按需运行。
+`vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。`playground/tests/` 校验缺口枚举及场景契约；`playground:gap-lock` 检查 confirmed 缺口与场景覆盖、描述指纹。真实运行与结果判定遵循 `playground/AGENTS.md`，按需运行，不随发布版本变化强制重跑。

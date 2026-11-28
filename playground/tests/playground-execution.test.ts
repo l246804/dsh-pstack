@@ -67,6 +67,7 @@ setRuntimeSettings(defaultRuntimeSettings);
 
 const testScenario: BehaviorScenario = {
   id: "capability-test",
+  capability: "capability-test",
   kind: "regression",
   turns: [{ prompt: "/poteto-help 检查当前工作区。" }],
   workspace: { files: {} },

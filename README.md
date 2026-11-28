@@ -197,7 +197,7 @@ Steps that depend on a disabled plugin report skipped or blocked, never passed. 
 Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/run.md](./playground/docs/run.md) documents the full procedure.
 
 - **Native baseline.** `native/` pins the upstream pstack and generates `native/pstack`; `native/dsh.md` maps each Cursor name to its DSH replacement and states the fallback when the replacement is unavailable. The generator inserts that document into the generated tree, so the upstream wording stays intact.
-- **Scenario validation.** `playground/scenarios/` defines the gaps and regressions to exercise. Users maintain this set independently of approval states in `native/gaps.json`.
+- **Scenario validation.** Gap scenarios correspond to confirmed entries in `native/gaps.json`; regression scenarios are maintained separately. [Scenario rules](./playground/docs/scenarios.md) describe coverage checks and the gap lock.
 - **Results and approval.** [Validation results](./playground/results/README.md) record native findings, proposed actions, user approvals and adapted outcomes per scenario. Mechanical checks and observed behavior are assessed separately; selected screenshots are committed while run records remain local.
 - **Targeted reruns.** Revisit affected scenarios when behavior or criteria change. Upgrades and releases do not require a full rerun. After changing the adaptation or `src/dsh.md`, validate whether the relevant gaps are addressed.
 

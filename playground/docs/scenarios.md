@@ -2,7 +2,21 @@
 
 一个 `scenarios/<id>.ts` 默认导出一份 `BehaviorScenario`，文件名与 `id` 一致。注册表自动发现该目录的 TypeScript 文件，结果放在 `results/<id>/`。
 
-`kind: "gap"` 用于调查能力缺口，`kind: "regression"` 用于验证已知行为。两者共用执行器，由场景文件决定覆盖范围；缺口清单的审批状态不参与注册、选择或校验。
+## 来源与对应关系
+
+- gap 场景来自 `native/gaps.json` 中 `confirmed` 的缺口，声明 `kind: "gap"` 和对应的 `gap` id，`capability` 等于该 id。每个 confirmed 缺口至少有一个场景，且场景覆盖 native；adapted 是否适用由 `variants` 声明决定。
+- regression 场景验证已知行为，声明 `kind: "regression"`，不写 `gap`，不参与缺口覆盖和 gap-lock。回归场景无需先新增缺口。
+
+两类场景共用执行器。缺口被推翻或排除后，删除对应 gap 场景，或在仍需防回归时改成 regression；缺口提取与审批遵循 [native 指引](../../native/AGENTS.md)。
+
+`scenarios/gap-lock.json` 保存 confirmed 缺口 id 与描述的指纹，用于提醒复核场景，不记录运行结果或 DSH/pstack 版本。新增或修改缺口后先检查对应场景，确认匹配后更新并校验：
+
+```sh
+vp run playground:gap-lock -- --write
+vp run playground:gap-lock -- --check
+```
+
+`--write` 先检查覆盖关系，再更新 lock；`--check` 只检查、不写文件。描述即使只改措辞也会触发复核；确认场景仍适用时只更新 lock，是否重跑根据行为或判据变化决定。
 
 ## 编写
 

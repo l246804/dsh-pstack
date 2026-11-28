@@ -70,7 +70,6 @@ export default defineConfig({
   test: {
     include: [
       "tests/**/*.test.{ts,tsx,mjs}",
-      "native/tests/**/*.test.{ts,tsx,mjs}",
       "src/tests/**/*.test.{ts,tsx,mjs}",
       "playground/tests/**/*.test.{ts,tsx,mjs}",
     ],
@@ -184,6 +183,10 @@ export default defineConfig({
       },
       "playground:collect": {
         command: "vpx playground/runner/cli/collect.ts",
+        cache: false,
+      },
+      "playground:gap-lock": {
+        command: "vpx playground/scripts/gap-lock.ts",
         cache: false,
       },
       "playground:browser": {
