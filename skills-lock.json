@@ -16,7 +16,7 @@
     "decision-write": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "7ead9539d9fc172ca87013e0ea27baa4de7efa2658f7972a566a835b98048d51"
+      "computedHash": "ef8736a4ed083970b09dfd7c1e6e709fec5dfd129c88086036de760d40dc267c"
     },
     "docs-drift": {
       "source": "./skills/authored",
@@ -26,7 +26,7 @@
     "setup-project-docs": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "4da025f1f4dc89fa66af78ccbd1581b7d529fad1df3ba2ec18d5f05b16bb255a"
+      "computedHash": "e6c1d80f545cadbeaf9cee4026e34e579a673a3bac27d7c6eaf2e20f79697665"
     },
     "writing-for-agents": {
       "source": "mattpocock/skills",

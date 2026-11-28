@@ -46,7 +46,6 @@
       config:
         provider: spawn
         maxDepth: 2
-    # Opens the sidecar, mounts the repair service, then registers live projections.
     - id: pstack-poteto-toggle
       name: dsh-pstack/poteto-toggle
 

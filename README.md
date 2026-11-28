@@ -174,7 +174,9 @@ These skills extend pstack with authoring, project-maintenance, and evidence-gat
 | `setup-project-docs` | `authored` | Establish architecture, glossary, decision conventions, and pointers for a project's documentation. |
 | `docs-drift` | `authored` | Audit maintained documentation and repair approved drift, redundancy, and unsupported claims. |
 
-[`skills/skills-lock.json`](./skills/skills-lock.json) records the sources and hashes of vendored skills. Authored maintenance skills reuse existing authorization for the requested repairs and ask for unresolved choices.
+[`skills/skills-lock.json`](./skills/skills-lock.json) records the sources and hashes of vendored skills.
+
+Use `/setup-project-docs` to establish project documentation conventions. If your project already has a decision directory, you can use `/decision-write` directly. The agent writes decision records when requested or required by the project's conventions; installing the skills alone does not make ordinary coding tasks create records.
 
 ## 🔌 Optional DSH plugins
 

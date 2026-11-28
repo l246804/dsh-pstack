@@ -1,6 +1,6 @@
 ---
 name: decision-write
-description: Write, update, land, or supersede decision records. Use for resolved alternatives, missing rationale, reversed decisions, or record-file changes. Land finds and verifies the implementation; Review-only updates keep the current status.
+description: Write, update, land, or supersede decision records when the user requests record work or project conventions require it. Land verifies implementation evidence; Review-only updates keep the current status.
 ---
 
 # Write or update a decision record
@@ -9,7 +9,9 @@ Deliver one settled choice as a verified record and evidence report. All record 
 
 ## Entry rule
 
-Use the applicable branch below for record changes. Follow the user's authorized scope and the project's record conventions; this skill does not grant exceptions to either. Ask only when a required choice or authorization is missing.
+Use this skill for record work requested by the user or required by the project's documented conventions. A normal implementation request or an existing directory alone does not authorize adding decision records. Otherwise continue the requested work without creating records or initializing a documentation system.
+
+For authorized record work, use the applicable branch below and follow the project's conventions. Ask only when a required choice or authorization is missing; prior use of `setup-project-docs` is not required.
 
 ## Locate the records
 

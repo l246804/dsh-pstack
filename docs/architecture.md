@@ -134,7 +134,6 @@ native/pstack/ + src/dsh.md
 
 `vp check` 与 `vp test` 覆盖静态检查和自动化测试；`vp run native:generate:check` 检查生成树漂移。`native/tests/` 校验钉定、生成转换和缺口枚举；`playground/tests/` 校验场景契约和集成行为；`playground:gap-lock` 检查 confirmed 缺口与场景覆盖、描述指纹。真实运行与结果判定遵循 `playground/AGENTS.md`，按需运行，不随发布版本变化强制重跑。
 
-
 ## 事实来源
 
 | 事实 | 权威来源 |

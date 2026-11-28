@@ -31,7 +31,7 @@ Read build and workspace configuration, real directories, and entry points until
 
 Present existing, missing, and proposed paths. Lead with recommendations for decisions the repository cannot supply:
 
-- **Decision records:** recommend them when choices are costly to reverse; a small script or disposable prototype usually needs none. Declining leaves the related skills inert.
+- **Decision records:** recommend them when choices are costly to reverse; a small script or disposable prototype usually needs none. When declined, omit new decision conventions and their pointer; preserve any existing setup outside the requested changes.
 - **Glossary layout:** recommend one file; split by context only for genuinely separate bounded contexts.
 
 Use the requested paths and scope when supplied. On a rerun, limit the work to missing pieces and stale pointers. Ask only about choices the repository and request cannot resolve; prepare the concrete drafts before requesting any remaining write approval.
@@ -56,7 +56,7 @@ Create or update exactly the approved paths, editing existing files in place. Ke
 - Before starting any repository task, read `docs/decisions/AGENTS.md` and follow its search rules to read the records relevant to the task.
 ```
 
-This block contains only document pointers. Add or update the approved pointers in place, using the root document's language and actual paths. Preserve existing valid pointers outside the approved changes, including project-specific documents. Remove a pointer only when its removal was approved. Leave decision status meanings and record-selection rules in the decision directory's `AGENTS.md`.
+This block contains only document pointers. Include a template line only when its target is an approved document or an existing document the project uses. Add or update the approved pointers in place, using the root document's language and actual paths. Preserve existing valid pointers outside the approved changes, including project-specific documents. Remove a pointer only when its removal was approved. Leave decision status meanings and record-selection rules in the decision directory's `AGENTS.md`.
 
 ## 5. Verify and report
 
