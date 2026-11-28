@@ -8,8 +8,10 @@
 import { readFileSync, rmSync } from "node:fs";
 
 import { writeFileAtomically } from "../lib/atomic-write.ts";
-import { findRole, isRetiredRoleKey } from "../roles/role-manifest.ts";
+import { findRole } from "../roles/role-manifest.ts";
 import { validateRoleRouteShape, type Route } from "../roles/route.ts";
+import { isRetiredRoleKey } from "./role-values.ts";
+import { ROLE_FILE_VERSION, serializeRoleDocument } from "../roles/role-store.ts";
 import { parseLegacyRouteValue } from "./legacy-route.ts";
 
 /** One file-level problem found while parsing the legacy line format. */
@@ -87,34 +89,20 @@ export function parseLegacyRoleFileText(text: string): LegacyRoleFile {
   return { ...(budget === undefined ? {} : { budget }), roles, issues };
 }
 
-/** Options for {@link migrateMdcToJson}. */
-export interface MdcMigrationOptions {
-  readonly currentVersion: number;
-  readonly serialize: (document: {
-    readonly version: number;
-    readonly budget?: string;
-    readonly roles: Record<string, readonly Route[]>;
-  }) => string;
-}
-
 /**
  * Parse `mdcPath`, write the current JSON version at `jsonPath`, then delete the
  * `.mdc`. Throws on a parse issue or write failure; the startup migration treats
  * that as best effort and leaves the legacy file in place.
  */
-export function migrateMdcToJson(
-  mdcPath: string,
-  jsonPath: string,
-  options: MdcMigrationOptions,
-): void {
+export function migrateMdcToJson(mdcPath: string, jsonPath: string): void {
   const parsed = parseLegacyRoleFileText(readFileSync(mdcPath, "utf8"));
   if (parsed.issues.length > 0) throw new Error(parsed.issues[0]!.message);
   const roles: Record<string, readonly Route[]> = {};
   for (const [key, routes] of parsed.roles) roles[key] = [...routes];
   writeFileAtomically(
     jsonPath,
-    options.serialize({
-      version: options.currentVersion,
+    serializeRoleDocument({
+      version: ROLE_FILE_VERSION,
       ...(parsed.budget === undefined ? {} : { budget: parsed.budget }),
       roles,
     }),

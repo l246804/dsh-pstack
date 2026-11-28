@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vite-plus/test";
 import type { TypertClientRemote } from "@deepseek-ai/dsh-typert-protocol";
 
-import { pstackRolesHostContribution, pstackRolesRemote } from "../roles/role-remote.ts";
+import { pstackRolesRemote } from "../roles/role-remote.ts";
+
+import { pstackHostContribution } from "../shared/remote.ts";
 
 describe("pstack role Remote contribution", () => {
   it("registers strict Host invocations for every Gateway endpoint", () => {
-    expect(pstackRolesHostContribution.face).toBe("host");
-    expect(pstackRolesHostContribution.package).toBe(pstackRolesRemote.package);
+    expect(pstackHostContribution.face).toBe("host");
+    expect(pstackHostContribution.package).toBe(pstackRolesRemote.package);
     expect(
-      pstackRolesHostContribution.invocations.map(
+      pstackHostContribution.invocations.map(
         (descriptor) => descriptor.namespace + "/" + descriptor.method,
       ),
     ).toEqual([
@@ -22,12 +24,14 @@ describe("pstack role Remote contribution", () => {
       "pstackPotetoMode/setDefault",
       "pstackPotetoMode/getAgentTeamDefault",
       "pstackPotetoMode/setAgentTeamDefault",
-      "pstackPotetoMode/scanLegacySessions",
-      "pstackPotetoMode/queueLegacyRepair",
-      "pstackPotetoMode/consumeLegacyRepairResult",
+      "pstackPotetoMaintenance/scanLegacySessions",
+      "pstackPotetoMaintenance/queueLegacyRepair",
+      "pstackPotetoMaintenance/consumeLegacyRepairResult",
     ]);
-    for (const descriptor of pstackRolesHostContribution.invocations) {
-      expect(["pstackRoles", "pstackPotetoMode"]).toContain(descriptor.service);
+    for (const descriptor of pstackHostContribution.invocations) {
+      expect(["pstackRoles", "pstackPotetoMode", "pstackPotetoMaintenance"]).toContain(
+        descriptor.service,
+      );
       expect(descriptor.invocation.kind).toBe("direct");
     }
   });

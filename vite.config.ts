@@ -71,6 +71,7 @@ export default defineConfig({
     include: [
       "tests/**/*.test.{ts,tsx,mjs}",
       "src/tests/**/*.test.{ts,tsx,mjs}",
+      "native/tests/**/*.test.{ts,tsx,mjs}",
       "playground/tests/**/*.test.{ts,tsx,mjs}",
     ],
   },

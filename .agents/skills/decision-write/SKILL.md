@@ -1,6 +1,6 @@
 ---
 name: decision-write
-description: Write, update, land, or supersede decision records. Use for resolved alternatives, missing rationale, reversed decisions, or record-file changes. Land finds and verifies the implementation; Review-only updates keep the current status.
+description: Write, update, land, or supersede decision records when the user requests record work or project conventions require it. Land verifies implementation evidence; Review-only updates keep the current status.
 ---
 
 # Write or update a decision record
@@ -9,7 +9,7 @@ Deliver one settled choice as a verified record and evidence report. All record 
 
 ## Entry rule
 
-Use this procedure for every change to `Status`, `Implemented-by`, `Superseded-by`, `Review`, body, or links. If it cannot run, stop and report; this rule overrides `<dir>/AGENTS.md` conventions permitting direct edits.
+Use this skill for record work requested by the user or required by the project's documented conventions. A normal implementation request or an existing directory alone does not authorize adding decision records. Otherwise continue the requested work without creating records or initializing a documentation system.
 
 ## Locate the records
 
@@ -25,12 +25,12 @@ Use the selected directory, follow its naming convention, and read its `AGENTS.m
 
 ## Choose the mode
 
-- **Draft:** no record owns this decision, a new record replaces an old one, or an existing record needs substantive body or relationship updates. Duplicate and overlapping dispositions stay in Draft; explicit status-field updates use Land. Do steps 1–5, present the approval gate in step 6, then write only after confirmation and report with step 7.
-- **Land:** the user explicitly asks to mark an existing record `accepted` or update its status fields. Read the full target record, then do steps 4, 5, and 7. A record path plus `accepted` is sufficient input; never enter Land autonomously. Without a path, list records whose `Scope` matches the landed change and ask which to update. For a Review-only update, preserve `Status` and `Implemented-by`, skip steps 4 and 5, and report with step 7.
+- **Draft:** no record owns this decision, a new record replaces an old one, or an existing record needs substantive body or relationship updates. Duplicate and overlapping dispositions stay in Draft; explicit status-field updates use Land. Do steps 1–5, resolve any remaining authorization in step 6, then write and report with step 7.
+- **Land:** the user explicitly asks to mark an existing record `accepted` or update its status fields. Read the full target record, then do steps 4, 5, and 7. A record path plus `accepted` is sufficient input; an authorized repair of a reported status finding also selects Land. Without a path, list records whose `Scope` matches the landed change and ask which to update. For a Review-only update, preserve `Status` and `Implemented-by`, skip steps 4 and 5, and report with step 7.
 
 ## Path-only maintenance
 
-A path or directory rename is not a new decision. Leave `Background`, `Decision`, `Alternatives`, and `Consequences` in an existing record unchanged. Keep its original `Implemented-by`. Update only the `Scope` and links used for routing. When readers need an old-to-new path map, add one migration or boundary record. Mark the old record `superseded` only when the decision itself changed.
+A path or directory rename is not a new decision. Leave `Background`, `Decision`, `Alternatives`, and `Consequences` in an existing record unchanged. Keep its original `Implemented-by`. Update only the `Scope` and links used for routing. When readers need an old-to-new path map, add one migration or boundary record. Mark the old record `superseded` only when the decision itself changed. For an authorized rename, update and verify those paths directly; skip choice discovery and the Draft approval gate.
 
 ## 1. Establish the choice
 
@@ -121,7 +121,7 @@ Decode `git status` paths, including the destination of a rename. Require each n
 
 ## 6. Draft approval gate
 
-For every Draft write, including a Duplicate update, present the complete resulting content of every new or updated record and every related-record disposition. Include each proposed supersession with its `Superseded-by` path and reason. Request explicit confirmation and wait. After confirmation, apply exactly the approved edits; a declined draft leaves every file unchanged.
+When the user has already authorized the concrete repair or record update, apply it within that scope. Otherwise present the complete resulting records and related-record dispositions, including each supersession path and reason, and obtain approval before writing. A new semantic choice outside the authorized scope requires a decision; mechanical edits do not reset prior authorization.
 
 ## 7. Report
 

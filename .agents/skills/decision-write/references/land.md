@@ -23,7 +23,7 @@ When no implementation exists and the user still wants `accepted`, explain both 
 - **Reason:** the record commit records the decision but does not implement it, so the anchor would claim a landing that never happened.
 - **Consequence:** `decision-audit` reports this anchor as a C finding; a later implementation should replace it.
 
-Ask whether to use `commit:<record-commit>` or leave `proposed` + `-`. Use `accepted` + `commit:<record-commit>` only after confirmation, and report the exception. This exception overrides an `<dir>/AGENTS.md` ban on record-only anchors. If that commit is outside the default branch, retain `proposed` + `-` until it merges.
+Ask whether to use `commit:<record-commit>` or leave `proposed` + `-`. Use `accepted` + `commit:<record-commit>` only after confirmation, and report the exception. If project conventions prohibit this anchor, the confirmation must explicitly authorize that exception; the skill itself does not override the convention. If that commit is outside the default branch, retain `proposed` + `-` until it merges.
 
 ## Verify the anchor
 

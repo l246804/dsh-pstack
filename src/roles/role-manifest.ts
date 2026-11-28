@@ -36,25 +36,6 @@ export const ROLE_MANIFEST = [
 
 export type RoleKey = (typeof ROLE_MANIFEST)[number]["key"];
 
-/** Roles upstream retired. An older role file may still name one; readers drop it silently. */
-export const RETIRED_ROLE_KEYS = [
-  "hardest tasks",
-  "how explorer",
-  "how explainer",
-  "why investigators",
-  "why synthesizer",
-  "reflect tooling",
-  "reflect judgment, divergent, synthesizer",
-  "architect runners",
-] as const;
-
-const RETIRED_ROLE_KEY_SET = new Set<string>(RETIRED_ROLE_KEYS);
-
-/** Whether a role key names a retired upstream role to drop instead of reporting unknown. */
-export function isRetiredRoleKey(raw: string): boolean {
-  return RETIRED_ROLE_KEY_SET.has(normalizeRoleName(raw));
-}
-
 /** Normalize spacing and comma formatting without splitting the key. */
 export function normalizeRoleName(raw: string): string {
   return raw

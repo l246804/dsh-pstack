@@ -1,9 +1,9 @@
 # 决策：playground 运行证据留在本地，按场景提交简短结果
 
-Status: proposed
+Status: accepted
 Date: 2026-11-27
 Scope: playground/**, vite.config.ts, README.md, README.zh.md, docs/architecture.md, docs/glossary.md, docs/dsh-baseline-bump.md, docs/decisions/**
-Implemented-by: -
+Implemented-by: PR #72
 Review: 2026-11-28
 
 ## 背景

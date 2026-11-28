@@ -1,7 +1,6 @@
 ---
 name: docs-drift
-description: Audit living project documentation for drift, redundancy, and unsupported elaboration; repair approved findings.
-disable-model-invocation: true
+description: Audit living project documentation when requested directly or as part of a broader review; check accuracy, document responsibilities, redundancy, and actionable instructions, and repair authorized findings.
 ---
 
 # Check project documentation drift
@@ -11,7 +10,7 @@ Audit living project documents against current evidence, then stop after a read-
 ## Choose the mode
 
 - **Report:** `/docs-drift` or `/docs-drift report`. Do steps 1–5 without writing files.
-- **Fix:** `/docs-drift fix`. Do the same inspection, then steps 6–7. Invoking Fix is not write approval.
+- **Fix:** `/docs-drift fix`. Do the same inspection, then steps 6–7. Fix authorizes evidence-backed documentation repairs within the requested scope.
 
 Accept optional paths or globs to add to or narrow the candidate set, plus optional exclusions. Ask when the requested mode or scope is ambiguous.
 
@@ -38,7 +37,7 @@ Keep generated, vendored, and upstream content outside the editable set. Record 
 
 Read every maintained document and the instructions governing it. Inventory its checkable claims about current modules, responsibilities, paths, entry points, commands, tools, configuration, dependencies, interfaces, behavior, counts, and status.
 
-Trace those claims to current code, configuration, manifests, real directories, entry points, and relevant tests. Treat paths mentioned by documentation as leads, not proof. Use existing read-only project checks when they answer a specific evidence question.
+Trace those claims through current call chains, types, configuration, manifests, real directories, relevant tests, and actual artifacts. Treat paths mentioned by documentation as leads, not proof. For prescriptive guidance, identify a current caller, reachable trigger, or confirmed requirement; hypothetical risks alone do not justify adding instructions. Use existing read-only project checks when they answer a specific evidence question.
 
 Distinguish current facts, intended requirements, and historical statements. Current implementation establishes what exists, not whether that behavior is correct. Mark a claim unverified when the repository cannot supply sufficient evidence.
 
@@ -56,9 +55,13 @@ Each check names the finding kind it reports. Apply every check to every maintai
 
 **Links and pointers.** Resolve repository-relative links, referenced paths, and anchors from their containing document. Check external links when feasible; classify network or access failures as unverified rather than dead. Report an unresolved link, path, or anchor as `Link`.
 
-**Redundancy.** Find semantic duplication, scattered rules, and obsolete passages. Before proposing consolidation, identify an authoritative location. Preserve intentional summaries, audience-specific views, language variants, and unique qualifications. Report it as `Redundancy`.
+**Document responsibilities.** Check content against the document's scope. Directory guidance owns local responsibilities and operating rules; cross-directory content uses pointers with clear triggers, and cross-module relationships belong in project architecture. Report misplaced guidance as `Document scope`, naming its proper location.
 
-**Implementation coupling.** Find guidance that repeats another document's current headings, inventory, or wording, or a changing set of implementation members, when that document's own responsibility would suffice with an applicability rule or a reference. Before flagging it, establish whether a skill intentionally owns the mirrored structure as a discovery, parsing, generation, or record-format contract, or a template or fixed pointer location its consumers rely on; validate such contracts against their consumers instead of proposing to generalize or remove them. Report it as `Implementation coupling`.
+**Redundancy.** Find semantic duplication, scattered rules, repeated guardrails, and obsolete passages. Before proposing consolidation, identify an authoritative location. Preserve intentional summaries, audience-specific views, language variants, and unique qualifications. Report it as `Redundancy`.
+
+**Implementation coupling.** Find guidance that mirrors changing headings, fields, defaults, file inventories, or script lists when a reference to the source or configuration would suffice. Retain stable contracts and rationale that code cannot explain. Before flagging a mirrored structure, establish whether a skill owns it as a discovery, parsing, generation, or record-format contract, or whether consumers rely on its template or fixed pointer location; validate such contracts against their consumers. Report unnecessary mirroring as `Implementation coupling`.
+
+**Actionability.** Walk each instruction through its intended trigger and prerequisites. Check that pointers select the right branch and steps have observable completion conditions. Find ineffective instructions or extra procedural layers that obstruct the stated task. Report the concrete failure or ambiguity as `Actionability`.
 
 **Unsupported elaboration.** Find unsupported facts, assumptions, or invented elaboration accumulated during iteration. Examples include fabricated module responsibilities, command behavior, configuration defaults, design rationale, compatibility, performance conclusions, test coverage, and acceptance status. Shrink disproven or unsupported elaboration to the smallest evidence-backed statement. Insufficient evidence alone makes a claim unverified, not a deletion candidate. Preserve the context of historical statements and explicit future plans. Report it as `Unsupported elaboration`.
 
@@ -88,12 +91,12 @@ Continue read-only inspection of unrelated items, but exclude unresolved items f
 
 ## 5. Report
 
-Report the candidate and maintained scopes, ownership evidence, reference-only documents, exclusions, missing pointer targets, evidence limitations, and every maintained document's disposition. Keep unresolved questions and unverified claims visible rather than counting them as clean.
+Summarize scope, ownership, exclusions, and verified documents in groups; expand findings and evidence limitations individually. Keep unresolved questions and unverified claims visible rather than counting them as clean.
 
 Use one entry per finding:
 
 ```text
-[Implementation drift | Contradiction | Terminology | Language drift | Link | Redundancy | Implementation coupling | Unsupported elaboration] Title
+[Implementation drift | Contradiction | Terminology | Language drift | Link | Document scope | Redundancy | Implementation coupling | Actionability | Unsupported elaboration] Title
   Location: <document>:<line or section>
   Current: <statement, duplicated or coupled material, or unsupported elaboration>
   Evidence: <source and observed fact, or the evidence boundary>
@@ -109,9 +112,11 @@ Report mode ends here without writing files or creating a report artifact. Compl
 
 For Fix, group the exact proposed edits by file and finding. Show exact replacement text or deletion boundaries for substantive rewrites, deletions, and consolidations, including all affected language variants. Identify edits excluded by unresolved questions.
 
-Request explicit approval and wait. The user may approve any subset. Apply exactly the approved edits, preserving unrelated content and existing user changes.
+Proceed when the user has authorized these repairs. If write authorization is missing, request approval for the concrete edit set and wait; the user may approve any subset. Preserve unrelated content and existing user changes.
 
 Repair the authoritative source and synchronize intentional summaries and language variants where the evidence supports doing so. Use the project's generation procedure for generated results. Preserve every unique requirement, constraint, caveat, and evidence pointer during consolidation. If a new semantic conflict appears, stop that item and request a new decision rather than expanding the approved edit.
+
+In living documentation, replace or delete obsolete implementation descriptions. Migration and compatibility guidance should cover currently supported behavior and actions users still need. Preserve the context of historical records.
 
 Complete this step when every approved item has been applied exactly or remains explicitly unapplied with its reason, and no unapproved file changed.
 

@@ -4,7 +4,7 @@ import { z } from "zod";
 import type { RemoteResult, TypertRemoteInfo } from "@deepseek-ai/dsh-typert-protocol";
 
 import { REMOTE_PACKAGE, codec, directMethod, parameter } from "../lib/typert-method.ts";
-import { POTETO_SERVICE } from "./remote.ts";
+export const POTETO_MAINTENANCE_SERVICE = "pstackPotetoMaintenance";
 import type {
   LegacySessionInfo,
   MaintenanceFailure,
@@ -39,30 +39,36 @@ const parseSessionIds = (value: unknown): readonly string[] => {
   return value;
 };
 
-const scanMethod = directMethod<Record<string, never>, MaintenanceScanResult>(POTETO_SERVICE, {
-  method: "scanLegacySessions",
-  parameters: [],
-  result: codec("PstackLegacySessionScan", (value) => scanSchema.parse(value)),
-});
+const scanMethod = directMethod<Record<string, never>, MaintenanceScanResult>(
+  POTETO_MAINTENANCE_SERVICE,
+  {
+    method: "scanLegacySessions",
+    parameters: [],
+    result: codec("PstackLegacySessionScan", (value) => scanSchema.parse(value)),
+  },
+);
 const queueMethod = directMethod<{ sessionIds: readonly string[] }, { queued: number }>(
-  POTETO_SERVICE,
+  POTETO_MAINTENANCE_SERVICE,
   {
     method: "queueLegacyRepair",
     parameters: [parameter("sessionIds", "PstackLegacySessionIds", parseSessionIds)],
     result: codec("PstackLegacyRepairQueue", (value) => queuedSchema.parse(value)),
   },
 );
-const consumeMethod = directMethod<Record<string, never>, RepairOutcome | null>(POTETO_SERVICE, {
-  method: "consumeLegacyRepairResult",
-  parameters: [],
-  result: codec("PstackLegacyRepairOutcome", (value) =>
-    value === null ? null : outcomeSchema.parse(value),
-  ),
-});
+const consumeMethod = directMethod<Record<string, never>, RepairOutcome | null>(
+  POTETO_MAINTENANCE_SERVICE,
+  {
+    method: "consumeLegacyRepairResult",
+    parameters: [],
+    result: codec("PstackLegacyRepairOutcome", (value) =>
+      value === null ? null : outcomeSchema.parse(value),
+    ),
+  },
+);
 
-/** Client face for the maintenance methods carried by the poteto service. */
+/** Client face for the maintenance methods owned by the repair service. */
 export interface PstackPotetoMaintenanceNamespace {
-  readonly pstackPotetoMode: {
+  readonly pstackPotetoMaintenance: {
     scanLegacySessions(): Promise<RemoteResult<MaintenanceScanResult>>;
     queueLegacyRepair(sessionIds: readonly string[]): Promise<RemoteResult<{ queued: number }>>;
     consumeLegacyRepairResult(): Promise<RemoteResult<RepairOutcome | null>>;
@@ -74,8 +80,8 @@ export const pstackPotetoMaintenanceRemote: TypertRemoteInfo = {
   package: REMOTE_PACKAGE,
   descriptors: [scanMethod, queueMethod, consumeMethod],
   methods: {
-    [`${POTETO_SERVICE}/scanLegacySessions`]: scanMethod,
-    [`${POTETO_SERVICE}/queueLegacyRepair`]: queueMethod,
-    [`${POTETO_SERVICE}/consumeLegacyRepairResult`]: consumeMethod,
+    [`${POTETO_MAINTENANCE_SERVICE}/scanLegacySessions`]: scanMethod,
+    [`${POTETO_MAINTENANCE_SERVICE}/queueLegacyRepair`]: queueMethod,
+    [`${POTETO_MAINTENANCE_SERVICE}/consumeLegacyRepairResult`]: consumeMethod,
   },
 };

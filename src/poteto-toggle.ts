@@ -7,7 +7,6 @@ import type {} from "@deepseek-ai/dsh-agent-team";
 import type { AgentPresetRegistry } from "@deepseek-ai/dsh-agent-preset-registry";
 import type { ConfigEditor } from "@deepseek-ai/dsh-config-editor";
 import type { SessionId } from "@deepseek-ai/dsh-session";
-import type {} from "@deepseek-ai/dsh-session-persistence";
 import { renderSkillContent } from "@deepseek-ai/dsh-skill";
 import type { Domain } from "@deepseek-ai/dsh-storage-domain";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
@@ -15,7 +14,7 @@ import type {} from "@deepseek-ai/dsh-tools";
 import type {} from "@deepseek-ai/dsh-system-prompt";
 import type {} from "@deepseek-ai/dsh-typert-registry";
 
-import { describeError } from "./lib/errors.ts";
+import { PotetoMaintenanceService } from "./poteto/maintenance-service.ts";
 import {
   potetoWorkflowApplies,
   potetoSupportsPreset,
@@ -23,17 +22,6 @@ import {
   shouldSeedPotetoDefault,
 } from "./poteto/preset-gate.ts";
 import { createPotetoProjectionDefinition } from "./poteto/projection.ts";
-import {
-  clearRepairQueue,
-  enqueueRepair,
-  executeRepairQueue,
-  queuedSessionIds,
-  readRepairQueue,
-  scanLegacySessions as scanLegacySessionRefs,
-  writeRepairQueue,
-  type StoredSessionRef,
-} from "./poteto/maintenance.ts";
-import type { MaintenanceScanResult, RepairOutcome } from "./poteto/maintenance-types.ts";
 import {
   potetoDomainSpec,
   readPotetoMode,
@@ -67,7 +55,6 @@ export class PotetoModeService extends TypertRemoteService {
   static inject = [
     "agents",
     "skills",
-    "sessionPersistence",
     "sessionProjections",
     "storageDomain",
     "systemPrompt",
@@ -83,7 +70,6 @@ export class PotetoModeService extends TypertRemoteService {
   private sectionText = "";
   private domain!: Domain<typeof potetoDomainSpec>;
   private modeTable!: PotetoModeTable;
-  private repairOutcome: RepairOutcome | undefined;
 
   constructor(ctx: Context) {
     super(ctx, POTETO_SERVICE);
@@ -101,7 +87,8 @@ export class PotetoModeService extends TypertRemoteService {
       },
       "pstack.poteto-toggle.native-tools",
     );
-    this.repairOutcome = await this.processRepairQueue();
+    // The child service repairs old logs before projections read the sidecar.
+    await this.ctx.plugin(PotetoMaintenanceService, { table: this.modeTable }).await();
     await this.ctx.sessionProjections.register(
       createPotetoProjectionDefinition((header) =>
         resolvePotetoEnabled({
@@ -214,108 +201,6 @@ export class PotetoModeService extends TypertRemoteService {
     return {
       enabled: agent === undefined ? (selected ?? this.defaultEnabled) : this.isEnabledFor(agent),
     };
-  }
-
-  /** Scan stored logs for Sessions that still carry the retired poteto/mode event. */
-  async scanLegacySessions(): Promise<MaintenanceScanResult> {
-    const stored = await this.storedSessionRefs();
-    const sources = stored.filter(
-      (source) => this.ctx.agents.get(source.sessionId as SessionId) === undefined,
-    );
-    const result = scanLegacySessionRefs(sources);
-    let queued: ReadonlySet<string>;
-    try {
-      queued = queuedSessionIds();
-    } catch {
-      queued = new Set();
-    }
-    return {
-      sessions: result.sessions.filter((session) => !queued.has(session.sessionId)),
-      failures: result.failures,
-    };
-  }
-
-  /** Queue selected Session ids for repair on the next DSH start. */
-  queueLegacyRepair(sessionIds: readonly string[]): { queued: number } {
-    for (const sessionId of sessionIds) {
-      if (this.ctx.agents.get(sessionId as SessionId) !== undefined) {
-        throw new Error(`session ${sessionId} is live`);
-      }
-    }
-    return { queued: enqueueRepair(sessionIds) };
-  }
-
-  /** Return the one-shot result produced by the last restart. */
-  consumeLegacyRepairResult(): RepairOutcome | null {
-    const result = this.repairOutcome;
-    this.repairOutcome = undefined;
-    return result ?? null;
-  }
-
-  private async storedSessionRefs(): Promise<StoredSessionRef[]> {
-    const snapshots = await this.ctx.sessionPersistence.list();
-    const refs: StoredSessionRef[] = [];
-    for (const snapshot of snapshots) {
-      const logPath = snapshot.location?.path;
-      // Pending sessions and non-file backends need not have a legacy log to repair.
-      if (logPath === undefined) continue;
-      refs.push({
-        sessionId: String(snapshot.header.id),
-        workspace: snapshot.header.cwd,
-        logPath,
-      });
-    }
-    return refs;
-  }
-
-  private async processRepairQueue(): Promise<RepairOutcome | undefined> {
-    let queue;
-    try {
-      queue = readRepairQueue();
-    } catch (error) {
-      clearRepairQueue();
-      return { repaired: 0, failed: [{ sessionId: "", message: describeError(error) }] };
-    }
-    if (queue === undefined) return undefined;
-
-    const ids = [...new Set(queue.sessionIds)];
-    let sources: StoredSessionRef[];
-    try {
-      sources = await this.storedSessionRefs();
-    } catch (error) {
-      clearRepairQueue();
-      return {
-        repaired: 0,
-        failed: ids.map((sessionId) => ({ sessionId, message: describeError(error) })),
-      };
-    }
-
-    const outcome = await executeRepairQueue(queue, sources, {
-      table: this.modeTable,
-      openRead: async (sessionId) => {
-        const handle = await this.ctx.sessionPersistence.open(sessionId as SessionId, "read");
-        return {
-          read: () => handle.read(0),
-          close: () => handle.close(),
-        };
-      },
-      isLive: (sessionId) => this.ctx.agents.get(sessionId as SessionId) !== undefined,
-    });
-    // Keep sessions that failed for a retryable reason so the user does not have
-    // to rescan; drop "not found" ids, which will never repair.
-    const retryable = outcome.failed
-      .filter((failure) => failure.sessionId !== "" && failure.message !== "session not found")
-      .map((failure) => failure.sessionId);
-    try {
-      if (retryable.length > 0) writeRepairQueue(retryable);
-      else clearRepairQueue();
-    } catch (error) {
-      return {
-        repaired: outcome.repaired,
-        failed: [...outcome.failed, { sessionId: "", message: describeError(error) }],
-      };
-    }
-    return outcome;
   }
 
   /** Read the global default used by new sessions. */

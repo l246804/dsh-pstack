@@ -54,7 +54,7 @@ Apply A, B, B′, and D only to non-`superseded` records; apply C and E as speci
 | `proposed` | verified | Should be `accepted` |
 | `accepted` | pending | Landing lacks verified evidence |
 
-For `proposed`, a pending anchor is normal; report the record as pending. An `accepted` record with a pending anchor is a status-pair finding. An unverified anchor belongs in `Unverified`, outside B and C.
+For `proposed`, a pending anchor is normal; report the record as pending. When a matching change is known to have merged but the anchor is `-`, inspect that change and report a candidate Land update with its implementation paths. Do not accept a record from status metadata alone. An `accepted` record with a pending anchor is a status-pair finding. An unverified anchor belongs in `Unverified`, outside B and C.
 
 **B′ — Dead scope.** For each `accepted` record with no `Scope` glob matching an existing file, report its path and glob-check evidence. Ask whether the decision is obsolete or its scope is wrong.
 

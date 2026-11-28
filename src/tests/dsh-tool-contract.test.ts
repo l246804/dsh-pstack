@@ -116,7 +116,7 @@ const DIVERGENCES: readonly Divergence[] = [
   {
     topic: "maxDepth",
     native: "accepts a number or 'provider-managed', and omission reads the Host depth setting",
-    ours: "accepts a positive integer or null, with a per-call cap bounded by the row and Host limit; 'provider-managed' is rejected",
+    ours: "accepts a positive integer or null, with a per-call cap bounded by the explicit row limit, falling back to the Host default; 'provider-managed' is rejected",
     reason:
       "pstack rows configure a numeric cap. 'provider-managed' exists for out-of-process providers that own their recursion budget, which this bundle does not target.",
     check: () => {
