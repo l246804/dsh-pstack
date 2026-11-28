@@ -21,7 +21,7 @@
     "docs-drift": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "24244b9074d5ddf04eae310fa08280ad1f55d9ab5f6590e7a972adddcabecb1e"
+      "computedHash": "d81e9320dd255db4ba06f6a94c0cb71af4e416d28c70d7d6bb6f45c99780e7e5"
     },
     "setup-project-docs": {
       "source": "./skills/authored",

@@ -47,8 +47,6 @@ Complete this step when every checkable claim in every maintained document has a
 
 Each check names the finding kind it reports. Apply every check to every maintained document, and give each potential finding the kind of the check that produced it. A finding with no kind is an unapplied check.
 
-For agent-facing documents, use `writing-for-agents` to review context pointers and instruction structure.
-
 **Implementation drift.** Find stale statements or statements contradicted by current evidence about architecture, behavior, paths, commands, interfaces, configuration, dependencies, counts, and status. Report it as `Implementation drift`.
 
 **Contradictions.** Find incompatible statements within one document or across documents. Distinguish contradictions from intentionally different levels of detail. Report it as `Contradiction`.
