@@ -11,8 +11,6 @@ Deliver one settled choice as a verified record and evidence report. All record 
 
 Use this skill for record work requested by the user or required by the project's documented conventions. A normal implementation request or an existing directory alone does not authorize adding decision records. Otherwise continue the requested work without creating records or initializing a documentation system.
 
-For authorized record work, use the applicable branch below and follow the project's conventions. Ask only when a required choice or authorization is missing; prior use of `setup-project-docs` is not required.
-
 ## Locate the records
 
 Resolve `<dir>` in this order:

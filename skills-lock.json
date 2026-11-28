@@ -16,7 +16,7 @@
     "decision-write": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "ef8736a4ed083970b09dfd7c1e6e709fec5dfd129c88086036de760d40dc267c"
+      "computedHash": "b504aa065cd42c6225a119da78630594d347321f5ee02b44aaef95d52c55d593"
     },
     "docs-drift": {
       "source": "./skills/authored",
