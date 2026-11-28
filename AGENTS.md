@@ -39,6 +39,11 @@ release. Add a tool name to select part of the graph. For example, run
 - 开始任何仓库任务前，阅读 `docs/decisions/AGENTS.md`，按其中的查找规则阅读与任务相关的记录。
 - 升级 DSH 基线时按 `docs/dsh-baseline-bump.md` 执行，装配审查是其中一步，不能只看版本声明。
 
+## 实现与文档
+
+- 说明和代码以实际需求、已观察行为或当前契约下可达的流程为依据；不为尚无依据或正常流程不会发生的假设场景增加说明、预留、兜底或防御代码。
+- 除决策记录外，所有文档以最新实现和当前约定为准；实现变化时替换或删除旧说明，不留存旧版实现方式的介绍或沿革。
+
 ## 目录文档
 
 每个目录的文档只负责本目录的实际职责、约定和边界：
@@ -56,6 +61,12 @@ release. Add a tool name to select part of the graph. For example, run
 ## Commits
 
 - 破坏性变更提交使用 Conventional Commits 的 `type!:` 形式，例如 `feat!: ...`；不要使用 `!feat:`。
+
+## Pull requests
+
+- PR 创建后，在 PR 正文保留逐文件改动说明；后续推送改变文件集合或改动意图时同步更新。
+- 每个新增、修改、删除、重命名文件各占一行，格式为 `文件 | 问题或需求 | 改动原因与验证依据`。原因解释为什么需要改、为何采用当前处理，不能只复述 diff。生成或同步文件注明来源和命令。
+- 用 PR 的实际文件列表核对说明表，保证无遗漏、无已撤销条目；验证结果和仍未验证的部分另行汇总。
 
 ## Issues
 

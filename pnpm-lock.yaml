@@ -263,6 +263,9 @@ catalogs:
     '@deepseek-ai/dsh-plugin-manager':
       specifier: 0.2.3-alpha.2
       version: 0.2.3-alpha.2
+    '@deepseek-ai/dsh-scope':
+      specifier: 0.2.3-alpha.2
+      version: 0.2.3-alpha.2
     '@deepseek-ai/dsh-session':
       specifier: 0.2.3-alpha.2
       version: 0.2.3-alpha.2
@@ -399,6 +402,9 @@ importers:
       '@deepseek-ai/dsh-sandbox-policy':
         specifier: catalog:runtime
         version: 0.2.3-alpha.2(5230c8331c7bc22c441b82e0940bee8f)
+      '@deepseek-ai/dsh-scope':
+        specifier: catalog:types
+        version: 0.2.3-alpha.2(@deepseek-ai/cordis@4.2.0-alpha.1)
       '@deepseek-ai/dsh-session':
         specifier: catalog:types
         version: 0.2.3-alpha.2(@deepseek-ai/cordis@4.2.0-alpha.1)(@deepseek-ai/dsh-error@0.2.3-alpha.2(@deepseek-ai/cordis@4.2.0-alpha.1))(@deepseek-ai/dsh-scope@0.2.3-alpha.2(@deepseek-ai/cordis@4.2.0-alpha.1))

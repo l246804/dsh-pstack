@@ -331,7 +331,7 @@ export function createPstackInterruptTool(runtime: DelegationRuntime): ToolDefin
     isConcurrencySafe: () => true,
     async execute(rawArgs, exec: ToolRunContext) {
       if (exec.agent === undefined) throw new Error("pstack_interrupt requires a calling Agent");
-      const { agent } = parseControlArgs(rawArgs, ["agent"]) as { agent: string };
+      const agent = parseInterruptTarget(rawArgs);
       const targetId = await runtime.subagents.resolveName(exec.agent, agent, exec.signal);
       runtime.subagents.interrupt(targetId, { kind: "ancestor", agent: exec.agent });
       return { interrupted: true };
@@ -360,24 +360,20 @@ function renderInterrupt(result: InterruptResult): string {
   return result.interrupted ? "interrupt admitted to the child" : "interrupt not admitted";
 }
 
-/** Reject unknown or non-string control-tool arguments before touching the runtime. */
-export function parseControlArgs(raw: unknown, keys: readonly string[]): Record<string, string> {
+/** Read the interrupt target before touching the runtime. */
+export function parseInterruptTarget(raw: unknown): string {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
     throw new ToolArgsError(["arguments must be an object"]);
   }
   const record = raw as Record<string, unknown>;
   for (const key of Object.keys(record)) {
-    if (!keys.includes(key)) throw new ToolArgsError([`unknown argument "${key}"`]);
+    if (key !== "agent") throw new ToolArgsError([`unknown argument "${key}"`]);
   }
-  const parsed: Record<string, string> = {};
-  for (const key of keys) {
-    const value = record[key];
-    if (typeof value !== "string" || value.trim() === "") {
-      throw new ToolArgsError([`${key} must be a non-empty string`]);
-    }
-    parsed[key] = value.trim();
+  const agent = record["agent"];
+  if (typeof agent !== "string" || agent.trim() === "") {
+    throw new ToolArgsError(["agent must be a non-empty string"]);
   }
-  return parsed;
+  return agent.trim();
 }
 
 const TOOL_DESCRIPTION = [

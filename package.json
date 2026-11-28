@@ -81,6 +81,7 @@
     "@deepseek-ai/dsh-llm": "catalog:types",
     "@deepseek-ai/dsh-plugin-manager": "catalog:types",
     "@deepseek-ai/dsh-sandbox-policy": "catalog:runtime",
+    "@deepseek-ai/dsh-scope": "catalog:types",
     "@deepseek-ai/dsh-session": "catalog:types",
     "@deepseek-ai/dsh-session-persistence": "catalog:types",
     "@deepseek-ai/dsh-session-projection": "catalog:types",

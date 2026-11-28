@@ -40,9 +40,13 @@ jobs:
       - name: Run CI
         run: pnpm run ci
 
-      - name: Resolve npm dist-tag
+      - name: Validate release inputs and resolve npm dist-tag
         id: dist-tag
         run: |
+          if [ ! -s changes/RELEASE.md ]; then
+            echo "::error::changes/RELEASE.md is missing or empty on tag $GITHUB_REF_NAME"
+            exit 1
+          fi
           VERSION="$(node -p "require('./package.json').version")"
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           if [ "$TAG_VERSION" != "$VERSION" ]; then
@@ -79,10 +83,6 @@ jobs:
       # the Release body.
       - name: Create or update GitHub Release
         run: |
-          if [ ! -f changes/RELEASE.md ]; then
-            echo "::error::changes/RELEASE.md is missing from tag $GITHUB_REF_NAME"
-            exit 1
-          fi
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release edit "$GITHUB_REF_NAME" --notes-file changes/RELEASE.md
           else

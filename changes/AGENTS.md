@@ -45,7 +45,8 @@
 
 - 固定文件名 `changes/RELEASE.md`。
 - `vp run release` 先校验它存在且已提交、无未提交改动，缺失或不满足就报错退出，不进入 bumpp。
-- 发布时 bumpp 打完 tag 后，`release.sh` 删除 `RELEASE.md` 并提交、推送；tag 仍保留它，供 GitHub Release 读取正文。
+- bumpp 创建本次版本的 release commit 与 tag 后，`release.sh` 才删除 `RELEASE.md` 并提交；只有 bumpp 已推送该提交时才推送清理提交，本地演练保持本地。未创建本次 tag 时保留说明；tag 保留原文供 GitHub Release 读取。
+- tag 工作流在发布 npm 包前检查说明存在且非空。
 - 发布前如果工作区又有新提交，重新生成并复核 `RELEASE.md`。
 
 ## 落盘前自检

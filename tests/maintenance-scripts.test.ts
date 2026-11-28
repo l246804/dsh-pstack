@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -9,6 +10,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { afterAll, describe, expect, it } from "vite-plus/test";
 
@@ -30,6 +32,69 @@ function executable(file: string, content: string): void {
 }
 
 describe("maintenance scripts", () => {
+  it.each([
+    { mode: "without-tag", flags: ["--no-tag", "--no-push"], tagged: false, pushed: false },
+    { mode: "local-tag", flags: ["--no-push"], tagged: true, pushed: false },
+    { mode: "published-tag", flags: [], tagged: true, pushed: true },
+  ])("consumes notes only for a new release tag ($mode)", ({ mode, flags, tagged, pushed }) => {
+    const root = fixture(`release-${mode}`, "release.sh");
+    const remote = join(temporary, `remote-${mode}.git`);
+    const git = (...args: string[]): string =>
+      execFileSync("git", args, {
+        cwd: root,
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      }).trim();
+    git("init", "-q", "--initial-branch=main");
+    git("config", "user.name", "Fixture");
+    git("config", "user.email", "fixture@example.invalid");
+    git("config", "commit.gpgsign", "false");
+    git("config", "tag.gpgsign", "false");
+    git("config", "core.hooksPath", "/dev/null");
+    mkdirSync(join(root, "changes"));
+    const notes = join(root, "changes", "RELEASE.md");
+    writeFileSync(notes, "Prepared notes\n");
+    writeFileSync(join(root, "bump.config.json"), "{}\n");
+    writeFileSync(
+      join(root, "package.json"),
+      JSON.stringify({ name: "release-fixture", version: "1.0.0" }),
+    );
+    git("add", ".");
+    git("commit", "-qm", "initial");
+    git("init", "-q", "--bare", remote);
+    git("remote", "add", "origin", remote);
+    git("push", "-qu", "origin", "main");
+    const before = git("rev-parse", "HEAD");
+    const result = spawnSync(
+      "bash",
+      [
+        join(root, "scripts", "release.sh"),
+        "patch",
+        "--configFilePath",
+        join(root, "bump.config.json"),
+        "--yes",
+        "--ignore-scripts",
+        "--no-verify",
+        ...flags,
+      ],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          PATH: `${join(repository, "node_modules", ".bin")}:${process.env.PATH}`,
+        },
+        encoding: "utf8",
+      },
+    );
+    if (result.status !== 0) throw new Error(result.stdout + result.stderr);
+    expect(result.status).toBe(0);
+    expect(existsSync(notes)).toBe(!tagged);
+    const remoteHead = git("--git-dir", remote, "rev-parse", "refs/heads/main");
+    expect(remoteHead).toBe(pushed ? git("rev-parse", "HEAD") : before);
+    if (tagged) expect(git("show", "v1.0.1:changes/RELEASE.md")).toBe("Prepared notes");
+    else expect(readFileSync(notes, "utf8")).toBe("Prepared notes\n");
+  });
+
   it.each(["--help", "-h", "--version", "-v"])(
     "forwards %s without consuming release notes or invoking git",
     (flag) => {
@@ -127,5 +192,49 @@ describe("maintenance scripts", () => {
     expect(readFileSync(join(native, "upstream", "content.txt"), "utf8")).toBe("first");
     renameSync(source, `${source}-offline`);
     expect(fetch()).toContain("nothing to fetch");
+  });
+
+  it("preserves an SSH source in the lock and restores it after the clone is removed", () => {
+    const root = join(temporary, "fetch-ssh");
+    const source = join(root, "source");
+    mkdirSync(join(source, "pstack"), { recursive: true });
+    const script = join(root, "native", "scripts", "fetch-upstream.ts");
+    mkdirSync(join(root, "native", "scripts"), { recursive: true });
+    copyFileSync(join(repository, "native", "scripts", "fetch-upstream.ts"), script);
+    const git = (...args: string[]): string =>
+      execFileSync("git", args, { cwd: source, encoding: "utf8" }).trim();
+    git("init", "-q");
+    writeFileSync(join(source, "pstack", "plugin.json"), '{"version":"1.0.0"}\n');
+    git("add", ".");
+    git(
+      "-c",
+      "user.name=Fixture",
+      "-c",
+      "user.email=fixture@example.invalid",
+      "-c",
+      "commit.gpgsign=false",
+      "commit",
+      "-qm",
+      "fixture",
+    );
+    const remote = "git@audit.invalid:custom/plugins.git";
+    const env = {
+      ...process.env,
+      GIT_CONFIG_COUNT: "1",
+      GIT_CONFIG_KEY_0: `url.${pathToFileURL(source).href}.insteadOf`,
+      GIT_CONFIG_VALUE_0: remote,
+    };
+    const fetch = (...args: string[]): void => {
+      execFileSync("vpx", [script, ...args], { cwd: root, env, encoding: "utf8" });
+    };
+    fetch("--source", remote, "--version", "1.0.0", "--commit", git("rev-parse", "HEAD"));
+    expect(
+      JSON.parse(readFileSync(join(root, "native", "upstream.lock.json"), "utf8")),
+    ).toMatchObject({ source: remote });
+    rmSync(join(root, "native", "upstream"), { recursive: true });
+    fetch();
+    expect(
+      JSON.parse(readFileSync(join(root, "native", "upstream", "plugin.json"), "utf8")),
+    ).toEqual({ version: "1.0.0" });
   });
 });
