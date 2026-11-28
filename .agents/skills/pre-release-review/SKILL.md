@@ -15,6 +15,8 @@ description: Review this repository before release for documentation drift, deci
 
 ## 文档与决策
 
+审查或修改面向 agent 的文档时，读取并遵循 [writing-for-agents](../writing-for-agents/SKILL.md) 的写作规则。
+
 文档审查使用 [docs-drift](../docs-drift/SKILL.md)，传入本次文档范围，按已有授权选择 Report 或 Fix。将其发现、修复及未核实项并入综合报告，再继续决策和代码审查。
 
 本综合审查包含决策记录审查。读取 [decision-audit](../decision-audit/SKILL.md)，全仓审查按其 full 模式规则执行；保留 Scope matcher、状态、实现锚点、替代关系和复核日期的命令证据。该技能只报告记录元数据，本次代码审查另行核对实现是否遵守 accepted 决策。记录修改进入 [decision-write](../decision-write/SKILL.md)；历史实现描述按其历史语境判断，不能仅因旧路径或日期而改写。
