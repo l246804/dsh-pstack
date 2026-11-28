@@ -14,8 +14,6 @@ Audit living project documents against current evidence, then stop after a read-
 
 Accept optional paths or globs to add to or narrow the candidate set, plus optional exclusions. Ask when the requested mode or scope is ambiguous.
 
-When called by another review, use its documentation scope and choose Fix only when the user has authorized documentation repairs; otherwise use Report. Return findings and verification evidence to that review.
-
 ## 1. Discover the maintained documents
 
 Start with the root agent documents and root README files that actually exist, including linked language variants. Record absent entry points without creating replacements.
