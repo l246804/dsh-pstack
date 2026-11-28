@@ -73,7 +73,7 @@
           "maxDepth": {
             "type": ["integer", "null"],
             "minimum": 1,
-            "description": "Optional delegation-depth cap. Omit or null to use the configured row and Host cap."
+            "description": "Optional delegation-depth cap. Omit or null to use the configured row limit, or the Host default when the row has no limit."
           }
         },
         "required": ["description", "prompt"]

@@ -179,7 +179,7 @@ export function planDelegation(
   const limit = runtime.subagents.resolveMaxDepth(config.maxDepth);
   const maxDepth = args.maxDepth ?? limit;
   if (maxDepth !== undefined && limit !== undefined && maxDepth > limit) {
-    throw new Error(`maxDepth ${maxDepth} exceeds the delegation limit of ${limit}`);
+    throw new ToolArgsError([`maxDepth ${maxDepth} exceeds the delegation limit of ${limit}`]);
   }
   const effort = args.reasoningEffort ?? undefined;
   const agentOptions = buildAgentOptions(args.provider, args.model, effort);
@@ -297,7 +297,7 @@ export function createPstackSubagentTool(
           type: ["integer", "null"],
           minimum: 1,
           description:
-            "Optional delegation-depth cap. Omit or null to use the configured row and Host cap.",
+            "Optional delegation-depth cap. Omit or null to use the configured row limit, or the Host default when the row has no limit.",
         },
       },
       required: ["description", "prompt"],
@@ -385,7 +385,7 @@ const TOOL_DESCRIPTION = [
   "",
   "`agent_preset` picks a DSH agent preset: `poteto-agent` mounts the pstack implementation delegate and receives the absolute path of the poteto-mode instructions; `comment-sicko` mounts the comment reviewer; `readonly` mounts a read-only research preset with the sandbox policy set to read-only; `general` joins the parent preset.",
   "",
-  "Omit `maxDepth` to use the configured row and Host delegation cap.",
+  "Omit `maxDepth` to use the configured row limit, or the Host default when the row has no limit.",
   "",
   "Returns the started subagent name. Results arrive as a completion notice; do not poll.",
 ].join("\n");

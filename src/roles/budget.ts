@@ -14,9 +14,6 @@ export const BUDGET_TARGETS: Record<BudgetTier, string> = {
   small: "medium",
 };
 
-/** Retired tier labels still found in older role files, remapped to the current tier. */
-const LEGACY_BUDGET_TIERS: Record<string, BudgetTier> = { unlimited: "large" };
-
 const EFFORT_LADDER = ["off", "low", "medium", "high", "xhigh", "max"] as const;
 
 export type BudgetScope = "concrete" | "unconfigured";
@@ -90,17 +87,10 @@ export interface BudgetPlan {
 /** Read a tier from a stored budget value such as `large (xhigh)`. */
 export function budgetTierFromLabel(raw: string | undefined): BudgetTier | undefined {
   if (raw === undefined) return undefined;
-  const match = /^\s*(unlimited|large|medium|small)\b/i.exec(raw);
+  const match = /^\s*(large|medium|small)\b/i.exec(raw);
   const token = match?.[1]?.toLowerCase();
   if (token === undefined) return undefined;
-  return LEGACY_BUDGET_TIERS[token] ?? (token as BudgetTier);
-}
-
-/** Normalize a stored budget label, mapping the retired `unlimited` tier to `large`. */
-export function normalizeBudgetValue(raw: string | undefined): string | undefined {
-  if (raw === undefined) return undefined;
-  const tier = budgetTierFromLabel(raw);
-  return tier === undefined ? raw : budgetValueFor(tier);
+  return token as BudgetTier;
 }
 
 /** Render the persisted budget value, such as `large (xhigh)`. */

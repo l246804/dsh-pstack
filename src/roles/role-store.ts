@@ -6,7 +6,8 @@
  * the delegator. The editable view (`RoleFileDocument`) keeps the structured
  * routes so a save round-trips them unchanged. Both views handle only the
  * current schema version; `compat/migrate-pstack-home` upgrades a legacy `.mdc`
- * or an older JSON version once at plugin startup. Reading is pure: a missing
+ * or an older JSON version once at plugin startup. Legacy value normalization
+ * is shared with that migration through `compat/role-values`. Reading is pure: a missing
  * file means every role inherits the parent route, while an unreadable file fails
  * loudly instead of behaving like a fresh install.
  */
@@ -15,8 +16,8 @@ import { readFileSync } from "node:fs";
 
 import { writeFileAtomically } from "../lib/atomic-write.ts";
 import { describeError } from "../lib/errors.ts";
-import { normalizeBudgetValue } from "./budget.ts";
-import { findRole, isRetiredRoleKey } from "./role-manifest.ts";
+import { normalizeBudgetValue, isRetiredRoleKey } from "../compat/role-values.ts";
+import { findRole } from "./role-manifest.ts";
 import { parseRouteEntry, validateRoleRouteShape, type Route } from "./route.ts";
 
 export type { Route } from "./route.ts";

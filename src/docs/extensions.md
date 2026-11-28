@@ -8,7 +8,7 @@
 - 每条记录用户目标、边界和对应测试或实现文件。
 - 不复制代码、schema、参数表或完整 UI 文案；这些以源码和测试为准。
 - 普通缺陷、回归和移植坑放到 [regressions.md](./regressions.md)。
-- 由 playground 缺口分析产生的适配功能，来源留在 playground 分析/快照，不在这里重写。
+- 由 playground 缺口分析产生的适配功能，来源留在 `playground/results/<场景 id>/result.md`，不在这里重写。
 
 ## 当前扩展
 

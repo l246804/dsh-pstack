@@ -14,7 +14,8 @@
 | `upstream.lock.json` | 钉定事实：版本、commit、来源路径 |
 | `pstack/` | 生成树：`upstream/` 加注入行加 `dsh.md`，脚本维护 |
 | `scripts/fetch-upstream.ts` | 维护 `upstream/` 与 lock |
-| `scripts/generate-pstack.ts` | 生成 `pstack/` |
+| `scripts/generate-pstack.ts` | 生成 `pstack/`，转换规则在 `scripts/lib/generate.ts` |
+| `tests/` | 钉定解析、生成转换及缺口文件枚举的离线验证 |
 
 ## 如何更新上游
 
@@ -25,6 +26,8 @@
 3. `vp run native:generate` 重建 `pstack/`，并按「如何提取缺口」重扫清单。
 4. 对照本次上游差异与生成后的 `pstack/`，复核根 README 及其他依赖该基线的本仓文档，按各自职责与统计口径更新受影响的内容，并同步各本地化版本。兼容表与 pstack 徽标记录已发布事实，由发版流程维护，见 [项目架构](../docs/architecture.md)。
 5. `upstream.lock.json`、`pstack/`、`gaps.json` 与需同步的本仓文档同波提交；`upstream/` 不入库。
+
+生成器改写的上游资源链接使用 lock 的 commit，保持与基准相同的来源。
 
 完成标准：`vp run native:generate:check` 绿，文档中对当前基线的描述与实际产物一致，改动限于升级及其必要同步。
 
@@ -58,7 +61,7 @@
 
 1. 枚举 `pstack/` 内 `skills/**`、`agents/**`、`docs/guide/**` 的全部 Markdown，不得只读与当前主题相关的文件。完成标准：文件清单与树内实际集合相等。
 2. 逐文件判定，过每条判据：行为是否为上游工作流所必需；必需时标准模式是否保证它。`dsh.md` 与 `dsh-evidence.md` 是已确认答案，覆盖到的直接沿用；未覆盖的对运行时求证，未提及不等于保证。求证时先写明上游那个动作的调用单位、可选参数与产出形态，再找标准模式里承接同一动作的手段；找不到同一动作的手段才记为缺口，找到相似结果的另一种动作要写明它为什么不是同一动作。
-3. 落盘：必需且未保证写成 `gaps[]` 条目，其余文件在 `files[]` 登记空数组。完成标准：守卫测试绿——`files` 集合与生成树相等，`files[].gaps` 与 `gaps[].id` 双向存在。
+3. 落盘：必需且未保证写成 `gaps[]` 条目，其余文件在 `files[]` 登记空数组。完成标准：`tests/gaps.test.ts` 绿——`files` 集合与生成树相等，`files[].gaps` 与 `gaps[].id` 双向存在。
 4. 确认：新条目为 `proposed`，由用户逐条确认为 `confirmed`，或改判 `refuted`、`excluded`，改判必须写 `reason`；只有 `confirmed` 驱动后续场景。改判与清理一律在清单内留档，历史条目不直接删除，整轮重扫同样适用。完成标准：每条 `status` 已由用户处理。
 
 ### 落盘格式

@@ -1,6 +1,5 @@
 /** Host role configuration service for the pstack settings page. */
 
-import { Service } from "@deepseek-ai/cordis";
 import type { Context } from "@deepseek-ai/cordis";
 import type { LlmRuntime } from "@deepseek-ai/dsh-llm";
 import { TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
@@ -15,7 +14,7 @@ import {
   saveRoleConfiguration,
   snapshotFromConfiguration,
 } from "./roles/role-editor.ts";
-import { pstackRolesHostContribution, ROLES_SERVICE } from "./roles/role-remote.ts";
+import { ROLES_SERVICE } from "./roles/role-remote.ts";
 import type {
   BudgetApplyResult,
   RoleFileSnapshot,
@@ -29,10 +28,6 @@ export class PstackRolesService extends TypertRemoteService {
 
   constructor(ctx: Context) {
     super(ctx, ROLES_SERVICE);
-  }
-
-  protected [Service.init](): void {
-    this.ctx.typert.register(pstackRolesHostContribution);
   }
 
   /** Current path, status, values, and per-role issues. */

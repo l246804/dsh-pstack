@@ -11,22 +11,22 @@
     "decision-audit": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "7098c7cea5710b995ada3f34d7ba071e378b96dffb3462ac5b2c18559537a3a0"
+      "computedHash": "9ac0700321ec0c2dc742ee08c3d17d363d196f65c96ea93c7865809a8c2c29cf"
     },
     "decision-write": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "f8460b50c56f3b461aeffbe40c7c9aec96a3db5877ef8947c3bc14b98e336218"
+      "computedHash": "7ead9539d9fc172ca87013e0ea27baa4de7efa2658f7972a566a835b98048d51"
     },
     "docs-drift": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "0fb8981ec6d6a9584c6e316f21442208c023703ee24636b19b9f6db81497a2de"
+      "computedHash": "ee6632225454948345e7e8f52dcd0f4a714d32516b352a9e4e604097517ede69"
     },
     "setup-project-docs": {
       "source": "./skills/authored",
       "sourceType": "local",
-      "computedHash": "fdd4a32c547e7192d654d6800e5976a9116ced1ca294e29a43095875b801f968"
+      "computedHash": "4da025f1f4dc89fa66af78ccbd1581b7d529fad1df3ba2ec18d5f05b16bb255a"
     },
     "writing-for-agents": {
       "source": "mattpocock/skills",

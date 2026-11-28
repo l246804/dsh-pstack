@@ -11,7 +11,8 @@ import type {} from "@deepseek-ai/dsh-client-ui-settings/client";
 import type {} from "@deepseek-ai/dsh-client-ui-slots";
 import type {} from "@deepseek-ai/dsh-client-ui-plugin-manager/client";
 
-import { pstackClientRemote, type PstackRolesNamespace } from "../roles/role-remote.ts";
+import { pstackClientRemote } from "../shared/remote.ts";
+import type { PstackRolesNamespace } from "../roles/role-remote.ts";
 import { type PstackPotetoMaintenanceNamespace } from "../poteto/maintenance-remote.ts";
 import { type PstackPotetoModeNamespace } from "../poteto/remote.ts";
 import { createPstackConfigAction } from "./pages/PstackConfigDialog.tsx";
@@ -79,10 +80,8 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     () => pluginsT("managerUnavailable"),
   );
 
-  let potetoApi:
-    | (PstackPotetoModeNamespace["pstackPotetoMode"] &
-        PstackPotetoMaintenanceNamespace["pstackPotetoMode"])
-    | undefined;
+  let potetoApi: PstackPotetoModeNamespace["pstackPotetoMode"] | undefined;
+  let maintenanceRemote: PstackPotetoMaintenanceNamespace["pstackPotetoMaintenance"] | undefined;
   const potetoSettingsApi: PotetoSettingsApi = {
     readDefault: async () => {
       if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
@@ -108,12 +107,12 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
 
   const maintenanceApi: MaintenanceSettingsApi = {
     scan: async () => {
-      if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
-      return unwrap(await potetoApi.scanLegacySessions());
+      if (maintenanceRemote === undefined) throw new Error(commonT("notAvailable"));
+      return unwrap(await maintenanceRemote.scanLegacySessions());
     },
     queue: async (sessionIds) => {
-      if (potetoApi === undefined) throw new Error(commonT("notAvailable"));
-      return unwrap(await potetoApi.queueLegacyRepair(sessionIds));
+      if (maintenanceRemote === undefined) throw new Error(commonT("notAvailable"));
+      return unwrap(await maintenanceRemote.queueLegacyRepair(sessionIds));
     },
   };
 
@@ -225,10 +224,15 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   });
 
   ctx.inject(["remote.pstackPotetoMode"], (scope: Context) => {
-    potetoApi = (
-      scope.remote as ClientRemote & PstackPotetoModeNamespace & PstackPotetoMaintenanceNamespace
-    ).pstackPotetoMode;
-    void potetoApi.consumeLegacyRepairResult().then(
+    potetoApi = (scope.remote as ClientRemote & PstackPotetoModeNamespace).pstackPotetoMode;
+    return () => {
+      potetoApi = undefined;
+    };
+  });
+  ctx.inject(["remote.pstackPotetoMaintenance"], (scope: Context) => {
+    maintenanceRemote = (scope.remote as ClientRemote & PstackPotetoMaintenanceNamespace)
+      .pstackPotetoMaintenance;
+    void maintenanceRemote.consumeLegacyRepairResult().then(
       (result) => {
         if (result.ok) showRepairOutcome(result.value);
       },
@@ -237,7 +241,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
       },
     );
     return () => {
-      potetoApi = undefined;
+      maintenanceRemote = undefined;
     };
   });
   const injectProps = (sessionId: string) => ({

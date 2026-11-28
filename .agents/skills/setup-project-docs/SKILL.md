@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Set up project docs
 
-Create or complete living project documentation and its context pointers. Obtain approval before writing or modifying files.
+Create or complete living project documentation and its context pointers. Work within the user's authorized scope; obtain approval for proposed content when writing has not already been authorized.
 
 | Piece | Answers | Default location |
 |---|---|---|
@@ -27,14 +27,14 @@ Use the selected directory and read its `AGENTS.md` and `README.md` conventions 
 
 Read build and workspace configuration, real directories, and entry points until every principal module has a source-backed responsibility. Finish with an outline for each proposed document and an explicit list of facts the repository cannot supply.
 
-## 2. Confirm the plan
+## 2. Resolve the scope
 
 Present existing, missing, and proposed paths. Lead with recommendations for decisions the repository cannot supply:
 
 - **Decision records:** recommend them when choices are costly to reverse; a small script or disposable prototype usually needs none. Declining leaves the related skills inert.
 - **Glossary layout:** recommend one file; split by context only for genuinely separate bounded contexts.
 
-Confirm the proposed paths and scope. On a rerun, limit the plan to missing pieces and stale pointers. Confirming this plan is not write approval: step 3 presents the content for that approval.
+Use the requested paths and scope when supplied. On a rerun, limit the work to missing pieces and stale pointers. Ask only about choices the repository and request cannot resolve; prepare the concrete drafts before requesting any remaining write approval.
 
 ## 3. Draft source-backed content
 
@@ -42,7 +42,7 @@ Confirm the proposed paths and scope. On a rerun, limit the plan to missing piec
 - **Glossary:** define three to five existing code terms whose ambiguity could produce divergent names.
 - **Decision conventions:** create no placeholder record. Leave any real record to `decision-write`; when enabled, draft `<dir>/AGENTS.md` following [the decision-record conventions](references/decision-conventions.md).
 
-Present every draft together and obtain approval before writing. The approved set is the write plan.
+Present the resulting drafts together when write approval is still needed, and apply the approved set. Existing authorization for the identified work remains sufficient.
 
 ## 4. Write or update
 
@@ -60,4 +60,4 @@ This block contains only document pointers. Add or update the approved pointers 
 
 ## 5. Verify and report
 
-Confirm that every approved path was written or updated, root `AGENTS.md` contains one `## Project docs` block with only document pointers, and every pointer resolves to a retained document from the repository root. Report written, updated, and skipped paths with reasons. State that pointers take effect in the next session.
+Confirm that every approved path was written or updated, root `AGENTS.md` contains one `## Project docs` block with only document pointers, and every pointer resolves to a retained document from the repository root. Report written, updated, and skipped paths with reasons. Report pointer changes without assuming when the host reloads agent instructions.

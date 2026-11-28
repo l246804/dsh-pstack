@@ -8,17 +8,10 @@ import { existsSync, readFileSync } from "node:fs";
 
 import { writeFileAtomically } from "../lib/atomic-write.ts";
 import { describeError } from "../lib/errors.ts";
-import { normalizeBudgetValue } from "../roles/budget.ts";
-import { isRetiredRoleKey } from "../roles/role-manifest.ts";
-import type { RoleFileDocumentLike } from "../roles/role-store.ts";
+import { normalizeBudgetValue, isRetiredRoleKey } from "./role-values.ts";
+import { ROLE_FILE_VERSION, serializeRoleDocument } from "../roles/role-store.ts";
 import { parseRouteEntry, type Route } from "../roles/route.ts";
 import { upgradeVersionOneRoles } from "./version-1-to-2.ts";
-
-/** Options for {@link upgradeRoleFile}. */
-export interface UpgradeRoleFileOptions {
-  readonly currentVersion: number;
-  readonly serialize: (document: RoleFileDocumentLike) => string;
-}
 
 /** Result of checking and upgrading one role file in place. */
 export type RoleFileUpgrade =
@@ -33,10 +26,7 @@ export type RoleFileUpgrade =
  * budget labels dropped); an unknown version is unreadable. The file always ends
  * up at the current version, or the result reports why not.
  */
-export function upgradeRoleFile(
-  jsonPath: string,
-  options: UpgradeRoleFileOptions,
-): RoleFileUpgrade {
+export function upgradeRoleFile(jsonPath: string): RoleFileUpgrade {
   if (!existsSync(jsonPath)) return { status: "missing" };
 
   let raw: unknown;
@@ -50,14 +40,14 @@ export function upgradeRoleFile(
   }
   const record = raw as Record<string, unknown>;
   const version = record["version"];
-  if (version === options.currentVersion) {
+  if (version === ROLE_FILE_VERSION) {
     const sanitized = sanitizeCurrentRoleFile(record);
     if (sanitized === undefined || !sanitized.changed) return { status: "current" };
     try {
       writeFileAtomically(
         jsonPath,
-        options.serialize({
-          version: options.currentVersion,
+        serializeRoleDocument({
+          version: ROLE_FILE_VERSION,
           ...(sanitized.budget === undefined ? {} : { budget: sanitized.budget }),
           roles: sanitized.roles,
         }),
@@ -88,8 +78,8 @@ export function upgradeRoleFile(
     }
     writeFileAtomically(
       jsonPath,
-      options.serialize({
-        version: options.currentVersion,
+      serializeRoleDocument({
+        version: ROLE_FILE_VERSION,
         ...(sanitized.budget === undefined ? {} : { budget: sanitized.budget }),
         roles: sanitized.roles,
       }),

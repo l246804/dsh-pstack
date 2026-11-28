@@ -5,7 +5,6 @@ import { dirname, join } from "node:path";
 
 import { migrateMdcToJson } from "./mdc-to-json.ts";
 import { upgradeRoleFile } from "./upgrade-role-file.ts";
-import { ROLE_FILE_VERSION, serializeRoleDocument } from "../roles/role-store.ts";
 import { resolveDshHome } from "../lib/dsh-home.ts";
 import { describeError } from "../lib/errors.ts";
 import { pstackHomePaths, type PstackHomePaths } from "../pstack/home.ts";
@@ -58,28 +57,19 @@ function migrateModels(dshHome: string, paths: PstackHomePaths): void {
 
   if (!existsSync(paths.models)) {
     if (existsSync(legacyModels)) {
-      const result = upgradeRoleFile(legacyModels, {
-        currentVersion: ROLE_FILE_VERSION,
-        serialize: serializeRoleDocument,
-      });
+      const result = upgradeRoleFile(legacyModels);
       if (result.status === "unreadable") {
         warnMigration(legacyModels, result.reason);
         return;
       }
       moveLegacyIfDestinationMissing(legacyModels, paths.models);
     } else if (existsSync(legacyMdc)) {
-      migrateMdcToJson(legacyMdc, paths.models, {
-        currentVersion: ROLE_FILE_VERSION,
-        serialize: serializeRoleDocument,
-      });
+      migrateMdcToJson(legacyMdc, paths.models);
     }
   }
 
   if (existsSync(paths.models)) {
-    const result = upgradeRoleFile(paths.models, {
-      currentVersion: ROLE_FILE_VERSION,
-      serialize: serializeRoleDocument,
-    });
+    const result = upgradeRoleFile(paths.models);
     if (result.status === "unreadable") warnMigration(paths.models, result.reason);
   }
 }

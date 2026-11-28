@@ -7,11 +7,8 @@
  */
 
 import type { RemoteResult, TypertRemoteInfo } from "@deepseek-ai/dsh-typert-protocol";
-import type { TypertContribution } from "@deepseek-ai/dsh-typert-registry";
 
-import type { CatalogueResult } from "../models.ts";
-import { pstackPotetoMaintenanceRemote } from "../poteto/maintenance-remote.ts";
-import { pstackPotetoRemote } from "../poteto/remote.ts";
+import type { CatalogueResult } from "../models/catalogue.ts";
 import { REMOTE_PACKAGE, codec, directMethod, parameter } from "../lib/typert-method.ts";
 import { type BudgetApplyRequest, parseBudgetApplyRequest } from "./budget.ts";
 import {
@@ -85,28 +82,4 @@ export const pstackRolesRemote: TypertRemoteInfo = {
     [`${ROLES_SERVICE}/save`]: saveMethod,
     [`${ROLES_SERVICE}/budget`]: budgetMethod,
   },
-};
-
-/** One Client mount carrying both pstack Remote namespaces. */
-export const pstackClientRemote: TypertRemoteInfo = {
-  package: REMOTE_PACKAGE,
-  descriptors: [
-    ...pstackRolesRemote.descriptors,
-    ...pstackPotetoRemote.descriptors,
-    ...pstackPotetoMaintenanceRemote.descriptors,
-  ],
-  methods: {
-    ...pstackRolesRemote.methods,
-    ...pstackPotetoRemote.methods,
-    ...pstackPotetoMaintenanceRemote.methods,
-  },
-};
-
-/** Register the Host's strict invocation definitions in `ctx.typert.local`. */
-export const pstackRolesHostContribution: TypertContribution = {
-  package: REMOTE_PACKAGE,
-  face: "host",
-  schemas: [],
-  model: { services: [], events: [], objects: [] },
-  invocations: pstackClientRemote.descriptors,
 };

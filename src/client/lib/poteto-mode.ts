@@ -24,15 +24,19 @@ export function usePotetoMode(
 
   useEffect(() => {
     let live = true;
+    let changed = false;
     void readMode().then(
       (value) => {
-        if (live) setSelected(value);
+        if (live && !changed) setSelected(value);
       },
       () => undefined,
     );
     const onChange = (event: Event): void => {
       const detail = (event as CustomEvent<{ sessionId: string; enabled: boolean }>).detail;
-      if (detail.sessionId === sessionId) setSelected(detail.enabled);
+      if (detail.sessionId === sessionId) {
+        changed = true;
+        setSelected(detail.enabled);
+      }
     };
     window.addEventListener(POTETO_MODE_EVENT, onChange);
     return () => {

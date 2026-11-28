@@ -71,6 +71,8 @@ export default defineConfig({
     include: [
       "tests/**/*.test.{ts,tsx,mjs}",
       "src/tests/**/*.test.{ts,tsx,mjs}",
+      "native/tests/**/*.test.{ts,tsx,mjs}",
+      "skills/tests/**/*.test.{ts,tsx,mjs}",
       "playground/tests/**/*.test.{ts,tsx,mjs}",
     ],
   },
@@ -78,7 +80,7 @@ export default defineConfig({
     tasks: {
       // Repository level: build, static checks, release consistency.
       build: {
-        command: "vp pack",
+        command: "vpx skills/scripts/check.ts && vp pack && vpx skills/scripts/adapt-dist.ts",
         dependsOn: ["native:generate"],
       },
       typecheck: {
@@ -86,6 +88,11 @@ export default defineConfig({
       },
       "compatibility:check": {
         command: "vpx scripts/release-compatibility.ts --check",
+        cache: false,
+      },
+
+      "skills:check": {
+        command: "vpx skills/scripts/check.ts",
         cache: false,
       },
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import { ToolArgsError } from "@deepseek-ai/dsh-tools";
 import type { Agent } from "@deepseek-ai/dsh-agent";
 import {
   createPstackInterruptTool,
@@ -277,5 +278,20 @@ describe("pstack interrupt tool", () => {
     await expect(
       createPstackInterruptTool(fakeRuntime()).execute?.({ agent: " " }, exec),
     ).rejects.toThrow(/non-empty string/);
+  });
+});
+
+describe("delegation depth policy", () => {
+  it("reports a per-call limit above the row limit as an argument error", () => {
+    expect(() =>
+      planDelegation(args({ maxDepth: 3 }), fakeRuntime(), { provider: "spawn", maxDepth: 2 }),
+    ).toThrow(ToolArgsError);
+  });
+
+  it("uses the explicit row limit and falls back to the Host default", () => {
+    expect(planDelegation(args(), fakeRuntime(), { provider: "spawn", maxDepth: 2 }).maxDepth).toBe(
+      2,
+    );
+    expect(planDelegation(args(), fakeRuntime(), { provider: "spawn" }).maxDepth).toBe(1);
   });
 });

@@ -11,7 +11,7 @@ Audit living project documents against current evidence, then stop after a read-
 ## Choose the mode
 
 - **Report:** `/docs-drift` or `/docs-drift report`. Do steps 1–5 without writing files.
-- **Fix:** `/docs-drift fix`. Do the same inspection, then steps 6–7. Invoking Fix is not write approval.
+- **Fix:** `/docs-drift fix`. Do the same inspection, then steps 6–7. Fix authorizes evidence-backed documentation repairs within the requested scope.
 
 Accept optional paths or globs to add to or narrow the candidate set, plus optional exclusions. Ask when the requested mode or scope is ambiguous.
 
@@ -88,7 +88,7 @@ Continue read-only inspection of unrelated items, but exclude unresolved items f
 
 ## 5. Report
 
-Report the candidate and maintained scopes, ownership evidence, reference-only documents, exclusions, missing pointer targets, evidence limitations, and every maintained document's disposition. Keep unresolved questions and unverified claims visible rather than counting them as clean.
+Summarize scope, ownership, exclusions, and verified documents in groups; expand findings and evidence limitations individually. Keep unresolved questions and unverified claims visible rather than counting them as clean.
 
 Use one entry per finding:
 
@@ -109,7 +109,7 @@ Report mode ends here without writing files or creating a report artifact. Compl
 
 For Fix, group the exact proposed edits by file and finding. Show exact replacement text or deletion boundaries for substantive rewrites, deletions, and consolidations, including all affected language variants. Identify edits excluded by unresolved questions.
 
-Request explicit approval and wait. The user may approve any subset. Apply exactly the approved edits, preserving unrelated content and existing user changes.
+Proceed when the user has authorized these repairs. If write authorization is missing, request approval for the concrete edit set and wait; the user may approve any subset. Preserve unrelated content and existing user changes.
 
 Repair the authoritative source and synchronize intentional summaries and language variants where the evidence supports doing so. Use the project's generation procedure for generated results. Preserve every unique requirement, constraint, caveat, and evidence pointer during consolidation. If a new semantic conflict appears, stop that item and request a new decision rather than expanding the approved edit.
 

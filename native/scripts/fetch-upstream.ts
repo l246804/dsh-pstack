@@ -37,6 +37,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
+import { git, versionAt, resolveVersionCommit } from "./lib/upstream.ts";
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const NATIVE = join(ROOT, "native");
 // Scratch lives inside the repo (gitignored): platform temp areas can silently
@@ -89,14 +91,6 @@ const path = restoreFromLock ? (lockOnDisk?.path ?? "pstack") : (args.path ?? "p
 const source = args.source ?? lockOnDisk?.source ?? DEFAULT_SOURCE;
 const commitOverride = restoreFromLock ? lockOnDisk?.commit : args.commit;
 
-function git(gitArgs: string[], cwd: string): string {
-  const result = spawnSync("git", gitArgs, { cwd, encoding: "utf8" });
-  if (result.status !== 0) {
-    throw new Error(`git ${gitArgs.join(" ")} failed in ${cwd}: ${result.stderr}`);
-  }
-  return result.stdout;
-}
-
 // The receipt distinguishes same-version pins after a branch switch or --commit update.
 const pinnedTreeManifest = join(NATIVE, "upstream", "plugin.json");
 if (
@@ -126,14 +120,9 @@ if (!existsSync(source) || !statSync(source).isDirectory()) {
 }
 
 const manifest = `${path}/plugin.json`;
-function versionAt(atWork: string, sha: string): string | undefined {
-  const text = git(["show", `${sha}:${manifest}`], atWork);
-  const version = (JSON.parse(text) as { version?: unknown }).version;
-  return typeof version === "string" ? version : undefined;
-}
 
 if (latest) {
-  version = versionAt(work, "origin/main");
+  version = versionAt(work, manifest, "origin/main");
   if (version === undefined) {
     throw new Error(`origin/main carries no version in ${manifest}`);
   }
@@ -162,28 +151,7 @@ if (commitOverride) {
   // commit needs no separate pre-check here.
   bump = fullSha(commitOverride, work);
 } else {
-  const history = git(["log", "--format=%H", "--", manifest], work)
-    .trim()
-    .split("\n")
-    .filter(Boolean);
-  if (history.length === 0) {
-    throw new Error(`no commits touch ${manifest} in ${source}`);
-  }
-  const parentOf = (sha: string): string | undefined => {
-    const [commit, parent] = git(["rev-list", "--parents", "-n", "1", sha], work)
-      .trim()
-      .split(/\s+/);
-    return commit === undefined || commit === parent ? undefined : parent;
-  };
-  // Newest commit that entered the requested version relative to its parent.
-  bump = history.find((sha) => {
-    if (versionAt(work, sha) !== version) return false;
-    const parent = parentOf(sha);
-    return parent === undefined || versionAt(work, parent) !== version;
-  });
-  if (!bump) {
-    throw new Error(`no commit in ${source} ever set ${manifest} to ${version}`);
-  }
+  bump = resolveVersionCommit(work, manifest, version!);
   // Same-version commits after the bump: possibly unreleased marketplace content.
   followUps = git(["log", "--format=%h %s", `${bump}..HEAD`, "--", path], work)
     .trim()
@@ -198,7 +166,7 @@ const target = join(NATIVE, "upstream");
 const archive = join(SCRATCH, `archive-${Date.now()}.tar`);
 try {
   git(["archive", "--format=tar", "--output", archive, bump, path], work);
-  const expected = versionAt(work, bump);
+  const expected = versionAt(work, manifest, bump);
   if (expected !== version) {
     throw new Error(`commit ${bump} carries version ${expected}, not ${version}`);
   }
