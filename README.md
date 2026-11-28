@@ -23,34 +23,36 @@
       <td align="center"><strong>59</strong><br /><sub>pstack skills</sub></td>
       <td align="center"><strong>22</strong><br /><sub>playbooks</sub></td>
       <td align="center"><strong>4</strong><br /><sub>plugin tools</sub></td>
-      <td align="center"><strong>3</strong><br /><sub>agent presets</sub></td>
+      <td align="center"><strong>3</strong><br /><sub>subagent presets</sub></td>
     </tr>
   </table>
 
   <p>
     <a href="#quick-start">🚀 Quick start</a> ·
-    <a href="#️-common-commands">⌨️ Commands</a> ·
-    <a href="#-capabilities">🧩 Capabilities</a> ·
-    <a href="#-optional-dsh-plugins">🔌 Optional plugins</a> ·
-    <a href="#-port-verification">🧪 Port verification</a> ·
-    <a href="#️-remaining-gaps">⚠️ Limitations</a> ·
-    <a href="#-faq">❓ FAQ</a> ·
-    <a href="#-compatibility">📦 Compatibility</a>
+    <a href="#commands">⌨️ Commands</a> ·
+    <a href="#configuration">🎛️ Configuration</a> ·
+    <a href="#capabilities">🧩 Capabilities</a> ·
+    <a href="#limitations">⚠️ Limitations</a> ·
+    <a href="#compatibility">📦 Compatibility</a>
   </p>
 </div>
 
 ---
 
-`dsh-pstack` ports [pstack](https://github.com/cursor/plugins/tree/main/pstack) to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH). It ships the upstream skills, playbooks, and references, then adds the DSH adapter for skill names, a model route for each role, subagents that accept an explicit route, and tools to list the available models and roles and interrupt a subagent.
+`dsh-pstack` brings [pstack](https://github.com/cursor/plugins/tree/main/pstack)'s planning, implementation, review, and verification workflows to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH), with the upstream skills, playbooks, and reference documents included.
 
-The [runtime mapping](./src/dsh.md) maps each Cursor feature to DeepSeek Harness. Real DSH Web sessions test the port, and [Port verification](#-port-verification) explains how.
+- **Start from a task.** Use `/poteto-mode` for the full workflow, or choose a skill for a specific job.
+- **Choose models by role.** Set each role's provider, model, and reasoning effort, or inherit the parent Session's route.
+- **Coordinate subagents.** Delegate implementation, read-only research, and review; optionally use Agent Teams to track shared work.
 
-> [!IMPORTANT]
-> Requires DSH `>=0.2.3-alpha.2` and Node.js `>=24.22.3`. See each script's help for the runtime it needs.
+See [Port verification](#-port-verification) for results from real DSH Web sessions and the [runtime mapping](./src/dsh.md) for how Cursor capabilities map to DSH.
 
 <a id="quick-start"></a>
 
 ## 🚀 Quick start
+
+> [!IMPORTANT]
+> Requires DSH `>=0.2.3-alpha.2` and Node.js `>=24.22.3`. See [Compatibility](#compatibility) for each release's supported DSH range.
 
 1. **Install the plugin.**
 
@@ -62,101 +64,104 @@ The [runtime mapping](./src/dsh.md) maps each Cursor feature to DeepSeek Harness
 
 2. **Restart the profile or open a new Session.**
 
-## 🧭 Usage
+3. **Start a task.** Invoke `/poteto-mode` and describe what you want to build or fix. Use `/poteto-help` to explore the workflows.
 
-Pick either path and expand it for the full steps.
+You can start with the parent Session's model. To choose models by role or keep the workflow active on every turn, see [Configuration](#configuration).
 
-<details>
-<summary><strong>🖥️ Visual setup</strong></summary>
-
-Use the plugin UI to set workflow defaults, enable related plugins, and route each role.
-
-1. Open **Plugins → Installed plugins**, select **pstack**, then click **Configure**.
-
-   ![Configure entry](./assets/plugin-configure.png)
-
-2. On the **General** tab, choose whether new Sessions start with the Poteto workflow and with Agent Teams collaboration.
-
-   ![General settings](./assets/plugin-general.png)
-
-3. In **Recommended plugins**, review the **Recommended** and **Optional** groups. **Enable all** only enables plugins in the **Recommended** group.
-
-   ![Recommended plugins](./assets/plugin-recommended.png)
-
-4. Open **Role models**, set the provider, model, and reasoning effort for each role, then save the changed row or use **Save all**.
-
-   ![Role models](./assets/plugin-roles.png)
-
-5. Open **Repair** for maintenance actions that bring older Sessions up to date after an upgrade.
-
-   ![Repair tab](./assets/plugin-repair.png)
-
-6. In a Session, open the model and reasoning menu. Turn on **Poteto workflow** and **Use Agent Teams** independently. The Poteto workflow works under any preset except the built-in Minimal preset.
-
-   ![Session workflow switches](./assets/session-workflow-switches.png)
-
-</details>
-
-<details>
-<summary><strong>🧠 Skill usage</strong></summary>
-
-Use pstack skills to start workflows directly from a Session.
-
-1. **Initialize role routes.** Run `/setup-pstack` once. It writes the detected routes to `$DSH_HOME/pstack/models.json`. Without this file, roles inherit the parent route.
-2. **Start through skills.** Type `/poteto-mode` directly. You do not need to switch presets first.
-3. **Use targeted commands.** Pick a command from [Common commands](#️-common-commands).
-
-</details>
+<a id="commands"></a>
 
 ## ⌨️ Common commands
 
 | Task | Commands |
 |---|---|
 | Help | `/poteto-help` |
+| Configure role models | `/setup-pstack` |
 | Shape the request | `/reframe`, `/sharpen` |
 | Plan and build | `/poteto-mode`, `/architect`, `/arena`, `/swarm` |
 | Understand and investigate | `/how`, `/why`, `/teach` |
 | Verify | `/create-verification-skill`, `/statechart` |
 | Review and maintain | `/show-me-your-work`, `/retro`, `/docs-drift` |
 
-## 🧩 Capabilities
+<a id="configuration"></a>
 
-### 🛠️ Plugin tools
+## 🎛️ Configuration
 
-| Tool | Function |
-|---|---|
-| `pstack_subagent` | Starts one subagent with an `agent_preset`, optionally overriding its route with provider, model, and reasoning_effort. |
-| `pstack_interrupt` | Stops a pstack child's current turn by its name from `list_agents` or its Session id. Built-in presets disable the native `interrupt_agent`, so this is the interruption path. |
-| `pstack_models` | Lists the providers, models, and reasoning efforts this deployment serves. |
-| `pstack_roles` | Reports each role's configured routes as provider, model, and reasoning_effort values, with each route's served efforts and default. |
-
-### 🎛️ Workflow switches
-
-The Poteto workflow and Agent Teams collaboration are independent switches, and you can turn on both in one Session. The Poteto workflow works under any preset except the built-in Minimal preset.
-
-- **Poteto workflow** keeps the poteto-mode rules in the system prompt on every turn.
-- **Use Agent Teams** makes `pstack_subagent` start a teammate, so pstack delegation can track shared work on the Team board.
-
-Set a switch for the current Session in the model and reasoning menu. Set the defaults for new Sessions on the **General** tab of the Pstack configuration dialog, using **Default for new sessions** and **Default Agent Teams for new sessions**.
+Open **Plugins → Installed plugins → pstack → Configure**.
 
 <details>
-<summary><strong>⌨️ Toggle with a keyboard shortcut</strong></summary>
+<summary>View the configuration entry</summary>
 
-To flip the Poteto workflow switch from the keyboard, set a shortcut in **Settings → General → Shortcuts** under **Toggle Poteto workflow**. The shortcut toggles the switch for the current Session.
+![Configure entry](./assets/plugin-configure.png)
+
+</details>
+
+### Workflow switches
+
+| Switch | Effect |
+|---|---|
+| **Poteto workflow** | Keeps the `poteto-mode` rules in the system prompt on every turn. Available under any preset except the built-in Minimal preset. |
+| **Use Agent Teams** | Makes `pstack_subagent` start teammates that can track shared work on the Team board. |
+
+The switches are independent and can be enabled together. Change them for the **current Session** in the model and reasoning menu. Set defaults for **new Sessions** on the configuration dialog's **General** tab.
+
+<details>
+<summary>View workflow switches and keyboard shortcut setup</summary>
+
+**Current Session**
+
+![Session workflow switches](./assets/session-workflow-switches.png)
+
+**Defaults for new Sessions**
+
+Use **Default for new sessions** and **Default Agent Teams for new sessions** on the **General** tab.
+
+![General settings](./assets/plugin-general.png)
+
+**Keyboard shortcut**
+
+Assign **Toggle Poteto workflow** in **Settings → General → Shortcuts** to toggle the current Session's Poteto switch from the keyboard.
 
 ![Toggle Poteto workflow shortcut](./assets/shortcut-toggle-poteto.png)
 
 </details>
 
+### Role models
+
+In **Role models**, choose a provider, model, and reasoning effort for each role, then save the changed row or use **Save all**. **Adjust budget** lets you preview and apply reasoning levels across roles.
+
+You can also run `/setup-pstack` in a Session to discover available models and configure roles. Both paths save to `$DSH_HOME/pstack/models.json`; an unconfigured role inherits the parent route.
+
+<details>
+<summary>View role model settings</summary>
+
+![Role models](./assets/plugin-roles.png)
+
+</details>
+
+<a id="capabilities"></a>
+
+## 🧩 Capabilities
+
+### 🛠️ Plugin tools
+
+The agent uses these tools during workflows; you can start with the [commands above](#commands).
+
+| Tool | Function |
+|---|---|
+| `pstack_subagent` | Starts one subagent per call. Optionally selects an `agent_preset` or overrides the model route with `provider`, `model`, and `reasoning_effort`. |
+| `pstack_interrupt` | Stops a pstack child's current turn by its name from `list_agents` or its Session id. Built-in presets disable the native `interrupt_agent`, so this is the interruption path. |
+| `pstack_models` | Lists the providers, models, and reasoning efforts this deployment serves. |
+| `pstack_roles` | Reports each role's configured routes, with the available reasoning efforts and defaults for each route. |
+
 ### 🎭 Agent presets
 
-The package ships three child presets for delegation.
+The package ships three child presets for delegation. You do not need to switch the parent Session's preset to invoke pstack skills.
 
-| Preset | Scope | Use |
-|---|---|---|
-| `poteto-agent` | Child | Handles implementation delegation with the pstack persona and `poteto-mode` instructions. |
-| `comment-sicko` | Child | Handles read-only comment review and reports deletion targets and `MUST KILL` symbols. |
-| `readonly` | Child | Provides a sandbox-enforced read-only researcher for inspection and evidence gathering. |
+| Preset | Use |
+|---|---|
+| `poteto-agent` | Handles implementation delegation with the pstack persona and `poteto-mode` instructions. |
+| `comment-sicko` | Handles read-only comment review and reports deletion targets and `MUST KILL` symbols. |
+| `readonly` | Provides a sandbox-enforced read-only researcher for inspection and evidence gathering. |
 
 ### 📚 Additional skills
 
@@ -178,7 +183,14 @@ These skills extend pstack with authoring, project-maintenance, and evidence-gat
 
 ## 🔌 Optional DSH plugins
 
-Install dsh-pstack without these plugins, then enable only the capabilities you need. The plugin dialog's **Recommended plugins** page is the authoritative list; this table mirrors it.
+These plugins are optional. In the configuration dialog's **Recommended plugins** tab, **Enable all** enables only the **Recommended** group (worktrees/PRs and Session history). Enable the other capabilities individually as needed.
+
+<details>
+<summary>View recommended plugin settings</summary>
+
+![Recommended plugins](./assets/plugin-recommended.png)
+
+</details>
 
 | Use case | Plugin | What it provides and its boundaries |
 |---|---|---|
@@ -188,18 +200,17 @@ Install dsh-pstack without these plugins, then enable only the capabilities you 
 | Persistent terminals | `@deepseek-ai/dsh-experimental-terminal-bundle` | Persistent shell and REPL sessions for CLI and TUI verification. |
 | Autonomous loops | `@deepseek-ai/dsh-experimental-ralph-bundle` | A foreground loop that starts a fresh child each round, rather than a persistent Session loop or event watcher. |
 
-Enable packages through **Plugins → Add plugin**, then restart the profile when required. All listed packages ship with DSH as optional bundles. `@deepseek-ai/dsh-cua-bundle` runs on macOS only.
+You can also enable packages through **Plugins → Add plugin**, then restart the profile when required. All listed packages ship with DSH as optional bundles. `@deepseek-ai/dsh-cua-bundle` runs on macOS only. See each plugin or skill's help for additional runtime requirements.
 
 Steps that depend on a disabled plugin report skipped or blocked, never passed. See the [DSH adaptation guide](./src/dsh.md) for setup and fallbacks.
 
 ## 🧪 Port verification
 
-Real DeepSeek Harness Web sessions test the port. They do not compare text with upstream. [playground/docs/run.md](./playground/docs/run.md) documents the full procedure.
+The [validation results](./playground/results/README.md) show the latest observed behavior, handling decisions, and screenshots for each tested scenario. They distinguish the native DSH baseline from the adapted plugin. Mechanical checks and observed behavior are assessed separately; full run records remain local.
 
-- **Native baseline.** `native/` pins the upstream pstack and generates `native/pstack`; `native/dsh.md` maps each Cursor name to its DSH replacement and states the fallback when the replacement is unavailable. The generator inserts that document into the generated tree, so the upstream wording stays intact.
-- **Scenario validation.** Gap scenarios correspond to confirmed entries in `native/gaps.json`; regression scenarios are maintained separately. [Scenario rules](./playground/docs/scenarios.md) describe coverage checks and the gap lock.
-- **Results and approval.** [Validation results](./playground/results/README.md) record native findings, proposed actions, user approvals and adapted outcomes per scenario. Mechanical checks and observed behavior are assessed separately; selected screenshots are committed while run records remain local.
-- **Targeted reruns.** Revisit affected scenarios when behavior or criteria change. Upgrades and releases do not require a full rerun. After changing the adaptation or `src/dsh.md`, validate whether the relevant gaps are addressed.
+Validation uses real DSH Web sessions. Scenarios are revisited when their behavior or criteria change; a version bump alone does not imply a full rerun. See the [run guide](./playground/docs/run.md) to reproduce a scenario and the [scenario rules](./playground/docs/scenarios.md) for gap coverage and regression checks.
+
+<a id="limitations"></a>
 
 ## ⚠️ Remaining gaps
 
@@ -219,25 +230,40 @@ These limits remain even with every optional plugin that can run alongside pstac
 ## ❓ FAQ
 
 <details>
-<summary><strong>Expand for questions and answers</strong></summary>
+<summary><strong>Preset names show in English</strong></summary>
 
-1. **Preset names show in English**
+Set the language to Chinese in **Settings → General → Language**, then restart DSH. The row may already show Chinese because it follows the browser. Select Chinese again. That saves the preference that preset names use when the host starts.
 
-   Set the language to Chinese in **Settings → General → Language**, then restart DSH. The row may already show Chinese because it follows the browser. Select Chinese again. That saves the preference that preset names use when the host starts.
+</details>
 
-2. **Some rendering needs a plugin**
+<details>
+<summary><strong>Some rendering needs a plugin</strong></summary>
 
-   Native DSH renders images and SVG inline. A Mermaid diagram returns as text, and audio or video shows as a file card. That is expected degradation, not a broken skill. For the full experience, install an optional plugin that enhances native rendering.
+Native DSH renders images and SVG inline. A Mermaid diagram returns as text, and audio or video shows as a file card. Optional rendering plugins can extend this; see the [inline video validation](./playground/results/inline-video-playback/result.md) for the tested behavior.
 
-3. **The model sometimes picks the wrong tool or path**
+</details>
 
-   Model choice is probabilistic. The adapter wording and tool boundaries reduce how often it happens and how long recovery takes, but they cannot remove it. A retry usually resolves it. When it repeats, file a model behavior report with the retry result and the frequency.
+<details>
+<summary><strong>The model sometimes picks the wrong tool or path</strong></summary>
+
+Model choice is probabilistic. The adapter wording and tool boundaries reduce how often it happens and how long recovery takes, but they cannot remove it. A retry usually resolves it. When it repeats, file a model behavior report with the retry result and the frequency.
+
+</details>
+
+<details>
+<summary><strong>An older Session fails to load after upgrading</strong></summary>
+
+If the error mentions a `poteto/mode` event, open **Configure → Repair → Scan and repair**. Scan Sessions, select the affected ones, and confirm the repair queue. Restart DSH to apply the repair.
+
+![Repair tab](./assets/plugin-repair.png)
 
 </details>
 
 ## 📦 Compatibility
 
-Choose a release by its declared DSH range. Each range has its own table of releases and the pstack version each bundles.
+<a id="compatibility"></a>
+
+Releases are grouped by their supported DSH range. Each table lists the dsh-pstack releases and the pstack version each bundles.
 
 **DSH `>=0.2.2-rc.2`**
 

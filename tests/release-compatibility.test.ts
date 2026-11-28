@@ -1,5 +1,5 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { copyFileSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
@@ -221,6 +221,44 @@ describe("release compatibility metadata", () => {
       expect(read(file), `${file} should be rewritten by the release sync`).not.toBe(
         before.get(file),
       );
+    }
+  });
+
+  it("preserves the real README layout and history prose across an idempotent release sync", () => {
+    for (const file of COMPATIBILITY_FILES) {
+      const target = join(ROOT, file);
+      mkdirSync(dirname(target), { recursive: true });
+      copyFileSync(join(process.cwd(), file), target);
+    }
+    const current = releaseMetadata();
+    const [major, minor, patch] = current.version.split(".");
+    const next = { ...current, version: `${major}.${minor}.${Number.parseInt(patch, 10) + 1}` };
+    const before = new Map(COMPATIBILITY_FILES.map((file) => [file, read(file)]));
+
+    // Only the pstack badge and DSH release tables belong to the release writer.
+    const withoutReleaseMetadata = (text: string): string =>
+      text
+        .replace(/<img src="https:\/\/img\.shields\.io\/badge\/pstack-[^"]+"[^>]*\/>/g, "")
+        .replace(/^\*\*DSH .+\*\*\n(?:\n|\|[^\n]+\n)*/gm, "");
+
+    syncCompatibility(next, true, ROOT);
+    expect(verifyCompatibility(next, ROOT)).toMatchObject({
+      pending: false,
+      releases: expect.arrayContaining([`\`${next.version}\``]),
+    });
+    for (const [file, original] of before) {
+      expect(withoutReleaseMetadata(read(file)), `${file} should preserve all other content`).toBe(
+        withoutReleaseMetadata(original),
+      );
+    }
+    for (const file of ["README.md", "README.zh.md"]) {
+      expect(read(file)).toContain(`| \`${next.version}\` | \`${next.pstackVersion}\` |`);
+    }
+
+    const synced = new Map(COMPATIBILITY_FILES.map((file) => [file, read(file)]));
+    syncCompatibility(next, true, ROOT);
+    for (const [file, firstSync] of synced) {
+      expect(read(file), `${file} should not change on a repeated sync`).toBe(firstSync);
     }
   });
 
